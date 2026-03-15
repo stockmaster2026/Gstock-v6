@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-import pandas_ta 
+#import pandas_ta 
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="三維戰略 V6.6", layout="wide")
