@@ -4,63 +4,57 @@ import pandas as pd
 
 st.set_page_config(page_title="🛡️ 三維戰略 V6.6", layout="wide")
 
-# 自定義 CSS：放大股票名稱與美化介面
+# 加強版 CSS：讓股票名字像招牌一樣大，並區分色塊
 st.markdown("""
     <style>
-    .stock-header { font-size: 50px !important; font-weight: bold; color: #FFD700; background-color: #1E1E1E; padding: 10px; border-radius: 10px; text-align: center; }
-    .action-box { font-size: 24px; padding: 20px; border-radius: 15px; margin: 10px 0px; }
-    .bull-zone { background-color: #004d40; border-left: 10px solid #00c853; }
-    .bear-zone { background-color: #4a148c; border-left: 10px solid #e91e63; }
+    .big-font { font-size: 60px !important; font-weight: bold; color: #FFD700; text-align: center; background: #1E1E1E; border-radius: 10px; margin-bottom: 0px; }
+    .status-box { padding: 15px; border-radius: 10px; color: white; text-align: center; font-size: 20px; }
+    .bull { background-color: #007A33; }
+    .bear { background-color: #A50021; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ 三維戰略指揮中心 V6.6")
+st.title("🛡️ 三維戰略旗艦指揮所 V6.6")
 
-# 1. 模擬 AI 板塊掃描 (熱門板塊偵測)
-st.sidebar.header("🤖 AI 板塊氣象儀")
-hot_sectors = {"半導體": "🔥 沸騰", "人工智慧": "🌡️ 高溫", "電力能源": "☁️ 轉涼", "生技醫療": "❄️ 冰封"}
-for sector, status in hot_sectors.items():
-    st.sidebar.write(f"{sector}：{status}")
+# 1. 預設板塊設定 (長官可以隨時在這邊增加代號)
+sectors = {
+    "🍎 科技權值": ["TSM", "NVDA", "AAPL", "MSFT"],
+    "🚀 戰略黑馬": ["POET", "SOXL", "TQQQ"],
+    "🧪 其他追蹤": []
+}
 
-# 2. 監控輸入
-t_list = st.sidebar.text_input("📝 輸入戰略代號:", "TSM, NVDA, AAPL, POET")
-tickers = [x.strip().upper() for x in t_list.split(',')]
+# 2. 側邊欄：手動輸入區
+st.sidebar.header("🕹️ 指揮控制")
+user_input = st.sidebar.text_input("輸入新代號 (用逗號隔開):", "")
+if user_input:
+    custom_tickers = [x.strip().upper() for x in user_input.split(',')]
+    sectors["🧪 其他追蹤"] = custom_tickers
 
-# 3. 戰略判斷大腦
-def get_strategy(t):
-    df = yf.download(t, period="60d", interval="1d")
-    if df.empty: return None
-    close = df['Close'].iloc[-1]
-    ma20 = df['Close'].rolling(20).mean().iloc[-1]
-    change = ((close - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
-    
-    if close > ma20:
-        return {"status": "多頭", "stage": "🚀 主升段", "action": "🔥 強力加碼 (倉位 80%+)", "price": close, "change": change}
-    else:
-        return {"status": "空頭", "stage": "📉 走跌段", "action": "🏃 立即減碼 (倉位 <10%)", "price": close, "change": change}
+# 3. 戰略判斷引擎
+def get_analysis(t):
+    try:
+        df = yf.download(t, period="40d", interval="1d", progress=False)
+        if df.empty or len(df) < 20: return None
+        c = float(df['Close'].iloc[-1])
+        ma20 = float(df['Close'].rolling(20).mean().iloc[-1])
+        change = ((c - float(df['Close'].iloc[-2])) / float(df['Close'].iloc[-2])) * 100
+        return {"price": c, "ma20": ma20, "change": change, "is_bull": c > ma20}
+    except: return None
 
-# 4. 戰場分類顯示
-if st.sidebar.button("📡 發動全域掃描"):
-    bulls, bears = [], []
-    for t in tickers:
-        res = get_strategy(t)
-        if res:
-            res['ticker'] = t
-            bulls.append(res) if res['status'] == "多頭" else bears.append(res)
-
-    col_bull, col_bear = st.columns(2)
-    
-    with col_bull:
-        st.header("🔥 強勢進攻區 (做多)")
-        for item in bulls:
-            st.markdown(f"<div class='stock-header'>{item['ticker']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='action-box bull-zone'><b>階段：</b>{item['stage']}<br><b>行動：</b>{item['action']}<br><b>價格：</b>${item['price']:.2f} ({item['change']:.2f}%)</div>", unsafe_allow_html=True)
-
-    with col_bear:
-        st.header("💀 弱勢避險區 (空頭)")
-        for item in bears:
-            st.markdown(f"<div class='stock-header'>{item['ticker']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='action-box bear-zone'><b>階段：</b>{item['stage']}<br><b>行動：</b>{item['action']}<br><b>價格：</b>${item['price']:.2f} ({item['change']:.2f}%)</div>", unsafe_allow_html=True)
-
-
-
+# 4. 戰場分頁顯示
+if st.sidebar.button("📡 啟動全域掃描"):
+    for sector_name, tickers in sectors.items():
+        if not tickers: continue
+        st.subheader(f"📍 分類板塊：{sector_name}")
+        cols = st.columns(len(tickers))
+        
+        for i, t in enumerate(tickers):
+            res = get_analysis(t)
+            with cols[i]:
+                if res:
+                    st.markdown(f"<div class='big-font'>{t}</div>", unsafe_allow_html=True)
+                    style = "bull" if res['is_bull'] else "bear"
+                    action = "🔥 加碼" if res['is_bull'] else "🏃 撤退"
+                    st.markdown(f"<div class='status-box {style}'><b>{action}</b><br>${res['price']:.2f} ({res['change']:.2f}%)</div>", unsafe_allow_html=True)
+                else:
+                    st.warning(f"{t} 無訊號")
