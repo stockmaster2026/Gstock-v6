@@ -1,7 +1,5 @@
 
-
-
-
-
-
-
+pandas
+yfinance
+ta
+streamlit
