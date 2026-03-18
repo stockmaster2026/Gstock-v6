@@ -1,9 +1,5 @@
 
-pandas
-yfinance
-ta
-streamlit
-altair==4.2.2
+
 
 
 
