@@ -1,4 +1,7 @@
 
+yfinance
+pandas-ta
+streamlit
 
 
 
