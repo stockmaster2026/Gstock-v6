@@ -1,4 +1,6 @@
 
+yfinance
+pandas-ta
 
 
 
