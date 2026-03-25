@@ -1,13 +1,4 @@
-import os
-import subprocess
-import sys
 
-# --- 強制安裝缺失套件 (解決 Streamlit Cloud 環境衝突) ---
-try:
-    import pandas_ta as ta
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas-ta"])
-    import pandas_ta as ta
 
 
 
