@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
-from bs4 import BeautifulSoup  # 用於實時網頁抓取
+
 from datetime import datetime
 import time
 
