@@ -1,9 +1,4 @@
 
-streamlit
-pandas
-numpy
-tvdatafeed
-websocket-client
 
 
 
