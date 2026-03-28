@@ -1,1 +1,380 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="板塊天氣">
+<title>板塊天氣雷達</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+:root {
+  --bg: #f5f7fa;
+  --bg2: #eef2f7;
+  --bg3: #e2e8f0;
+  --border: #c8d5e3;
+  --text: #1a2a3a;
+  --text2: #5a7a99;
+  --sunny: #c49000;
+  --cloudy: #3a6f9a;
+  --rainy: #2558a0;
+  --frozen: #1a6a8a;
+  --green: #1a9e50;
+  --red: #c0392b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; }
+
+/* Header */
+.header {
+background: var(–bg2);
+border-bottom: 2px solid var(–border);
+padding: 12px 20px;
+display: flex; align-items: center; justify-content: space-between;
+position: sticky; top: 0; z-index: 100;
+}
+.logo { font-family: ‘Bebas Neue’, sans-serif; font-size: 24px; letter-spacing: 4px; color: #1a2a3a; }
+.logo span { color: var(–sunny); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.last-update { font-size: 11px; color: var(–text2); }
+.update-btn {
+background: var(–bg3); border: 1px solid var(–border);
+border-radius: 8px; padding: 7px 16px; color: var(–text);
+font-size: 12px; cursor: pointer; transition: all 0.2s;
+}
+.update-btn:hover { border-color: var(–sunny); color: var(–sunny); }
+
+/* 大盤列 */
+.market-bar {
+background: var(–bg3);
+border-bottom: 1px solid var(–border);
+padding: 10px 20px;
+display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+.market-label { font-size: 11px; color: var(–text2); letter-spacing: 2px; text-transform: uppercase; }
+.market-chip {
+display: flex; align-items: center; gap: 8px;
+background: var(–bg2); border: 1px solid var(–border);
+border-radius: 20px; padding: 5px 14px; font-size: 12px;
+}
+.m-dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot-green { background: var(–green); box-shadow: 0 0 6px var(–green); }
+.dot-red { background: var(–red); box-shadow: 0 0 6px var(–red); }
+.dot-grey { background: var(–text2); }
+
+/* 主內容 */
+.main { padding: 20px; max-width: 1100px; margin: 0 auto; }
+
+/* 進度條 */
+.progress-bar { height: 3px; background: var(–border); border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(–sunny), #ffaa00); border-radius: 3px; transition: width 0.3s ease; }
+
+/* 板塊網格 - 精簡版 */
+.sectors-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 10px;
+}
+@media (min-width: 600px) { .sectors-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .sectors-grid { grid-template-columns: repeat(5, 1fr); } }
+
+/* 板塊卡片 - 精簡 */
+.sector-card {
+background: var(–bg2);
+border: 1px solid var(–border);
+border-radius: 14px;
+padding: 14px;
+cursor: pointer;
+transition: all 0.2s;
+animation: fadeUp 0.3s ease both;
+position: relative;
+overflow: hidden;
+box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.sector-card:nth-child(5n+1) { background: #eef4fb; border-color: #b8d0e8; }
+.sector-card:nth-child(5n+2) { background: #edfaf3; border-color: #b0ddc5; }
+.sector-card:nth-child(5n+3) { background: #fefae8; border-color: #ddd8a0; }
+.sector-card:nth-child(5n+4) { background: #faeef8; border-color: #dbb8d8; }
+.sector-card:nth-child(5n+5) { background: #f0f8ee; border-color: #b8d8b0; }
+.sector-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 卡片頂部：emoji + 天氣 */
+.card-row1 {
+display: flex; align-items: center; justify-content: space-between;
+margin-bottom: 8px;
+}
+.sector-emoji { font-size: 20px; }
+.weather-badge {
+display: flex; align-items: center; gap: 4px;
+font-size: 10px; font-weight: 700; letter-spacing: 1px;
+padding: 3px 8px; border-radius: 12px;
+}
+.badge-sunny { background: rgba(255,215,0,0.15); color: var(–sunny); border: 1px solid rgba(255,215,0,0.3); }
+.badge-cloudy { background: rgba(144,184,216,0.15); color: var(–cloudy); border: 1px solid rgba(144,184,216,0.3); }
+.badge-rainy { background: rgba(91,155,213,0.15); color: var(–rainy); border: 1px solid rgba(91,155,213,0.3); }
+.badge-frozen { background: rgba(184,232,255,0.1); color: var(–frozen); border: 1px solid rgba(184,232,255,0.25); }
+
+/* 板塊名稱 */
+.sector-name { font-size: 13px; font-weight: 700; color: #1a2a3a; margin-bottom: 4px; }
+.sector-etf { font-family: ‘Bebas Neue’, sans-serif; font-size: 11px; color: var(–text2); letter-spacing: 1px; margin-bottom: 8px; }
+
+/* 價格 */
+.price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+.price-val { font-family: ‘Bebas Neue’, sans-serif; font-size: 18px; color: #1a2a3a; }
+.price-change { font-size: 11px; padding: 2px 6px; border-radius: 5px; font-weight: 600; }
+.up { color: var(–green); background: rgba(46,204,113,0.12); }
+.down { color: var(–red); background: rgba(231,76,60,0.12); }
+
+/* 分數 */
+.score-row {
+display: flex; align-items: center; justify-content: space-between;
+border-top: 1px solid var(–border); padding-top: 8px;
+}
+.score-label { font-size: 10px; color: var(–text2); }
+.score-num { font-family: ‘Bebas Neue’, sans-serif; font-size: 22px; font-weight: 700; }
+
+/* 展開細節 */
+.detail-section {
+max-height: 0; overflow: hidden;
+transition: max-height 0.3s ease;
+border-top: 0px solid var(–border);
+}
+.detail-section.open {
+max-height: 200px;
+border-top: 1px solid var(–border);
+margin-top: 8px;
+padding-top: 8px;
+}
+.score-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.score-bar-label { font-size: 9px; color: var(–text2); width: 32px; flex-shrink: 0; }
+.score-bar-wrap { flex: 1; background: var(–bg3); border-radius: 3px; height: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.fill-sunny { background: var(–sunny); }
+.fill-cloudy { background: var(–cloudy); }
+.fill-rainy { background: var(–rainy); }
+.fill-frozen { background: var(–frozen); }
+.score-bar-val { font-size: 10px; color: var(–text2); width: 22px; text-align: right; flex-shrink: 0; }
+
+/* 圖例 */
+.legend {
+display: flex; gap: 16px; margin-bottom: 16px;
+flex-wrap: wrap; align-items: center;
+}
+.legend-title { font-size: 10px; color: var(–text2); letter-spacing: 2px; text-transform: uppercase; }
+.legend-items { display: flex; gap: 14px; flex-wrap: wrap; }
+.legend-item { font-size: 11px; color: var(–text2); }
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">板塊<span>天氣</span>雷達</div>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate">未更新</span>
+    <button class="update-btn" onclick="loadAll()">↻ 更新</button>
+  </div>
+</div>
+
+<div class="market-bar">
+  <div class="market-label">大盤</div>
+  <div class="market-chip">
+    <div class="m-dot dot-grey" id="spDot"></div>
+    <span>S&P500</span>
+    <span id="spVal" style="color:var(--text2)">--</span>
+  </div>
+  <div class="market-chip">
+    <div class="m-dot dot-grey" id="nqDot"></div>
+    <span>Nasdaq</span>
+    <span id="nqVal" style="color:var(--text2)">--</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="legend">
+    <div class="legend-title">天氣</div>
+    <div class="legend-items">
+      <div class="legend-item">☀️ 強勢進場</div>
+      <div class="legend-item">☁️ 中性觀望</div>
+      <div class="legend-item">🌧️ 走弱小心</div>
+      <div class="legend-item">❄️ 危險迴避</div>
+    </div>
+  </div>
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="sectors-grid" id="sectorsGrid"></div>
+</div>
+
+<script>
+const SECTORS = [
+  { id:'ai_giant',  emoji:'🤖', name:'AI巨頭',      etf:'QQQ'  },
+  { id:'ai_infra',  emoji:'🔧', name:'AI基礎設施',  etf:'SOXX' },
+  { id:'ai_power',  emoji:'⚡', name:'AI電力/散熱', etf:'XLU'  },
+  { id:'optical',   emoji:'📡', name:'光通訊',      etf:'IGN'  },
+  { id:'storage',   emoji:'💾', name:'儲存硬體',    etf:'XSD'  },
+  { id:'space',     emoji:'🚀', name:'太空',        etf:'UFO'  },
+  { id:'drone',     emoji:'🛸', name:'無人機/國防', etf:'ITA'  },
+  { id:'quantum',   emoji:'⚛️', name:'量子運算',    etf:'QTUM' },
+  { id:'biotech',   emoji:'🧬', name:'生技/健康',   etf:'XBI'  },
+  { id:'metals',    emoji:'🥇', name:'貴金屬/礦業', etf:'GDX'  },
+];
+
+async function fetchYahoo(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&includePrePost=false`;
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('無法取得資料');
+  const data = await res.json();
+  if (!data.chart || !data.chart.result) throw new Error('無數據');
+  const result = data.chart.result[0];
+  const closes = result.indicators.quote[0].close.filter(v => v !== null);
+  const current = closes[closes.length - 1];
+  const prev = closes[closes.length - 2];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+  return { current, prev, ma20, ma50, ma200 };
+}
+
+function avg(arr) { return arr.reduce((a,b) => a+b, 0) / arr.length; }
+
+function getWeather(score) {
+  if (score >= 75) return { icon:'☀️', label:'強勢', badge:'badge-sunny', fill:'fill-sunny', color:'var(--sunny)' };
+  if (score >= 50) return { icon:'☁️', label:'中性', badge:'badge-cloudy', fill:'fill-cloudy', color:'var(--cloudy)' };
+  if (score >= 25) return { icon:'🌧️', label:'走弱', badge:'badge-rainy', fill:'fill-rainy', color:'var(--rainy)' };
+  return { icon:'❄️', label:'危險', badge:'badge-frozen', fill:'fill-frozen', color:'var(--frozen)' };
+}
+
+function calcScore(d, spyChange) {
+  let momentum = 50;
+  const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+  if (change > 2) momentum += 20; else if (change > 0.5) momentum += 10;
+  else if (change < -2) momentum -= 20; else if (change < -0.5) momentum -= 10;
+  if (d.ma50 && d.current > d.ma50) momentum += 20; else if (d.ma50) momentum -= 20;
+  if (d.ma20 && d.current > d.ma20) momentum += 10; else if (d.ma20) momentum -= 10;
+  momentum = Math.min(100, Math.max(0, momentum));
+
+  const diff = change - spyChange;
+  let relative = 55;
+  if (diff > 1.5) relative = 85; else if (diff > 0.5) relative = 70;
+  else if (diff < -1.5) relative = 20; else if (diff < -0.5) relative = 35;
+
+  let maStruct = 0;
+  if (d.ma200 && d.current > d.ma200) maStruct += 40;
+  if (d.ma50 && d.ma200 && d.ma50 > d.ma200) maStruct += 30;
+  if (d.ma20 && d.ma50 && d.ma20 > d.ma50) maStruct += 20;
+  if (d.ma20 && d.current > d.ma20) maStruct += 10;
+  maStruct = Math.min(100, maStruct);
+
+  const total = Math.round(momentum * 0.4 + relative * 0.35 + maStruct * 0.25);
+  return { momentum, relative, maStruct, total };
+}
+
+function toggleDetail(id) {
+  const el = document.getElementById(`detail-${id}`);
+  if (el) el.classList.toggle('open');
+}
+
+function renderCards() {
+  document.getElementById('sectorsGrid').innerHTML = SECTORS.map((s, i) => `
+    <div class="sector-card" id="card-${s.id}" style="animation-delay:${i*0.04}s" onclick="toggleDetail('${s.id}')">
+      <div class="card-row1">
+        <span class="sector-emoji">${s.emoji}</span>
+        <div class="weather-badge badge-cloudy" id="badge-${s.id}">⏳ 載入</div>
+      </div>
+      <div class="sector-name">${s.name}</div>
+      <div class="sector-etf">${s.etf}</div>
+      <div class="price-row" id="price-${s.id}">
+        <span class="price-val">--</span>
+      </div>
+      <div class="score-row">
+        <span class="score-label">綜合評分</span>
+        <span class="score-num" id="total-${s.id}" style="color:var(--text2)">--</span>
+      </div>
+      <div class="detail-section" id="detail-${s.id}">
+        <div class="score-bar-row"><span class="score-bar-label">動能</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-m-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-m-${s.id}">--</span></div>
+        <div class="score-bar-row"><span class="score-bar-label">強弱</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-r-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-r-${s.id}">--</span></div>
+        <div class="score-bar-row"><span class="score-bar-label">均線</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-a-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-a-${s.id}">--</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadAll() {
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  let spyChange = 0;
+  try {
+    const spy = await fetchYahoo('SPY');
+    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
+    const spAbove = spy.ma200 && spy.current > spy.ma200;
+    document.getElementById('spDot').className = 'm-dot ' + (spAbove ? 'dot-green' : 'dot-red');
+    document.getElementById('spVal').textContent = `$${spy.current.toFixed(0)} (${spyChange>=0?'+':''}${spyChange.toFixed(2)}%)`;
+    document.getElementById('spVal').style.color = spyChange >= 0 ? 'var(--green)' : 'var(--red)';
+
+    const qqq = await fetchYahoo('QQQ');
+    const nqChange = qqq.prev ? ((qqq.current - qqq.prev) / qqq.prev * 100) : 0;
+    const nqAbove = qqq.ma200 && qqq.current > qqq.ma200;
+    document.getElementById('nqDot').className = 'm-dot ' + (nqAbove ? 'dot-green' : 'dot-red');
+    document.getElementById('nqVal').textContent = `$${qqq.current.toFixed(0)} (${nqChange>=0?'+':''}${nqChange.toFixed(2)}%)`;
+    document.getElementById('nqVal').style.color = nqChange >= 0 ? 'var(--green)' : 'var(--red)';
+  } catch(e) {}
+
+  for (let i = 0; i < SECTORS.length; i++) {
+    document.getElementById('progressFill').style.width = `${((i+1)/SECTORS.length)*100}%`;
+    await loadSector(SECTORS[i], spyChange);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  document.getElementById('progressBar').style.display = 'none';
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadSector(sector, spyChange) {
+  try {
+    const d = await fetchYahoo(sector.etf);
+    const scores = calcScore(d, spyChange);
+    const weather = getWeather(scores.total);
+    const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+    const changeClass = change >= 0 ? 'up' : 'down';
+
+    document.getElementById(`badge-${sector.id}`).className = `weather-badge ${weather.badge}`;
+    document.getElementById(`badge-${sector.id}`).textContent = `${weather.icon} ${weather.label}`;
+
+    document.getElementById(`price-${sector.id}`).innerHTML = `
+      <span class="price-val">$${d.current.toFixed(2)}</span>
+      <span class="price-change ${changeClass}">${change>=0?'+':''}${change.toFixed(2)}%</span>`;
+
+    const totalEl = document.getElementById(`total-${sector.id}`);
+    totalEl.textContent = scores.total;
+    totalEl.style.color = weather.color;
+
+    // 細節分數條
+    ['bar-m', 'bar-r', 'bar-a'].forEach((prefix, idx) => {
+      const val = [scores.momentum, scores.relative, scores.maStruct][idx];
+      const bar = document.getElementById(`${prefix}-${sector.id}`);
+      const valEl = document.getElementById(`val-${prefix.split('-')[1]}-${sector.id}`);
+      if (bar) { bar.style.width = val + '%'; bar.className = `score-bar-fill ${weather.fill}`; }
+      if (valEl) valEl.textContent = val;
+    });
+
+    // 卡片邊框
+    const card = document.getElementById(`card-${sector.id}`);
+    if (scores.total >= 75) card.style.borderColor = 'rgba(255,215,0,0.4)';
+    else if (scores.total >= 50) card.style.borderColor = 'rgba(144,184,216,0.3)';
+  } catch(e) {
+    document.getElementById(`badge-${sector.id}`).textContent = '⚠️ 錯誤';
+  }
+}
+
+renderCards();
+loadAll();
+</script>
+
+</body>
+</html>
