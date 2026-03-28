@@ -1,65 +1,6 @@
 
 
 
-function getWeather(score) {
-  if (score >= 75) return { icon:'☀️', label:'強勢', badge:'badge-sunny', fill:'fill-sunny', color:'var(--sunny)' };
-  if (score >= 50) return { icon:'☁️', label:'中性', badge:'badge-cloudy', fill:'fill-cloudy', color:'var(--cloudy)' };
-  if (score >= 25) return { icon:'🌧️', label:'走弱', badge:'badge-rainy', fill:'fill-rainy', color:'var(--rainy)' };
-  return { icon:'❄️', label:'危險', badge:'badge-frozen', fill:'fill-frozen', color:'var(--frozen)' };
-}
-
-function calcScore(d, spyChange) {
-  let momentum = 50;
-  const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
-  if (change > 2) momentum += 20; else if (change > 0.5) momentum += 10;
-  else if (change < -2) momentum -= 20; else if (change < -0.5) momentum -= 10;
-  if (d.ma50 && d.current > d.ma50) momentum += 20; else if (d.ma50) momentum -= 20;
-  if (d.ma20 && d.current > d.ma20) momentum += 10; else if (d.ma20) momentum -= 10;
-  momentum = Math.min(100, Math.max(0, momentum));
-
-  const diff = change - spyChange;
-  let relative = 55;
-  if (diff > 1.5) relative = 85; else if (diff > 0.5) relative = 70;
-  else if (diff < -1.5) relative = 20; else if (diff < -0.5) relative = 35;
-
-  let maStruct = 0;
-  if (d.ma200 && d.current > d.ma200) maStruct += 40;
-  if (d.ma50 && d.ma200 && d.ma50 > d.ma200) maStruct += 30;
-  if (d.ma20 && d.ma50 && d.ma20 > d.ma50) maStruct += 20;
-  if (d.ma20 && d.current > d.ma20) maStruct += 10;
-  maStruct = Math.min(100, maStruct);
-
-  const total = Math.round(momentum * 0.4 + relative * 0.35 + maStruct * 0.25);
-  return { momentum, relative, maStruct, total };
-}
-
-function toggleDetail(id) {
-  const el = document.getElementById(`detail-${id}`);
-  if (el) el.classList.toggle('open');
-}
-
-function renderCards() {
-  document.getElementById('sectorsGrid').innerHTML = SECTORS.map((s, i) => `
-    <div class="sector-card" id="card-${s.id}" style="animation-delay:${i*0.04}s" onclick="toggleDetail('${s.id}')">
-      <div class="card-row1">
-        <span class="sector-emoji">${s.emoji}</span>
-        <div class="weather-badge badge-cloudy" id="badge-${s.id}">⏳ 載入</div>
-      </div>
-      <div class="sector-name">${s.name}</div>
-      <div class="sector-etf">${s.etf}</div>
-      <div class="price-row" id="price-${s.id}">
-        <span class="price-val">--</span>
-      </div>
-      <div class="score-row">
-        <span class="score-label">綜合評分</span>
-        <span class="score-num" id="total-${s.id}" style="color:var(--text2)">--</span>
-      </div>
-      <div class="detail-section" id="detail-${s.id}">
-        <div class="score-bar-row"><span class="score-bar-label">動能</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-m-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-m-${s.id}">--</span></div>
-        <div class="score-bar-row"><span class="score-bar-label">強弱</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-r-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-r-${s.id}">--</span></div>
-        <div class="score-bar-row"><span class="score-bar-label">均線</span><div class="score-bar-wrap"><div class="score-bar-fill fill-cloudy" id="bar-a-${s.id}" style="width:0%"></div></div><span class="score-bar-val" id="val-a-${s.id}">--</span></div>
-      </div>
-    </div>
   `).join('');
 }
 
