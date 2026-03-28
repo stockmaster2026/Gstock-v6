@@ -1,33 +1,7 @@
 
 
 
-  const result = data.chart.result[0];
-  const closes = result.indicators.quote[0].close.filter(v => v !== null);
-  const current = closes[closes.length - 1];
-  const prev = closes[closes.length - 2];
-  const ma20 = avg(closes.slice(-20));
-  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
-  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
-  return { current, prev, ma20, ma50, ma200 };
-}
 
-function avg(arr) { return arr.reduce((a,b) => a+b, 0) / arr.length; }
-
-function getWeather(score) {
-  if (score >= 75) return { icon:'☀️', label:'強勢', badge:'badge-sunny', fill:'fill-sunny', color:'var(--sunny)' };
-  if (score >= 50) return { icon:'☁️', label:'中性', badge:'badge-cloudy', fill:'fill-cloudy', color:'var(--cloudy)' };
-  if (score >= 25) return { icon:'🌧️', label:'走弱', badge:'badge-rainy', fill:'fill-rainy', color:'var(--rainy)' };
-  return { icon:'❄️', label:'危險', badge:'badge-frozen', fill:'fill-frozen', color:'var(--frozen)' };
-}
-
-function calcScore(d, spyChange) {
-  let momentum = 50;
-  const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
-  if (change > 2) momentum += 20; else if (change > 0.5) momentum += 10;
-  else if (change < -2) momentum -= 20; else if (change < -0.5) momentum -= 10;
-  if (d.ma50 && d.current > d.ma50) momentum += 20; else if (d.ma50) momentum -= 20;
-  if (d.ma20 && d.current > d.ma20) momentum += 10; else if (d.ma20) momentum -= 10;
-  momentum = Math.min(100, Math.max(0, momentum));
 
   const diff = change - spyChange;
   let relative = 55;
