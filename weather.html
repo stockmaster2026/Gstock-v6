@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="板塊天氣">
+<title>板塊天氣雷達</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+:root {
+  --bg: #060a12;
+  --bg2: #0a1020;
+  --bg3: #0f1830;
+  --border: #1a2640;
+  --text: #b8cce0;
+  --text2: #4a6480;
+  --sunny: #ffd700;
+  --cloudy: #8ab4d4;
+  --rainy: #4a9eff;
+  --frozen: #a0e8ff;
+  --green: #00e676;
+  --red: #ff4457;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; }
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(6,10,18,0.95); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 4px; color: #fff; }
+.logo span { color: var(--sunny); }
+.update-btn {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 14px; color: var(--text2);
+  font-size: 11px; cursor: pointer; transition: all 0.2s;
+}
+.update-btn:hover { border-color: var(--sunny); color: var(--sunny); }
+.last-update { font-size: 10px; color: var(--text2); letter-spacing: 1px; }
+.market-bar {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 10px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+.market-label { font-size: 10px; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+.market-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px; font-size: 11px;
+}
+.m-dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-green { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.dot-red { background: var(--red); box-shadow: 0 0 5px var(--red); }
+.dot-grey { background: var(--text2); }
+.main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+.legend {
+  display: flex; gap: 16px; margin-bottom: 20px;
+  flex-wrap: wrap; align-items: center;
+}
+.legend-title { font-size: 10px; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+.legend-items { display: flex; gap: 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+.progress-bar { height: 2px; background: var(--border); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--sunny), #ffaa00); border-radius: 2px; transition: width 0.3s ease; }
+.error-banner {
+  background: rgba(255,68,87,0.08); border: 1px solid rgba(255,68,87,0.2);
+  border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--red); margin-bottom: 16px;
+}
+.sectors-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+}
+@media (min-width: 700px) { .sectors-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .sectors-grid { grid-template-columns: repeat(4, 1fr); } }
+.sector-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; cursor: pointer;
+  transition: all 0.25s; animation: fadeUp 0.4s ease both;
+}
+.sector-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.card-top { padding: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.sector-info { flex: 1; min-width: 0; }
+.sector-emoji { font-size: 18px; margin-bottom: 4px; display: block; }
+.sector-name { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 4px; }
+.sector-etf { font-family: 'Bebas Neue', sans-serif; font-size: 12px; color: var(--text2); letter-spacing: 1px; }
+.weather-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+.weather-icon { font-size: 28px; line-height: 1; transition: transform 0.3s; }
+.sector-card:hover .weather-icon { transform: scale(1.1); }
+.weather-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+.weather-sunny .weather-label { color: var(--sunny); }
+.weather-cloudy .weather-label { color: var(--cloudy); }
+.weather-rainy .weather-label { color: var(--rainy); }
+.weather-frozen .weather-label { color: var(--frozen); }
+.etf-price { padding: 0 16px 8px; display: flex; align-items: center; gap: 8px; }
+.etf-price-val { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: #fff; }
+.etf-change { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.change-up { color: var(--green); background: rgba(0,230,118,0.1); }
+.change-down { color: var(--red); background: rgba(255,68,87,0.1); }
+.card-scores { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 5px; }
+.score-bar-row { display: flex; align-items: center; gap: 6px; }
+.score-bar-label { font-size: 9px; color: var(--text2); width: 36px; flex-shrink: 0; }
+.score-bar-wrap { flex: 1; background: var(--bg3); border-radius: 3px; height: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.fill-sunny { background: var(--sunny); }
+.fill-cloudy { background: var(--cloudy); }
+.fill-rainy { background: var(--rainy); }
+.fill-frozen { background: var(--frozen); }
+.fill-grey { background: var(--text2); }
+.score-val { font-size: 10px; color: var(--text2); width: 26px; text-align: right; flex-shrink: 0; }
+.card-total {
+  padding: 8px 16px 14px; display: flex; align-items: center;
+  justify-content: space-between; border-top: 1px solid var(--border);
+}
+.total-label { font-size: 10px; color: var(--text2); letter-spacing: 1px; }
+.total-score { font-family: 'Bebas Neue', sans-serif; font-size: 22px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">板塊<span>天氣</span>雷達</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="last-update" id="lastUpdate">未更新</span>
+    <button class="update-btn" onclick="loadAll()">↻ 更新</button>
+  </div>
+</div>
+
+<div class="market-bar">
+  <div class="market-label">大盤</div>
+  <div class="market-chip">
+    <div class="m-dot dot-grey" id="spDot"></div>
+    <span>S&P500</span>
+    <span id="spVal" style="color:var(--text2)">--</span>
+  </div>
+  <div class="market-chip">
+    <div class="m-dot dot-grey" id="nqDot"></div>
+    <span>Nasdaq</span>
+    <span id="nqVal" style="color:var(--text2)">--</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="legend">
+    <div class="legend-title">天氣</div>
+    <div class="legend-items">
+      <div class="legend-item">☀️ 強勢進場</div>
+      <div class="legend-item">☁️ 中性觀望</div>
+      <div class="legend-item">🌧️ 走弱小心</div>
+      <div class="legend-item">❄️ 危險迴避</div>
+    </div>
+  </div>
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div id="errorBanner" class="error-banner" style="display:none"></div>
+  <div class="sectors-grid" id="sectorsGrid"></div>
+</div>
+
+<script>
+const SECTORS = [
+  { id:'ai_giant',  emoji:'🤖', name:'AI巨頭',      etf:'QQQ'  },
+  { id:'ai_infra',  emoji:'🔧', name:'AI基礎設施',  etf:'SOXX' },
+  { id:'ai_power',  emoji:'⚡', name:'AI電力/散熱', etf:'XLU'  },
+  { id:'optical',   emoji:'📡', name:'光通訊',      etf:'IGN'  },
+  { id:'storage',   emoji:'💾', name:'儲存硬體',    etf:'XSD'  },
+  { id:'space',     emoji:'🚀', name:'太空',        etf:'UFO'  },
+  { id:'drone',     emoji:'🛸', name:'無人機/國防', etf:'ITA'  },
+  { id:'quantum',   emoji:'⚛️', name:'量子運算',    etf:'QTUM' },
+  { id:'biotech',   emoji:'🧬', name:'生技/健康',   etf:'XBI'  },
+  { id:'metals',    emoji:'🥇', name:'貴金屬/礦業', etf:'GDX'  },
+];
+
+async function fetchYahoo(symbol) {
+  // 使用 corsproxy.io 代理 Yahoo Finance
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&includePrePost=false`;
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('無法取得資料');
+  const data = await res.json();
+  if (!data.chart || !data.chart.result) throw new Error('無數據');
+  const result = data.chart.result[0];
+  const closes = result.indicators.quote[0].close.filter(v => v !== null);
+  const current = closes[closes.length - 1];
+  const prev = closes[closes.length - 2];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+  return { current, prev, ma20, ma50, ma200, closes };
+}
+
+function avg(arr) { return arr.reduce((a,b) => a+b, 0) / arr.length; }
+
+function getWeather(score) {
+  if (score >= 75) return { icon:'☀️', label:'強勢', cls:'weather-sunny', color:'var(--sunny)', fill:'fill-sunny' };
+  if (score >= 50) return { icon:'☁️', label:'中性', cls:'weather-cloudy', color:'var(--cloudy)', fill:'fill-cloudy' };
+  if (score >= 25) return { icon:'🌧️', label:'走弱', cls:'weather-rainy', color:'var(--rainy)', fill:'fill-rainy' };
+  return { icon:'❄️', label:'危險', cls:'weather-frozen', color:'var(--frozen)', fill:'fill-frozen' };
+}
+
+function calcScore(d, spyChange) {
+  let momentum = 50;
+  const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+  if (change > 2) momentum += 20; else if (change > 0.5) momentum += 10;
+  else if (change < -2) momentum -= 20; else if (change < -0.5) momentum -= 10;
+  if (d.ma50 && d.current > d.ma50) momentum += 20; else if (d.ma50) momentum -= 20;
+  if (d.ma20 && d.current > d.ma20) momentum += 10; else if (d.ma20) momentum -= 10;
+  momentum = Math.min(100, Math.max(0, momentum));
+
+  const diff = change - spyChange;
+  let relative = 55;
+  if (diff > 1.5) relative = 85; else if (diff > 0.5) relative = 70;
+  else if (diff < -1.5) relative = 20; else if (diff < -0.5) relative = 35;
+
+  let maStruct = 0;
+  if (d.ma200 && d.current > d.ma200) maStruct += 40;
+  if (d.ma50 && d.ma200 && d.ma50 > d.ma200) maStruct += 30;
+  if (d.ma20 && d.ma50 && d.ma20 > d.ma50) maStruct += 20;
+  if (d.ma20 && d.current > d.ma20) maStruct += 10;
+  maStruct = Math.min(100, maStruct);
+
+  const total = Math.round(momentum * 0.4 + relative * 0.35 + maStruct * 0.25);
+  return { momentum, relative, maStruct, total };
+}
+
+function renderCards() {
+  document.getElementById('sectorsGrid').innerHTML = SECTORS.map((s, i) => `
+    <div class="sector-card" id="card-${s.id}" style="animation-delay:${i*0.05}s">
+      <div class="card-top">
+        <div class="sector-info">
+          <span class="sector-emoji">${s.emoji}</span>
+          <div class="sector-name">${s.name}</div>
+          <div class="sector-etf">${s.etf}</div>
+        </div>
+        <div class="weather-wrap weather-loading" id="weather-${s.id}">
+          <div class="weather-icon">⏳</div>
+          <div class="weather-label" style="color:var(--text2)">載入</div>
+        </div>
+      </div>
+      <div class="etf-price" id="price-${s.id}"><span style="color:var(--text2);font-size:12px">載入中...</span></div>
+      <div class="card-scores" id="scores-${s.id}">
+        <div class="score-bar-row"><span class="score-bar-label">動能</span><div class="score-bar-wrap"><div class="score-bar-fill fill-grey" style="width:0%"></div></div><span class="score-val">--</span></div>
+        <div class="score-bar-row"><span class="score-bar-label">強弱</span><div class="score-bar-wrap"><div class="score-bar-fill fill-grey" style="width:0%"></div></div><span class="score-val">--</span></div>
+        <div class="score-bar-row"><span class="score-bar-label">均線</span><div class="score-bar-wrap"><div class="score-bar-fill fill-grey" style="width:0%"></div></div><span class="score-val">--</span></div>
+      </div>
+      <div class="card-total">
+        <span class="total-label">綜合評分</span>
+        <span class="total-score" id="total-${s.id}" style="color:var(--text2)">--</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadAll() {
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('errorBanner').style.display = 'none';
+
+  let spyChange = 0;
+  try {
+    const spy = await fetchYahoo('SPY');
+    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
+    const spAbove = spy.ma200 && spy.current > spy.ma200;
+    document.getElementById('spDot').className = 'm-dot ' + (spAbove ? 'dot-green' : 'dot-red');
+    document.getElementById('spVal').textContent = `$${spy.current.toFixed(0)} (${spyChange >= 0 ? '+' : ''}${spyChange.toFixed(2)}%)`;
+    document.getElementById('spVal').style.color = spyChange >= 0 ? 'var(--green)' : 'var(--red)';
+
+    const qqq = await fetchYahoo('QQQ');
+    const nqChange = qqq.prev ? ((qqq.current - qqq.prev) / qqq.prev * 100) : 0;
+    const nqAbove = qqq.ma200 && qqq.current > qqq.ma200;
+    document.getElementById('nqDot').className = 'm-dot ' + (nqAbove ? 'dot-green' : 'dot-red');
+    document.getElementById('nqVal').textContent = `$${qqq.current.toFixed(0)} (${nqChange >= 0 ? '+' : ''}${nqChange.toFixed(2)}%)`;
+    document.getElementById('nqVal').style.color = nqChange >= 0 ? 'var(--green)' : 'var(--red)';
+  } catch(e) {}
+
+  for (let i = 0; i < SECTORS.length; i++) {
+    document.getElementById('progressFill').style.width = `${((i+1)/SECTORS.length)*100}%`;
+    await loadSector(SECTORS[i], spyChange);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  document.getElementById('progressBar').style.display = 'none';
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadSector(sector, spyChange) {
+  try {
+    const d = await fetchYahoo(sector.etf);
+    const scores = calcScore(d, spyChange);
+    const weather = getWeather(scores.total);
+    const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+
+    document.getElementById(`weather-${sector.id}`).className = `weather-wrap ${weather.cls}`;
+    document.getElementById(`weather-${sector.id}`).innerHTML = `
+      <div class="weather-icon">${weather.icon}</div>
+      <div class="weather-label">${weather.label}</div>`;
+
+    const changeClass = change >= 0 ? 'change-up' : 'change-down';
+    document.getElementById(`price-${sector.id}`).innerHTML = `
+      <span class="etf-price-val">$${d.current.toFixed(2)}</span>
+      <span class="etf-change ${changeClass}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>`;
+
+    document.getElementById(`scores-${sector.id}`).innerHTML = `
+      <div class="score-bar-row"><span class="score-bar-label">動能</span><div class="score-bar-wrap"><div class="score-bar-fill ${weather.fill}" style="width:${scores.momentum}%"></div></div><span class="score-val">${scores.momentum}</span></div>
+      <div class="score-bar-row"><span class="score-bar-label">強弱</span><div class="score-bar-wrap"><div class="score-bar-fill ${weather.fill}" style="width:${scores.relative}%"></div></div><span class="score-val">${scores.relative}</span></div>
+      <div class="score-bar-row"><span class="score-bar-label">均線</span><div class="score-bar-wrap"><div class="score-bar-fill ${weather.fill}" style="width:${scores.maStruct}%"></div></div><span class="score-val">${scores.maStruct}</span></div>`;
+
+    const totalEl = document.getElementById(`total-${sector.id}`);
+    totalEl.textContent = scores.total;
+    totalEl.style.color = weather.color;
+
+    const card = document.getElementById(`card-${sector.id}`);
+    card.style.borderColor = weather.color.replace('var(', '').replace(')', '') === '--sunny'
+      ? 'rgba(255,215,0,0.3)' : scores.total >= 50
+      ? 'rgba(138,180,212,0.2)' : 'rgba(74,158,255,0.15)';
+  } catch(e) {
+    document.getElementById(`weather-${sector.id}`).innerHTML = `<div class="weather-icon">⚠️</div><div class="weather-label" style="color:var(--red)">錯誤</div>`;
+  }
+}
+
+renderCards();
+loadAll();
+</script>
+
+</body>
+</html>
