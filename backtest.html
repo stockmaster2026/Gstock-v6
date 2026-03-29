@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>評分系統回測</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f0f2f5; font-family: 'Noto Sans TC', sans-serif; padding: 20px; }
+
+.header { background: #1a2a3a; color: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.title { font-family: ‘Oswald’, sans-serif; font-size: 22px; letter-spacing: 2px; }
+.subtitle { font-size: 11px; color: #8ab; margin-top: 4px; }
+.run-btn { background: #f0c040; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.run-btn:hover { background: #e0b030; transform: translateY(-1px); }
+.run-btn:disabled { background: #666; cursor: not-allowed; transform: none; }
+
+.progress-wrap { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.progress-label { font-size: 12px; color: #666; margin-bottom: 8px; }
+.progress-bar { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #1e8c4a, #4caf7d); border-radius: 3px; transition: width 0.3s; }
+
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.summary-card { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.summary-num { font-family: ‘Oswald’, sans-serif; font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 11px; color: #888; margin-top: 4px; }
+.num-green { color: #1e8c4a; }
+.num-blue { color: #1a5fa8; }
+.num-red { color: #c0281e; }
+.num-gold { color: #c09000; }
+
+.results-table { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+.table-header { background: #1a2a3a; color: #fff; padding: 12px 16px; display: grid; grid-template-columns: 80px 60px 80px 80px 80px 80px 80px 100px; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.table-row { padding: 10px 16px; display: grid; grid-template-columns: 80px 60px 80px 80px 80px 80px 80px 100px; gap: 8px; font-size: 12px; border-bottom: 1px solid #f0f0f0; align-items: center; transition: background 0.15s; }
+.table-row:hover { background: #f8f9fa; }
+.symbol { font-family: ‘Oswald’, sans-serif; font-size: 15px; font-weight: 700; }
+.score-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+.badge-green { background: #d4f5e0; color: #1e8c4a; }
+.badge-blue { background: #d4e8f8; color: #1a5fa8; }
+.badge-red { background: #fdd; color: #c0281e; }
+.badge-brown { background: #eed; color: #6b3e1e; }
+.result-up { color: #1e8c4a; font-weight: 700; }
+.result-down { color: #c0281e; font-weight: 700; }
+.correct { color: #1e8c4a; }
+.wrong { color: #c0281e; }
+
+.insight-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.insight-title { font-family: ‘Oswald’, sans-serif; font-size: 16px; color: #1a2a3a; margin-bottom: 12px; }
+.insight-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+.insight-icon { font-size: 16px; flex-shrink: 0; }
+
+@media (max-width: 700px) {
+.summary-grid { grid-template-columns: repeat(2, 1fr); }
+.table-header, .table-row { grid-template-columns: 70px 50px 70px 70px 70px 70px; font-size: 10px; }
+.table-header div:nth-child(7), .table-row div:nth-child(7) { display: none; }
+.table-header div:nth-child(8), .table-row div:nth-child(8) { display: none; }
+}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="title">📊 評分系統回測</div>
+    <div class="subtitle">10支股票 × 歷史數據驗證 — 高分後20天報酬分析</div>
+  </div>
+  <button class="run-btn" id="runBtn" onclick="runBacktest()">▶ 開始回測</button>
+</div>
+
+<div class="progress-wrap" id="progressWrap" style="display:none">
+  <div class="progress-label" id="progressLabel">準備中...</div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="summary-grid" id="summaryGrid" style="display:none">
+  <div class="summary-card">
+    <div class="summary-num num-green" id="winRate">--%</div>
+    <div class="summary-label">高分勝率（≥70分後漲）</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-num num-blue" id="avgReturn">--</div>
+    <div class="summary-label">高分後20日平均報酬</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-num num-red" id="lowWinRate">--%</div>
+    <div class="summary-label">低分勝率（≤30分後漲）</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-num num-gold" id="totalTests">--</div>
+    <div class="summary-label">總測試次數</div>
+  </div>
+</div>
+
+<div class="results-table" id="resultsTable" style="display:none">
+  <div class="table-header">
+    <div>股票</div>
+    <div>評分</div>
+    <div>評分日期</div>
+    <div>評分時股價</div>
+    <div>20日後股價</div>
+    <div>報酬率</div>
+    <div>預測</div>
+    <div>結果</div>
+  </div>
+  <div id="tableBody"></div>
+</div>
+
+<div class="insight-box" id="insightBox" style="display:none">
+  <div class="insight-title">💡 回測洞察</div>
+  <div id="insightContent"></div>
+</div>
+
+<script>
+const STOCKS = ['NVDA','COHR','IONQ','WDC','RKLB','TSLA','AMD','MU','AVAV','GDX'];
+
+async function fetchHistory(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y`;
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('無法取得');
+  const data = await res.json();
+  const result = data.chart.result[0];
+  const timestamps = result.timestamp;
+  const closes = result.indicators.quote[0].close;
+  const volumes = result.indicators.quote[0].volume;
+  return timestamps.map((t, i) => ({
+    date: new Date(t * 1000),
+    close: closes[i],
+    volume: volumes[i]
+  })).filter(d => d.close !== null);
+}
+
+function calcMA(closes, period) {
+  if (closes.length < period) return null;
+  return closes.slice(-period).reduce((a,b) => a+b, 0) / period;
+}
+
+function calcRSI(closes, period=14) {
+  if (closes.length < period+1) return null;
+  let gains = 0, losses = 0;
+  for (let i = closes.length-period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const rs = gains / (losses || 1);
+  return 100 - (100 / (1+rs));
+}
+
+function calcScore(data, idx, spyData) {
+  if (idx < 200) return null;
+  const closes = data.slice(0, idx+1).map(d => d.close);
+  const volumes = data.slice(0, idx+1).map(d => d.volume);
+  const price = closes[closes.length-1];
+  const ma20 = calcMA(closes, 20);
+  const ma50 = calcMA(closes, 50);
+  const ma150 = calcMA(closes, 150);
+  const ma200 = calcMA(closes, 200);
+  const rsi = calcRSI(closes);
+
+  // 冠軍因子(35%)
+  let champ = 0;
+  if (ma200 && price > ma200) champ += 35;
+  if (ma50 && ma200 && ma50 > ma200) champ += 30;
+  if (ma20 && ma50 && ma20 > ma50) champ += 20;
+  if (ma200) {
+    const ma200s = [data[idx-10], data[idx-5], data[idx]].map((d,i) => {
+      const c = data.slice(0, idx-10+i*5+1).map(x=>x.close);
+      return calcMA(c, 200);
+    });
+    if (ma200s[2] > ma200s[0]) champ += 15;
+  }
+  champ = Math.min(100, champ);
+
+  // 大盤因子(30%)
+  let market = 50;
+  if (spyData && idx < spyData.length) {
+    const spyCloses = spyData.slice(0, idx+1).map(d => d.close);
+    const spyMA200 = calcMA(spyCloses, 200);
+    const spyMA50 = calcMA(spyCloses, 50);
+    const spyPrice = spyCloses[spyCloses.length-1];
+    if (spyMA200 && spyPrice > spyMA200) market += 25;
+    if (spyMA50 && spyPrice > spyMA50) market += 25;
+    market = Math.min(100, market);
+  }
+
+  // 量能因子(20%)
+  let volume = 50;
+  const avgVol20 = volumes.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const todayVol = volumes[volumes.length-1];
+  const change = (price - closes[closes.length-2]) / closes[closes.length-2] * 100;
+  if (change > 0 && todayVol > avgVol20 * 1.4) volume += 30;
+  if (change > 0 && todayVol > avgVol20) volume += 20;
+  volume = Math.min(100, Math.max(0, volume));
+
+  // 指標因子(15%)
+  let indicator = 50;
+  if (rsi && rsi > 50) indicator += 20;
+  if (rsi && rsi > 60 && rsi < 80) indicator += 15;
+  if (ma20 && ma50) {
+    const prevCloses = closes.slice(0,-1);
+    const prevMA20 = calcMA(prevCloses, 20);
+    const prevMA50 = calcMA(prevCloses, 50);
+    if (prevMA20 && prevMA50 && prevMA20 <= prevMA50 && ma20 > ma50) indicator += 15;
+  }
+  indicator = Math.min(100, Math.max(0, indicator));
+
+  const total = Math.round(champ*0.35 + market*0.30 + volume*0.20 + indicator*0.15);
+  return { total, champ, market, volume, indicator };
+}
+
+function getScoreLabel(score) {
+  if (score >= 75) return { label:'強勢', cls:'badge-green' };
+  if (score >= 50) return { label:'中性', cls:'badge-blue' };
+  if (score >= 25) return { label:'走弱', cls:'badge-red' };
+  return { label:'危險', cls:'badge-brown' };
+}
+
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 回測中...';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('summaryGrid').style.display = 'none';
+  document.getElementById('resultsTable').style.display = 'none';
+  document.getElementById('insightBox').style.display = 'none';
+
+  const results = [];
+  let spyData = null;
+
+  try {
+    document.getElementById('progressLabel').textContent = '載入大盤數據 (SPY)...';
+    spyData = await fetchHistory('SPY');
+    await sleep(300);
+  } catch(e) {}
+
+  for (let si = 0; si < STOCKS.length; si++) {
+    const symbol = STOCKS[si];
+    document.getElementById('progressLabel').textContent = `分析 ${symbol} (${si+1}/${STOCKS.length})...`;
+    document.getElementById('progressFill').style.width = `${((si+1)/STOCKS.length)*100}%`;
+
+    try {
+      const data = await fetchHistory(symbol);
+      await sleep(400);
+
+      // 每支股票取3個測試點（約6個月前、4個月前、2個月前）
+      const testPoints = [
+        Math.floor(data.length * 0.55),
+        Math.floor(data.length * 0.70),
+        Math.floor(data.length * 0.85),
+      ];
+
+      for (const idx of testPoints) {
+        if (idx + 20 >= data.length) continue;
+        const scores = calcScore(data, idx, spyData);
+        if (!scores) continue;
+
+        const entryPrice = data[idx].close;
+        const exitPrice = data[idx + 20].close;
+        const returnPct = ((exitPrice - entryPrice) / entryPrice * 100);
+        const date = data[idx].date.toLocaleDateString('zh-TW');
+        const predicted = scores.total >= 50 ? 'up' : 'down';
+        const actual = returnPct >= 0 ? 'up' : 'down';
+        const correct = predicted === actual;
+
+        results.push({
+          symbol, score: scores.total, date,
+          entryPrice: entryPrice.toFixed(2),
+          exitPrice: exitPrice.toFixed(2),
+          returnPct: returnPct.toFixed(2),
+          predicted, actual, correct,
+          scores
+        });
+      }
+    } catch(e) {
+      console.error(symbol, e);
+    }
+  }
+
+  // 計算統計
+  const highScore = results.filter(r => r.score >= 70);
+  const lowScore = results.filter(r => r.score <= 30);
+  const highWin = highScore.filter(r => r.actual === 'up');
+  const lowWin = lowScore.filter(r => r.actual === 'up');
+  const highAvgReturn = highScore.length > 0
+    ? (highScore.reduce((a,r) => a + parseFloat(r.returnPct), 0) / highScore.length).toFixed(1)
+    : '--';
+
+  // 顯示摘要
+  document.getElementById('summaryGrid').style.display = 'grid';
+  document.getElementById('winRate').textContent = highScore.length > 0
+    ? `${Math.round(highWin.length/highScore.length*100)}%` : '--%';
+  document.getElementById('avgReturn').textContent = highAvgReturn !== '--'
+    ? `${highAvgReturn > 0 ? '+' : ''}${highAvgReturn}%` : '--';
+  document.getElementById('lowWinRate').textContent = lowScore.length > 0
+    ? `${Math.round(lowWin.length/lowScore.length*100)}%` : '--%';
+  document.getElementById('totalTests').textContent = results.length;
+
+  // 顯示表格
+  document.getElementById('resultsTable').style.display = 'block';
+  const sorted = results.sort((a,b) => b.score - a.score);
+  document.getElementById('tableBody').innerHTML = sorted.map(r => {
+    const sl = getScoreLabel(r.score);
+    const retClass = parseFloat(r.returnPct) >= 0 ? 'result-up' : 'result-down';
+    const retSign = parseFloat(r.returnPct) >= 0 ? '+' : '';
+    return `
+    <div class="table-row">
+      <div class="symbol">${r.symbol}</div>
+      <div><span class="score-badge ${sl.cls}">${r.score}</span></div>
+      <div style="font-size:10px">${r.date}</div>
+      <div>$${r.entryPrice}</div>
+      <div>$${r.exitPrice}</div>
+      <div class="${retClass}">${retSign}${r.returnPct}%</div>
+      <div style="font-size:10px">${r.predicted === 'up' ? '📈 看漲' : '📉 看跌'}</div>
+      <div class="${r.correct ? 'correct' : 'wrong'}">${r.correct ? '✓ 正確' : '✗ 錯誤'}</div>
+    </div>`;
+  }).join('');
+
+  // 洞察
+  const totalCorrect = results.filter(r => r.correct).length;
+  const overallAccuracy = Math.round(totalCorrect / results.length * 100);
+  document.getElementById('insightBox').style.display = 'block';
+  document.getElementById('insightContent').innerHTML = `
+    <div class="insight-item"><span class="insight-icon">🎯</span><span>整體預測準確率：<b>${overallAccuracy}%</b>（共${results.length}次測試）</span></div>
+    <div class="insight-item"><span class="insight-icon">📈</span><span>高分（≥70）後20日：勝率 ${highScore.length > 0 ? Math.round(highWin.length/highScore.length*100) : '--'}%，平均報酬 ${highAvgReturn}%</span></div>
+    <div class="insight-item"><span class="insight-icon">📉</span><span>低分（≤30）後20日：勝率 ${lowScore.length > 0 ? Math.round(lowWin.length/lowScore.length*100) : '--'}%（低代表看跌準確）</span></div>
+    <div class="insight-item"><span class="insight-icon">💡</span><span>若高分勝率 > 60% 且低分勝率 < 40%，代表系統有效</span></div>
+  `;
+
+  btn.disabled = false;
+  btn.textContent = '↺ 重新回測';
+  document.getElementById('progressWrap').style.display = 'none';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+
+</body>
+</html>
