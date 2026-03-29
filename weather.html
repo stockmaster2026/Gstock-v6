@@ -1,44 +1,5 @@
 
-<nt(90deg, var(–sunny), #ffaa00); border-radius: 3px; transition: width 0.3s ease; }
 
-/* 板塊網格 - 精簡版 */
-.sectors-grid {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 10px;
-}
-@media (min-width: 600px) { .sectors-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .sectors-grid { grid-template-columns: repeat(5, 1fr); } }
-
-/* 板塊卡片 - 精簡 */
-.sector-card {
-background: var(–bg2);
-border: 1px solid var(–border);
-border-radius: 14px;
-padding: 14px;
-cursor: pointer;
-transition: all 0.2s;
-animation: fadeUp 0.3s ease both;
-position: relative;
-overflow: hidden;
-box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
-/* 顏色由JS動態設定 */
-.sector-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-
-/* 卡片頂部：emoji + 天氣 */
-.card-row1 {
-display: flex; align-items: center; justify-content: space-between;
-margin-bottom: 8px;
-}
-.sector-emoji { font-size: 20px; }
-.weather-badge {
-display: flex; align-items: center; gap: 4px;
-font-size: 10px; font-weight: 700; letter-spacing: 1px;
-padding: 3px 8px; border-radius: 12px;
-}
-.badge-sunny { background: rgba(255,215,0,0.15); color: var(–sunny); border: 1px solid rgba(255,215,0,0.3); }
 .badge-cloudy { background: rgba(144,184,216,0.15); color: var(–cloudy); border: 1px solid rgba(144,184,216,0.3); }
 .badge-rainy { background: rgba(91,155,213,0.15); color: var(–rainy); border: 1px solid rgba(91,155,213,0.3); }
 .badge-frozen { background: rgba(184,232,255,0.1); color: var(–frozen); border: 1px solid rgba(184,232,255,0.25); }
