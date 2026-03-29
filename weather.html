@@ -1,42 +1,6 @@
 
 
-.badge-cloudy { background: rgba(144,184,216,0.15); color: var(–cloudy); border: 1px solid rgba(144,184,216,0.3); }
-.badge-rainy { background: rgba(91,155,213,0.15); color: var(–rainy); border: 1px solid rgba(91,155,213,0.3); }
-.badge-frozen { background: rgba(184,232,255,0.1); color: var(–frozen); border: 1px solid rgba(184,232,255,0.25); }
 
-/* 板塊名稱 */
-.sector-name { font-size: 13px; font-weight: 700; color: #1a2a3a; margin-bottom: 4px; }
-.sector-etf { font-family: ‘Bebas Neue’, sans-serif; font-size: 11px; color: var(–text2); letter-spacing: 1px; margin-bottom: 8px; }
-
-/* 價格 */
-.price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
-.price-val { font-family: ‘Bebas Neue’, sans-serif; font-size: 18px; color: #1a2a3a; }
-.price-change { font-size: 11px; padding: 2px 6px; border-radius: 5px; font-weight: 600; }
-.up { color: var(–green); background: rgba(46,204,113,0.12); }
-.down { color: var(–red); background: rgba(231,76,60,0.12); }
-
-/* 分數 */
-.score-row {
-display: flex; align-items: center; justify-content: space-between;
-border-top: 1px solid var(–border); padding-top: 8px;
-}
-.score-label { font-size: 10px; color: var(–text2); }
-.score-num { font-family: ‘Bebas Neue’, sans-serif; font-size: 22px; font-weight: 700; }
-
-/* 展開細節 */
-.detail-section {
-max-height: 0; overflow: hidden;
-transition: max-height 0.3s ease;
-border-top: 0px solid var(–border);
-}
-.detail-section.open {
-max-height: 200px;
-border-top: 1px solid var(–border);
-margin-top: 8px;
-padding-top: 8px;
-}
-.score-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.score-bar-label { font-size: 9px; color: var(–text2); width: 32px; flex-shrink: 0; }
 .score-bar-wrap { flex: 1; background: var(–bg3); border-radius: 3px; height: 3px; overflow: hidden; }
 .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
 .fill-sunny { background: var(–sunny); }
