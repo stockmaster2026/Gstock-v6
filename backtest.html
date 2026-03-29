@@ -1,1 +1,423 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>股票評分卡片</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f0f2f5; font-family: 'Noto Sans TC', sans-serif; }
+
+.header {
+background: #1a2a3a; color: #fff;
+padding: 14px 20px;
+display: flex; justify-content: space-between; align-items: center;
+position: sticky; top: 0; z-index: 100;
+}
+.header-title { font-family: ‘Oswald’, sans-serif; font-size: 20px; letter-spacing: 2px; }
+.back-btn {
+background: rgba(255,255,255,0.15); border: none;
+border-radius: 8px; padding: 6px 14px; color: #fff;
+font-size: 12px; cursor: pointer;
+}
+
+.sector-bar {
+background: #2a3a4a; padding: 10px 20px;
+display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.sector-tag {
+background: rgba(255,255,255,0.1);
+border: 1px solid rgba(255,255,255,0.2);
+border-radius: 20px; padding: 4px 14px;
+color: #fff; font-size: 11px; cursor: pointer;
+transition: all 0.2s;
+}
+.sector-tag.active { background: #f0c040; color: #000; border-color: #f0c040; font-weight: 700; }
+.sector-tag:hover { background: rgba(255,255,255,0.2); }
+
+.main { padding: 16px 20px; max-width: 1100px; margin: 0 auto; }
+
+.legend-bar {
+display: flex; gap: 16px; margin-bottom: 14px;
+flex-wrap: wrap; align-items: center;
+font-size: 11px; color: #666;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.progress-bar { height: 3px; background: #ddd; border-radius: 3px; margin-bottom: 16px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #1e8c4a, #4caf7d); border-radius: 3px; transition: width 0.3s; }
+
+.cards-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+gap: 14px;
+}
+
+/* 撲克牌卡片 */
+.stock-card {
+border-radius: 16px;
+padding: 16px;
+box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+cursor: pointer;
+transition: all 0.2s;
+animation: fadeUp 0.3s ease both;
+border: 3px solid transparent;
+}
+.stock-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 顏色主題 */
+.card-green  { background: #1e8c4a; border-color: #0f5c2e; color: #fff; }
+.card-blue   { background: #1a5fa8; border-color: #0d3d78; color: #fff; }
+.card-red    { background: #c0281e; border-color: #8a1010; color: #fff; }
+.card-brown  { background: #6b3e1e; border-color: #3e2008; color: #fff; }
+.card-loading { background: #e8eef5; border-color: #c0ccd8; color: #666; }
+
+/* 卡片頂部 */
+.card-top {
+display: flex; justify-content: space-between; align-items: flex-start;
+margin-bottom: 10px;
+}
+.symbol-wrap { }
+.stock-symbol { font-family: ‘Oswald’, sans-serif; font-size: 26px; letter-spacing: 2px; line-height: 1; }
+.class-badge {
+display: inline-block; font-size: 9px; font-weight: 700;
+padding: 2px 6px; border-radius: 5px; margin-top: 3px;
+background: rgba(255,255,255,0.2);
+}
+
+.score-circle {
+background: rgba(0,0,0,0.2);
+border-radius: 50%; width: 48px; height: 48px;
+display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.score-num { font-family: ‘Oswald’, sans-serif; font-size: 20px; line-height: 1; }
+.score-lbl { font-size: 7px; opacity: 0.8; letter-spacing: 0.5px; }
+
+/* 股價 */
+.price-row {
+display: flex; align-items: baseline; gap: 8px;
+margin-bottom: 8px;
+border-bottom: 1px solid rgba(255,255,255,0.2);
+padding-bottom: 8px;
+}
+.price-val { font-family: ‘Oswald’, sans-serif; font-size: 20px; }
+.price-chg {
+font-size: 11px; font-weight: 700;
+background: rgba(0,0,0,0.2); padding: 2px 7px; border-radius: 6px;
+}
+
+/* 天氣建議 */
+.weather-row {
+display: flex; align-items: center; gap: 5px;
+font-size: 11px; font-weight: 700; margin-bottom: 10px;
+}
+
+/* 因子分數 */
+.factors { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.factor-row { display: flex; align-items: center; gap: 5px; }
+.factor-lbl { font-size: 9px; opacity: 0.85; width: 85px; flex-shrink: 0; font-weight: 600; }
+.factor-bar-wrap { flex: 1; background: rgba(0,0,0,0.2); border-radius: 3px; height: 4px; overflow: hidden; }
+.factor-bar-fill { height: 100%; background: rgba(255,255,255,0.7); border-radius: 3px; transition: width 0.6s ease; }
+.factor-val { font-family: ‘Oswald’, sans-serif; font-size: 12px; width: 22px; text-align: right; opacity: 0.9; }
+
+/* 2週趨勢點 */
+.trend-row {
+border-top: 1px solid rgba(255,255,255,0.2);
+padding-top: 8px;
+display: flex; justify-content: space-between; align-items: center;
+}
+.trend-lbl { font-size: 9px; opacity: 0.7; }
+.trend-dots { display: flex; gap: 3px; }
+.tdot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* 建議標籤 */
+.suggest-tag {
+display: inline-block; font-size: 10px; font-weight: 700;
+padding: 3px 8px; border-radius: 8px; margin-bottom: 8px;
+background: rgba(255,255,255,0.25);
+}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">📊 股票評分</div>
+  <button class="back-btn" onclick="history.back()">← 返回板塊</button>
+</div>
+
+<!-- 板塊切換 -->
+
+<div class="sector-bar" id="sectorBar"></div>
+
+<div class="main">
+  <div class="legend-bar">
+    <div class="legend-item"><div class="leg-dot" style="background:#1e8c4a"></div>強勢(綠)</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#1a5fa8"></div>中性(藍)</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#c0281e"></div>走弱(紅)</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#6b3e1e"></div>危險(咖啡)</div>
+    <div style="margin-left:auto;font-size:10px;color:#999;">點卡片展開細節</div>
+  </div>
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</div>
+
+<script>
+// ===== 板塊資料 =====
+const SECTORS = {
+  'AI巨頭':      { emoji:'🤖', stocks:['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'] },
+  'AI基礎設施':  { emoji:'🔧', stocks:['AMD','SMCI','AVGO','ARM','MRVL'] },
+  'AI電力/散熱': { emoji:'⚡', stocks:['VST','CEG','GEV','VRT','ETN'] },
+  '光通訊':      { emoji:'📡', stocks:['COHR','LITE','CIEN','AAOI','IIVI'] },
+  '儲存硬體':    { emoji:'💾', stocks:['SNDK','WDC','MU','STX','LRCX'] },
+  '太空':        { emoji:'🚀', stocks:['RKLB','LUNR','PL','ASTS','RDW'] },
+  '無人機/國防': { emoji:'🛸', stocks:['AVAV','KTOS','JOBY','ACHR','AIRO'] },
+  '量子運算':    { emoji:'⚛️', stocks:['IONQ','RGTI','QBTS','QUBT','IBM'] },
+  '生技/健康':   { emoji:'🧬', stocks:['RXRX','TEM','CRSP','SDGR','HIMS'] },
+  '貴金屬/礦業': { emoji:'🥇', stocks:['NEM','AEM','WPM','GOLD','HL'] },
+};
+
+// A/B 分類
+const CLASS_A = ['NVDA','AMD','MU','WDC','COHR','STX','SNDK','MSFT','AAPL','GOOGL','META','AMZN','TSLA','GDX','NEM','LRCX','AVGO','IBM','VRT','ETN'];
+const CLASS_B = ['IONQ','RGTI','QBTS','QUBT','LUNR','RKLB','PL','ASTS','AAOI','JOBY','ACHR','AVAV','RXRX','TEM','HIMS','SMCI','ARM','MRVL','LITE','CIEN','IIVI','COHR','CEG','VST','GEV','KTOS','AIRO','CRSP','SDGR','AEM','WPM','GOLD','HL'];
+
+function getClass(sym) { return CLASS_A.includes(sym) ? 'A' : 'B'; }
+function getThreshold(sym) { return getClass(sym) === 'A' ? 65 : 70; }
+
+let currentSector = 'AI巨頭';
+
+// ===== 初始化 =====
+function init() {
+  // 建立板塊按鈕
+  const bar = document.getElementById('sectorBar');
+  bar.innerHTML = Object.entries(SECTORS).map(([name, s]) =>
+    `<div class="sector-tag ${name === currentSector ? 'active' : ''}" onclick="switchSector('${name}')">${s.emoji} ${name}</div>`
+  ).join('');
+  loadSector(currentSector);
+}
+
+function switchSector(name) {
+  currentSector = name;
+  document.querySelectorAll('.sector-tag').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  loadSector(name);
+}
+
+// ===== 載入板塊 =====
+async function loadSector(sectorName) {
+  const stocks = SECTORS[sectorName].stocks;
+  const grid = document.getElementById('cardsGrid');
+
+  // 顯示空卡片
+  grid.innerHTML = stocks.map((sym, i) => `
+    <div class="stock-card card-loading" id="card-${sym}" style="animation-delay:${i*0.06}s">
+      <div class="card-top">
+        <div class="symbol-wrap">
+          <div class="stock-symbol" style="color:#1a2a3a">${sym}</div>
+          <div class="class-badge" style="background:#ddd;color:#666">${getClass(sym)}類</div>
+        </div>
+        <div class="score-circle" style="background:#ddd">
+          <div class="score-num" style="color:#999">--</div>
+          <div class="score-lbl" style="color:#999">評分</div>
+        </div>
+      </div>
+      <div style="color:#aaa;font-size:12px;text-align:center;padding:20px 0">載入中...</div>
+    </div>
+  `).join('');
+
+  document.getElementById('progressBar').style.display = 'block';
+
+  // 先抓SPY
+  let spyChange = 0;
+  try {
+    const spy = await fetchYahoo('SPY');
+    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
+  } catch(e) {}
+
+  for (let i = 0; i < stocks.length; i++) {
+    document.getElementById('progressFill').style.width = `${((i+1)/stocks.length)*100}%`;
+    await loadStock(stocks[i], spyChange, i);
+    await sleep(300);
+  }
+
+  document.getElementById('progressBar').style.display = 'none';
+}
+
+// ===== 載入單支股票 =====
+async function loadStock(sym, spyChange, idx) {
+  try {
+    const d = await fetchYahoo(sym);
+    const scores = calcScore(d, spyChange);
+    const stockClass = getClass(sym);
+    const threshold = getThreshold(sym);
+    const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+    const weather = getWeather(scores.total, stockClass, threshold);
+    const trendDots = genTrendDots(scores.total);
+
+    const card = document.getElementById(`card-${sym}`);
+    card.className = `stock-card ${weather.cardCls}`;
+    card.style.animationDelay = `${idx * 0.06}s`;
+
+    const chgSign = change >= 0 ? '+' : '';
+    const suggestText = scores.total >= threshold ? '✓ 符合進場條件' : scores.total >= 40 ? '～ 繼續觀察' : '✗ 暫時迴避';
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="symbol-wrap">
+          <div class="stock-symbol">${sym}</div>
+          <div class="class-badge">${stockClass}類｜門檻${threshold}分</div>
+        </div>
+        <div class="score-circle">
+          <div class="score-num">${scores.total}</div>
+          <div class="score-lbl">總分</div>
+        </div>
+      </div>
+      <div class="price-row">
+        <span class="price-val">$${d.current.toFixed(2)}</span>
+        <span class="price-chg">${chgSign}${change.toFixed(2)}%</span>
+      </div>
+      <div class="weather-row">
+        <span>${weather.icon}</span>
+        <span>${weather.label}</span>
+      </div>
+      <div class="suggest-tag">${suggestText}</div>
+      <div class="factors">
+        <div class="factor-row">
+          <span class="factor-lbl">🏆 冠軍(35%)</span>
+          <div class="factor-bar-wrap"><div class="factor-bar-fill" style="width:${scores.champ}%"></div></div>
+          <span class="factor-val">${scores.champ}</span>
+        </div>
+        <div class="factor-row">
+          <span class="factor-lbl">🌏 大盤(30%)</span>
+          <div class="factor-bar-wrap"><div class="factor-bar-fill" style="width:${scores.market}%"></div></div>
+          <span class="factor-val">${scores.market}</span>
+        </div>
+        <div class="factor-row">
+          <span class="factor-lbl">💥 量能(20%)</span>
+          <div class="factor-bar-wrap"><div class="factor-bar-fill" style="width:${scores.volume}%"></div></div>
+          <span class="factor-val">${scores.volume}</span>
+        </div>
+        <div class="factor-row">
+          <span class="factor-lbl">📊 指標(15%)</span>
+          <div class="factor-bar-wrap"><div class="factor-bar-fill" style="width:${scores.indicator}%"></div></div>
+          <span class="factor-val">${scores.indicator}</span>
+        </div>
+      </div>
+      <div class="trend-row">
+        <span class="trend-lbl">近期趨勢</span>
+        <div class="trend-dots">${trendDots}</div>
+      </div>
+    `;
+  } catch(e) {
+    const card = document.getElementById(`card-${sym}`);
+    if (card) card.innerHTML = `<div style="padding:20px;text-align:center;color:#999;font-size:12px;">⚠️ 無法載入</div>`;
+  }
+}
+
+// ===== 天氣判定 =====
+function getWeather(score, cls, threshold) {
+  if (score >= threshold && score >= 75) return { icon:'☀️', label:'強勢 — 可考慮進場', cardCls:'card-green' };
+  if (score >= threshold) return { icon:'☀️', label:'達標 — 可考慮進場', cardCls:'card-green' };
+  if (score >= 50) return { icon:'☁️', label:'中性 — 觀望等待', cardCls:'card-blue' };
+  if (score >= 25) return { icon:'🌧️', label:'走弱 — 不宜久留', cardCls:'card-red' };
+  return { icon:'❄️', label:'危險 — 立刻迴避', cardCls:'card-brown' };
+}
+
+// ===== 趨勢點 =====
+function genTrendDots(score) {
+  const colors = ['#ffaaaa','#ffaaaa','#ffccaa','#ffccaa','#ffffaa','#ccffcc','#aaffcc','#aaffcc','#88ffbb','#88ffbb'];
+  const filled = Math.round(score / 10);
+  return colors.map((c, i) => {
+    const bg = i < filled ? c : 'rgba(255,255,255,0.2)';
+    return `<div class="tdot" style="background:${bg}"></div>`;
+  }).join('');
+}
+
+// ===== 計算評分 =====
+function calcScore(d, spyChange) {
+  const closes = d.closes;
+  const price = closes[closes.length-1];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+
+  // 冠軍因子
+  let champ = 0;
+  if (ma200 && price > ma200) champ += 35;
+  if (ma50 && ma200 && ma50 > ma200) champ += 30;
+  if (ma20 && ma50 && ma20 > ma50) champ += 20;
+  if (ma200) champ += 15;
+  champ = Math.min(100, champ);
+
+  // 大盤因子
+  let market = 50 + (spyChange > 0 ? 25 : spyChange < 0 ? -25 : 0);
+  market = Math.min(100, Math.max(0, market));
+
+  // 量能因子
+  const volumes = d.volumes;
+  const avgVol = avg(volumes.slice(-20));
+  const todayVol = volumes[volumes.length-1];
+  const change = d.prev ? ((price - d.prev) / d.prev * 100) : 0;
+  let volume = 50;
+  if (change > 0 && todayVol > avgVol * 1.4) volume += 30;
+  else if (change > 0 && todayVol > avgVol) volume += 15;
+  else if (change < 0 && todayVol > avgVol * 1.4) volume -= 20;
+  volume = Math.min(100, Math.max(0, volume));
+
+  // 指標因子
+  const rsi = calcRSI(closes);
+  let indicator = 50;
+  if (rsi && rsi > 50) indicator += 20;
+  if (rsi && rsi > 60 && rsi < 80) indicator += 15;
+  if (ma20 && ma50 && ma20 > ma50 && price > ma20) indicator += 15;
+  indicator = Math.min(100, Math.max(0, indicator));
+
+  const total = Math.round(champ*0.35 + market*0.30 + volume*0.20 + indicator*0.15);
+  return { total, champ, market, volume, indicator };
+}
+
+function calcRSI(closes, period=14) {
+  if (closes.length < period+1) return null;
+  let gains = 0, losses = 0;
+  for (let i = closes.length-period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const rs = gains / (losses || 1);
+  return 100 - (100 / (1+rs));
+}
+
+function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+// ===== Yahoo Finance =====
+async function fetchYahoo(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('無法取得');
+  const data = await res.json();
+  const result = data.chart.result[0];
+  const closes = result.indicators.quote[0].close.filter(v => v !== null);
+  const volumes = result.indicators.quote[0].volume.filter(v => v !== null);
+  return {
+    current: closes[closes.length-1],
+    prev: closes[closes.length-2],
+    closes, volumes
+  };
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+init();
+</script>
+
+</body>
+</html>
