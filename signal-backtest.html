@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四訊號回測</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f0f2f5; font-family: 'Noto Sans TC', sans-serif; padding: 20px; }
+
+.header { background: #1a2a3a; color: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.title { font-family: ‘Oswald’, sans-serif; font-size: 22px; letter-spacing: 2px; }
+.subtitle { font-size: 11px; color: #8ab; margin-top: 4px; }
+
+.rules-box { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.rules-title { font-weight: 700; margin-bottom: 12px; color: #1a2a3a; }
+.rule-item { display: flex; gap: 10px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
+.rule-icon { font-size: 16px; flex-shrink: 0; }
+
+.controls { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.stock-select { background: #f0f2f5; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; font-size: 13px; outline: none; }
+.run-btn { background: #1a2a3a; border: none; border-radius: 8px; padding: 8px 20px; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.run-btn:hover { background: #2a3a4a; }
+
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.sum-card { background: #fff; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.sum-num { font-family: ‘Oswald’, sans-serif; font-size: 26px; font-weight: 700; }
+.sum-label { font-size: 11px; color: #888; margin-top: 4px; }
+
+.timeline { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.timeline-title { font-weight: 700; margin-bottom: 16px; color: #1a2a3a; font-size: 14px; }
+
+.event-card { border-radius: 10px; padding: 14px; margin-bottom: 12px; border-left: 4px solid; }
+.event-warning { background: #fff8e1; border-color: #f9a825; }
+.event-danger { background: #fdecea; border-color: #c62828; }
+.event-exit { background: #e8f5e9; border-color: #2e7d32; }
+
+.event-date { font-family: ‘Oswald’, sans-serif; font-size: 13px; color: #666; margin-bottom: 6px; }
+.event-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.signals-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.signal-chip { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.chip-active { background: #ffebee; color: #c62828; }
+.chip-inactive { background: #f5f5f5; color: #9e9e9e; }
+.event-detail { font-size: 11px; color: #555; line-height: 1.6; }
+.event-result { font-size: 12px; font-weight: 700; margin-top: 6px; }
+.result-good { color: #2e7d32; }
+.result-bad { color: #c62828; }
+
+.loading { text-align: center; padding: 40px; color: #666; font-size: 13px; }
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="title">🔍 四訊號空頭警示回測</div>
+  <div class="subtitle">驗證：MACD零軸 + 糾結天數 + MA50斜率 + 確認K棒</div>
+</div>
+
+<div class="rules-box">
+  <div class="rules-title">📋 四個空頭警示規則：</div>
+  <div class="rule-item"><span class="rule-icon">🔴</span><span><b>規則一：MACD在零軸下</b> — 整體趨勢偏空，所有反彈都是死貓彈</span></div>
+  <div class="rule-item"><span class="rule-icon">🔴</span><span><b>規則二：MA50斜率向下</b> — 中期趨勢轉空，均線沒有支撐力</span></div>
+  <div class="rule-item"><span class="rule-icon">🔴</span><span><b>規則三：均線糾結超過5天不突破</b> — 空頭方向確認機率升高</span></div>
+  <div class="rule-item"><span class="rule-icon">🔴</span><span><b>規則四：出現長黑K確認</b> — 立即執行停損，不等待</span></div>
+</div>
+
+<div class="controls">
+  <select class="stock-select" id="stockSelect">
+    <option value="IONQ">IONQ（量子運算）</option>
+    <option value="TSLA">TSLA（特斯拉）</option>
+    <option value="AMD">AMD（超微）</option>
+    <option value="NVDA">NVDA（輝達）</option>
+    <option value="RKLB">RKLB（火箭實驗室）</option>
+    <option value="MU">MU（美光）</option>
+  </select>
+  <button class="run-btn" onclick="runAnalysis()">▶ 開始分析</button>
+  <span style="font-size:11px;color:#888">分析過去1年歷史數據</span>
+</div>
+
+<div class="summary-grid" id="summaryGrid" style="display:none">
+  <div class="sum-card">
+    <div class="sum-num" id="sumWarnings" style="color:#f9a825">0</div>
+    <div class="sum-label">警示訊號出現次數</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-num" id="sumAccuracy" style="color:#c62828">--%</div>
+    <div class="sum-label">訊號後下跌準確率</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-num" id="sumAvgDrop" style="color:#1a5fa8">--</div>
+    <div class="sum-label">訊號後平均跌幅</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-num" id="sumSaved" style="color:#2e7d32">--</div>
+    <div class="sum-label">若依規則操作可避免損失</div>
+  </div>
+</div>
+
+<div class="timeline" id="timeline" style="display:none">
+  <div class="timeline-title">📅 歷史警示時間軸</div>
+  <div id="timelineContent"></div>
+</div>
+
+<script>
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+];
+
+async function fetchYahoo(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y`;
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const res = await fetch(PROXIES[i](yahooUrl), { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) continue;
+      let data;
+      if (i === 1) { const w = await res.json(); data = JSON.parse(w.contents); }
+      else data = await res.json();
+      if (!data.chart?.result) continue;
+      const result = data.chart.result[0];
+      const closes = result.indicators.quote[0].close;
+      const volumes = result.indicators.quote[0].volume;
+      const timestamps = result.timestamp;
+      const valid = closes.map((c,i) => ({ c, v: volumes[i]||0, t: timestamps[i] })).filter(d => d.c);
+      return valid;
+    } catch(e) { continue; }
+  }
+  throw new Error('無法取得數據');
+}
+
+function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+function calcMACD(closes) {
+  // 簡化MACD：EMA12 - EMA26
+  function ema(arr, period) {
+    const k = 2/(period+1);
+    let result = [arr[0]];
+    for (let i=1; i<arr.length; i++) result.push(arr[i]*k + result[i-1]*(1-k));
+    return result;
+  }
+  const ema12 = ema(closes, 12);
+  const ema26 = ema(closes, 26);
+  return ema12.map((v,i) => v - ema26[i]);
+}
+
+function calcMA50Slope(closes, idx) {
+  if (idx < 55) return 0;
+  const ma50_now = avg(closes.slice(idx-49, idx+1));
+  const ma50_5ago = avg(closes.slice(idx-54, idx-4));
+  return (ma50_now - ma50_5ago) / ma50_5ago * 100; // 百分比斜率
+}
+
+function isConsolidating(closes, idx, days=5) {
+  if (idx < days) return false;
+  const slice = closes.slice(idx-days+1, idx+1);
+  const high = Math.max(...slice);
+  const low = Math.min(...slice);
+  return (high - low) / low < 0.08; // 8%範圍內算糾結
+}
+
+function isLongBlackCandle(closes, idx) {
+  if (idx < 1) return false;
+  const drop = (closes[idx] - closes[idx-1]) / closes[idx-1] * 100;
+  return drop < -3; // 跌超過3%算長黑K
+}
+
+async function runAnalysis() {
+  const symbol = document.getElementById('stockSelect').value;
+  document.getElementById('summaryGrid').style.display = 'none';
+  document.getElementById('timeline').style.display = 'none';
+  
+  const btn = document.querySelector('.run-btn');
+  btn.textContent = '⏳ 分析中...';
+  btn.disabled = true;
+
+  try {
+    const data = await fetchYahoo(symbol);
+    const closes = data.map(d => d.c);
+    const timestamps = data.map(d => d.t);
+    
+    const macdLine = calcMACD(closes);
+    
+    const events = [];
+    let consolidationStart = -1;
+    
+    for (let i = 60; i < closes.length - 20; i++) {
+      const date = new Date(timestamps[i] * 1000);
+      const dateStr = date.toLocaleDateString('zh-TW');
+      
+      // 四個規則
+      const macdBelowZero = macdLine[i] < 0;
+      const ma50Slope = calcMA50Slope(closes, i);
+      const ma50Declining = ma50Slope < -0.5; // MA50斜率小於-0.5%
+      const consolidating = isConsolidating(closes, i, 5);
+      const longBlackK = isLongBlackCandle(closes, i);
+      
+      // 追蹤糾結天數
+      if (consolidating) {
+        if (consolidationStart < 0) consolidationStart = i;
+      } else {
+        consolidationStart = -1;
+      }
+      const consolidationDays = consolidationStart >= 0 ? i - consolidationStart : 0;
+      const longConsolidation = consolidationDays >= 5;
+
+      // 計算活躍訊號數
+      const activeSignals = [macdBelowZero, ma50Declining, longConsolidation, longBlackK].filter(Boolean).length;
+      
+      // 四個全部觸發 = 最強警示
+      if (activeSignals >= 3 && longBlackK) {
+        // 計算之後20天的表現
+        const futurePrice = closes[Math.min(i+20, closes.length-1)];
+        const returnPct = (futurePrice - closes[i]) / closes[i] * 100;
+        
+        events.push({
+          date: dateStr,
+          price: closes[i].toFixed(2),
+          signals: { macdBelowZero, ma50Declining, longConsolidation, longBlackK },
+          activeCount: activeSignals,
+          consolidationDays,
+          ma50Slope: ma50Slope.toFixed(2),
+          returnPct: returnPct.toFixed(2),
+          futurePrice: futurePrice.toFixed(2)
+        });
+        
+        // 跳過接下來20天避免重複
+        i += 15;
+        consolidationStart = -1;
+      }
+    }
+
+    // 統計
+    const dropEvents = events.filter(e => parseFloat(e.returnPct) < 0);
+    const accuracy = events.length > 0 ? Math.round(dropEvents.length/events.length*100) : 0;
+    const avgDrop = events.length > 0 
+      ? (events.reduce((a,e) => a+parseFloat(e.returnPct), 0)/events.length).toFixed(1)
+      : 0;
+    
+    document.getElementById('sumWarnings').textContent = events.length;
+    document.getElementById('sumAccuracy').textContent = accuracy + '%';
+    document.getElementById('sumAvgDrop').textContent = (avgDrop > 0 ? '+' : '') + avgDrop + '%';
+    document.getElementById('sumSaved').textContent = dropEvents.length + '次';
+    document.getElementById('summaryGrid').style.display = 'grid';
+
+    // 時間軸
+    const content = events.length === 0 
+      ? '<div style="text-align:center;color:#888;padding:20px">過去一年未出現四訊號同時觸發的情況</div>'
+      : events.map(e => {
+          const isDown = parseFloat(e.returnPct) < 0;
+          const cardClass = e.activeCount >= 4 ? 'event-danger' : 'event-warning';
+          return `
+          <div class="event-card ${cardClass}">
+            <div class="event-date">📅 ${e.date} | 股價：$${e.price}</div>
+            <div class="event-title">${e.activeCount >= 4 ? '🚨 四訊號全部觸發！' : '⚠️ 三訊號警示'}</div>
+            <div class="signals-row">
+              <span class="signal-chip ${e.signals.macdBelowZero ? 'chip-active' : 'chip-inactive'}">MACD零軸下${e.signals.macdBelowZero ? '✓' : '✗'}</span>
+              <span class="signal-chip ${e.signals.ma50Declining ? 'chip-active' : 'chip-inactive'}">MA50向下${e.signals.ma50Declining ? '✓' : '✗'}</span>
+              <span class="signal-chip ${e.signals.longConsolidation ? 'chip-active' : 'chip-inactive'}">糾結${e.consolidationDays}天${e.signals.longConsolidation ? '✓' : '✗'}</span>
+              <span class="signal-chip ${e.signals.longBlackK ? 'chip-active' : 'chip-inactive'}">長黑K${e.signals.longBlackK ? '✓' : '✗'}</span>
+            </div>
+            <div class="event-detail">
+              MA50斜率：${e.ma50Slope}% | 糾結天數：${e.consolidationDays}天
+            </div>
+            <div class="event-result ${isDown ? 'result-good' : 'result-bad'}">
+              20天後：$${e.futurePrice}（${parseFloat(e.returnPct) >= 0 ? '+' : ''}${e.returnPct}%）
+              ${isDown ? '✅ 訊號正確，成功避開下跌' : '❌ 此次訊號後反而上漲'}
+            </div>
+          </div>`;
+        }).join('');
+    
+    document.getElementById('timelineContent').innerHTML = content;
+    document.getElementById('timeline').style.display = 'block';
+
+  } catch(e) {
+    alert('無法載入數據：' + e.message);
+  }
+  
+  btn.textContent = '▶ 開始分析';
+  btn.disabled = false;
+}
+</script>
+
+</body>
+</html>
