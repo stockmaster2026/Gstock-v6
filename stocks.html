@@ -1,1 +1,671 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>股票評分卡片</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f0f2f5; font-family: 'Noto Sans TC', sans-serif; }
+
+.header {
+background: #1a2a3a; color: #fff;
+padding: 14px 20px;
+display: flex; justify-content: space-between; align-items: center;
+position: sticky; top: 0; z-index: 100;
+}
+.header-title { font-family: ‘Oswald’, sans-serif; font-size: 20px; letter-spacing: 2px; }
+.back-btn { background: rgba(255,255,255,0.15); border: none; border-radius: 8px; padding: 6px 14px; color: #fff; font-size: 12px; cursor: pointer; }
+
+.sector-bar { background: #2a3a4a; padding: 10px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; overflow-x: auto; }
+.sector-tag { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 14px; color: #fff; font-size: 11px; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+.sector-tag.active { background: #f0c040; color: #000; border-color: #f0c040; font-weight: 700; }
+
+.main { padding: 16px 20px; max-width: 1100px; margin: 0 auto; }
+
+.legend-bar { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; font-size: 11px; color: #666; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.progress-bar { height: 3px; background: #ddd; border-radius: 3px; margin-bottom: 16px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #1e8c4a, #4caf7d); border-radius: 3px; transition: width 0.3s; }
+
+.cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 768px) { .cards-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
+@media (min-width: 1100px) { .cards-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
+
+.stock-card { border-radius: 16px; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s; animation: fadeUp 0.3s ease both; border: 3px solid transparent; }
+.stock-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+.search-wrap { display: flex; gap: 10px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+.custom-input { flex: 1; background: #fff; border: 2px solid #1a2a3a; border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: ‘Noto Sans TC’, sans-serif; outline: none; text-transform: uppercase; }
+.custom-input:focus { border-color: #f0c040; }
+.search-btn { background: #1a2a3a; border: none; border-radius: 10px; padding: 10px 18px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.search-btn:hover { background: #f0c040; color: #000; }
+#customCardArea { margin-bottom: 14px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+.card-green-dark  { background: #0a5c2e; border-color: #063d1e; color: #fff; }
+.card-green-light { background: #2eab5f; border-color: #1e8c4a; color: #fff; }
+.card-blue-dark   { background: #0d3d78; border-color: #082a54; color: #fff; }
+.card-blue-light  { background: #4a88cc; border-color: #2e6fa8; color: #fff; }
+.card-red-light   { background: #e07070; border-color: #c04040; color: #fff; }
+.card-red-dark    { background: #8a0c0c; border-color: #5a0808; color: #fff; }
+.card-green  { background: #2eab5f; border-color: #1e8c4a; color: #fff; }
+.card-blue   { background: #0d3d78; border-color: #082a54; color: #fff; }
+.card-red    { background: #e07070; border-color: #c04040; color: #fff; }
+.card-brown  { background: #8a0c0c; border-color: #5a0808; color: #fff; }
+.card-loading { background: #e8eef5; border-color: #c0ccd8; color: #666; }
+
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.stock-symbol { font-family: ‘Oswald’, sans-serif; font-size: 26px; letter-spacing: 2px; line-height: 1; }
+.class-badge { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-top: 4px; background: rgba(255,255,255,0.25); letter-spacing: 0.5px; }
+.score-circle { background: rgba(0,0,0,0.2); border-radius: 50%; width: 52px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+.score-num { font-family: ‘Oswald’, sans-serif; font-size: 18px; line-height: 1.1; }
+.score-lbl { font-size: 8px; opacity: 0.8; }
+
+.price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; }
+.price-val { font-family: ‘Oswald’, sans-serif; font-size: 20px; }
+.price-chg { font-size: 11px; font-weight: 700; background: rgba(0,0,0,0.2); padding: 2px 7px; border-radius: 6px; }
+
+.weather-row { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+.suggest-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; margin-bottom: 10px; background: rgba(255,255,255,0.25); }
+
+.factors { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.factor-row { display: flex; align-items: center; gap: 5px; }
+.factor-lbl { font-size: 9px; opacity: 0.85; width: 85px; flex-shrink: 0; font-weight: 600; }
+.factor-bar-wrap { flex: 1; background: rgba(0,0,0,0.2); border-radius: 3px; height: 4px; overflow: hidden; }
+.factor-bar-fill { height: 100%; background: rgba(255,255,255,0.7); border-radius: 3px; transition: width 0.6s ease; }
+.factor-val { font-family: ‘Oswald’, sans-serif; font-size: 12px; width: 22px; text-align: right; opacity: 0.9; }
+
+/* 10天趨勢 */
+.trend-section { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; margin-bottom: 10px; }
+.trend-title { font-size: 9px; opacity: 0.7; margin-bottom: 6px; letter-spacing: 1px; }
+.trend-row-label { font-size: 9px; opacity: 0.8; margin-bottom: 3px; font-weight: 600; }
+.trend-bars { display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; width: 100%; overflow: hidden; margin-bottom: 6px; }
+.trend-num-wrap { flex: 1; text-align: center; min-width: 0; }
+.trend-num-val { display: inline-block; font-family: ‘Oswald’, sans-serif; font-size: 8.5px; font-weight: 600; padding: 1px 1px; border-radius: 3px; width: 100%; text-align: center; }
+
+/* 綜合分數區塊 */
+.score-summary-box { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.2); }
+.score-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+.score-summary-row + .score-summary-row { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 3px; padding-top: 6px; }
+.ss-label { font-size: 10px; font-weight: 600; opacity: 0.85; }
+.ss-num { font-family: ‘Oswald’, sans-serif; font-size: 20px; font-weight: 700; line-height: 1; display: inline-block; min-width: 32px; text-align: right; }
+.ss-denom { font-size: 10px; opacity: 0.6; margin-left: 2px; }
+
+/* 白話文建議 */
+.advice-box { background: rgba(0,0,0,0.15); border-radius: 8px; padding: 8px 10px; font-size: 10px; line-height: 1.6; border-left: 3px solid rgba(255,255,255,0.4); }
+.wt-num { flex: 1; text-align: center; font-family: “Oswald”, sans-serif; font-size: 8.5px; padding: 1px 0; border-radius: 3px; }
+.advice-technical { opacity: 0.9; margin-bottom: 4px; }
+.advice-action { font-weight: 700; opacity: 1; }
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">📊 股票評分</div>
+  <button class="back-btn" onclick="history.back()">← 返回板塊</button>
+</div>
+
+<div class="search-wrap" id="searchWrap">
+  <input type="text" id="customInput" class="custom-input" placeholder="輸入股票代號（如 ASTS、PLTR）" />
+  <button class="search-btn" onclick="searchCustomStock()">🔍 查詢</button>
+</div>
+
+<div class="sector-bar" id="sectorBar"></div>
+
+<div class="main">
+<div id="customCardArea"></div>
+<div class="legend-bar">
+    <div class="legend-item"><div class="leg-dot" style="background:#1e8c4a"></div>強勢</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#1a5fa8"></div>中性</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#c0281e"></div>走弱</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#6b3e1e"></div>危險</div>
+    <div style="margin-left:auto;font-size:10px;color:#999">含10日趨勢＋白話建議</div>
+  </div>
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</div>
+
+<script>
+const SECTORS = {
+  'AI巨頭':      { emoji:'🤖', stocks:['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'] },
+  'AI基礎設施':  { emoji:'🔧', stocks:['AMD','SMCI','AVGO','ARM','MRVL'] },
+  'AI電力/散熱': { emoji:'⚡', stocks:['VST','CEG','GEV','VRT','ETN'] },
+  '光通訊':      { emoji:'📡', stocks:['COHR','LITE','CIEN','AAOI','IIVI'] },
+  '儲存硬體':    { emoji:'💾', stocks:['SNDK','WDC','MU','STX','LRCX'] },
+  '太空':        { emoji:'🚀', stocks:['RKLB','LUNR','PL','ASTS','RDW'] },
+  '無人機/國防': { emoji:'🛸', stocks:['AVAV','KTOS','JOBY','ACHR','AIRO'] },
+  '量子運算':    { emoji:'⚛️', stocks:['IONQ','RGTI','QBTS','QUBT','IBM'] },
+  '生技/健康':   { emoji:'🧬', stocks:['RXRX','TEM','CRSP','SDGR','HIMS'] },
+  '貴金屬/礦業': { emoji:'🥇', stocks:['NEM','AEM','WPM','GOLD','HL'] },
+};
+
+const CLASS_A = ['NVDA','AMD','MU','WDC','COHR','STX','SNDK','MSFT','AAPL','GOOGL','META','AMZN','TSLA','NEM','LRCX','AVGO','IBM','VRT','ETN','CEG','VST'];
+function getClass(sym) { return CLASS_A.includes(sym) ? 'A' : 'B'; }
+// 門檻統一用10分制：A類6.5分，B類7.0分
+function getThreshold(sym) { return getClass(sym) === 'A' ? 6.5 : 7.0; }
+
+let currentSector = 'AI巨頭';
+
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => url
+];
+
+async function fetchYahoo(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y`;
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const proxyUrl = PROXIES[i](yahooUrl);
+      const res = await fetch(proxyUrl);
+      if (!res.ok) continue;
+      let data;
+      if (i === 1) {
+        const wrapper = await res.json();
+        data = JSON.parse(wrapper.contents);
+      } else {
+        data = await res.json();
+      }
+      if (!data.chart || !data.chart.result) continue;
+      const result = data.chart.result[0];
+      const closes = result.indicators.quote[0].close;
+      const volumes = result.indicators.quote[0].volume;
+      const timestamps = result.timestamp;
+      const valid = closes.map((c, i) => ({ c, v: volumes[i], t: timestamps[i] }))
+                          .filter(d => d.c !== null && d.c !== undefined);
+      return {
+        current: valid[valid.length-1].c,
+        prev: valid[valid.length-2].c,
+        closes: valid.map(d => d.c),
+        volumes: valid.map(d => d.v || 0),
+        timestamps: valid.map(d => d.t)
+      };
+    } catch(e) {
+      console.log(`Proxy ${i} failed for ${symbol}:`, e.message);
+      continue;
+    }
+  }
+  throw new Error('所有代理均失敗');
+}
+
+async function searchCustomStock() {
+  const input = document.getElementById('customInput');
+  const sym = input.value.trim().toUpperCase();
+  if (!sym) return;
+  const area = document.getElementById('customCardArea');
+  area.innerHTML = `<div class="cards-grid"><div class="stock-card card-loading" id="card-${sym}">
+    <div style="padding:30px;text-align:center;color:#aaa;font-size:12px;">
+      <div style="font-family:'Oswald',sans-serif;font-size:22px;color:#1a2a3a;margin-bottom:8px">${sym}</div>
+      載入中...
+    </div>
+  </div></div>`;
+  let spyChange = 0;
+  try {
+    const spy = await fetchYahoo('SPY');
+    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
+  } catch(e) {}
+  await loadStock(sym, spyChange, 0);
+}
+
+function init() {
+  const bar = document.getElementById('sectorBar');
+  try {
+    const inp = document.getElementById('customInput');
+    if (inp) inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') searchCustomStock();
+    });
+  } catch(e) {}
+  bar.innerHTML = Object.entries(SECTORS).map(([name, s]) =>
+    `<div class="sector-tag ${name===currentSector?'active':''}" data-sector="${name}" onclick="switchSector(this)">${s.emoji} ${name}</div>`
+  ).join('');
+  loadSector(currentSector);
+}
+
+function switchSector(el) {
+  const sectorName = el.getAttribute('data-sector');
+  if (!sectorName || !SECTORS[sectorName]) return;
+  currentSector = sectorName;
+  document.querySelectorAll('.sector-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('customCardArea').innerHTML = '';
+  document.getElementById('customInput').value = '';
+  loadSector(sectorName);
+}
+
+async function loadSector(sectorName) {
+  const stocks = SECTORS[sectorName].stocks;
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = stocks.map((sym, i) => `
+    <div class="stock-card card-loading" id="card-${sym}" style="animation-delay:${i*0.06}s">
+      <div style="padding:30px;text-align:center;color:#aaa;font-size:12px;">
+        <div style="font-family:'Oswald',sans-serif;font-size:22px;color:#1a2a3a;margin-bottom:8px">${sym}</div>
+        載入中...
+      </div>
+    </div>`).join('');
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  let spyChange = 0;
+  try {
+    const spy = await fetchYahoo('SPY');
+    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
+  } catch(e) {}
+  for (let i = 0; i < stocks.length; i++) {
+    document.getElementById('progressFill').style.width = `${((i+1)/stocks.length)*100}%`;
+    await loadStock(stocks[i], spyChange, i);
+    await sleep(400);
+  }
+  document.getElementById('progressBar').style.display = 'none';
+}
+
+async function loadStock(sym, spyChange, idx) {
+  try {
+    const d = await fetchYahoo(sym);
+    const stockClass = getClass(sym);
+    const threshold = getThreshold(sym);
+    const scores = calcScore(d, spyChange);
+    const total10 = scores.total / 10;
+    const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+
+    const hist10 = calcHistory10(d, spyChange);
+    const whaleScore = calcWhale(d);
+    const whaleDisplay = getWhaleDisplay(whaleScore);
+    const whaleHistory = calcWhaleHistory10(d);
+    const advice = genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore);
+
+    // ★ 覆蓋規則：空頭訊號強制降級顏色
+    const hasBearOverride = advice.technical.includes('空頭訊號確認') 
+      || advice.technical.includes('跌破MA200');
+    const hasFireOverride = advice.action.includes('三把火');
+    let weather;
+    if (hasBearOverride) {
+      weather = { icon:'🌧️', label:'走弱 — 空頭訊號！', cardCls:'card-red-light' };
+    } else if (hasFireOverride) {
+      weather = { icon:'🔥', label:'過熱 — 謹慎追高', cardCls:'card-red-light' };
+    } else {
+      weather = getWeather(total10, threshold);
+    }
+
+    const card = document.getElementById(`card-${sym}`);
+    card.className = `stock-card ${weather.cardCls}`;
+
+    const chgSign = change >= 0 ? '+' : '';
+
+    // ★ suggestText 也跟著覆蓋
+    const suggestText = hasBearOverride ? '⚠️ 空頭訊號警示'
+      : hasFireOverride ? '🔥 過熱警示'
+      : total10 >= threshold ? '✓ 符合進場條件'
+      : total10 >= 4 ? '～ 繼續觀察' : '✗ 暫時迴避';
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="stock-symbol">${sym}</div>
+          <div class="class-badge">${stockClass}類｜門檻${threshold.toFixed(1)}分</div>
+        </div>
+        <div class="score-circle">
+          <div class="score-num">${total10.toFixed(1)}</div>
+          <div class="score-lbl">/ 10</div>
+        </div>
+      </div>
+      <div class="price-row">
+        <span class="price-val">$${d.current.toFixed(2)}</span>
+        <span class="price-chg">${chgSign}${change.toFixed(2)}%</span>
+      </div>
+      <div class="weather-row">${weather.icon} ${weather.label}</div>
+      <div class="suggest-tag">${suggestText}</div>
+      <div class="factors">
+        ${factorRow('🏆 冠軍(35%)', scores.champ)}
+        ${factorRow('🌏 大盤(30%)', scores.market)}
+        ${factorRow('💥 量能(20%)', scores.volume)}
+        ${factorRow('📊 指標(15%)', scores.indicator)}
+      </div>
+      <div class="trend-section">
+        <div class="trend-title">📅 近10日評分趨勢</div>
+        <div class="trend-row-label"><span style="display:inline-block;width:42px">📊 綜合</span>${renderTrendBars(hist10)}</div>
+        <div class="trend-row-label"><span style="display:inline-block;width:42px">🐋 鯨魚</span>${renderWhaleTrend(whaleHistory)}</div>
+      </div>
+      <div class="score-summary-box">
+        <div class="score-summary-row">
+          <span class="ss-label">📊 綜合評分</span>
+          <span><span class="ss-num">${total10.toFixed(1)}</span><span class="ss-denom"> / 10</span></span>
+        </div>
+        <div class="score-summary-row">
+          <span class="ss-label">🐋 鯨魚指標</span>
+          <span><span class="ss-num" style="color:${whaleScore>=7?'#a8ffc8':whaleScore>=4?'#a8d8ff':'rgba(255,255,255,0.75)'}">${whaleDisplay.score}</span><span class="ss-denom"> / 10</span></span>
+        </div>
+      </div>
+      <div class="advice-box">
+        <div class="advice-technical">${advice.technical}</div>
+        <div class="advice-action">💡 ${advice.action}</div>
+      </div>
+    `;
+  } catch(e) {
+    const cardErr = document.getElementById(`card-${sym}`);
+    if (cardErr) cardErr.innerHTML = `<div style="padding:20px;text-align:center;color:#999;font-size:12px;">⚠️ 無法載入<br><small>${e.message}</small></div>`;
+  }
+}
+
+// ★ factorRow：進度條用0-100內部值，顯示轉成10分制
+function factorRow(label, score) {
+  return `<div class="factor-row">
+    <span class="factor-lbl">${label}</span>
+    <div class="factor-bar-wrap"><div class="factor-bar-fill" style="width:${score}%"></div></div>
+    <span class="factor-val">${(score/10).toFixed(1)}</span>
+  </div>`;
+}
+
+function calcHistory10(d, spyChange) {
+  const results = [];
+  const len = d.closes.length;
+  for (let i = 0; i < 10; i++) {
+    const idx = len - 10 + i;
+    if (idx < 50) { results.push(null); continue; }
+    const slice = { ...d, closes: d.closes.slice(0, idx+1), volumes: d.volumes.slice(0, idx+1) };
+    const s = calcScore(slice, spyChange);
+    results.push(s.total / 10); // ★ 存10分制
+  }
+  return results;
+}
+
+// ★ renderTrendBars 現在接收10分制數值
+function renderTrendBars(scores) {
+  return `<span style="display:inline-flex;gap:2px;vertical-align:middle">${scores.map((s, i) => {
+    if (s === null) return `<span class="trend-num-val" style="opacity:0.3;display:inline-block;width:18px">--</span>`;
+    const isToday = i === 9;
+    const color = s >= 7.5 ? 'rgba(160,255,200,0.95)'
+                : s >= 5.0 ? 'rgba(160,200,255,0.95)'
+                : s >= 2.5 ? 'rgba(255,160,160,0.95)'
+                : 'rgba(255,140,100,0.95)';
+    return `<span class="trend-num-val" style="background:${color};display:inline-block;min-width:18px;text-align:center;border-radius:3px;padding:1px 2px;${isToday?'font-weight:900;':''}">${s.toFixed(1)}</span>`;
+  }).join('')}</span>`;
+}
+
+function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) {
+  const closes = d.closes;
+  const volumes = d.volumes;
+  const price = closes[closes.length-1];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+  const rsi = calcRSI(closes);
+
+  const aboveMA20 = ma20 && price > ma20;
+  const aboveMA50 = ma50 && price > ma50;
+  const aboveMA200 = ma200 && price > ma200;
+  const ma50AboveMA200 = ma50 && ma200 && ma50 > ma200;
+
+  const ma50now = ma50;
+  const ma50_5ago = closes.length >= 55 ? avg(closes.slice(-55,-5)) : null;
+  const ma50Slope = ma50now && ma50_5ago ? (ma50now - ma50_5ago) / ma50_5ago * 100 : 0;
+  const ma50Declining = ma50Slope < -0.5;
+
+  function ema(arr, p) {
+    const k = 2/(p+1); let r = [arr[0]];
+    for (let i=1;i<arr.length;i++) r.push(arr[i]*k+r[i-1]*(1-k));
+    return r;
+  }
+  const ema12 = ema(closes, 12); const ema26 = ema(closes, 26);
+  const macdNow = ema12[ema12.length-1] - ema26[ema26.length-1];
+  const macdBelowZero = macdNow < 0;
+
+  let consolidDays = 0;
+  for (let i = closes.length-1; i >= closes.length-15 && i >= 1; i--) {
+    const slice = closes.slice(i-4 >= 0 ? i-4 : 0, i+1);
+    const h = Math.max(...slice); const l = Math.min(...slice);
+    if ((h-l)/l < 0.08) consolidDays++; else break;
+  }
+
+  const rsiHigh = rsi && rsi > 75;
+  const rsiVeryHigh = rsi && rsi > 85;
+  let fireLv = 0;
+  if (rsiVeryHigh) fireLv = 3;
+  else if (rsiHigh && scores.champ >= 80) fireLv = 2;
+  else if (rsiHigh) fireLv = 1;
+
+  const avgVol20 = avg(volumes.slice(-20));
+  const todayVol = volumes[volumes.length-1];
+  const volShrinking = todayVol < avgVol20 * 0.8;
+  const volExpanding = todayVol > avgVol20 * 1.3;
+  const risingSignal = aboveMA20 && aboveMA50 && aboveMA200 && ma50AboveMA200 && !macdBelowZero && volShrinking;
+  const breakoutSignal = aboveMA20 && aboveMA50 && volExpanding && change > 2;
+  const bearSignal = macdBelowZero && ma50Declining && consolidDays >= 5;
+
+  let technical = '';
+  if (fireLv === 3) {
+    technical = `RSI高達${rsi ? Math.round(rsi) : '--'}，嚴重過熱，股價嚴重偏離均線。`;
+  } else if (fireLv === 2) {
+    technical = `RSI持續在75以上，過熱跡象明顯，注意回調風險。`;
+  } else if (fireLv === 1) {
+    technical = `RSI達${rsi ? Math.round(rsi) : '--'}，開始進入過熱區間，留意訊號變化。`;
+  } else if (bearSignal) {
+    technical = `MACD在零軸下，MA50向下，均線糾結${consolidDays}天未突破，空頭訊號確認。`;
+  } else if (breakoutSignal) {
+    technical = `股價放量突破，漲幅${change.toFixed(1)}%，均線多排，突破訊號出現。`;
+  } else if (risingSignal) {
+    technical = '均線多排，縮量整理，MACD在零軸上，起漲準備訊號。';
+  } else if (aboveMA20 && aboveMA50 && aboveMA200 && ma50AboveMA200) {
+    technical = '均線完全多排，股價在所有均線上方，趨勢強勁。';
+  } else if (aboveMA200 && ma50AboveMA200) {
+    technical = `股價在MA200上方，但短期跌破MA${aboveMA50?'20':'50'}，動能略顯不足。`;
+  } else if (!aboveMA200) {
+    technical = `股價跌破MA200，均線${ma50Declining?'空頭排列':'趨勢轉弱'}，長期偏空。`;
+  } else {
+    technical = '技術面中性，方向待確認。';
+  }
+
+  // ★ 行動建議用10分制門檻
+  const total10 = scores.total / 10;
+  let action = '';
+  if (fireLv === 3) {
+    action = '🔥🔥🔥 三把火極度過熱！持倉者建議減碼50%鎖利，空手者絕對不追高。';
+  } else if (fireLv === 2) {
+    action = '🔥🔥 二把火過熱！持倉者可減碼30%，等回測MA20再評估是否加回。';
+  } else if (fireLv === 1) {
+    action = '🔥 一把火初次過熱，持倉者留意，暫不加碼。空手者等待回調再進場。';
+  } else if (bearSignal) {
+    action = '⚠️ 空頭四訊號警示！持倉者建議立即減倉，出現長黑K確認後清倉離場。';
+  } else if (breakoutSignal) {
+    action = '📈 突破訊號！可積極建倉，停損設在突破點下方3-5%。';
+  } else if (risingSignal) {
+    action = '📈 起漲準備！空手者可小量試單（全倉30%），確認放量突破後再加碼。';
+  } else if (total10 >= 8.0) {
+    action = `持倉者續抱，停損上移至MA20。空手者可${stockClass==='A'?'積極':'小量'}建倉。`;
+  } else if (total10 >= threshold) {
+    action = `達到${stockClass}類進場門檻（${threshold.toFixed(1)}分）。空手者可試單，倉位30-50%，停損MA50。`;
+  } else if (total10 >= 5.0) {
+    action = stockClass==='A'
+      ? '中性偏強。持倉者繼續持有，空手者等分數突破6.5分再進場。'
+      : '中性觀望。空手者等分數突破7.0分，確認方向後再試單。';
+  } else if (total10 >= 4.0) {
+    action = stockClass==='A'
+      ? 'A類股中性偏弱，機構可能逢低承接。持倉者設好停損，空手者繼續等待。'
+      : '接近危險邊緣。持倉者考慮減倉至半倉，空手者暫時迴避。';
+  } else if (total10 >= 2.5) {
+    action = stockClass==='A'
+      ? 'A類大型股走弱。持倉者停損設MA200，跌破MA200則清倉。空手者等待反彈訊號。'
+      : '走弱訊號明確。持倉者建議減倉或停損離場，空手者暫時迴避。';
+  } else {
+    action = '⛈️ 危險區間！持倉者建議清倉觀望，空手者絕對不抄底，等趨勢確認反轉。';
+  }
+
+  const whaleStrong = whaleScore >= 7;
+  const whaleMed = whaleScore >= 4;
+  if (whaleStrong && total10 >= threshold) {
+    action = '🐋🐋🐋 主力積極吸籌！' + action + ' 鯨魚訊號極強，可提高倉位至60-70%。';
+  } else if (whaleStrong && total10 >= 4.0) {
+    action = '🐋🐋🐋 注意！技術面雖偏弱，但主力有明顯吸籌跡象。空手者可小量試探（10-20%），設好停損。';
+  } else if (whaleStrong && total10 < 4.0) {
+    action = '🐋 主力可能在底部悄悄吸籌，但技術面仍弱。持倉者暫不加碼，空手者觀察是否形成底部型態再決定。';
+  } else if (whaleMed && total10 >= threshold) {
+    action = action + ' 🐋🐋 主力有買入跡象，訊號可信度提高。';
+  } else if (!whaleMed && total10 >= 7.5) {
+    action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
+  }
+
+  return { technical, action };
+}
+
+// ★ getWeather 接收10分制
+function getWeather(score10, threshold) {
+  if (score10 >= 8.0) return { icon:'🌟', label:'強勢 — 積極進場', cardCls:'card-green-dark' };
+  if (score10 >= threshold) return { icon:'☀️', label:'達標 — 可小量試單', cardCls:'card-green-light' };
+  if (score10 >= 5.0) return { icon:'⛅', label:'中性偏強 — 觀望', cardCls:'card-blue-dark' };
+  if (score10 >= 4.0) return { icon:'☁️', label:'中性偏弱 — 注意', cardCls:'card-blue-light' };
+  if (score10 >= 2.5) return { icon:'🌧️', label:'走弱 — 開始關注', cardCls:'card-red-light' };
+  return { icon:'⛈️', label:'危險 — 立刻行動', cardCls:'card-red-dark' };
+}
+
+function calcScore(d, spyChange) {
+  const closes = d.closes;
+  const price = closes[closes.length-1];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+
+  let champ = 0;
+  if (ma200 && price > ma200) champ += 35;
+  if (ma50 && ma200 && ma50 > ma200) champ += 30;
+  if (ma20 && ma50 && ma20 > ma50) champ += 20;
+  if (ma200) champ += 15;
+  champ = Math.min(100, champ);
+
+  let marketBase = 50 + (spyChange > 1 ? 30 : spyChange > 0 ? 15 : spyChange > -1 ? -10 : -25);
+  let rs = 50;
+  if (closes.length >= 20) {
+    const stockRet20 = (price - closes[closes.length-20]) / closes[closes.length-20] * 100;
+    if (stockRet20 > 15) rs = 90;
+    else if (stockRet20 > 8) rs = 75;
+    else if (stockRet20 > 3) rs = 65;
+    else if (stockRet20 > 0) rs = 55;
+    else if (stockRet20 > -3) rs = 45;
+    else if (stockRet20 > -8) rs = 35;
+    else rs = 20;
+  }
+  let market = Math.round(marketBase * 0.70 + rs * 0.30);
+  market = Math.min(100, Math.max(0, market));
+
+  const volumes = d.volumes;
+  const avgVol = avg(volumes.slice(-20));
+  const todayVol = volumes[volumes.length-1];
+  const change = d.prev ? ((price - d.prev) / d.prev * 100) : 0;
+  let volume = 50;
+  if (change > 0 && todayVol > avgVol * 1.4) volume += 30;
+  else if (change > 0 && todayVol > avgVol) volume += 15;
+  else if (change < 0 && todayVol > avgVol * 1.4) volume -= 20;
+  volume = Math.min(100, Math.max(0, volume));
+
+  const rsi = calcRSI(closes);
+  let indicator = 50;
+  if (rsi && rsi > 50) indicator += 20;
+  if (rsi && rsi > 60 && rsi < 80) indicator += 15;
+  if (ma20 && ma50 && ma20 > ma50 && price > ma20) indicator += 15;
+  indicator = Math.min(100, Math.max(0, indicator));
+
+  const total = Math.round(champ*0.35 + market*0.30 + volume*0.20 + indicator*0.15);
+  return { total, champ, market, volume, indicator };
+}
+
+function calcWhale(d) {
+  const closes = d.closes;
+  const volumes = d.volumes;
+  const len = closes.length;
+  if (len < 21) return 0;
+  let score = 0;
+  let upVol = 0, downVol = 0;
+  for (let i = len-20; i < len; i++) {
+    if (closes[i] > closes[i-1]) upVol += volumes[i];
+    else downVol += volumes[i];
+  }
+  const volRatio = upVol / (downVol || 1);
+  if (volRatio > 2.0) score += 3;
+  else if (volRatio > 1.5) score += 2;
+  else if (volRatio > 1.2) score += 1;
+  const avgVol20 = volumes.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const avgVol5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
+  const volShrink = avgVol5 / avgVol20;
+  if (volShrink < 0.5) score += 3;
+  else if (volShrink < 0.7) score += 2;
+  else if (volShrink < 0.85) score += 1;
+  const priceChange20 = (closes[len-1] - closes[len-20]) / closes[len-20] * 100;
+  if (priceChange20 > 10) score += 2;
+  else if (priceChange20 > 3) score += 1;
+  const todayVol = volumes[len-1];
+  const todayChange = (closes[len-1] - closes[len-2]) / closes[len-2] * 100;
+  if (todayChange > 2 && todayVol > avgVol20 * 1.5) score += 2;
+  else if (todayChange > 0 && todayVol > avgVol20 * 1.2) score += 1;
+  return Math.min(10, score);
+}
+
+function getWhaleDisplay(score) {
+  let emoji = '';
+  if (score >= 7) emoji = '🐋🐋🐋';
+  else if (score >= 4) emoji = '🐋🐋';
+  else if (score >= 1) emoji = '🐋';
+  else emoji = '—';
+  return { emoji, score: score.toFixed(1) };
+}
+
+function calcWhaleHistory10(d) {
+  const results = [];
+  const closes = d.closes;
+  const volumes = d.volumes;
+  const len = closes.length;
+  if (len < 25) return Array(10).fill(null);
+  for (let i = 0; i < 10; i++) {
+    const idx = len - 10 + i;
+    if (idx < 21) { results.push(null); continue; }
+    let upV = 0, downV = 0;
+    for (let j = idx-9; j <= idx; j++) {
+      if (j < 1) continue;
+      if (closes[j] > closes[j-1]) upV += volumes[j];
+      else downV += volumes[j];
+    }
+    const ratio = upV / (downV || 1);
+    const score = Math.min(10, Math.round(ratio * 3));
+    results.push(score);
+  }
+  return results;
+}
+
+function renderWhaleTrend(history) {
+  return `<span style="display:inline-flex;gap:2px;vertical-align:middle">${history.map((s, i) => {
+    if (s === null) return `<span class="wt-num" style="opacity:0.3;display:inline-block;min-width:18px">--</span>`;
+    const isToday = i === 9;
+    const color = s >= 7 ? 'rgba(160,255,200,0.9)' : s >= 4 ? 'rgba(160,200,255,0.9)' : 'rgba(255,200,200,0.7)';
+    return `<span class="wt-num" style="background:${color};display:inline-block;min-width:18px;text-align:center;border-radius:3px;padding:1px 2px;${isToday?'font-weight:900;':''}">${s.toFixed(1)}</span>`;
+  }).join('')}</span>`;
+}
+
+function calcRSI(closes, period=14) {
+  if (closes.length < period+1) return null;
+  let gains = 0, losses = 0;
+  for (let i = closes.length-period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  return 100 - (100 / (1 + gains/(losses||1)));
+}
+
+function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+try {
+  init();
+} catch(e) {
+  console.error('Init error:', e);
+  document.getElementById('sectorBar').innerHTML = '<div style="color:red;padding:10px">錯誤：' + e.message + '</div>';
+}
+</script>
+
+</body>
+</html>
