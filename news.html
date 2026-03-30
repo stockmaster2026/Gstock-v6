@@ -1,1 +1,221 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市場情報站</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0d1117;color:#f0f6fc;font-family:'Noto Sans TC',sans-serif;min-height:100vh;}
+header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.97);backdrop-filter:blur(20px);border-bottom:1px solid #30363d;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'DM Mono',monospace;font-size:18px;color:#00e5ff;letter-spacing:2px;}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3fb950;box-shadow:0 0 6px #3fb950;margin-right:6px;vertical-align:middle;}
+.tab-bar{display:flex;background:#161b22;border-bottom:1px solid #30363d;}
+.tab{flex:1;padding:13px 8px;background:none;border:none;color:#6e7681;font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;}
+.tab.active{color:#00e5ff;border-bottom-color:#00e5ff;}
+main{max-width:860px;margin:0 auto;padding-bottom:60px;}
+.panel{display:none;}.panel.active{display:block;}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #30363d;}
+.pt{font-family:'DM Mono',monospace;font-size:16px;letter-spacing:2px;}
+.pm{font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;margin-top:2px;}
+.rb{background:#161b22;border:1px solid #30363d;border-radius:8px;color:#6e7681;font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.rb.spin{animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.nl{padding:10px 16px;display:flex;flex-direction:column;gap:10px;}
+.card{background:#1c2128;border:1px solid #30363d;border-radius:12px;padding:16px;animation:up 0.25s ease both;}
+@keyframes up{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.ct{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.cs{font-family:'DM Mono',monospace;font-size:10px;color:#00e5ff;background:rgba(0,229,255,0.1);padding:2px 7px;border-radius:4px;}
+.ctime{font-family:'DM Mono',monospace;font-size:10px;color:#6e7681;}
+.ztitle{font-size:16px;font-weight:700;color:#f0f6fc;line-height:1.55;margin-bottom:6px;text-decoration:none;display:block;}
+.ztitle:hover{color:#00e5ff;}
+.zsum{font-size:13px;color:#c9d1d9;line-height:1.7;margin-bottom:6px;padding:10px 12px;background:rgba(0,229,255,0.04);border-left:3px solid rgba(0,229,255,0.25);border-radius:0 6px 6px 0;}
+.etitle{font-size:11px;color:#6e7681;display:block;text-decoration:none;}
+.trow{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;}
+.tk{font-family:'DM Mono',monospace;font-size:10px;color:#ffd166;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.2);padding:2px 6px;border-radius:4px;}
+.loading{padding:40px 16px;text-align:center;color:#6e7681;font-size:13px;}
+.sp{width:26px;height:26px;border:2px solid #30363d;border-top-color:#00e5ff;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px;}
+.empty{padding:40px;text-align:center;color:#6e7681;}
+.err{padding:20px;text-align:center;color:#f85149;font-size:13px;line-height:1.8;}
+.wi{width:100%;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:9px 14px;color:#f0f6fc;font-family:'DM Mono',monospace;font-size:11px;outline:none;margin-bottom:8px;}
+.wi:focus{border-color:#00e5ff;}
+.fb{width:100%;background:#161b22;border:1px solid #00e5ff;border-radius:8px;color:#00e5ff;padding:9px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;}
+.sg{margin:10px 16px 0;border:1px solid #30363d;border-radius:12px;overflow:hidden;}
+.sh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#161b22;border-bottom:1px solid #30363d;}
+.ss{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:#ffd166;}
+.mg{padding:10px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;}
+.mv{background:#1c2128;border:1px solid #30363d;border-radius:10px;padding:14px;animation:up 0.25s ease both;}
+.mt{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.ms{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;}
+.mc{font-family:'DM Mono',monospace;font-size:13px;font-weight:700;padding:3px 9px;border-radius:6px;}
+.mc.up{color:#3fb950;background:rgba(63,185,80,0.15);}
+.mc.dn{color:#f85149;background:rgba(248,81,73,0.15);}
+.mp{font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<header>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:#6e7681;margin-left:8px;">產經情報站</span></div>
+  <a href="stocks.html" style="font-family:'DM Mono',monospace;font-size:10px;color:#6e7681;text-decoration:none;">← 回主站</a>
+</header>
+<div class="tab-bar">
+  <button class="tab active" onclick="go('market')" id="tab-market">📡 今日市場</button>
+  <button class="tab" onclick="go('watchlist')" id="tab-watchlist">👁 我的持倉</button>
+  <button class="tab" onclick="go('radar')" id="tab-radar">⚡ 異動雷達</button>
+</div>
+<main>
+  <div class="panel active" id="panel-market">
+    <div class="ph"><div><div class="pt">TODAY'S MARKET</div><div class="pm" id="mm">載入中…</div></div><button class="rb" id="rm" onclick="loadMarket()">↻</button></div>
+    <div class="nl" id="ml"><div class="loading"><div class="sp"></div>載入中…</div></div>
+  </div>
+  <div class="panel" id="panel-watchlist">
+    <div class="ph"><div><div class="pt">MY WATCHLIST</div><div class="pm">個股最新動態</div></div><button class="rb" id="rw" onclick="loadWatch()">↻</button></div>
+    <div style="padding:12px 16px 0;">
+      <input class="wi" id="wi" placeholder="股票代碼，逗號分開…">
+      <button class="fb" onclick="loadWatch()">抓取個股新聞</button>
+    </div>
+    <div id="wc" style="margin-top:8px;"><div class="empty">點「抓取個股新聞」開始</div></div>
+  </div>
+  <div class="panel" id="panel-radar">
+    <div class="ph"><div><div class="pt">MOVE RADAR</div><div class="pm">今日異動 + 新聞原因</div></div><button class="rb" id="rr" onclick="loadRadar()">↻</button></div>
+    <div style="padding:10px 16px;font-size:12px;color:#6e7681;background:#161b22;border-bottom:1px solid #30363d;">掃描 <strong id="rc">42</strong> 支股票，找出今日異動。</div>
+    <div id="radc"><div class="empty">點右上角 ↻ 開始掃描</div></div>
+  </div>
+</main>
+<script>
+const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+const DW=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
+document.getElementById('wi').value=DW.join(', ');
+document.getElementById('rc').textContent=DW.length;
+
+function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+‘分前’;if(d<86400)return Math.floor(d/3600)+‘小時前’;return Math.floor(d/86400)+‘天前’;}
+function src(s){if(!s)return’NEWS’;return s.replace(/^https?://(www.)?/,’’).split(’/’)[0].toUpperCase().slice(0,12);}
+function sp(id,on){const b=document.getElementById(id);if(b)on?b.classList.add(‘spin’):b.classList.remove(‘spin’);}
+
+// API with 8s timeout
+async function api(ep){
+const ctrl=new AbortController();
+const tid=setTimeout(()=>ctrl.abort(),8000);
+try{
+const r=await fetch(‘https://finnhub.io/api/v1’+ep+’&token=’+K,{signal:ctrl.signal});
+clearTimeout(tid);
+if(!r.ok)throw new Error(’HTTP ’+r.status);
+return r.json();
+}catch(e){clearTimeout(tid);throw e;}
+}
+
+function syms(){return document.getElementById(‘wi’).value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);}
+function go(t){document.querySelectorAll(’.panel’).forEach(p=>p.classList.remove(‘active’));document.querySelectorAll(’.tab’).forEach(b=>b.classList.remove(‘active’));document.getElementById(‘panel-’+t).classList.add(‘active’);document.getElementById(‘tab-’+t).classList.add(‘active’);if(t===‘market’)loadMarket();if(t===‘radar’)loadRadar();}
+
+// Google Translate with 5s timeout
+async function tr(text){
+if(!text)return’’;
+try{
+const ctrl=new AbortController();
+const tid=setTimeout(()=>ctrl.abort(),5000);
+const r=await fetch(‘https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=’+encodeURIComponent(text.slice(0,400)),{signal:ctrl.signal});
+clearTimeout(tid);
+const d=await r.json();
+return d[0].map(x=>x[0]).join(’’);
+}catch{return’’;}
+}
+
+let gIdx=0;
+function card(n){
+const i=gIdx++;
+const tks=n.related?n.related.split(’,’).filter(Boolean).slice(0,4).map(t=>`<span class="tk">$${t.trim()}</span>`).join(’’):’’;
+return{i,html:`<div class="card" style="animation-delay:${(i%20)*0.03}s"> <div class="ct"><span class="cs">${src(n.source)}</span><span class="ctime">${ago(n.datetime)}</span></div> <a class="ztitle" id="zt${i}" href="${n.url||'#'}" target="_blank">${n.headline||''}</a> <div class="zsum" id="zs${i}" style="display:none"></div> <a class="etitle" href="${n.url||'#'}" target="_blank">${n.headline||''}</a> ${tks?`<div class="trow">${tks}</div>`:’’}
+
+  </div>`,n};
+}
+
+async function bgTr(cards){
+for(const c of cards){
+try{
+const te=document.getElementById(‘zt’+c.i);
+const se=document.getElementById(‘zs’+c.i);
+if(te){const zh=await tr(c.n.headline||’’);if(zh&&zh!==c.n.headline)te.textContent=zh;}
+if(se&&c.n.summary&&c.n.summary.length>20){
+const zh=await tr(c.n.summary);
+if(zh){se.textContent=zh;se.style.display=‘block’;}
+}
+}catch(e){}
+await new Promise(r=>setTimeout(r,120));
+}
+}
+
+async function loadMarket(){
+sp(‘rm’,true);gIdx=0;
+document.getElementById(‘ml’).innerHTML=’<div class="loading"><div class="sp"></div>載入中…</div>’;
+try{
+const news=await api(’/news?category=general&minId=0’);
+const items=(news||[]).slice(0,20);
+if(!items.length){document.getElementById(‘ml’).innerHTML=’<div class="empty">目前無新聞資料</div>’;sp(‘rm’,false);return;}
+document.getElementById(‘mm’).textContent=‘共 ‘+items.length+’ 則 · ‘+new Date().toLocaleTimeString(‘zh-TW’);
+const cards=items.map(n=>card(n));
+document.getElementById(‘ml’).innerHTML=cards.map(c=>c.html).join(’’);
+bgTr(cards);
+}catch(e){
+document.getElementById(‘ml’).innerHTML=’<div class="err">❌ 載入失敗：’+e.message+’<br><br><button onclick="loadMarket()" style="background:#161b22;border:1px solid #30363d;color:#f0f6fc;padding:8px 16px;border-radius:6px;cursor:pointer;">重試</button></div>’;
+}
+sp(‘rm’,false);
+}
+
+async function loadWatch(){
+const s=syms();if(!s.length)return;
+sp(‘rw’,true);gIdx=0;
+document.getElementById(‘wc’).innerHTML=’<div class="loading"><div class="sp"></div>抓取中…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-7*86400000).toISOString().split(‘T’)[0];
+try{
+const res=await Promise.all(s.map(sym=>api(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to).catch(()=>({sym,d:[]})).then(d=>({sym,d:Array.isArray(d)?d:[]}))));
+const allCards=[];
+const html=res.map(({sym,d})=>{
+const items=(d||[]).slice(0,3);
+if(!items.length)return`<div class="sg"><div class="sh"><span class="ss">$${sym}</span><span style="font-size:11px;color:#6e7681">近7日無新聞</span></div></div>`;
+const cs=items.map(n=>{const c=card(n);allCards.push(c);return c.html;}).join(’’);
+return`<div class="sg"><div class="sh"><span class="ss">$${sym}</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:#6e7681">${items.length} 則</span></div><div style="padding:8px 10px;display:flex;flex-direction:column;gap:8px">${cs}</div></div>`;
+}).join(’’);
+document.getElementById(‘wc’).innerHTML=’<div style="padding:10px 16px;display:flex;flex-direction:column;gap:10px">’+html+’</div>’;
+bgTr(allCards);
+}catch(e){document.getElementById(‘wc’).innerHTML=’<div class="err">❌ ‘+e.message+’</div>’;}
+sp(‘rw’,false);
+}
+
+async function loadRadar(){
+sp(‘rr’,true);gIdx=0;
+document.getElementById(‘radc’).innerHTML=’<div class="loading"><div class="sp"></div>掃描 ‘+DW.length+’ 支股票中…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-86400000).toISOString().split(‘T’)[0];
+const res=[];
+for(let i=0;i<DW.length;i+=10){
+const br=await Promise.all(DW.slice(i,i+10).map(async sym=>{
+try{const[q,n]=await Promise.all([api(’/quote?symbol=’+sym),api(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to)]);return{sym,q,news:(n||[]).slice(0,1)};}
+catch{return{sym,q:{dp:0,c:0},news:[]};}
+}));
+res.push(…br);
+if(i+10<DW.length)await new Promise(r=>setTimeout(r,300));
+}
+res.sort((a,b)=>Math.abs(b.q?.dp||0)-Math.abs(a.q?.dp||0));
+const movers=res.filter(r=>Math.abs(r.q?.dp||0)>=1||r.news.length>0);
+if(!movers.length){document.getElementById(‘radc’).innerHTML=’<div class="empty">今日無明顯異動</div>’;sp(‘rr’,false);return;}
+const allCards=[];
+document.getElementById(‘radc’).innerHTML=’<div class="mg">’+movers.map((r,i)=>{
+const dp=r.q?.dp||0,c=r.q?.c||0,up=dp>=0,n=r.news[0];
+let ch=’’;
+if(n){const cv=card(n);allCards.push(cv);ch=cv.html;}
+else ch=’<div style="font-size:12px;color:#6e7681">今日暫無新聞</div>’;
+return`<div class="mv" style="animation-delay:${i*0.03}s"> <div class="mt"><span class="ms">$${r.sym}</span><span class="mc ${up?'up':'dn'}">${up?'+':''}${dp.toFixed(2)}%</span></div> <div class="mp">$${c.toFixed(2)}</div>${ch}</div>`;
+}).join(’’)+’</div>’;
+bgTr(allCards);
+sp(‘rr’,false);
+}
+
+loadMarket();
+</script>
+
+</body>
+</html>
