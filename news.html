@@ -1,2 +1,265 @@
 
+<!DOCTYPE html>
 
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市場情報站 — StockMaster</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--card:#1c2128;--border:#30363d;--accent:#00e5ff;--gold:#ffd166;--green:#3fb950;--red:#f85149;--muted:#6e7681;--text:#f0f6fc;--subtext:#c9d1d9;--mono:'DM Mono',monospace;--sans:'Noto Sans TC',sans-serif;--display:'Bebas Neue',sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+  header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 16px;}
+  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .logo-main{font-family:var(--display);font-size:24px;letter-spacing:2px;color:var(--accent);}
+  .logo-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);display:inline-block;}
+  .tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);}
+  .tab-btn{flex:1;padding:14px 8px;background:none;border:none;color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  main{max-width:860px;margin:0 auto;padding-bottom:60px;}
+  .tab-panel{display:none;}.tab-panel.active{display:block;}
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid var(--border);}
+  .section-title{font-family:var(--display);font-size:22px;letter-spacing:2px;}
+  .section-meta{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
+  .refresh-btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--subtext);font-size:16px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .refresh-btn.spinning{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .sentiment-bar{margin:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;}
+  .sentiment-label{font-family:var(--mono);font-size:11px;color:var(--subtext);white-space:nowrap;}
+  .sentiment-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+  .sentiment-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),#ff6b35,var(--gold),var(--green));transition:width 0.8s ease;}
+  .sentiment-pct{font-family:var(--mono);font-size:13px;font-weight:700;min-width:70px;text-align:right;}
+  .news-list{padding:10px 16px;display:flex;flex-direction:column;gap:10px;}
+  .news-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;animation:fadeUp 0.3s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .card-source{font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(0,229,255,0.1);padding:3px 9px;border-radius:5px;}
+  .card-time{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .card-title{font-size:15px;font-weight:500;line-height:1.55;color:var(--subtext);margin-bottom:10px;display:block;text-decoration:none;}
+  .card-title:hover{color:var(--text);}
+  .trans-box{display:none;margin-top:10px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:14px;}
+  .trans-box-label{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;}
+  .trans-box-text{font-size:16px;font-weight:600;line-height:1.7;color:var(--text);}
+  .card-ticker-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .ticker-tag{font-family:var(--mono);font-size:11px;color:var(--gold);background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.25);padding:2px 8px;border-radius:5px;}
+  .trans-btn{background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:6px;color:var(--accent);font-family:var(--mono);font-size:12px;padding:7px 16px;cursor:pointer;display:inline-block;margin-top:4px;}
+  .trans-btn:active{background:rgba(0,229,255,0.2);}
+  .stock-group{margin:12px 16px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .stock-group-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .stock-symbol{font-family:var(--display);font-size:20px;letter-spacing:1px;color:var(--gold);}
+  .stock-news-list{padding:8px 12px;display:flex;flex-direction:column;gap:8px;}
+  .radar-intro{padding:12px 16px;font-size:13px;color:var(--subtext);line-height:1.7;background:var(--surface);border-bottom:1px solid var(--border);}
+  .movers-grid{padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
+  .mover-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;animation:fadeUp 0.3s ease both;}
+  .mover-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .mover-sym{font-family:var(--display);font-size:22px;letter-spacing:1px;}
+  .mover-chg{font-family:var(--mono);font-size:15px;font-weight:700;padding:4px 12px;border-radius:7px;}
+  .mover-chg.up{color:var(--green);background:rgba(63,185,80,0.15);}
+  .mover-chg.down{color:var(--red);background:rgba(248,81,73,0.15);}
+  .mover-price{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .loading{padding:48px 16px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
+  .loading-spinner{width:30px;height:30px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px;}
+  .empty{padding:48px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.8;}
+  .empty-icon{font-size:40px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-top">
+    <div><span class="logo-main">MARKET INTEL</span><span class="logo-sub">產經情報站</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="live-dot"></span>
+      <a href="stocks.html" style="font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;">← 回主站</a>
+    </div>
+  </div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="lastUpdate">連線中…</div>
+</header>
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('market')" id="tab-market">📡 今日市場</button>
+  <button class="tab-btn" onclick="switchTab('watchlist')" id="tab-watchlist">👁 我的持倉</button>
+  <button class="tab-btn" onclick="switchTab('radar')" id="tab-radar">⚡ 異動雷達</button>
+</div>
+<main>
+  <div class="tab-panel active" id="panel-market">
+    <div class="section-header">
+      <div><div class="section-title">TODAY'S MARKET</div><div class="section-meta" id="marketMeta">載入中…</div></div>
+      <button class="refresh-btn" id="refreshMarket" onclick="loadMarketNews()">↻</button>
+    </div>
+    <div class="sentiment-bar">
+      <span class="sentiment-label">市場情緒</span>
+      <div class="sentiment-track"><div class="sentiment-fill" id="sentimentFill" style="width:50%"></div></div>
+      <span class="sentiment-pct" id="sentimentPct" style="color:var(--muted)">—</span>
+    </div>
+    <div class="news-list" id="marketNewsList">
+      <div class="loading"><div class="loading-spinner"></div>載入中…</div>
+    </div>
+  </div>
+  <div class="tab-panel" id="panel-watchlist">
+    <div class="section-header">
+      <div><div class="section-title">MY WATCHLIST</div><div class="section-meta">個股最新動態（近7天）</div></div>
+      <button class="refresh-btn" id="refreshWatch" onclick="loadWatchlistNews()">↻</button>
+    </div>
+    <div style="padding:14px 16px 0;">
+      <input id="watchInput" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;" placeholder="股票代碼，逗號分開…">
+      <button onclick="loadWatchlistNews()" style="margin-top:8px;width:100%;background:var(--surface);border:1px solid var(--accent);border-radius:8px;color:var(--accent);padding:10px;font-family:var(--mono);font-size:12px;cursor:pointer;">抓取新聞</button>
+    </div>
+    <div id="watchlistContent" style="margin-top:8px;">
+      <div class="empty"><div class="empty-icon">👁</div>點「抓取新聞」開始</div>
+    </div>
+  </div>
+  <div class="tab-panel" id="panel-radar">
+    <div class="section-header">
+      <div><div class="section-title">MOVE RADAR</div><div class="section-meta">今日異動 + 新聞原因</div></div>
+      <button class="refresh-btn" id="refreshRadar" onclick="loadRadar()">↻</button>
+    </div>
+    <div class="radar-intro">掃描你關注的 <strong id="radarCount">42</strong> 支股票，找出今日異動並顯示相關新聞。</div>
+    <div id="radarContent"><div class="empty"><div class="empty-icon">⚡</div>點右上角 ↻ 開始掃描</div></div>
+  </div>
+</main>
+<script>
+// ══ API KEY 直接寫在這裡 ══
+const API_KEY = 'd745a41r01qno4q0h68gd745a41r01qno4q0h690';
+
+const DEFAULT_WATCHLIST = [‘AAPL’,‘TSLA’,‘PL’,‘LUNR’,‘RKLB’,‘VSAT’,‘RCAT’,‘AAOI’,‘AXTI’,‘GLW’,‘CREDO’,‘TSEM’,‘LITE’,‘COBRA’,‘MU’,‘SNDK’,‘IONQ’,‘RGTI’,‘QBTS’,‘TEM’,‘HIMS’,‘CRISP’,‘PLTR’,‘OKLO’,‘KTOS’,‘ASTS’,‘CRWV’,‘NBIS’,‘CRCL’,‘NVDA’,‘AMD’,‘GOOG’,‘META’,‘TMUS’,‘SANA’,‘PI’,‘SOUN’,‘RXRX’,‘SOFI’,‘BABI’,‘HOOD’];
+
+function timeAgo(u){const d=Math.floor(Date.now()/1000-u);if(d<60)return d+‘秒前’;if(d<3600)return Math.floor(d/60)+‘分前’;if(d<86400)return Math.floor(d/3600)+‘小時前’;return Math.floor(d/86400)+‘天前’;}
+function cleanSrc(s){if(!s)return’NEWS’;return s.replace(/^https?://(www.)?/,’’).split(’/’)[0].toUpperCase().slice(0,16);}
+function spin(id,on){const b=document.getElementById(id);if(b)on?b.classList.add(‘spinning’):b.classList.remove(‘spinning’);}
+
+async function finnhub(ep) {
+const url = ‘https://finnhub.io/api/v1’ + ep + ‘&token=’ + API_KEY;
+const r = await fetch(url);
+if(!r.ok) throw new Error(’HTTP ’ + r.status);
+return r.json();
+}
+
+function getSymbols(){
+return document.getElementById(‘watchInput’).value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+}
+
+function switchTab(t){
+document.querySelectorAll(’.tab-panel’).forEach(p=>p.classList.remove(‘active’));
+document.querySelectorAll(’.tab-btn’).forEach(b=>b.classList.remove(‘active’));
+document.getElementById(‘panel-’+t).classList.add(‘active’);
+document.getElementById(‘tab-’+t).classList.add(‘active’);
+if(t===‘market’) loadMarketNews();
+if(t===‘radar’) loadRadar();
+}
+
+// ── 翻譯 ──
+let cardIdx = 0;
+window.doTranslate = async function(idx) {
+const btn = document.getElementById(‘btn’+idx);
+const box = document.getElementById(‘box’+idx);
+const text = window[‘hl’+idx] || ‘’;
+if(!btn||!box||!text) return;
+btn.textContent = ‘⏳ 翻譯中…’;
+try {
+const r = await fetch(‘https://api.mymemory.translated.net/get?q=’+encodeURIComponent(text)+’&langpair=en|zh-TW’);
+const d = await r.json();
+const result = d?.responseData?.translatedText || ‘翻譯失敗’;
+box.style.display = ‘block’;
+box.innerHTML = ‘<div class="trans-box-label">🌐 中文翻譯</div><div class="trans-box-text">’+result+’</div>’;
+btn.textContent = ‘✅ 已翻譯’;
+} catch(e) {
+btn.textContent = ‘❌ 重試’;
+}
+};
+
+function makeCard(n) {
+const i = cardIdx++;
+window[‘hl’+i] = n.headline || ‘’;
+return `<div class="news-card"> <div class="card-top"> <span class="card-source">${cleanSrc(n.source)}</span> <span class="card-time">${timeAgo(n.datetime)}</span> </div> <a class="card-title" href="${n.url||'#'}" target="_blank" rel="noopener">${n.headline||'（無標題）'}</a> ${n.related?`<div class="card-ticker-row">${n.related.split(’,’).filter(Boolean).slice(0,5).map(t=>`<span class="ticker-tag">$${t.trim()}</span>`).join(’’)}</div>`:’’}
+<div id="box${i}" class="trans-box"></div>
+<button id="btn${i}" class="trans-btn" onclick="doTranslate(${i})">🌐 中文翻譯</button>
+
+  </div>`;
+}
+
+// ── TAB 1 ──
+async function loadMarketNews() {
+spin(‘refreshMarket’,true);
+cardIdx = 0;
+document.getElementById(‘marketNewsList’).innerHTML=’<div class="loading"><div class="loading-spinner"></div>抓取最新財經新聞…</div>’;
+try {
+const news = await finnhub(’/news?category=general&minId=0’);
+const items = (news||[]).slice(0,30);
+const bk=[‘surge’,‘rally’,‘gain’,‘rise’,‘record’,‘beat’,‘bull’,‘growth’,‘profit’,‘jump’,‘soar’];
+const rk=[‘fall’,‘drop’,‘plunge’,‘loss’,‘decline’,‘crash’,‘bear’,‘cut’,‘recession’,‘fear’,‘warn’,‘slide’];
+let b=0,r=0;
+items.forEach(n=>{const t=((n.headline||’’)+(n.summary||’’)).toLowerCase();b+=bk.filter(w=>t.includes(w)).length;r+=rk.filter(w=>t.includes(w)).length;});
+const pct=Math.round(b/(b+r||1)*100);
+document.getElementById(‘sentimentFill’).style.width=pct+’%’;
+const se=document.getElementById(‘sentimentPct’);
+if(pct>=55){se.style.color=‘var(–green)’;se.textContent=‘看漲 ‘+pct+’%’;}
+else if(pct<=45){se.style.color=‘var(–red)’;se.textContent=‘看跌 ‘+(100-pct)+’%’;}
+else{se.style.color=‘var(–gold)’;se.textContent=‘中立 ‘+pct+’%’;}
+document.getElementById(‘marketMeta’).textContent=’共 ‘+items.length+’ 則 · ’+new Date().toLocaleTimeString(‘zh-TW’);
+document.getElementById(‘lastUpdate’).textContent=‘最後更新 ‘+new Date().toLocaleTimeString(‘zh-TW’);
+document.getElementById(‘marketNewsList’).innerHTML = items.map(n=>makeCard(n)).join(’’);
+} catch(e) {
+document.getElementById(‘marketNewsList’).innerHTML=`<div class="empty"><div class="empty-icon">❌</div>載入失敗：${e.message}</div>`;
+}
+spin(‘refreshMarket’,false);
+}
+
+// ── TAB 2 ──
+async function loadWatchlistNews() {
+const syms = getSymbols();
+if(!syms.length) return;
+spin(‘refreshWatch’,true);
+cardIdx = 0;
+document.getElementById(‘watchlistContent’).innerHTML=’<div class="loading"><div class="loading-spinner"></div>抓取 ‘+syms.length+’ 支個股新聞…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-7*86400000).toISOString().split(‘T’)[0];
+try {
+const results = await Promise.all(syms.map(sym=>finnhub(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to).then(d=>({sym,d}))));
+const html = results.map(({sym,d})=>{
+const items=(d||[]).slice(0,3);
+if(!items.length) return`<div class="stock-group"><div class="stock-group-header"><span class="stock-symbol">$${sym}</span><span style="font-size:12px;color:var(--muted)">近7日無新聞</span></div></div>`;
+return`<div class="stock-group"><div class="stock-group-header"><span class="stock-symbol">$${sym}</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${items.length} 則</span></div><div class="stock-news-list">${items.map(n=>makeCard(n)).join('')}</div></div>`;
+}).join(’’);
+document.getElementById(‘watchlistContent’).innerHTML=’<div style="padding:10px 16px;display:flex;flex-direction:column;gap:12px">’+html+’</div>’;
+} catch(e) {
+document.getElementById(‘watchlistContent’).innerHTML=`<div class="empty"><div class="empty-icon">❌</div>載入失敗：${e.message}</div>`;
+}
+spin(‘refreshWatch’,false);
+}
+
+// ── TAB 3 ──
+async function loadRadar() {
+spin(‘refreshRadar’,true);
+cardIdx = 0;
+document.getElementById(‘radarContent’).innerHTML=’<div class="loading"><div class="loading-spinner"></div>掃描 ‘+DEFAULT_WATCHLIST.length+’ 支股票中…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-86400000).toISOString().split(‘T’)[0];
+const results=[];
+for(let i=0;i<DEFAULT_WATCHLIST.length;i+=10){
+const br=await Promise.all(DEFAULT_WATCHLIST.slice(i,i+10).map(async sym=>{
+try{const[q,n]=await Promise.all([finnhub(’/quote?symbol=’+sym),finnhub(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to)]);return{sym,q,news:(n||[]).slice(0,1)};}
+catch{return{sym,q:{dp:0,c:0},news:[]};}
+}));
+results.push(…br);
+if(i+10<DEFAULT_WATCHLIST.length) await new Promise(r=>setTimeout(r,300));
+}
+results.sort((a,b)=>Math.abs(b.q?.dp||0)-Math.abs(a.q?.dp||0));
+const movers=results.filter(r=>Math.abs(r.q?.dp||0)>=1||r.news.length>0);
+if(!movers.length){document.getElementById(‘radarContent’).innerHTML=’<div class="empty"><div class="empty-icon">😴</div>今日無明顯異動</div>’;spin(‘refreshRadar’,false);return;}
+document.getElementById(‘radarContent’).innerHTML=’<div class="movers-grid">’+movers.map((r,i)=>{
+const dp=r.q?.dp||0,c=r.q?.c||0,isUp=dp>=0,n=r.news[0];
+return`<div class="mover-card" style="animation-delay:${i*0.04}s"> <div class="mover-top"><span class="mover-sym">$${r.sym}</span><span class="mover-chg ${isUp?'up':'down'}">${isUp?'+':''}${dp.toFixed(2)}%</span></div> <div class="mover-price">現價 $${c.toFixed(2)}</div> ${n ? makeCard(n) : '<div style="font-size:13px;color:var(--muted)">今日暫無新聞</div>'} </div>`;
+}).join(’’)+’</div>’;
+spin(‘refreshRadar’,false);
+}
+
+// ── 初始化 ──
+document.getElementById(‘watchInput’).value = DEFAULT_WATCHLIST.join(’, ’);
+document.getElementById(‘radarCount’).textContent = DEFAULT_WATCHLIST.length;
+loadMarketNews();
+</script>
+
+</body>
+</html>
