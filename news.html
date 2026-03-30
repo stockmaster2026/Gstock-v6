@@ -1,1 +1,239 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市場情報站</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0d1117;color:#f0f6fc;font-family:'Noto Sans TC',sans-serif;min-height:100vh;}
+header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.97);backdrop-filter:blur(20px);border-bottom:1px solid #30363d;padding:12px 16px;}
+.logo{font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:#00e5ff;letter-spacing:2px;}
+.logo-sub{font-size:11px;color:#6e7681;margin-left:8px;}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3fb950;box-shadow:0 0 6px #3fb950;margin-right:6px;}
+.tab-bar{display:flex;background:#161b22;border-bottom:1px solid #30363d;}
+.tab{flex:1;padding:13px 8px;background:none;border:none;color:#6e7681;font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;}
+.tab.active{color:#00e5ff;border-bottom-color:#00e5ff;}
+main{max-width:860px;margin:0 auto;padding-bottom:60px;}
+.panel{display:none;}.panel.active{display:block;}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #30363d;}
+.panel-title{font-family:'DM Mono',monospace;font-size:18px;letter-spacing:2px;color:#f0f6fc;}
+.panel-meta{font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;margin-top:2px;}
+.refresh{background:#161b22;border:1px solid #30363d;border-radius:8px;color:#6e7681;font-size:16px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.refresh.spin{animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.news-list{padding:10px 16px;display:flex;flex-direction:column;gap:10px;}
+.card{background:#1c2128;border:1px solid #30363d;border-radius:12px;padding:16px;animation:up 0.3s ease both;}
+@keyframes up{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.src{font-family:'DM Mono',monospace;font-size:11px;color:#00e5ff;background:rgba(0,229,255,0.1);padding:2px 8px;border-radius:4px;}
+.time{font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;}
+.zh-title{font-size:16px;font-weight:700;color:#f0f6fc;line-height:1.55;margin-bottom:6px;text-decoration:none;display:block;}
+.zh-title:hover{color:#00e5ff;}
+.zh-summary{font-size:13px;color:#c9d1d9;line-height:1.7;margin-bottom:8px;padding:10px 12px;background:rgba(0,229,255,0.04);border-left:3px solid rgba(0,229,255,0.3);border-radius:0 6px 6px 0;}
+.en-title{font-size:11px;color:#6e7681;display:block;text-decoration:none;margin-top:4px;}
+.en-title:hover{color:#c9d1d9;}
+.ticker-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.ticker{font-family:'DM Mono',monospace;font-size:10px;color:#ffd166;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.2);padding:2px 7px;border-radius:4px;}
+.loading{padding:48px 16px;text-align:center;color:#6e7681;font-size:13px;}
+.spinner{width:28px;height:28px;border:2px solid #30363d;border-top-color:#00e5ff;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px;}
+.empty{padding:48px 16px;text-align:center;color:#6e7681;font-size:14px;line-height:1.8;}
+.watch-input{width:100%;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:9px 14px;color:#f0f6fc;font-family:'DM Mono',monospace;font-size:12px;outline:none;margin-bottom:8px;}
+.watch-input:focus{border-color:#00e5ff;}
+.fetch-btn{width:100%;background:#161b22;border:1px solid #00e5ff;border-radius:8px;color:#00e5ff;padding:10px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
+.stock-group{margin:12px 16px 0;border:1px solid #30363d;border-radius:12px;overflow:hidden;}
+.stock-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#161b22;border-bottom:1px solid #30363d;}
+.stock-sym{font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:#ffd166;}
+.mover-grid{padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
+.mover{background:#1c2128;border:1px solid #30363d;border-radius:12px;padding:16px;animation:up 0.3s ease both;}
+.mover-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.mover-sym{font-family:'DM Mono',monospace;font-size:20px;font-weight:700;}
+.chg{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;padding:3px 10px;border-radius:6px;}
+.chg.up{color:#3fb950;background:rgba(63,185,80,0.15);}
+.chg.down{color:#f85149;background:rgba(248,81,73,0.15);}
+.mover-price{font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div><span class="live"></span><span class="logo">MARKET INTEL</span><span class="logo-sub">產經情報站</span></div>
+    <a href="stocks.html" style="font-family:'DM Mono',monospace;font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
+  </div>
+</header>
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('market')" id="tab-market">📡 今日市場</button>
+  <button class="tab" onclick="switchTab('watchlist')" id="tab-watchlist">👁 我的持倉</button>
+  <button class="tab" onclick="switchTab('radar')" id="tab-radar">⚡ 異動雷達</button>
+</div>
+<main>
+  <div class="panel active" id="panel-market">
+    <div class="panel-header">
+      <div><div class="panel-title">TODAY'S MARKET</div><div class="panel-meta" id="market-meta">載入中…</div></div>
+      <button class="refresh" id="ref-market" onclick="loadMarket()">↻</button>
+    </div>
+    <div class="news-list" id="market-list"><div class="loading"><div class="spinner"></div>抓取新聞並翻譯中…</div></div>
+  </div>
+  <div class="panel" id="panel-watchlist">
+    <div class="panel-header">
+      <div><div class="panel-title">MY WATCHLIST</div><div class="panel-meta">個股最新動態</div></div>
+      <button class="refresh" id="ref-watch" onclick="loadWatch()">↻</button>
+    </div>
+    <div style="padding:14px 16px 0;">
+      <input class="watch-input" id="watchInput" placeholder="股票代碼，逗號分開…">
+      <button class="fetch-btn" onclick="loadWatch()">抓取個股新聞</button>
+    </div>
+    <div id="watch-content" style="margin-top:8px;"><div class="empty">點「抓取個股新聞」開始</div></div>
+  </div>
+  <div class="panel" id="panel-radar">
+    <div class="panel-header">
+      <div><div class="panel-title">MOVE RADAR</div><div class="panel-meta">今日異動 + 新聞原因</div></div>
+      <button class="refresh" id="ref-radar" onclick="loadRadar()">↻</button>
+    </div>
+    <div style="padding:12px 16px;font-size:13px;color:#6e7681;background:#161b22;border-bottom:1px solid #30363d;">
+      掃描你關注的 <strong id="radar-count">42</strong> 支股票，找出今日異動。
+    </div>
+    <div id="radar-content"><div class="empty">點右上角 ↻ 開始掃描</div></div>
+  </div>
+</main>
+<script>
+const KEY = 'd745a41r01qno4q0h68gd745a41r01qno4q0h690';
+const DEFAULT = ['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
+
+document.getElementById(‘watchInput’).value = DEFAULT.join(’, ’);
+document.getElementById(‘radar-count’).textContent = DEFAULT.length;
+
+function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+‘分前’;if(d<86400)return Math.floor(d/3600)+‘小時前’;return Math.floor(d/86400)+‘天前’;}
+function cleanSrc(s){if(!s)return’NEWS’;return s.replace(/^https?://(www.)?/,’’).split(’/’)[0].toUpperCase().slice(0,14);}
+function spin(id,on){const b=document.getElementById(id);if(b)on?b.classList.add(‘spin’):b.classList.remove(‘spin’);}
+async function api(ep){const r=await fetch(‘https://finnhub.io/api/v1’+ep+’&token=’+KEY);if(!r.ok)throw new Error(’HTTP ’+r.status);return r.json();}
+function getSyms(){return document.getElementById(‘watchInput’).value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);}
+
+function switchTab(t){
+document.querySelectorAll(’.panel’).forEach(p=>p.classList.remove(‘active’));
+document.querySelectorAll(’.tab’).forEach(b=>b.classList.remove(‘active’));
+document.getElementById(‘panel-’+t).classList.add(‘active’);
+document.getElementById(‘tab-’+t).classList.add(‘active’);
+if(t===‘market’) loadMarket();
+if(t===‘radar’) loadRadar();
+}
+
+async function translate(text){
+if(!text||text.trim()===’’) return ‘’;
+try{
+const r=await fetch(‘https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=’+encodeURIComponent(text.slice(0,500)));
+const d=await r.json();
+return d[0].map(x=>x[0]).join(’’);
+}catch(e){return ‘’;}
+}
+
+function makeCard(n, i){
+const tickers = n.related ? n.related.split(’,’).filter(Boolean).slice(0,5).map(t=>`<span class="ticker">$${t.trim()}</span>`).join(’’) : ‘’;
+return `<div class="card" style="animation-delay:${i*0.04}s"> <div class="card-top"> <span class="src">${cleanSrc(n.source)}</span> <span class="time">${ago(n.datetime)}</span> </div> <a class="zh-title" id="title${i}" href="${n.url||'#'}" target="_blank">⏳ 翻譯中…</a> <div class="zh-summary" id="sum${i}" style="display:none">⏳</div> <a class="en-title" href="${n.url||'#'}" target="_blank">${n.headline||''}</a> ${tickers?`<div class="ticker-row">${tickers}</div>`:’’}
+
+  </div>`;
+}
+
+async function translateCards(items){
+for(let i=0;i<items.length;i++){
+const n=items[i];
+const titleEl=document.getElementById(‘title’+i);
+const sumEl=document.getElementById(‘sum’+i);
+if(!titleEl) continue;
+// 翻譯標題
+const zhTitle = await translate(n.headline||’’);
+if(titleEl) titleEl.textContent = zhTitle || n.headline || ‘’;
+// 翻譯摘要
+if(n.summary && n.summary.trim()){
+const zhSum = await translate(n.summary);
+if(sumEl && zhSum){
+sumEl.textContent = zhSum;
+sumEl.style.display = ‘block’;
+}
+} else if(sumEl){
+sumEl.style.display=‘none’;
+}
+if(i%3===2) await new Promise(r=>setTimeout(r,150));
+}
+}
+
+async function loadMarket(){
+spin(‘ref-market’,true);
+document.getElementById(‘market-list’).innerHTML=’<div class="loading"><div class="spinner"></div>抓取新聞中…</div>’;
+try{
+const news=await api(’/news?category=general&minId=0’);
+const items=(news||[]).slice(0,20);
+document.getElementById(‘market-meta’).textContent=‘共 ‘+items.length+’ 則 · ‘+new Date().toLocaleTimeString(‘zh-TW’);
+document.getElementById(‘market-list’).innerHTML=items.map((n,i)=>makeCard(n,i)).join(’’);
+translateCards(items);
+}catch(e){
+document.getElementById(‘market-list’).innerHTML=’<div class="empty">載入失敗：’+e.message+’</div>’;
+}
+spin(‘ref-market’,false);
+}
+
+async function loadWatch(){
+const syms=getSyms();if(!syms.length)return;
+spin(‘ref-watch’,true);
+document.getElementById(‘watch-content’).innerHTML=’<div class="loading"><div class="spinner"></div>抓取 ‘+syms.length+’ 支個股新聞…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-7*86400000).toISOString().split(‘T’)[0];
+try{
+const results=await Promise.all(syms.map(sym=>api(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to).then(d=>({sym,d}))));
+let cardOffset=0;
+const html=results.map(({sym,d})=>{
+const items=(d||[]).slice(0,3);
+if(!items.length) return`<div class="stock-group"><div class="stock-header"><span class="stock-sym">$${sym}</span><span style="font-size:12px;color:#6e7681">近7日無新聞</span></div></div>`;
+const cards=items.map((n,i)=>makeCard(n,cardOffset+i)).join(’’);
+cardOffset+=items.length;
+return`<div class="stock-group"><div class="stock-header"><span class="stock-sym">$${sym}</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:#6e7681">${items.length} 則</span></div><div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">${cards}</div></div>`;
+}).join(’’);
+document.getElementById(‘watch-content’).innerHTML=’<div style="padding:10px 16px;display:flex;flex-direction:column;gap:12px">’+html+’</div>’;
+// 翻譯所有卡片
+const allItems=results.flatMap(({d})=>(d||[]).slice(0,3));
+translateCards(allItems);
+}catch(e){
+document.getElementById(‘watch-content’).innerHTML=’<div class="empty">載入失敗：’+e.message+’</div>’;
+}
+spin(‘ref-watch’,false);
+}
+
+async function loadRadar(){
+const syms=DEFAULT;
+spin(‘ref-radar’,true);
+document.getElementById(‘radar-content’).innerHTML=’<div class="loading"><div class="spinner"></div>掃描 ‘+syms.length+’ 支股票中…</div>’;
+const to=new Date().toISOString().split(‘T’)[0];
+const from=new Date(Date.now()-86400000).toISOString().split(‘T’)[0];
+const results=[];
+for(let i=0;i<syms.length;i+=10){
+const br=await Promise.all(syms.slice(i,i+10).map(async sym=>{
+try{const[q,n]=await Promise.all([api(’/quote?symbol=’+sym),api(’/company-news?symbol=’+sym+’&from=’+from+’&to=’+to)]);return{sym,q,news:(n||[]).slice(0,1)};}
+catch{return{sym,q:{dp:0,c:0},news:[]};}
+}));
+results.push(…br);
+if(i+10<syms.length) await new Promise(r=>setTimeout(r,300));
+}
+results.sort((a,b)=>Math.abs(b.q?.dp||0)-Math.abs(a.q?.dp||0));
+const movers=results.filter(r=>Math.abs(r.q?.dp||0)>=1||r.news.length>0);
+if(!movers.length){document.getElementById(‘radar-content’).innerHTML=’<div class="empty">今日無明顯異動</div>’;spin(‘ref-radar’,false);return;}
+
+let ri=0;
+document.getElementById(‘radar-content’).innerHTML=’<div class="mover-grid">’+movers.map((r,i)=>{
+const dp=r.q?.dp||0,c=r.q?.c||0,isUp=dp>=0,n=r.news[0];
+const cardHtml=n?makeCard(n,ri++):’<div style="font-size:13px;color:#6e7681">今日暫無新聞</div>’;
+return`<div class="mover" style="animation-delay:${i*0.04}s"> <div class="mover-top"><span class="mover-sym">$${r.sym}</span><span class="chg ${isUp?'up':'down'}">${isUp?'+':''}${dp.toFixed(2)}%</span></div> <div class="mover-price">現價 $${c.toFixed(2)}</div> ${cardHtml} </div>`;
+}).join(’’)+’</div>’;
+
+const allNews=movers.filter(r=>r.news[0]).map(r=>r.news[0]);
+translateCards(allNews);
+spin(‘ref-radar’,false);
+}
+
+loadMarket();
+</script>
+
+</body>
+</html>
