@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AV測試</title>
+</head>
+<body style="padding:20px;font-family:sans-serif;background:#f5e8a0;">
+<h2>🔧 Alpha Vantage 測試</h2>
+<button onclick="test()" style="background:#0066bb;color:white;border:none;border-radius:8px;padding:12px 24px;font-size:16px;cursor:pointer;">測試 PL 歷史數據</button>
+<div id="result" style="margin-top:20px;padding:16px;background:white;border-radius:10px;font-size:13px;display:none;white-space:pre-wrap;word-break:break-all;"></div>
+
+<script>
+const AV='K6MGURMN8OTNFLU3';
+
+async function test(){
+  var d=document.getElementById('result');
+  d.style.display='block';
+  d.innerHTML='⏳ 載入中...';
+  try{
+    var url='https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=PL&outputsize=compact&apikey='+AV;
+    d.innerHTML='URL: '+url+'\n\n⏳ 請求中...';
+    var r=await fetch(url);
+    d.innerHTML+= '\nHTTP狀態: '+r.status;
+    var data=await r.json();
+    var keys=Object.keys(data);
+    d.innerHTML+='\n回應Keys: '+keys.join(', ');
+    if(data['Time Series (Daily)']){
+      var dates=Object.keys(data['Time Series (Daily)']).slice(0,3);
+      d.innerHTML+='\n\n✅ 成功！最新3天:\n'+JSON.stringify(dates,null,2);
+      d.style.color='green';
+    } else {
+      d.innerHTML+='\n\n完整回應:\n'+JSON.stringify(data,null,2);
+      d.style.color='red';
+    }
+  }catch(e){
+    d.innerHTML='❌ 錯誤: '+e.message+'\n類型: '+e.name;
+    d.style.color='red';
+  }
+}
+</script>
+
+</body>
+</html>
