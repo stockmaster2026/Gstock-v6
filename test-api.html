@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API 診斷</title>
+<style>
+body{font-family:sans-serif;padding:20px;background:#f5e8a0;}
+button{background:#0066bb;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:16px;cursor:pointer;margin:5px;}
+pre{background:white;padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;}
+.ok{color:green;font-weight:bold;}
+.err{color:red;font-weight:bold;}
+</style>
+</head>
+<body>
+<h2>🔧 Finnhub API 診斷工具</h2>
+<p>點按鈕測試API是否正常：</p>
+
+<button onclick="testQuote()">測試 Quote API（PL）</button>
+<button onclick="testCandle()">測試 Candle API（PL）</button>
+<button onclick="testBoth()">同時測試兩個</button>
+
+<div id="result"></div>
+
+<script>
+var API = 'd745a41r01qno4q0h68gd745a41r01qno4q0h690';
+
+function log(msg, isErr){
+  var d = document.getElementById('result');
+  var cls = isErr ? 'err' : 'ok';
+  d.innerHTML += '<pre class="'+cls+'">'+msg+'</pre>';
+
+}
+
+function clear(){ document.getElementById(‘result’).innerHTML=’’; }
+
+async function testQuote(){
+clear();
+log(‘⏳ 測試 Quote API…’);
+try{
+var url = ‘https://finnhub.io/api/v1/quote?symbol=PL&token=’+API;
+log(’URL: ’+url);
+var r = await fetch(url);
+log(’HTTP狀態: ‘+r.status+’ ’+r.statusText);
+var data = await r.json();
+log(‘回應數據:\n’+JSON.stringify(data, null, 2));
+if(data.c && data.c > 0){
+log(‘✅ Quote API 正常！現價: $’+data.c);
+} else {
+log(‘❌ 數據異常：’+JSON.stringify(data), true);
+}
+}catch(e){
+log(‘❌ 錯誤：’+e.message, true);
+log(‘錯誤類型：’+e.name, true);
+}
+}
+
+async function testCandle(){
+clear();
+log(‘⏳ 測試 Candle API…’);
+try{
+var to = Math.floor(Date.now()/1000);
+var from = to - 365*86400;
+var url = ‘https://finnhub.io/api/v1/stock/candle?symbol=PL&resolution=D&from=’+from+’&to=’+to+’&token=’+API;
+log(’URL: ’+url);
+var r = await fetch(url);
+log(’HTTP狀態: ‘+r.status+’ ’+r.statusText);
+var data = await r.json();
+log(’回應狀態(s): ’+data.s);
+if(data.s === ‘ok’){
+log(’✅ Candle API 正常！K棒數量: ‘+data.c.length);
+log(‘最新5天收盤:\n’+data.c.slice(-5).join(’, ’));
+} else {
+log(‘回應:\n’+JSON.stringify(data, null, 2));
+if(data.s === ‘no_data’){
+log(‘⚠️ 沒有數據（s=no_data）’, true);
+}
+}
+}catch(e){
+log(‘❌ 錯誤：’+e.message, true);
+log(‘錯誤類型：’+e.name, true);
+}
+}
+
+async function testBoth(){
+clear();
+log(‘⏳ 同時測試兩個API…’);
+await Promise.all([testQuote(), testCandle()]);
+}
+</script>
+
+</body>
+</html>
