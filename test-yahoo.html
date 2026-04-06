@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yahoo Finance測試</title>
+</head>
+<body style="padding:20px;font-family:sans-serif;background:#f5e8a0;">
+<h2>🔧 Yahoo Finance 測試</h2>
+<button onclick="test1()" style="background:#0066bb;color:white;border:none;border-radius:8px;padding:12px 20px;font-size:15px;cursor:pointer;margin:5px;display:block;width:100%;">方法1：直接Yahoo（測試CORS）</button>
+<button onclick="test2()" style="background:#009944;color:white;border:none;border-radius:8px;padding:12px 20px;font-size:15px;cursor:pointer;margin:5px;display:block;width:100%;">方法2：corsproxy.io代理</button>
+<button onclick="test3()" style="background:#dd6600;color:white;border:none;border-radius:8px;padding:12px 20px;font-size:15px;cursor:pointer;margin:5px;display:block;width:100%;">方法3：allorigins代理</button>
+<div id="result" style="margin-top:16px;padding:14px;background:white;border-radius:10px;font-size:12px;display:none;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;"></div>
+
+<script>
+var BASE='https://query1.finance.yahoo.com/v8/finance/chart/LUNR?interval=1d&range=1y';
+
+function show(msg,ok){
+  var d=document.getElementById('result');
+  d.style.display='block';
+  d.style.color=ok?'green':'red';
+  d.innerHTML=msg;
+}
+
+async function test1(){
+  show('⏳ 直接請求Yahoo...');
+  try{
+    var r=await fetch(BASE);
+    var data=await r.json();
+    if(data.chart&&data.chart.result){
+      var n=data.chart.result[0].timestamp.length;
+      show('✅ 直接Yahoo成功！K棒數量: '+n,true);
+    }else{
+      show('❌ 數據異常: '+JSON.stringify(data).slice(0,200));
+    }
+  }catch(e){show('❌ 失敗: '+e.message);}
+}
+
+async function test2(){
+  show('⏳ 通過corsproxy.io...');
+  try{
+    var url='https://corsproxy.io/?'+encodeURIComponent(BASE);
+    var r=await fetch(url);
+    var data=await r.json();
+    if(data.chart&&data.chart.result){
+      var n=data.chart.result[0].timestamp.length;
+      show('✅ corsproxy成功！K棒數量: '+n,true);
+    }else{
+      show('❌ 數據異常: '+JSON.stringify(data).slice(0,200));
+    }
+  }catch(e){show('❌ 失敗: '+e.message);}
+}
+
+async function test3(){
+  show('⏳ 通過allorigins...');
+  try{
+    var url='https://api.allorigins.win/get?url='+encodeURIComponent(BASE);
+    var r=await fetch(url);
+    var wrapper=await r.json();
+    var data=JSON.parse(wrapper.contents);
+    if(data.chart&&data.chart.result){
+      var n=data.chart.result[0].timestamp.length;
+      show('✅ allorigins成功！K棒數量: '+n,true);
+    }else{
+      show('❌ 數據異常: '+JSON.stringify(data).slice(0,200));
+    }
+  }catch(e){show('❌ 失敗: '+e.message);}
+}
+</script>
+
+</body>
+</html>
