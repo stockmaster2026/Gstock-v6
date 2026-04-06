@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>測試</title>
+</head>
+<body style="padding:20px;font-family:sans-serif;background:#f5e8a0;">
+<h2>🔧 直接測試 Finnhub</h2>
+<button onclick="test()" style="background:#0066bb;color:white;border:none;border-radius:8px;padding:12px 24px;font-size:16px;cursor:pointer;">點我測試 PL 股價</button>
+<div id="result" style="margin-top:20px;padding:16px;background:white;border-radius:10px;font-size:14px;display:none;"></div>
+
+<script>
+const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+
+async function api(ep){
+  const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+K);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+async function test(){
+  var d=document.getElementById('result');
+  d.style.display='block';
+  d.innerHTML='⏳ 載入中...';
+  try{
+    var q=await api('/quote?symbol=PL');
+    d.innerHTML='✅ 成功！<br>現價: $'+q.c+'<br>前收: $'+q.pc+'<br>漲跌: '+q.dp+'%<br><br>完整數據:<br>'+JSON.stringify(q,null,2);
+    d.style.color='green';
+  }catch(e){
+    d.innerHTML='❌ 失敗: '+e.message+'<br>類型: '+e.name;
+    d.style.color='red';
+  }
+}
+</script>
+
+</body>
+</html>
