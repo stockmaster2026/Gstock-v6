@@ -1,1 +1,207 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>吸籌偵測 v4 - Wyckoff TR</title>
+<style>
+body{background:#f5e8a0;font-family:sans-serif;padding:16px;margin:0;}
+h2{color:#1a1a2e;margin-bottom:12px;font-size:17px;}
+.row{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
+input{width:90px;border:1.5px solid #d4b800;border-radius:8px;padding:8px;font-size:15px;text-transform:uppercase;}
+button{background:#0066bb;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:15px;cursor:pointer;}
+.card{background:white;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.sec{border-left:4px solid #0066bb;padding:10px 12px;background:rgba(0,102,187,0.05);border-radius:0 8px 8px 0;margin-bottom:10px;}
+.sec-title{font-weight:700;color:#0066bb;font-size:13px;margin-bottom:6px;}
+.r{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;}
+.r:last-child{border:none;}
+.lbl{color:#999;} .val{font-weight:600;color:#1a1a2e;}
+.bar-wrap{height:12px;background:#eee;border-radius:6px;overflow:hidden;margin:6px 0;}
+.bar-fill{height:100%;border-radius:6px;transition:width 1.2s;}
+.hi{background:linear-gradient(90deg,#0066bb,#00aa55);}
+.md{background:linear-gradient(90deg,#dd8800,#ffcc00);}
+.lo{background:linear-gradient(90deg,#cc1133,#ff6688);}
+.total{background:#1a1a2e;color:white;border-radius:10px;padding:14px;text-align:center;margin-top:10px;}
+.num{font-size:34px;font-weight:900;color:#00ff88;}
+.sub{font-size:11px;color:#aaa;margin-top:4px;}
+.tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin:1px;}
+.tb{background:rgba(0,102,187,0.12);color:#0066bb;}
+.tg{background:rgba(0,153,68,0.12);color:#009944;}
+.to{background:rgba(221,102,0,0.12);color:#dd6600;}
+.sp{display:inline-block;width:20px;height:20px;border:3px solid #ddd;border-top:3px solid #0066bb;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.err{color:red;font-size:13px;padding:10px;}
+</style>
+</head>
+<body>
+<h2>🐋 吸籌偵測 v4（Wyckoff TR邏輯）</h2>
+<div class="row">
+  <input id="sym" value="BKSY" placeholder="代號">
+  <button onclick="analyze()">分析</button>
+</div>
+<div id="result"></div>
+
+<script>
+const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+
+async function fetchYahoo(t){
+  var url='https://corsproxy.io/?'+encodeURIComponent(
+    'https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1y');
+  var r=await fetch(url);
+  var d=await r.json();
+  return d.chart.result[0];
+}
+async function fetchFloat(t){
+  var r=await fetch('https://finnhub.io/api/v1/stock/profile2?symbol='+t+'&token='+K);
+  var p=await r.json();
+  return p.shareOutstanding?p.shareOutstanding*1e6:0;
+}
+function buildValid(yahoo){
+  var ts=yahoo.timestamp,q=yahoo.indicators.quote[0],v=[];
+  for(var i=0;i<ts.length;i++)
+    if(q.close[i]&&q.volume[i]&&q.high[i]&&q.low[i]&&q.open[i])
+      v.push({c:q.close[i],o:q.open[i],h:q.high[i],l:q.low[i],v:q.volume[i],t:ts[i]});
+  return v;
+}
+function calcOBV(valid){
+  var obv=0,arr=[0];
+  for(var i=1;i<valid.length;i++){
+    if(valid[i].c>valid[i-1].c) obv+=valid[i].v;
+    else if(valid[i].c<valid[i-1].c) obv-=valid[i].v;
+    arr.push(obv);
+  }
+  return arr;
+}
+
+function findWyckoffTR(valid){
+  var m=valid.length;
+  // SC：過去90天內大量+下跌+下影線
+  var sc=null;
+  for(var i=Math.max(5,m-90);i<m-5;i++){
+    var d=valid[i];
+    var maxV=Math.max(...valid.slice(Math.max(0,i-20),i).map(x=>x.v));
+    var drop=(d.c-valid[i-1].c)/valid[i-1].c*100;
+    var lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(d.v>maxV*0.6&&drop<-1&&rng>0&&lw>rng*0.2)
+      if(!sc||d.l<sc.l) sc={idx:i,l:d.l,date:new Date(d.t*1000).toISOString().slice(0,10)};
+  }
+  // 找不到SC用60天最低點
+  if(!sc){
+    var mi=Math.max(0,m-60);
+    for(var i=m-60;i<m;i++) if(i>=0&&valid[i].l<valid[mi].l) mi=i;
+    sc={idx:mi,l:valid[mi].l,date:new Date(valid[mi].t*1000).toISOString().slice(0,10)};
+  }
+  // AR：SC後5-15天最高點（自動反彈）
+  var arHigh=sc.l*1.05,arIdx=sc.idx+1;
+  for(var i=sc.idx+1;i<Math.min(sc.idx+15,m);i++){
+    if(valid[i].h>arHigh){arHigh=valid[i].h;arIdx=i;}
+  }
+  // TR結束：收盤突破AR×1.03
+  var trEndIdx=m-1,trEnded=false;
+  for(var i=arIdx+1;i<m;i++){
+    if(valid[i].c>arHigh*1.03){trEndIdx=i-1;trEnded=true;break;}
+  }
+  return{sc,arHigh,arIdx,trEndIdx,trEnded,
+    trStartDate:new Date(valid[sc.idx].t*1000).toISOString().slice(0,10),
+    trEndDate:new Date(valid[trEndIdx].t*1000).toISOString().slice(0,10)};
+}
+
+function detectAccum(valid,floatShares){
+  var m=valid.length;
+  var tr=findWyckoffTR(valid);
+  var obvArr=calcOBV(valid);
+  var avgVol=valid.slice(-20).reduce((s,d)=>s+d.v,0)/20;
+  var accumDays=[];
+
+  for(var i=tr.sc.idx+1;i<=tr.trEndIdx;i++){
+    var d=valid[i];
+    // 只看TR價格範圍內
+    if(d.c>tr.arHigh*1.05||d.c<tr.sc.l*0.95) continue;
+    var score=0,signals=[];
+    if(i>=5&&d.c<valid[i-5].c&&obvArr[i]>obvArr[i-5]){score++;signals.push('OBV背離');}
+    var body=Math.abs(d.c-d.o),lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(rng>0&&lw>body*1.2&&(d.c-d.l)/rng>0.45){score++;signals.push('長下影線');}
+    var vr=d.v/avgVol;
+    if(vr>1.3&&Math.abs(d.c-d.o)/d.o*100<2){score++;signals.push('量大價穩');}
+    if(i>=15&&i-15>=tr.sc.idx){
+      var p15=valid.slice(i-15,i);
+      var mx=Math.max(...p15.map(x=>x.h)),mn=Math.min(...p15.map(x=>x.l));
+      if(mn>0&&(mx-mn)/mn*100<20&&obvArr[i]>obvArr[i-15]){score++;signals.push('盤整OBV↑');}
+    }
+    if(score>=2) accumDays.push({
+      date:new Date(d.t*1000).toISOString().slice(0,10),
+      price:d.c.toFixed(2),vr:vr.toFixed(1),vol:d.v,signals:signals.join('+')
+    });
+  }
+
+  var sigVol=accumDays.reduce((s,d)=>s+d.vol,0);
+  var chip=floatShares>0?Math.min(Math.round(sigVol/floatShares*100*3),100):0;
+  var obvRising=obvArr[m-1]>obvArr[Math.max(0,m-20)];
+  var trDays=tr.trEndIdx-tr.sc.idx;
+  return{tr,accumDays,chip,obvRising,trDays,
+    currentPrice:valid[m-1].c.toFixed(2)};
+}
+
+async function analyze(){
+  var t=document.getElementById('sym').value.toUpperCase().trim();
+  if(!t) return;
+  var el=document.getElementById('result');
+  el.innerHTML='<div style="padding:20px;"><span class="sp"></span>分析 '+t+'...</div>';
+  try{
+    var[yahoo,floatShares]=await Promise.all([fetchYahoo(t),fetchFloat(t)]);
+    var valid=buildValid(yahoo);
+    var res=detectAccum(valid,floatShares);
+    var tr=res.tr;
+    var cc=res.chip>=70?'hi':res.chip>=40?'md':'lo';
+    var msg=res.chip>=70?'籌碼集中，主力建倉接近完成':
+            res.chip>=40?'吸籌進行中，持續觀察':'TR內吸籌訊號較少';
+
+    var html='<div class="card">';
+    html+='<div style="font-weight:700;font-size:16px;margin-bottom:4px;">'+t+' — Wyckoff TR分析</div>';
+    html+='<div style="font-size:11px;color:#888;margin-bottom:12px;">流通股：'+(floatShares/1e6).toFixed(1)+'M　只看最近TR（底部震盪區）</div>';
+
+    html+='<div class="sec"><div class="sec-title">📦 當前交易區間（TR）</div>';
+    html+='<div class="r"><span class="lbl">SC底部（賣盤竭盡）</span><span class="val">$'+tr.sc.l.toFixed(2)+'　'+tr.sc.date+'</span></div>';
+    html+='<div class="r"><span class="lbl">AR高點（TR上限）</span><span class="val">$'+tr.arHigh.toFixed(2)+'</span></div>';
+    html+='<div class="r"><span class="lbl">TR時間</span><span class="val">'+tr.trStartDate+' ~ '+tr.trEndDate+'（'+res.trDays+'天）</span></div>';
+    html+='<div class="r"><span class="lbl">TR狀態</span><span class="val">'+(tr.trEnded?'✅ 已突破（上漲中）':'🔄 仍在TR內震盪')+'</span></div>';
+    html+='<div class="r"><span class="lbl">現價</span><span class="val">$'+res.currentPrice+'</span></div>';
+    html+='<div class="r"><span class="lbl">OBV趨勢</span><span class="val">'+(res.obvRising?'📈 上升（吸籌跡象）':'📉 下降')+'</span></div>';
+    html+='</div>';
+
+    if(res.accumDays.length>0){
+      html+='<div style="font-size:12px;font-weight:600;color:#0066bb;margin:8px 0 5px;">🔍 TR內吸籌訊號（'+res.accumDays.length+'個）</div>';
+      res.accumDays.forEach(ev=>{
+        html+='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:12px;">';
+        html+='<span style="color:#888;min-width:82px;">'+ev.date+'</span>';
+        html+='<span style="font-weight:600;">$'+ev.price+'</span>';
+        html+='<span style="color:#888;font-size:11px;">量×'+ev.vr+'</span>';
+        ev.signals.split('+').forEach(s=>{
+          var c=s.includes('OBV')?'tb':s.includes('影')?'tg':'to';
+          html+='<span class="tag '+c+'">'+s+'</span>';
+        });
+        html+='</div>';
+      });
+    } else {
+      html+='<div style="font-size:12px;color:#999;padding:8px 0;">TR內未偵測到明確吸籌訊號</div>';
+    }
+
+    html+='<div style="margin-top:12px;">';
+    html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">';
+    html+='<span style="color:#666;">🐋 籌碼完成度（TR內）</span>';
+    html+='<span style="font-weight:700;color:#0066bb;">'+res.chip+'%</span></div>';
+    html+='<div class="bar-wrap"><div class="bar-fill '+cc+'" style="width:'+res.chip+'%"></div></div></div>';
+    html+='<div class="total"><div class="num">'+res.chip+'%</div>';
+    html+='<div class="sub">'+msg+'</div></div></div>';
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<div class="err">❌ '+e.message+'</div>';
+  }
+}
+analyze();
+</script>
+
+</body>
+</html>
