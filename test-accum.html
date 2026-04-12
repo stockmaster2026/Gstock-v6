@@ -1,1 +1,582 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個股深度分析</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0f0f12;font-family:‘Noto Sans TC’,sans-serif;padding:16px;min-height:100vh;}
+
+.header{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+.header h2{color:#e8e0cc;font-size:16px;font-weight:700;letter-spacing:2px;}
+.dot{width:8px;height:8px;border-radius:50%;background:#c8a84b;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.search-row{display:flex;gap:8px;margin-bottom:20px;}
+.sym-input{
+background:#1a1a22;border:1px solid #2e2e3a;border-radius:10px;
+padding:10px 14px;font-size:16px;color:#e8e0cc;width:110px;
+font-family:‘DM Mono’,monospace;text-transform:uppercase;
+outline:none;transition:border-color 0.2s;
+}
+.sym-input:focus{border-color:#c8a84b;}
+.btn{
+background:#c8a84b;color:#0f0f12;border:none;border-radius:10px;
+padding:10px 22px;font-size:15px;font-weight:700;cursor:pointer;
+font-family:‘Noto Sans TC’,sans-serif;transition:opacity 0.2s;
+}
+.btn:hover{opacity:0.85;}
+
+/* Card */
+.card{background:#16161e;border:1px solid #2a2a35;border-radius:16px;overflow:hidden;margin-bottom:12px;}
+.card-header{padding:16px 18px 12px;border-bottom:1px solid #2a2a35;}
+.ticker-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+.ticker{font-family:‘DM Mono’,monospace;font-size:22px;font-weight:500;color:#e8e0cc;}
+.price{font-family:‘DM Mono’,monospace;font-size:16px;color:#8a8a9a;}
+
+/* 笑臉評分 */
+.smiles-section{padding:16px 18px;border-bottom:1px solid #1e1e28;}
+.smiles-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.smiles{font-size:26px;letter-spacing:1px;}
+.smiles-score{font-family:‘DM Mono’,monospace;font-size:13px;color:#5a5a6a;}
+.smiles-label{font-size:12px;color:#8a8a9a;margin-bottom:8px;}
+.progress-bar{height:4px;background:#1e1e28;border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+
+/* 各指標區塊 */
+.section{padding:14px 18px;border-bottom:1px solid #1a1a22;}
+.section:last-child{border-bottom:none;}
+.section-title{font-size:10px;font-weight:700;letter-spacing:2px;color:#5a5a6a;margin-bottom:10px;text-transform:uppercase;}
+
+.row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;}
+.row-label{color:#6a6a7a;}
+.row-val{font-family:‘DM Mono’,monospace;font-weight:500;color:#c8c8d8;}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;font-family:‘DM Mono’,monospace;}
+.badge-up{background:rgba(80,200,120,0.15);color:#50c878;}
+.badge-dn{background:rgba(220,80,80,0.15);color:#dc5050;}
+.badge-neu{background:rgba(180,180,100,0.15);color:#b4b464;}
+.badge-warn{background:rgba(220,150,50,0.15);color:#dc9632;}
+
+/* 籌碼結構 */
+.chip-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:8px 0;gap:2px;}
+.chip-inst{background:#4a9eff;}
+.chip-ins{background:#c8a84b;}
+.chip-ret{background:#dc5050;}
+.chip-legend{display:flex;gap:12px;font-size:10px;color:#6a6a7a;}
+.chip-legend span{display:flex;align-items:center;gap:4px;}
+.chip-dot{width:6px;height:6px;border-radius:50%;}
+
+/* 歷史趨勢 */
+.history-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.hist-item{background:#1e1e28;border-radius:6px;padding:4px 8px;font-size:10px;font-family:‘DM Mono’,monospace;}
+.hist-date{color:#5a5a6a;}
+.hist-val{color:#c8c8d8;}
+.hist-arrow{color:#50c878;}
+.hist-arrow.dn{color:#dc5050;}
+
+/* 內部人士 */
+.insider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+.insider-box{background:#1e1e28;border-radius:8px;padding:10px;text-align:center;}
+.insider-num{font-family:‘DM Mono’,monospace;font-size:20px;font-weight:500;}
+.insider-num.buy{color:#50c878;}
+.insider-num.sell{color:#dc5050;}
+.insider-sub{font-size:10px;color:#6a6a7a;margin-top:2px;}
+
+/* 綜合判斷 */
+.verdict{padding:16px 18px;margin:0;}
+.verdict-box{border-radius:12px;padding:14px 16px;text-align:center;}
+.verdict-title{font-size:17px;font-weight:900;margin-bottom:6px;}
+.verdict-pos{background:rgba(80,200,120,0.1);border:1px solid rgba(80,200,120,0.3);}
+.verdict-pos .verdict-title{color:#50c878;}
+.verdict-cau{background:rgba(200,168,75,0.1);border:1px solid rgba(200,168,75,0.3);}
+.verdict-cau .verdict-title{color:#c8a84b;}
+.verdict-warn{background:rgba(220,150,50,0.1);border:1px solid rgba(220,150,50,0.3);}
+.verdict-warn .verdict-title{color:#dc9632;}
+.verdict-neg{background:rgba(220,80,80,0.08);border:1px solid rgba(220,80,80,0.25);}
+.verdict-neg .verdict-title{color:#dc5050;}
+.verdict-sub{font-size:12px;color:#8a8a9a;line-height:1.7;}
+
+.loading{color:#5a5a6a;font-size:13px;padding:30px;text-align:center;}
+.err{color:#dc5050;font-size:13px;padding:20px;text-align:center;}
+
+.spin{display:inline-block;width:16px;height:16px;border:2px solid #2a2a35;border-top-color:#c8a84b;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="dot"></div>
+  <h2>個股深度分析</h2>
+</div>
+
+<div class="search-row">
+  <input class="sym-input" id="sym" value="LUNR" placeholder="代號">
+  <button class="btn" onclick="analyze()">分析</button>
+</div>
+
+<div id="result"></div>
+
+<script>
+const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+const PROXY='https://corsproxy.io/?';
+
+// ── 工具函數 ──
+function enc(url){return PROXY+encodeURIComponent(url);}
+
+async function fetchYahoo(sym){
+  const r=await fetch(enc(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`));
+  const d=await r.json();
+  return d.chart.result[0];
+}
+async function fetchFinnhub(ep){
+  const r=await fetch(`https://finnhub.io/api/v1${ep}&token=${K}`);
+  return r.json();
+}
+async function fetchOwnership(sym){
+  // WallStreetZen scrape via corsproxy
+  try{
+    const r=await fetch(enc(`https://www.wallstreetzen.com/stocks/us/nasdaq/${sym.toLowerCase()}/ownership`));
+    const txt=await r.text();
+    // 嘗試抓取數字
+    const instMatch=txt.match(/(\d+\.?\d*)\s*%\s*institutional/i);
+    const retMatch=txt.match(/(\d+\.?\d*)\s*%\s*retail/i);
+    const insMatch=txt.match(/(\d+\.?\d*)\s*%\s*insider/i);
+    if(instMatch||retMatch){
+      return{
+        institutional:instMatch?parseFloat(instMatch[1]):null,
+        retail:retMatch?parseFloat(retMatch[1]):null,
+        insider:insMatch?parseFloat(insMatch[1]):null,
+        source:'WallStreetZen'
+      };
+    }
+  }catch(e){}
+  // 若抓不到就用NYSE路徑試試
+  try{
+    const r=await fetch(enc(`https://www.wallstreetzen.com/stocks/us/nyse/${sym.toLowerCase()}/ownership`));
+    const txt=await r.text();
+    const instMatch=txt.match(/(\d+\.?\d*)\s*%\s*institutional/i);
+    const retMatch=txt.match(/(\d+\.?\d*)\s*%\s*retail/i);
+    const insMatch=txt.match(/(\d+\.?\d*)\s*%\s*insider/i);
+    if(instMatch||retMatch){
+      return{
+        institutional:instMatch?parseFloat(instMatch[1]):null,
+        retail:retMatch?parseFloat(retMatch[1]):null,
+        insider:insMatch?parseFloat(insMatch[1]):null,
+        source:'WallStreetZen'
+      };
+    }
+  }catch(e){}
+  return null;
+}
+
+function buildValid(y){
+  const ts=y.timestamp,q=y.indicators.quote[0],v=[];
+  for(let i=0;i<ts.length;i++)
+    if(q.close[i]&&q.volume[i]&&q.high[i]&&q.low[i]&&q.open[i])
+      v.push({c:q.close[i],o:q.open[i],h:q.high[i],l:q.low[i],v:q.volume[i],t:ts[i]});
+  return v;
+}
+
+function calcOBV(valid){
+  let obv=0;const arr=[0];
+  for(let i=1;i<valid.length;i++){
+    if(valid[i].c>valid[i-1].c) obv+=valid[i].v;
+    else if(valid[i].c<valid[i-1].c) obv-=valid[i].v;
+    arr.push(obv);
+  }
+  return arr;
+}
+
+function calcMACD(valid){
+  const closes=valid.map(d=>d.c);
+  function ema(arr,k){
+    const r=[arr[0]],m=2/(k+1);
+    for(let i=1;i<arr.length;i++) r.push(arr[i]*m+r[i-1]*(1-m));
+    return r;
+  }
+  const e12=ema(closes,12),e26=ema(closes,26);
+  const ml=e12.map((v,i)=>v-e26[i]);
+  const sig=ema(ml,9);
+  const hist=ml.map((v,i)=>v-sig[i]);
+  const m=valid.length;
+  return{
+    hist:hist[m-1],histPrev:hist[m-2],
+    macdLine:ml[m-1],macdPrev:ml[m-3],
+    aboveZero:ml[m-1]>0,
+    histShrink:Math.abs(hist[m-1])<Math.abs(hist[m-2]),
+    macdDown:ml[m-1]<ml[m-3]
+  };
+}
+
+function findTR(valid){
+  const m=valid.length,cur=valid[m-1].c;
+  // 找出貨高點
+  let distTop=null;
+  for(let i=Math.max(10,m-180);i<m-20;i++){
+    let isTop=true;
+    for(let j=i-5;j<=i+5;j++){
+      if(j===i||j<0||j>=m) continue;
+      if(valid[j].h>valid[i].h){isTop=false;break;}
+    }
+    if(!isTop) continue;
+    const tp=valid[i].h;
+    let mn=tp;
+    for(let j=i+1;j<Math.min(i+60,m);j++) if(valid[j].l<mn) mn=valid[j].l;
+    const dd=(tp-mn)/tp*100;
+    if(dd>=20&&tp>valid[Math.max(0,i-30)].c*1.25)
+      if(!distTop||tp>distTop.price)
+        distTop={idx:i,price:tp,date:new Date(valid[i].t*1000).toISOString().slice(0,10),dd:Math.round(dd)};
+  }
+  const start=distTop?distTop.idx:Math.max(0,m-60);
+  // 找SC
+  let sc=null;
+  for(let i=start+3;i<m-3;i++){
+    const d=valid[i];
+    const maxV=Math.max(...valid.slice(Math.max(0,i-20),i).map(x=>x.v));
+    const drop=(d.c-valid[i-1].c)/valid[i-1].c*100;
+    const lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(d.v>maxV*0.5&&drop<-0.5&&rng>0&&lw>rng*0.1)
+      if(!sc||d.l<sc.l) sc={idx:i,l:d.l,date:new Date(d.t*1000).toISOString().slice(0,10)};
+  }
+  if(!sc||cur<sc.l*0.88){
+    let mi=start;
+    for(let i=start;i<m;i++) if(valid[i].l<valid[mi].l) mi=i;
+    sc={idx:mi,l:valid[mi].l,date:new Date(valid[mi].t*1000).toISOString().slice(0,10)};
+  }
+  // AR
+  let arH=sc.l*1.02,arIdx=sc.idx+1;
+  for(let i=sc.idx+1;i<Math.min(sc.idx+10,m);i++)
+    if(valid[i].h>arH){arH=valid[i].h;arIdx=i;}
+  const trTop=arH*1.15;
+  // TR結束
+  let trEnd=m-1,trEnded=false,bc=0;
+  for(let i=arIdx+1;i<m;i++){
+    if(valid[i].c>trTop){bc++;if(bc>=2){trEnd=i-1;trEnded=true;break;}}
+    else bc=0;
+  }
+  return{sc,arH,trTop,trEnd,trEnded,distTop};
+}
+
+function detectAccum(valid){
+  const m=valid.length;
+  const tr=findTR(valid);
+  const obvArr=calcOBV(valid);
+  const avgVol=valid.slice(-60).reduce((s,d)=>s+d.v,0)/Math.min(60,m);
+  let n=0;
+  for(let i=tr.sc.idx+1;i<=tr.trEnd;i++){
+    const d=valid[i];
+    if(d.c>tr.trTop||d.c<tr.sc.l*0.93) continue;
+    let s=0;
+    if(i>=3&&d.c<valid[i-3].c&&obvArr[i]>obvArr[i-3]) s++;
+    const body=Math.abs(d.c-d.o),lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(rng>0&&lw>body*0.8&&(d.c-d.l)/rng>0.4) s++;
+    const vr=d.v/avgVol;
+    if(vr>0.8&&Math.abs(d.c-d.o)/d.o*100<3) s++;
+    if(i>=10){
+      const p10=valid.slice(i-10,i);
+      const mx=Math.max(...p10.map(x=>x.h)),mn=Math.min(...p10.map(x=>x.l));
+      if(mn>0&&(mx-mn)/mn*100<25&&obvArr[i]>obvArr[i-10]) s++;
+    }
+    if(d.l<tr.sc.l*1.08&&d.c>tr.sc.l*0.97&&i>=1&&obvArr[i]>=obvArr[i-1]) s++;
+    if(s>=2) n++;
+  }
+  const cur=valid[m-1].c;
+  const obvRising=obvArr[m-1]>obvArr[Math.max(0,m-20)];
+  // 突破後資訊
+  let daysAfter=0,pctAfter=0,breakPrice=0;
+  if(tr.trEnded){
+    daysAfter=m-1-tr.trEnd;
+    breakPrice=valid[Math.min(tr.trEnd+1,m-1)].c;
+    pctAfter=Math.round((cur/breakPrice-1)*100);
+  }
+  // 笑臉
+  let smiles;
+  if(tr.trEnded&&n>=6) smiles=6;
+  else if(tr.trEnded&&n>=3) smiles=5;
+  else if(tr.trEnded&&n<3) smiles=3;
+  else if(!tr.trEnded&&n>=5&&obvRising) smiles=4;
+  else if(!tr.trEnded&&n>=2) smiles=2;
+  else smiles=0;
+
+  // MA5方向
+  const ma5=valid.slice(-5).reduce((s,d)=>s+d.c,0)/5;
+  const ma5p=valid.slice(-6,-1).reduce((s,d)=>s+d.c,0)/5;
+  const ma5up=ma5>ma5p;
+  // 量能
+  const avgVol5=valid.slice(-5).reduce((s,d)=>s+d.v,0)/5;
+  const avgVol20=valid.slice(-20).reduce((s,d)=>s+d.v,0)/20;
+  const volShrink=avgVol5<avgVol20*0.75;
+
+  return{tr,smiles,n,obvRising,cur:cur.toFixed(2),
+    scPrice:tr.sc.l.toFixed(2),scDate:tr.sc.date,
+    trTop:tr.trTop.toFixed(2),
+    daysAfter,pctAfter,breakPrice:breakPrice.toFixed(2),
+    ma5up,volShrink,macd:calcMACD(valid)};
+}
+
+// localStorage 籌碼歷史
+function saveOwnershipHistory(sym,data){
+  const key=`chip_hist_${sym}`;
+  let hist=JSON.parse(localStorage.getItem(key)||'[]');
+  const today=new Date().toISOString().slice(0,10);
+  // 避免同一天重複記錄
+  hist=hist.filter(h=>h.date!==today);
+  hist.push({date:today,...data});
+  if(hist.length>8) hist=hist.slice(-8);
+  localStorage.setItem(key,JSON.stringify(hist));
+  return hist;
+}
+function getOwnershipHistory(sym){
+  return JSON.parse(localStorage.getItem(`chip_hist_${sym}`)||'[]');
+}
+
+// 主分析
+async function analyze(){
+  const sym=document.getElementById('sym').value.toUpperCase().trim();
+  if(!sym) return;
+  const el=document.getElementById('result');
+  el.innerHTML=`<div class="loading"><span class="spin"></span>分析 ${sym}，抓取多源數據中...</div>`;
+
+  try{
+    // 並行抓取
+    const [yahoo,insiderRaw,mspr,shortRaw]=await Promise.all([
+      fetchYahoo(sym),
+      fetchFinnhub(`/stock/insider-transactions?symbol=${sym}`),
+      fetchFinnhub(`/stock/insider-sentiment?symbol=${sym}&from=2024-01-01&to=2099-01-01`),
+      fetchFinnhub(`/stock/fund-ownership?symbol=${sym}&limit=1`)
+    ]);
+
+    const valid=buildValid(yahoo);
+    const acc=detectAccum(valid);
+
+    // 內部人士統計（近180天）
+    const sixMoAgo=Date.now()/1000-180*86400;
+    const trades=(insiderRaw.data||[]).filter(t=>new Date(t.transactionDate).getTime()/1000>sixMoAgo);
+    const buys=trades.filter(t=>t.change>0).length;
+    const sells=trades.filter(t=>t.change<0).length;
+    const sellAmt=trades.filter(t=>t.change<0).reduce((s,t)=>s+Math.abs(t.change*(t.transactionPrice||acc.cur)),0);
+
+    // MSPR
+    const msprData=mspr.data||[];
+    const latestMspr=msprData.length>0?msprData[msprData.length-1].monthlyMSPR:null;
+
+    // 籌碼結構
+    const ownerData=await fetchOwnership(sym);
+    let chipHist=[];
+    if(ownerData&&(ownerData.institutional||ownerData.retail)){
+      chipHist=saveOwnershipHistory(sym,ownerData);
+    } else {
+      chipHist=getOwnershipHistory(sym);
+    }
+
+    // ── 評分系統 ──
+    let score=0; // 0-8分
+    // 吸籌（0-2分）
+    if(acc.smiles>=5) score+=2;
+    else if(acc.smiles>=3) score+=1;
+    // 動能（0-2分）
+    const macdOk=acc.macd.aboveZero&&!acc.macd.macdDown;
+    const volOk=!acc.volShrink;
+    if(acc.ma5up&&macdOk&&volOk) score+=2;
+    else if(acc.ma5up||macdOk) score+=1;
+    // 籌碼（0-2分）
+    const retail=ownerData?.retail||chipHist[chipHist.length-1]?.retail||null;
+    const inst=ownerData?.institutional||chipHist[chipHist.length-1]?.institutional||null;
+    if(retail!==null){
+      if(retail<20) score+=2;
+      else if(retail<35) score+=1;
+    }
+    // 內部人（0-2分）
+    if(buys>sells&&buys>0) score+=2;
+    else if(sells<=2&&buys>=1) score+=1;
+
+    // 綜合判斷
+    let verdictClass,verdictTitle,verdictSub,position;
+    if(score>=7){
+      verdictClass='verdict-pos';verdictTitle='✅ 強力信號，可建倉 50–70%';
+      verdictSub='四項指標全面正面，主力控盤且籌碼乾淨，可積極佈局。';
+      position='50–70%';
+    } else if(score>=5){
+      verdictClass='verdict-cau';verdictTitle='🟡 信號偏多，輕倉試探 20–30%';
+      verdictSub='多數指標正面但有瑕疵，可小量試探，等確認訊號再加碼。';
+      position='20–30%';
+    } else if(score>=3){
+      verdictClass='verdict-warn';verdictTitle='⚠️ 訊號混亂，最多試水 10%';
+      verdictSub='正負訊號混雜，若要參與控制在一成以內，嚴設停損。';
+      position='最多10%';
+    } else {
+      verdictClass='verdict-neg';verdictTitle='❌ 暫時觀望，空手等待';
+      verdictSub='多項指標出現警訊，目前不宜進場，等待訊號改善。';
+      position='空手';
+    }
+
+    // ── 動能狀態白話文 ──
+    let moText='';
+    if(acc.ma5up&&!acc.macd.macdDown&&!acc.volShrink) moText='主力持續推升，動能強勁';
+    else if(!acc.ma5up&&acc.volShrink&&acc.macd.histShrink) moText='MA5下彎+量縮+MACD走弱，主力暫停觀望';
+    else if(acc.ma5up&&acc.volShrink) moText='方向向上但量縮，動能稍弱';
+    else if(!acc.ma5up) moText='MA5下彎，短期走弱，等待企穩';
+    else moText='動能中性，持續觀察';
+
+    // ── 籌碼白話文 ──
+    let chipText='';
+    if(retail===null) chipText='暫無數據（季度更新）';
+    else if(retail<20) chipText=`散戶僅${retail}%，主力高度控盤，拉抬意願強`;
+    else if(retail<35) chipText=`散戶${retail}%，尚在合理範圍，可觀察`;
+    else if(retail<55) chipText=`散戶${retail}%，偏高，主力拉抬難度加大`;
+    else chipText=`散戶高達${retail}%，主力難以有效拉抬，謹慎`;
+
+    // ── 內部人士白話文 ──
+    let insiderText='';
+    if(buys===0&&sells===0) insiderText='近半年無明顯內部人交易';
+    else if(buys>sells) insiderText=`買入${buys}次 > 賣出${sells}次，高層看好`;
+    else if(sells>buys*3) insiderText=`賣出${sells}次遠多於買入${buys}次，高層大量出脫，謹慎！`;
+    else insiderText=`買入${buys}次，賣出${sells}次，偏中性`;
+
+    // ── 渲染 HTML ──
+    const smileStr=acc.smiles>0?'😊'.repeat(acc.smiles):'—';
+    const smilePct=Math.round(acc.smiles/6*100);
+    const smileColor=acc.smiles>=5?'#50c878':acc.smiles>=3?'#c8a84b':'#dc5050';
+
+    let html=`<div class="card">
+      <div class="card-header">
+        <div class="ticker-row">
+          <span class="ticker">${sym}</span>
+          <span class="price">$${acc.cur}</span>
+        </div>
+      </div>
+
+      <!-- 吸籌強度 -->
+      <div class="smiles-section">
+        <div class="smiles-row">
+          <span class="smiles">${smileStr}</span>
+          <span class="smiles-score">${acc.smiles}/6</span>
+        </div>
+        <div class="smiles-label">吸籌強度：${
+          acc.smiles===6?'吸籌滿格':acc.smiles===5?'吸籌後突破':
+          acc.smiles===4?'吸籌進行中':acc.smiles===3?'突破但吸籌少':
+          acc.smiles===2?'輕微吸籌':'無明顯吸籌'
+        }（TR內偵測 ${acc.n} 個主力買入訊號）</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${smilePct}%;background:${smileColor};"></div></div>
+      </div>
+
+      <!-- 技術動能 -->
+      <div class="section">
+        <div class="section-title">📈 技術動能</div>
+        <div class="row">
+          <span class="row-label">主力成本底部</span>
+          <span class="row-val">$${acc.scPrice} <span style="color:#5a5a6a;font-size:10px;">${acc.scDate}</span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">TR突破上限</span>
+          <span class="row-val">$${acc.trTop}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">TR狀態</span>
+          <span class="row-val">${acc.tr.trEnded?`✅ 突破後第 ${acc.daysAfter} 天，漲 ${acc.pctAfter}%`:'🔄 仍在底部震盪'}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">MA5方向</span>
+          <span class="badge ${acc.ma5up?'badge-up':'badge-dn'}">${acc.ma5up?'↑ 向上':'↓ 下彎'}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">MACD動能</span>
+          <span class="badge ${acc.macd.aboveZero&&!acc.macd.histShrink?'badge-up':acc.macd.histShrink?'badge-warn':'badge-dn'}">
+            ${acc.macd.aboveZero?(acc.macd.histShrink?'零軸上但柱縮':'強勢'):(acc.macd.macdDown?'零軸下走弱':'觀察中')}
+          </span>
+        </div>
+        <div class="row">
+          <span class="row-label">近期量能</span>
+          <span class="badge ${acc.volShrink?'badge-warn':'badge-up'}">${acc.volShrink?'量縮（主力觀望）':'量能正常'}</span>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#8a8a9a;line-height:1.6;">${moText}</div>
+      </div>
+
+      <!-- 籌碼結構 -->
+      <div class="section">
+        <div class="section-title">📊 籌碼結構（季度數據）</div>`;
+
+    if(inst!==null||retail!==null){
+      const i2=inst||0,r2=retail||0,ins2=ownerData?.insider||0;
+      const tot=Math.min(i2+r2+ins2,100);
+      html+=`
+        <div class="chip-bar">
+          <div class="chip-inst" style="width:${i2/tot*100}%;"></div>
+          <div class="chip-ins" style="width:${ins2/tot*100}%;"></div>
+          <div class="chip-ret" style="width:${r2/tot*100}%;"></div>
+        </div>
+        <div class="chip-legend">
+          <span><div class="chip-dot" style="background:#4a9eff;"></div>機構 ${i2}%</span>
+          <span><div class="chip-dot" style="background:#c8a84b;"></div>內部人 ${ins2}%</span>
+          <span><div class="chip-dot" style="background:#dc5050;"></div>散戶 ${r2}%</span>
+        </div>`;
+    }
+
+    html+=`<div style="margin-top:8px;font-size:11px;color:#8a8a9a;line-height:1.6;">${chipText}</div>`;
+
+    // 歷史趨勢
+    if(chipHist.length>1){
+      html+=`<div style="font-size:10px;color:#5a5a6a;margin-top:10px;margin-bottom:4px;">歷史變化</div>
+      <div class="history-row">`;
+      chipHist.slice(-5).forEach((h,i2)=>{
+        const prev=chipHist[i2-1];
+        const retV=h.retail||'?';
+        const arrow=prev&&h.retail&&prev.retail?(h.retail<prev.retail?'↓':'↑'):'';
+        const arrowCls=prev&&h.retail&&prev.retail?(h.retail<prev.retail?'hist-arrow':'hist-arrow dn'):'';
+        html+=`<div class="hist-item">
+          <div class="hist-date">${h.date.slice(5)}</div>
+          <div class="hist-val">散戶 ${retV}% <span class="${arrowCls}">${arrow}</span></div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+
+    // 內部人士
+    html+=`
+      <div class="section">
+        <div class="section-title">👔 內部人士交易（近6個月）</div>
+        <div class="insider-grid">
+          <div class="insider-box">
+            <div class="insider-num buy">${buys}</div>
+            <div class="insider-sub">買入次數</div>
+          </div>
+          <div class="insider-box">
+            <div class="insider-num sell">${sells}</div>
+            <div class="insider-sub">賣出次數</div>
+          </div>
+        </div>`;
+    if(sellAmt>0) html+=`<div class="row" style="margin-top:8px;"><span class="row-label">估計套現金額</span><span class="row-val" style="color:#dc5050;">$${(sellAmt/1e6).toFixed(1)}M</span></div>`;
+    if(latestMspr!==null) html+=`<div class="row"><span class="row-label">內部人情緒 MSPR</span><span class="badge ${latestMspr>10?'badge-up':latestMspr<-10?'badge-dn':'badge-neu'}">${latestMspr>10?'看多':'latestMspr<-10?看空':'中性'} (${latestMspr.toFixed(0)})</span></div>`;
+    html+=`<div style="margin-top:8px;font-size:11px;color:#8a8a9a;line-height:1.6;">${insiderText}</div>
+      </div>
+
+      <!-- 綜合判斷 -->
+      <div class="verdict">
+        <div class="verdict-box ${verdictClass}">
+          <div class="verdict-title">${verdictTitle}</div>
+          <div class="verdict-sub">${verdictSub}</div>
+        </div>
+      </div>
+    </div>`;
+
+    el.innerHTML=html;
+
+  }catch(e){
+    el.innerHTML=`<div class="err">❌ 分析失敗：${e.message}</div>`;
+  }
+}
+
+analyze();
+</script>
+
+</body>
+</html>
