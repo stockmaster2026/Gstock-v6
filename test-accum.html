@@ -1,1 +1,264 @@
 
+
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>吸籌偵測 v6</title>
+<style>
+body{background:#f5e8a0;font-family:sans-serif;padding:16px;margin:0;}
+h2{color:#1a1a2e;margin-bottom:12px;font-size:17px;}
+.row{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
+input{width:90px;border:1.5px solid #d4b800;border-radius:8px;padding:8px;font-size:15px;text-transform:uppercase;}
+button{background:#0066bb;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:15px;cursor:pointer;}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,0.08);}
+.ticker{font-family:monospace;font-size:20px;font-weight:900;color:#1a1a2e;margin-bottom:12px;}
+.smiles{font-size:28px;letter-spacing:2px;margin-bottom:4px;}
+.smile-label{font-size:12px;color:#888;margin-bottom:14px;}
+.info-box{border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.ib-blue{background:rgba(0,102,187,0.07);border:1px solid rgba(0,102,187,0.2);}
+.ib-green{background:rgba(0,153,68,0.07);border:1px solid rgba(0,153,68,0.2);}
+.ib-yellow{background:rgba(204,153,0,0.07);border:1px solid rgba(204,153,0,0.2);}
+.ib-red{background:rgba(204,17,51,0.07);border:1px solid rgba(204,17,51,0.15);}
+.ib-gray{background:rgba(100,100,100,0.06);border:1px solid rgba(100,100,100,0.15);}
+.info-row{display:flex;align-items:flex-start;gap:8px;font-size:13px;margin-bottom:6px;}
+.info-row:last-child{margin-bottom:0;}
+.info-icon{width:20px;flex-shrink:0;}
+.info-text{color:#2a2a3a;line-height:1.5;}
+.advice-box{border-radius:10px;padding:14px;margin-top:4px;text-align:center;}
+.ab-green{background:rgba(0,153,68,0.1);border:2px solid rgba(0,153,68,0.35);}
+.ab-yellow{background:rgba(204,153,0,0.1);border:2px solid rgba(204,153,0,0.3);}
+.ab-orange{background:rgba(221,102,0,0.1);border:2px solid rgba(221,102,0,0.3);}
+.ab-red{background:rgba(204,17,51,0.08);border:2px solid rgba(204,17,51,0.25);}
+.ab-gray{background:rgba(100,100,100,0.07);border:2px solid rgba(100,100,100,0.2);}
+.advice-title{font-size:16px;font-weight:800;margin-bottom:4px;}
+.at-green{color:#009944;} .at-yellow{color:#aa7700;} .at-orange{color:#cc5500;} .at-red{color:#cc1133;} .at-gray{color:#666;}
+.advice-sub{font-size:12px;color:#666;line-height:1.6;}
+.sp{display:inline-block;width:20px;height:20px;border:3px solid #ddd;border-top:3px solid #0066bb;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.err{color:red;font-size:13px;padding:10px;}
+</style>
+</head>
+<body>
+<h2>🐋 吸籌強度分析</h2>
+<div class="row">
+  <input id="sym" value="LUNR" placeholder="代號">
+  <button onclick="analyze()">分析</button>
+</div>
+<div id="result"></div>
+
+<script>
+const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+
+async function fetchYahoo(t){
+  var r=await fetch('https://corsproxy.io/?'+encodeURIComponent(
+    'https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1y'));
+  return (await r.json()).chart.result[0];
+}
+async function fetchFloat(t){
+  var r=await fetch('https://finnhub.io/api/v1/stock/profile2?symbol='+t+'&token='+K);
+  var p=await r.json();
+  return p.shareOutstanding?p.shareOutstanding*1e6:0;
+}
+function buildValid(y){
+  var ts=y.timestamp,q=y.indicators.quote[0],v=[];
+  for(var i=0;i<ts.length;i++)
+    if(q.close[i]&&q.volume[i]&&q.high[i]&&q.low[i]&&q.open[i])
+      v.push({c:q.close[i],o:q.open[i],h:q.high[i],l:q.low[i],v:q.volume[i],t:ts[i]});
+  return v;
+}
+function calcOBV(valid){
+  var obv=0,arr=[0];
+  for(var i=1;i<valid.length;i++){
+    if(valid[i].c>valid[i-1].c) obv+=valid[i].v;
+    else if(valid[i].c<valid[i-1].c) obv-=valid[i].v;
+    arr.push(obv);
+  }
+  return arr;
+}
+function findTR(valid){
+  var m=valid.length,cur=valid[m-1].c;
+  var sc=null;
+  for(var i=Math.max(5,m-90);i<m-3;i++){
+    var d=valid[i];
+    var maxV=Math.max(...valid.slice(Math.max(0,i-20),i).map(x=>x.v));
+    var drop=(d.c-valid[i-1].c)/valid[i-1].c*100;
+    var lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(d.v>maxV*0.5&&drop<-0.5&&rng>0&&lw>rng*0.1)
+      if(!sc||d.l<sc.l) sc={idx:i,l:d.l,date:new Date(d.t*1000).toISOString().slice(0,10)};
+  }
+  if(!sc||cur<sc.l*0.88){
+    var mi=Math.max(0,m-45);
+    for(var i=mi;i<m;i++) if(valid[i].l<valid[mi].l) mi=i;
+    sc={idx:mi,l:valid[mi].l,date:new Date(valid[mi].t*1000).toISOString().slice(0,10)};
+  }
+  var arHigh=sc.l*1.02,arIdx=sc.idx+1;
+  for(var i=sc.idx+1;i<Math.min(sc.idx+10,m);i++)
+    if(valid[i].h>arHigh){arHigh=valid[i].h;arIdx=i;}
+  var trTop=arHigh*1.15,trEndIdx=m-1,trEnded=false,bc=0;
+  for(var i=arIdx+1;i<m;i++){
+    if(valid[i].c>trTop){bc++;if(bc>=2){trEndIdx=i-1;trEnded=true;break;}}
+    else bc=0;
+  }
+  return{sc,arHigh,trTop,trEndIdx,trEnded};
+}
+function detect(valid){
+  var m=valid.length;
+  var tr=findTR(valid);
+  var obvArr=calcOBV(valid);
+  var avgVol=valid.slice(-60).reduce((s,d)=>s+d.v,0)/Math.min(60,m);
+  var n=0, accumDays=[];
+  for(var i=tr.sc.idx+1;i<=tr.trEndIdx;i++){
+    var d=valid[i];
+    if(d.c>tr.trTop||d.c<tr.sc.l*0.93) continue;
+    var score=0,signals=[];
+    if(i>=3&&d.c<valid[i-3].c&&obvArr[i]>obvArr[i-3]){score++;signals.push('OBV背離');}
+    var body=Math.abs(d.c-d.o),lw=Math.min(d.c,d.o)-d.l,rng=d.h-d.l;
+    if(rng>0&&lw>body*0.8&&(d.c-d.l)/rng>0.4){score++;signals.push('長下影線');}
+    var vr=d.v/avgVol;
+    if(vr>0.8&&Math.abs(d.c-d.o)/d.o*100<3){score++;signals.push('量大價穩');}
+    if(i>=10){
+      var p10=valid.slice(i-10,i);
+      var mx=Math.max(...p10.map(x=>x.h)),mn=Math.min(...p10.map(x=>x.l));
+      if(mn>0&&(mx-mn)/mn*100<25&&obvArr[i]>obvArr[i-10]){score++;signals.push('盤整OBV↑');}
+    }
+    if(d.l<tr.sc.l*1.08&&d.c>tr.sc.l*0.97&&i>=1&&obvArr[i]>=obvArr[i-1]){score++;signals.push('測試底部');}
+    if(score>=2){n++;accumDays.push({date:new Date(d.t*1000).toISOString().slice(0,10),price:d.c.toFixed(2),signals:signals.join('+')});}
+  }
+  var obvRising=obvArr[m-1]>obvArr[Math.max(0,m-20)];
+  var cur=valid[m-1].c;
+
+  // 突破後天數和漲幅
+  var daysAfter=0,pctAfter=0,breakPrice=0;
+  if(tr.trEnded){
+    daysAfter=m-1-tr.trEndIdx;
+    breakPrice=valid[Math.min(tr.trEndIdx+1,m-1)].c;
+    pctAfter=Math.round((cur/breakPrice-1)*100);
+  }
+
+  // 笑臉等級
+  var smiles;
+  if(tr.trEnded&&n>=6) smiles=6;
+  else if(tr.trEnded&&n>=3) smiles=5;
+  else if(tr.trEnded&&n<3) smiles=3;
+  else if(!tr.trEnded&&n>=5&&obvRising) smiles=4;
+  else if(!tr.trEnded&&n>=2) smiles=2;
+  else smiles=0;
+
+  return{tr,n,accumDays,smiles,obvRising,
+    cur:cur.toFixed(2),
+    scPrice:tr.sc.l.toFixed(2),scDate:tr.sc.date,
+    trTop:tr.trTop.toFixed(2),
+    daysAfter,pctAfter,breakPrice:breakPrice.toFixed(2)};
+}
+
+async function analyze(){
+  var t=document.getElementById('sym').value.toUpperCase().trim();
+  if(!t) return;
+  var el=document.getElementById('result');
+  el.innerHTML='<div style="padding:20px;"><span class="sp"></span>分析 '+t+'，請稍候...</div>';
+  try{
+    var yahoo=await fetchYahoo(t);
+    var valid=buildValid(yahoo);
+    var r=detect(valid);
+    var tr=r.tr;
+
+    // 笑臉顯示
+    var faceStr=r.smiles>0?'😊'.repeat(r.smiles)+'　('+r.smiles+'/6)':'— (0/6)';
+    var faceLabel=
+      r.smiles===6?'吸籌滿格':
+      r.smiles===5?'吸籌後突破':
+      r.smiles===4?'吸籌進行中':
+      r.smiles===3?'突破但吸籌不足':
+      r.smiles===2?'輕微吸籌跡象':'無明顯吸籌';
+
+    // 進場建議
+    var adviceBox,adviceTitle,adviceTitleClass,adviceSub;
+    if(tr.trEnded){
+      if(r.pctAfter<0){
+        adviceBox='ab-orange';adviceTitleClass='at-orange';
+        adviceTitle='⚠️ 突破後回落中';
+        adviceSub='股價突破成本區後出現回落，觀察是否守住支撐，回落中暫時觀望。';
+      } else if(r.pctAfter<=10){
+        adviceBox='ab-green';adviceTitleClass='at-green';
+        adviceTitle='✅ 剛突破，還有空間';
+        adviceSub='從突破點至今只漲了 '+r.pctAfter+'%，上漲才剛開始，可以考慮進場或小倉試探。';
+      } else if(r.pctAfter<=30){
+        adviceBox='ab-yellow';adviceTitleClass='at-yellow';
+        adviceTitle='🟡 已漲 '+r.pctAfter+'%，小心追高';
+        adviceSub='突破後已漲 '+r.pctAfter+'%，如果想參與，建議等回測突破點附近再進場，不要直接追高。';
+      } else if(r.pctAfter<=60){
+        adviceBox='ab-orange';adviceTitleClass='at-orange';
+        adviceTitle='⚠️ 已漲 '+r.pctAfter+'%，等回測';
+        adviceSub='漲幅已大，直接追買風險高。等股價回測到主力成本區附近再考慮進場。';
+      } else {
+        adviceBox='ab-red';adviceTitleClass='at-red';
+        adviceTitle='❌ 已漲 '+r.pctAfter+'%，過熱不追';
+        adviceSub='漲幅過大，遠離主力成本區。此時追買等於在高位接盤，建議耐心等待大幅回調。';
+      }
+    } else {
+      if(r.smiles>=4){
+        adviceBox='ab-yellow';adviceTitleClass='at-yellow';
+        adviceTitle='⏳ 吸籌中，等突破信號';
+        adviceSub='主力正在底部建倉，但股價還沒突破。等到股價放量突破成本區上方，再考慮進場。';
+      } else {
+        adviceBox='ab-gray';adviceTitleClass='at-gray';
+        adviceTitle='👀 觀望，訊號不足';
+        adviceSub='目前沒有明顯的主力建倉跡象，暫時觀望，等待更清晰的信號出現。';
+      }
+    }
+
+    var html='<div class="card">';
+    html+='<div class="ticker">'+t+'　<span style="font-size:14px;color:#888;font-weight:400;">現價 $'+r.cur+'</span></div>';
+
+    // 笑臉區
+    html+='<div class="smiles">'+faceStr+'</div>';
+    html+='<div class="smile-label">吸籌強度：'+faceLabel+'（TR內偵測到 '+r.n+' 個主力買入訊號）</div>';
+
+    // 主力成本資訊
+    html+='<div class="info-box ib-blue">';
+    html+='<div class="info-row"><span class="info-icon">📍</span><span class="info-text">主力成本區底部：<strong>$'+r.scPrice+'</strong>（'+r.scDate+'確認）</span></div>';
+    html+='<div class="info-row"><span class="info-icon">📊</span><span class="info-text">成本區上限：<strong>$'+r.trTop+'</strong>（突破這裡才算正式啟動）</span></div>';
+    html+='<div class="info-row"><span class="info-icon">'+(r.obvRising?'📈':'📉')+'</span><span class="info-text">OBV資金流向：<strong>'+(r.obvRising?'持續流入，主力在買':'資金流出，主力未明顯建倉')+'</strong></span></div>';
+    html+='</div>';
+
+    // 突破後狀態 或 在TR內
+    if(tr.trEnded){
+      html+='<div class="info-box ib-green">';
+      html+='<div class="info-row"><span class="info-icon">🚀</span><span class="info-text">股價已突破主力成本區，今天是突破後第 <strong>'+r.daysAfter+'</strong> 天</span></div>';
+      html+='<div class="info-row"><span class="info-icon">💰</span><span class="info-text">從突破點 $'+r.breakPrice+' 到現在，上漲了 <strong>'+r.pctAfter+'%</strong></span></div>';
+      html+='</div>';
+    } else {
+      html+='<div class="info-box ib-gray" style="background:rgba(100,100,100,0.05);border:1px solid rgba(100,100,100,0.15);">';
+      html+='<div class="info-row"><span class="info-icon">🔄</span><span class="info-text">股價目前還在主力成本區內震盪，<strong>尚未突破</strong></span></div>';
+      html+='<div class="info-row"><span class="info-icon">⏰</span><span class="info-text">等待股價放量站上 <strong>$'+r.trTop+'</strong> 以上才算突破信號</span></div>';
+      html+='</div>';
+    }
+
+    // 近期吸籌訊號
+    if(r.accumDays.length>0){
+      html+='<div style="font-size:11px;color:#999;margin:8px 0 4px;">📋 TR內吸籌訊號記錄（最近'+Math.min(r.accumDays.length,5)+'筆）</div>';
+      r.accumDays.slice(-5).forEach(d=>{
+        html+='<div style="font-size:11px;color:#666;padding:2px 0;">'+d.date+'　$'+d.price+'　'+d.signals+'</div>';
+      });
+    }
+
+    // 進場建議
+    html+='<div class="advice-box '+adviceBox+'" style="margin-top:12px;">';
+    html+='<div class="advice-title '+adviceTitleClass+'">'+adviceTitle+'</div>';
+    html+='<div class="advice-sub">'+adviceSub+'</div>';
+    html+='</div>';
+
+    html+='</div>';
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<div class="err">❌ '+e.message+'</div>';
+  }
+}
+analyze();
+</script>
+
+</body>
+</html>
