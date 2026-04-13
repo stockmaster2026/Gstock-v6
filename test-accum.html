@@ -1,1 +1,332 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個股深度分析 Light Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#f0f2f5;font-family:'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;}
+.hdr{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
+.hdr h2{font-size:15px;font-weight:700;letter-spacing:2px;color:#8a6e2f;}
+.dot{width:7px;height:7px;border-radius:50%;background:#c8a84b;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.tabs{display:flex;gap:8px;margin-bottom:18px;}
+.tab{flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#aaa;font-size:13px;font-weight:700;text-align:center;}
+.tab.active{background:#c8a84b;color:#fff;border-color:#c8a84b;}
+
+.srow{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
+input.sym{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 14px;font-size:16px;color:#1a1a2e;width:110px;outline:none;}
+.btn{background:#c8a84b;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:15px;font-weight:700;cursor:pointer;}
+
+.switcher{display:flex;gap:8px;margin-bottom:16px;}
+.sw-btn{flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#aaa;font-size:12px;font-weight:700;cursor:pointer;text-align:center;}
+.sw-btn.active{border-color:#c8a84b;color:#8a6e2f;background:#fffaf0;}
+
+.preview-label{background:#fff;border:1px solid #e8e8e8;border-radius:6px;padding:6px 12px;font-size:10px;color:#bbb;text-align:center;margin-bottom:12px;letter-spacing:1px;}
+
+/* 卡片 */
+.card{background:#fff;border:1px solid #e8e8ec;border-radius:16px;margin-bottom:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);}
+
+/* 頂部 */
+.card-top{padding:16px 16px 12px;background:#fff;}
+.tk-row{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+.tk{font-size:24px;font-weight:700;color:#1a1a2e;font-family:monospace;}
+.px{font-size:15px;color:#aaa;}
+.sm-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.sm{font-size:22px;letter-spacing:3px;}
+.sm-score{font-size:13px;color:#bbb;font-family:monospace;}
+.pb{height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden;margin-bottom:5px;}
+.pf{height:100%;border-radius:3px;}
+.sl{font-size:11px;color:#bbb;}
+
+/* 核心三行 */
+.core{border-top:1px solid #f0f0f5;padding:14px 16px;background:#fafafa;}
+.core-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f5;}
+.core-row:last-child{border:none;}
+.core-q{font-size:11px;color:#aaa;letter-spacing:1px;}
+.core-a{font-size:14px;font-weight:700;font-family:monospace;text-align:right;}
+.core-a.green{color:#2ea86e;}
+.core-a.yellow{color:#c8952a;}
+.core-a.blue{color:#3a7bd5;}
+
+/* 技術摘要 */
+.tech-summary{padding:10px 16px;background:#f8f8fb;border-top:1px solid #f0f0f5;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.tech-label{font-size:10px;color:#ccc;margin-right:2px;}
+.tag{display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;margin:1px;}
+.tag-g{background:#edfaf3;color:#2ea86e;border:1px solid #c5eedd;}
+.tag-r{background:#fef0f0;color:#d94f4f;border:1px solid #f5cccc;}
+.tag-y{background:#fffbec;color:#c8952a;border:1px solid #f0dfa0;}
+.tag-n{background:#f5f5f5;color:#aaa;border:1px solid #e8e8e8;}
+
+/* 籌碼摘要 */
+.chip-summary{padding:9px 16px;background:#f5f8ff;border-top:1px solid #eef0f8;display:flex;justify-content:space-between;align-items:center;}
+.chip-label{font-size:10px;color:#ccc;}
+.chip-val{font-size:11px;font-weight:700;}
+
+/* 折疊 */
+.fold-hdr{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;cursor:pointer;border-top:1px solid #f0f0f5;background:#fafafa;}
+.fold-hdr:active{background:#f5f5f5;}
+.fold-title{font-size:10px;letter-spacing:2px;color:#bbb;font-weight:700;}
+.fold-arrow{font-size:10px;color:#ccc;transition:transform .3s;}
+.fold-arrow.open{transform:rotate(180deg);}
+.fold-body{display:none;padding:12px 16px;border-top:1px solid #f5f5f5;background:#fff;}
+.fold-body.open{display:block;}
+.rw{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid #fafafa;}
+.rw:last-child{border:none;}
+.lb{color:#bbb;}
+.vl{font-family:monospace;font-weight:600;color:#333;}
+.bg{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;}
+.gu{background:#edfaf3;color:#2ea86e;}
+.gd{background:#fef0f0;color:#d94f4f;}
+.gw{background:#fffbec;color:#c8952a;}
+
+/* 內部人 */
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
+.ib{background:#f8f8fb;border-radius:8px;padding:10px;text-align:center;border:1px solid #f0f0f5;}
+.inn{font-size:22px;font-weight:700;font-family:monospace;}
+.ib-b .inn{color:#2ea86e;}.ib-s .inn{color:#d94f4f;}
+.is{font-size:10px;color:#bbb;margin-top:2px;}
+
+/* ★ AI 白話文區塊 */
+.ai-block{border-top:2px solid #f5e6c0;background:linear-gradient(135deg,#fffdf5 0%,#fffaf0 100%);}
+.ai-inner{padding:18px 16px;}
+.ai-badge{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e8d48a;border-radius:6px;padding:3px 10px;font-size:10px;color:#c8952a;font-weight:700;margin-bottom:12px;box-shadow:0 1px 4px rgba(200,168,75,.15);}
+.ai-verdict{font-size:17px;font-weight:900;margin-bottom:10px;line-height:1.3;}
+.ai-verdict.buy{color:#2ea86e;}
+.ai-verdict.watch{color:#c8952a;}
+.ai-verdict.wait{color:#d94f4f;}
+.ai-text{font-size:13px;color:#555;line-height:1.9;}
+.ai-text em{color:#1a1a2e;font-style:normal;font-weight:600;}
+.ai-condition{margin-top:12px;background:#fff;border-left:3px solid #c8a84b;padding:10px 12px;border-radius:0 8px 8px 0;box-shadow:0 1px 6px rgba(200,168,75,.12);}
+.ai-condition-label{font-size:10px;color:#c8952a;margin-bottom:4px;letter-spacing:1px;font-weight:700;}
+.ai-condition-text{font-size:13px;color:#444;font-weight:600;line-height:1.6;}
+</style>
+
+</head>
+<body>
+
+<div class="hdr"><div class="dot"></div><h2>個股深度分析</h2></div>
+<div class="tabs">
+  <div class="tab active">📈 吸籌分析</div>
+  <div class="tab">📊 籌碼雷達</div>
+</div>
+<div class="srow">
+  <input class="sym" value="PL">
+  <button class="btn">分析</button>
+</div>
+
+<div class="preview-label">▼ 改版後畫面預覽（淺色主題）</div>
+<div class="switcher">
+  <div class="sw-btn active" onclick="show('pl')">PL — 突破後整理</div>
+  <div class="sw-btn" onclick="show('poet')">POET — 底部震盪</div>
+</div>
+
+<!-- ══ PL ══ -->
+
+<div id="card-pl" class="card">
+  <div class="card-top">
+    <div class="tk-row"><span class="tk">PL</span><span class="px">$34.67</span></div>
+    <div class="sm-row"><span class="sm">😊😊😊😊😊</span><span class="sm-score">5 / 6</span></div>
+    <div class="pb"><div class="pf" style="width:83%;background:#2ea86e;"></div></div>
+    <div class="sl">吸籌後突破（TR內偵測到 5 個主力買入訊號）</div>
+  </div>
+
+  <div class="core">
+    <div class="core-row">
+      <span class="core-q">🏔 主力成本底部</span>
+      <span class="core-a blue">$22.78 <span style="font-size:10px;color:#ccc;">2026-02-27</span></span>
+    </div>
+    <div class="core-row">
+      <span class="core-q">📍 目前階段</span>
+      <span class="core-a green">✅ 突破後第14天 +3%</span>
+    </div>
+    <div class="core-row">
+      <span class="core-q">🎯 TR突破上限</span>
+      <span class="core-a" style="color:#888;">$31.70</span>
+    </div>
+  </div>
+
+  <div class="tech-summary">
+    <span class="tech-label">技術</span>
+    <span class="tag tag-r">MA5↓下彎</span>
+    <span class="tag tag-y">MACD柱縮</span>
+    <span class="tag tag-y">量縮觀望</span>
+  </div>
+
+  <div class="chip-summary">
+    <span class="chip-label">📊 籌碼</span>
+    <span class="chip-val" style="color:#bbb;">尚未輸入 — 點「籌碼詳情」輸入</span>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('pl-tech')">
+    <span class="fold-title">📈 技術詳情</span>
+    <span class="fold-arrow" id="arr-pl-tech">▼</span>
+  </div>
+  <div class="fold-body" id="pl-tech">
+    <div class="rw"><span class="lb">主力成本底部</span><span class="vl">$22.78 <span style="color:#ccc;font-size:10px;">2026-02-27</span></span></div>
+    <div class="rw"><span class="lb">TR突破上限</span><span class="vl">$31.70</span></div>
+    <div class="rw"><span class="lb">MA5</span><span class="bg gd">↓ 下彎</span></div>
+    <div class="rw"><span class="lb">MACD動能</span><span class="bg gw">零軸上柱縮</span></div>
+    <div class="rw"><span class="lb">量能</span><span class="bg gw">量縮（主力觀望）</span></div>
+    <div style="font-size:11px;color:#bbb;margin-top:8px;">MA5下彎＋量縮＋MACD走弱，主力暫停觀望</div>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('pl-chip')">
+    <span class="fold-title">📊 籌碼詳情</span>
+    <span class="fold-arrow" id="arr-pl-chip">▼</span>
+  </div>
+  <div class="fold-body" id="pl-chip">
+    <div style="font-size:11px;color:#bbb;margin-bottom:10px;">尚無籌碼數據，請至 <a href="#" style="color:#c8a84b;">WallStreetZen</a> 查詢後輸入：</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:11px;color:#bbb;">機構%</span>
+      <input placeholder="75" style="background:#f8f8fb;border:1px solid #e8e8ec;border-radius:8px;padding:6px 10px;font-size:13px;color:#333;width:65px;text-align:center;outline:none;">
+      <span style="font-size:11px;color:#bbb;">散戶%</span>
+      <input placeholder="15" style="background:#f8f8fb;border:1px solid #e8e8ec;border-radius:8px;padding:6px 10px;font-size:13px;color:#333;width:65px;text-align:center;outline:none;">
+      <span style="font-size:11px;color:#bbb;">內部人%</span>
+      <input placeholder="10" style="background:#f8f8fb;border:1px solid #e8e8ec;border-radius:8px;padding:6px 10px;font-size:13px;color:#333;width:65px;text-align:center;outline:none;">
+      <button style="background:#c8a84b;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">儲存</button>
+    </div>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('pl-ins')">
+    <span class="fold-title">👔 內部人交易</span>
+    <span class="fold-arrow" id="arr-pl-ins">▼</span>
+  </div>
+  <div class="fold-body" id="pl-ins">
+    <div class="ig">
+      <div class="ib ib-b"><div class="inn">0</div><div class="is">買入次數</div></div>
+      <div class="ib ib-s"><div class="inn">2</div><div class="is">賣出次數</div></div>
+    </div>
+    <div style="font-size:11px;color:#bbb;margin-top:4px;">近半年賣出多於買入，高層小量獲利了結</div>
+  </div>
+
+  <div class="ai-block">
+    <div class="ai-inner">
+      <div class="ai-badge">✦ AI 分析師</div>
+      <div class="ai-verdict watch">⚠️ 突破後需要等回測確認</div>
+      <div class="ai-text">
+        PL 已成功突破整理區，突破後第14天漲幅+3%，底部成本在 <em>$22.78</em>，這個底打得很紮實。不過現在 MA5 開始下彎、量能萎縮、MACD 柱子也在收縮，代表<em>主力突破後暫時停手觀望</em>，不急著再推。這種情況很常見，不代表行情結束，但也不適合現在追高。
+      </div>
+      <div class="ai-condition">
+        <div class="ai-condition-label">📌 進場條件</div>
+        <div class="ai-condition-text">等回測至 $31–$32 附近，量縮後再度放量站回，MA5 重新向上才是加碼時機。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ POET ══ -->
+
+<div id="card-poet" class="card" style="display:none;">
+  <div class="card-top">
+    <div class="tk-row"><span class="tk">POET</span><span class="px">$7.04</span></div>
+    <div class="sm-row"><span class="sm">😊😊</span><span class="sm-score">2 / 6</span></div>
+    <div class="pb"><div class="pf" style="width:33%;background:#c8a84b;"></div></div>
+    <div class="sl">輕微吸籌（TR內偵測到 2 個主力買入訊號）</div>
+  </div>
+
+  <div class="core">
+    <div class="core-row">
+      <span class="core-q">🏔 主力成本底部</span>
+      <span class="core-a blue">$5.97 <span style="font-size:10px;color:#ccc;">2026-02-26</span></span>
+    </div>
+    <div class="core-row">
+      <span class="core-q">📍 目前階段</span>
+      <span class="core-a yellow">🔄 底部震盪中</span>
+    </div>
+    <div class="core-row">
+      <span class="core-q">🎯 TR突破上限</span>
+      <span class="core-a" style="color:#888;">$8.59</span>
+    </div>
+  </div>
+
+  <div class="tech-summary">
+    <span class="tech-label">技術</span>
+    <span class="tag tag-g">MA5↑向上</span>
+    <span class="tag tag-r">MACD零軸下</span>
+    <span class="tag tag-g">量能正常</span>
+  </div>
+
+  <div class="chip-summary">
+    <span class="chip-label">📊 籌碼</span>
+    <span class="chip-val" style="color:#c8952a;">🟡 機構偏低 — 機構42%，散戶50%偏高</span>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('poet-tech')">
+    <span class="fold-title">📈 技術詳情</span>
+    <span class="fold-arrow" id="arr-poet-tech">▼</span>
+  </div>
+  <div class="fold-body" id="poet-tech">
+    <div class="rw"><span class="lb">主力成本底部</span><span class="vl">$5.97 <span style="color:#ccc;font-size:10px;">2026-02-26</span></span></div>
+    <div class="rw"><span class="lb">TR突破上限</span><span class="vl">$8.59</span></div>
+    <div class="rw"><span class="lb">MA5</span><span class="bg gu">↑ 向上</span></div>
+    <div class="rw"><span class="lb">MACD動能</span><span class="bg gd">零軸下走弱</span></div>
+    <div class="rw"><span class="lb">量能</span><span class="bg gu">量能正常</span></div>
+    <div style="font-size:11px;color:#bbb;margin-top:8px;">底部慢慢墊高，但MACD仍在零軸下，大資金還在觀望</div>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('poet-chip')">
+    <span class="fold-title">📊 籌碼詳情</span>
+    <span class="fold-arrow" id="arr-poet-chip">▼</span>
+  </div>
+  <div class="fold-body" id="poet-chip">
+    <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px;margin:8px 0;">
+      <div style="background:#4a9eff;width:42%;"></div>
+      <div style="background:#c8a84b;width:8%;"></div>
+      <div style="background:#dc5050;width:50%;"></div>
+    </div>
+    <div style="display:flex;gap:14px;font-size:11px;color:#888;margin-bottom:8px;">
+      <span>🔵 機構 42%</span><span>🟡 內部人 8%</span><span>🔴 散戶 50%</span>
+    </div>
+    <div style="font-size:11px;color:#bbb;">機構42%偏低，散戶50%偏高，主力介入不足，拉抬難度較大</div>
+  </div>
+
+  <div class="fold-hdr" onclick="toggleFold('poet-ins')">
+    <span class="fold-title">👔 內部人交易</span>
+    <span class="fold-arrow" id="arr-poet-ins">▼</span>
+  </div>
+  <div class="fold-body" id="poet-ins">
+    <div class="ig">
+      <div class="ib ib-b"><div class="inn">0</div><div class="is">買入次數</div></div>
+      <div class="ib ib-s"><div class="inn">0</div><div class="is">賣出次數</div></div>
+    </div>
+    <div style="font-size:11px;color:#bbb;margin-top:4px;">近半年無明顯內部人交易</div>
+  </div>
+
+  <div class="ai-block">
+    <div class="ai-inner">
+      <div class="ai-badge">✦ AI 分析師</div>
+      <div class="ai-verdict watch">🔄 底部整理中，耐心等突破訊號</div>
+      <div class="ai-text">
+        POET 還在底部震盪，主力成本估計在 <em>$5.97</em> 附近，要突破需站上 <em>$8.59</em>，現在還差得遠。好消息是 MA5 已經向上，最近幾天價格有在慢慢墊高；但 MACD 仍在零軸下走弱，<em>大資金還沒真正發動</em>。籌碼方面機構只有42%、散戶佔50%，這個結構要大漲需要業績催化劑配合。
+      </div>
+      <div class="ai-condition">
+        <div class="ai-condition-label">📌 進場條件</div>
+        <div class="ai-condition-text">等 MACD 翻上零軸，且放量突破 $8.59，確認主力真正介入後再考慮建倉。現在空手等待是最好的選擇。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id){
+  document.getElementById('card-pl').style.display=id==='pl'?'block':'none';
+  document.getElementById('card-poet').style.display=id==='poet'?'block':'none';
+  document.querySelectorAll('.sw-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&id==='pl')||(i===1&&id==='poet'));
+  });
+}
+function toggleFold(id){
+  const body=document.getElementById(id);
+  const arr=document.getElementById('arr-'+id);
+  const open=body.classList.toggle('open');
+  arr.classList.toggle('open',open);
+}
+</script>
+
+</body>
+</html>
