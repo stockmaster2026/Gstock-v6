@@ -4,94 +4,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股深度分析</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:#f5f0e8;font-family:'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;}
-.hdr{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
-.hdr h2{font-size:16px;font-weight:700;letter-spacing:2px;color:#8a6e2f;}
-.dot{width:8px;height:8px;border-radius:50%;background:#c8a84b;animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.tabs{display:flex;gap:8px;margin-bottom:18px;}
-.tab{flex:1;padding:11px;border-radius:10px;border:1px solid #e0d5b8;background:#fffbec;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;-webkit-tap-highlight-color:transparent;user-select:none;}
-.tab.active{background:#c8a84b;color:#fff;border-color:#c8a84b;box-shadow:0 2px 8px rgba(200,168,75,.3);}
-.srow{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
-input.sym{background:#fffbec;border:1px solid #e0d5b8;border-radius:10px;padding:11px 14px;font-size:16px;color:#1a1a2e;width:120px;text-transform:uppercase;outline:none;}
-input.sym:focus{border-color:#c8a84b;}
-input.num{background:#fffbec;border:1px solid #e0d5b8;border-radius:8px;padding:7px 10px;font-size:13px;color:#1a1a2e;width:65px;text-align:center;outline:none;}
-input.num:focus{border-color:#c8a84b;}
-.btn{background:#c8a84b;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:15px;font-weight:700;cursor:pointer;}
-.btn-sm{background:#f0e8d0;color:#8a6e2f;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;}
-.btn-green{background:#edfaf3;color:#2ea86e;border:1px solid #c5eedd;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:700;}
-.card{background:#fffdf5;border:1px solid #e8dfc0;border-radius:16px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(200,168,75,.08);}
-.ch{padding:14px 16px 12px;border-bottom:1px solid #f0e8d0;}
-.tk{font-size:22px;font-weight:700;color:#1a1a2e;font-family:monospace;}
-.px{font-size:15px;color:#aaa;margin-left:8px;}
-.sbts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
-.sbt{background:#fffbec;border:1px solid #e0d5b8;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;color:#8a6e2f;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.sbt.active{background:#c8a84b;border-color:#c8a84b;color:#fff;}
-.stock-list{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;}
-.stock-chip{background:#fffbec;border:1px solid #e0d5b8;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;font-family:monospace;color:#5a4010;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.accum-hero{padding:16px;background:#fffbec;border-bottom:1px solid #f0e8d0;}
-.accum-score-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
-.accum-emoji{font-size:22px;letter-spacing:3px;}
-.accum-num{font-size:13px;color:#aaa;font-family:monospace;}
-.accum-pb{height:5px;background:#f0e0b0;border-radius:3px;overflow:hidden;margin-bottom:5px;}
-.accum-pf{height:100%;border-radius:3px;transition:width 1.2s;}
-.accum-label{font-size:11px;color:#8a6e2f;font-weight:600;}
-.signal-dates{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;}
-.signal-date{background:#fff8e8;border:1px solid #e8d090;border-radius:5px;padding:3px 8px;font-size:11px;font-family:monospace;color:#8a6e2f;font-weight:600;}
-.core-block{padding:14px 16px;background:#fffdf5;border-bottom:1px solid #f0e8d0;}
-.core-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5eed8;}
-.core-row:last-child{border:none;}
-.core-q{font-size:13px;color:#8a7050;font-weight:600;}
-.core-a{font-size:14px;font-weight:700;font-family:monospace;text-align:right;}
-.ca-blue{color:#3a7bd5;}.ca-green{color:#2ea86e;}.ca-yellow{color:#c8952a;}.ca-gray{color:#999;}
-.tech-row{padding:10px 16px;background:#faf5e8;border-bottom:1px solid #f0e8d0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-.tech-lbl{font-size:11px;color:#c0a870;font-weight:600;margin-right:2px;}
-.tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;}
-.tg{background:#edfaf3;color:#2ea86e;border:1px solid #c5eedd;}
-.tr{background:#fef0f0;color:#d94f4f;border:1px solid #f5cccc;}
-.ty{background:#fffbec;color:#c8952a;border:1px solid #f0dfa0;}
-.bigorder-row{padding:10px 16px;border-bottom:1px solid #f0e8d0;display:flex;justify-content:space-between;align-items:center;}
-.fold-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer;border-top:1px solid #f0e8d0;background:#fffbec;-webkit-tap-highlight-color:transparent;}
-.fold-title{font-size:11px;letter-spacing:1px;color:#b0906a;font-weight:700;}
-.fold-arrow{font-size:11px;color:#c0a870;transition:transform .3s;}
-.fold-arrow.open{transform:rotate(180deg);}
-.fold-body{display:none;padding:14px 16px;border-top:1px solid #f5eed8;background:#fffdf5;}
-.fold-body.open{display:block;}
+<ti
 .rw{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px solid #f8f0e0;}
 .rw:last-child{border:none;}
-.lb{color:#a09070;font-weight:500;}
-.vl{font-family:monospace;font-weight:700;color:#2a1a00;}
-.bg{display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;}
-.gu{background:#edfaf3;color:#2ea86e;}
-.gd{background:#fef0f0;color:#d94f4f;}
-.gw{background:#fffbec;color:#c8952a;}
-.gn{background:#f5f5f5;color:#aaa;}
-.note{font-size:12px;color:#8a7050;margin-top:6px;line-height:1.7;}
-.ig{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
-.ib{background:#faf5e8;border-radius:10px;padding:12px;text-align:center;border:1px solid #f0e0c0;}
-.inn{font-size:26px;font-weight:700;font-family:monospace;}
-.ib-b .inn{color:#2ea86e;}.ib-s .inn{color:#d94f4f;}
-.is{font-size:11px;color:#c0a870;margin-top:3px;}
-.verdict-block{border-top:2px solid #e8d090;background:linear-gradient(135deg,#fffbec,#fff8e0);}
-.verdict-inner{padding:18px 16px;}
-.verdict-main{font-size:22px;font-weight:900;margin-bottom:8px;line-height:1.3;}
-.vm-buy{color:#2ea86e;}.vm-watch{color:#c8952a;}.vm-wait{color:#d94f4f;}
-.verdict-score{font-size:13px;color:#c0a870;margin-bottom:10px;font-weight:600;}
-.verdict-warn{margin-top:10px;background:#fff5f5;border-left:3px solid #d94f4f;padding:10px 12px;border-radius:0 8px 8px 0;}
-.verdict-warn-lbl{font-size:10px;color:#d94f4f;font-weight:700;letter-spacing:1px;margin-bottom:3px;}
-.verdict-warn-txt{font-size:12px;color:#d94f4f;font-weight:600;line-height:1.6;}
-.verdict-cond{margin-top:10px;background:#fffbec;border-left:3px solid #c8a84b;padding:10px 12px;border-radius:0 8px 8px 0;}
-.verdict-cond-lbl{font-size:10px;color:#c8952a;font-weight:700;letter-spacing:1px;margin-bottom:3px;}
-.verdict-cond-txt{font-size:13px;color:#5a4010;font-weight:600;line-height:1.6;}
-/* 右邊籌碼頁 */
-.chip-input-card{background:#fffdf5;border:1px solid #e8dfc0;border-radius:16px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(200,168,75,.08);}
-.chip-stock-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #f5eed8;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.chip-stock-row:last-child{border:none;}
-.chip-sym{font-family:monospace;font-weight:700;font-size:14px;color:#1a1a2e;width:60px;}
-.chip-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.lb{color:#a09070;font-weight:500;}er-radius:20px;font-size:11px;font-weight:700;}
 .badge-g{background:#edfaf3;color:#2ea86e;border:1px solid #c5eedd;}
 .badge-y{background:#fffbec;color:#c8952a;border:1px solid #f0dfa0;}
 .badge-o{background:#fff5ec;color:#d97020;border:1px solid #f0cca0;}
