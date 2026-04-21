@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>快速判斷決策樹</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#f5f0e8;font-family:-apple-system,'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;min-height:100vh;}
+.hdr{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
+.dot{width:8px;height:8px;border-radius:50%;background:#c8a84b;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hdr h2{font-size:16px;font-weight:700;letter-spacing:2px;color:#8a6e2f;}
+
+/* 頂部股票代號輸入 */
+.sym-bar{background:#fffdf5;border:1px solid #e8dfc0;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 2px 12px rgba(200,168,75,.08);}
+.sym-bar-lbl{font-size:11px;color:#a88d4a;font-weight:700;letter-spacing:1px;margin-bottom:8px;}
+.sym-bar input{background:#fffbec;border:1px solid #e0d5b8;border-radius:10px;padding:11px 14px;font-size:16px;color:#1a1a2e;width:100%;text-transform:uppercase;outline:none;font-family:monospace;font-weight:700;text-align:center;}
+.sym-bar input:focus{border-color:#c8a84b;}
+
+/* 進度條 */
+.progress{display:flex;gap:6px;margin-bottom:16px;}
+.pstep{flex:1;height:5px;background:#e8dfc0;border-radius:3px;transition:background .3s;}
+.pstep.done{background:#c8a84b;}
+.pstep.active{background:#c8a84b;}
+
+/* 題目卡片 */
+.qcard{background:#fffdf5;border:1px solid #e8dfc0;border-radius:16px;padding:20px 18px;box-shadow:0 2px 12px rgba(200,168,75,.08);margin-bottom:14px;}
+.qnum{font-size:11px;color:#c8952a;font-weight:700;letter-spacing:2px;margin-bottom:6px;}
+.qtitle{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:4px;line-height:1.4;}
+.qhint{font-size:12px;color:#a88d4a;margin-bottom:16px;line-height:1.6;}
+
+/* 選項按鈕 */
+.opts{display:flex;flex-direction:column;gap:9px;}
+.opt{background:#fffbec;border:2px solid #e0d5b8;border-radius:12px;padding:14px 16px;font-size:15px;font-weight:600;color:#1a1a2e;cursor:pointer;text-align:left;transition:all .2s;display:flex;align-items:center;gap:10px;}
+.opt:active{transform:scale(.98);}
+.opt.sel{background:#fff8e0;border-color:#c8a84b;color:#5a4010;}
+.opt-emoji{font-size:20px;flex-shrink:0;}
+.opt-txt{flex:1;}
+.opt-sub{font-size:11px;color:#999;font-weight:500;margin-top:2px;}
+
+/* 操作列 */
+.actions{display:flex;gap:8px;margin-top:14px;}
+.btn{flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:700;border:none;cursor:pointer;}
+.btn-back{background:#f0e8d0;color:#8a6e2f;}
+.btn-reset{background:#fef0f0;color:#d94f4f;border:1px solid #f5cccc;}
+
+/* 結果卡 */
+.result{background:#fffdf5;border:2px solid #c8a84b;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(200,168,75,.2);margin-bottom:14px;}
+.result-hero{padding:24px 20px;text-align:center;background:linear-gradient(135deg,#fffbec,#fff8e0);}
+.result-emoji{font-size:48px;margin-bottom:8px;}
+.result-verdict{font-size:22px;font-weight:900;margin-bottom:8px;line-height:1.3;}
+.v-buy{color:#2ea86e;}
+.v-watch{color:#c8952a;}
+.v-skip{color:#d94f4f;}
+.result-pos{font-size:14px;color:#5a4010;font-weight:700;background:#fff;padding:8px 14px;border-radius:20px;display:inline-block;margin-top:6px;}
+
+.result-body{padding:16px 18px;}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5eed8;}
+.result-row:last-child{border:none;}
+.result-lbl{font-size:13px;color:#8a7050;font-weight:600;}
+.result-val{font-size:14px;font-weight:700;font-family:monospace;color:#1a1a2e;}
+
+.reason-box{background:#f0f8ff;border-left:3px solid #3a7bd5;padding:12px 14px;border-radius:0 10px 10px 0;margin-top:12px;}
+.reason-lbl{font-size:10px;color:#3a7bd5;font-weight:700;letter-spacing:1px;margin-bottom:6px;}
+.reason-txt{font-size:13px;color:#1a3a5c;line-height:1.8;font-weight:500;}
+
+.warn-box{background:#fff5f5;border-left:3px solid #d94f4f;padding:12px 14px;border-radius:0 10px 10px 0;margin-top:10px;}
+.warn-lbl{font-size:10px;color:#d94f4f;font-weight:700;letter-spacing:1px;margin-bottom:4px;}
+.warn-txt{font-size:12px;color:#d94f4f;font-weight:600;line-height:1.6;}
+
+.choices-recap{background:#faf5e8;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:11px;color:#8a7050;line-height:1.6;}
+.choices-recap b{color:#5a4010;}
+
+/* 重新開始按鈕 */
+.restart{width:100%;padding:14px;background:#c8a84b;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+.restart:active{background:#a8882b;}
+
+/* 初始選單 */
+.menu{display:flex;flex-direction:column;gap:10px;}
+.menu-btn{background:#fffdf5;border:2px solid #e0d5b8;border-radius:14px;padding:18px 16px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;}
+.menu-btn:active{transform:scale(.98);background:#fff8e0;}
+.menu-emoji{font-size:28px;flex-shrink:0;}
+.menu-title{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px;}
+.menu-desc{font-size:12px;color:#999;}
+</style>
+
+</head>
+<body>
+
+<div class="hdr"><div class="dot"></div><h2>快速判斷決策樹</h2></div>
+
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// 狀態管理
+// ═══════════════════════════════════════════
+var state = {
+  mode: null,       // 'buy' 空手進場 / 'hold' 已持有
+  sym: '',          // 股票代號
+  step: 0,          // 目前第幾題
+  answers: {},      // 回答記錄
+};
+
+var app = document.getElementById('app');
+
+// ═══════════════════════════════════════════
+// 畫面:初始選單(選情境)
+// ═══════════════════════════════════════════
+function renderMenu(){
+  app.innerHTML = `
+    <div class="sym-bar">
+      <div class="sym-bar-lbl">📌 要判斷的股票(選填)</div>
+      <input id="symInput" placeholder="例如 RKLB" maxlength="6" value="${state.sym}">
+    </div>
+    <div class="menu">
+      <div class="menu-btn" onclick="startFlow('buy')">
+        <span class="menu-emoji">💼</span>
+        <div>
+          <div class="menu-title">空手 — 現在該進場嗎?</div>
+          <div class="menu-desc">判斷是否買入、該下多少倉位</div>
+        </div>
+      </div>
+      <div class="menu-btn" onclick="startFlow('hold')">
+        <span class="menu-emoji">📦</span>
+        <div>
+          <div class="menu-title">已持有 — 該賣還是續抱?</div>
+          <div class="menu-desc">判斷訊號是否還在、要不要減倉</div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('symInput').addEventListener('input', function(e){
+    state.sym = e.target.value.toUpperCase().trim();
+  });
+}
+
+function startFlow(mode){
+  var inp = document.getElementById('symInput');
+  if(inp) state.sym = inp.value.toUpperCase().trim();
+  state.mode = mode;
+  state.step = 0;
+  state.answers = {};
+  render();
+}
+
+// ═══════════════════════════════════════════
+// 空手進場 — 題目設計
+// ═══════════════════════════════════════════
+var BUY_QUESTIONS = [
+  {
+    key: 'sellSignal',
+    title: '有 ⚠️ 大單賣出訊號嗎?',
+    hint: '看 test-accum.html 近 15 天大單記錄,有沒有賣出標記',
+    options: [
+      { val: 'yes', emoji: '⚠️', txt: '有(近 15 天出現過)', sub: '即使 1 次也算' },
+      { val: 'no',  emoji: '✅', txt: '沒有', sub: '近期只有買入或無訊號' },
+    ]
+  },
+  {
+    key: 'gain',
+    title: '距主力成本漲幅多少?',
+    hint: '看卡片上「+XX%」那個數字(現價相對主力成本)',
+    options: [
+      { val: '0-20',  emoji: '🟢', txt: '0-20%',  sub: '最佳進場區' },
+      { val: '20-40', emoji: '🟡', txt: '20-40%', sub: '已漲一段,倉位減半' },
+      { val: '40-60', emoji: '🟠', txt: '40-60%', sub: '已漲多,輕倉試探' },
+      { val: '60+',   emoji: '🔴', txt: '60% 以上', sub: '追高區' },
+    ]
+  },
+  {
+    key: 'rs',
+    title: 'RS 分數多少?',
+    hint: '看技術標籤上的 RS XX 數字(Minervini 強度評分)',
+    options: [
+      { val: '85+',   emoji: '🟢', txt: 'RS 85+',     sub: '強勢股(前 15%)' },
+      { val: '70-84', emoji: '🟡', txt: 'RS 70-84',   sub: '合格(Minervini 底線)' },
+      { val: '50-69', emoji: '🟠', txt: 'RS 50-69',   sub: '普通' },
+      { val: '<50',   emoji: '🔴', txt: 'RS 低於 50', sub: '跑輸大盤' },
+    ]
+  },
+  {
+    key: 'momentum',
+    title: '有 ✨新高 或 🔥RS上升 嗎?',
+    hint: '看標籤區,有沒有這兩個圖示',
+    options: [
+      { val: 'both', emoji: '🚀', txt: '兩個都有(✨+🔥)',   sub: '主升段加速中' },
+      { val: 'one',  emoji: '⚡', txt: '只有一個',          sub: '動能仍在' },
+      { val: 'none', emoji: '⏸', txt: '都沒有',            sub: '可能高原期' },
+    ]
+  },
+  {
+    key: 'breakout',
+    title: '突破 TR 區的狀態?',
+    hint: '看核心區「目前階段」',
+    options: [
+      { val: 'pre',    emoji: '🔄', txt: '底部震盪中(還沒突破)', sub: '等突破再進' },
+      { val: '1-5',   emoji: '🚀', txt: '突破 1-5 天',         sub: '最佳進場' },
+      { val: '6-15',  emoji: '👀', txt: '突破 6-15 天',        sub: '倉位減半' },
+      { val: '15+',   emoji: '⏸', txt: '突破超過 15 天',       sub: '等回測' },
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════
+// 已持有 — 題目設計
+// ═══════════════════════════════════════════
+var HOLD_QUESTIONS = [
+  {
+    key: 'sellSignal',
+    title: '有出現 ⚠️ 大單賣出嗎?',
+    hint: '近 15 天內的賣出訊號',
+    options: [
+      { val: 'heavy', emoji: '🚨', txt: '有,2 次以上',   sub: '主力可能出貨' },
+      { val: 'light', emoji: '⚠️', txt: '有 1 次',       sub: '需留意' },
+      { val: 'no',    emoji: '✅', txt: '沒有',          sub: '主力還在場' },
+    ]
+  },
+  {
+    key: 'rsState',
+    title: 'RS 動能現在如何?',
+    hint: '看 ✨新高 和 🔥上升 這兩個標籤',
+    options: [
+      { val: 'strong',  emoji: '🚀', txt: '✨+🔥 兩個都還在', sub: '主升段持續' },
+      { val: 'weaken',  emoji: '⚡', txt: '只剩一個',          sub: '動能放緩' },
+      { val: 'gone',    emoji: '⏸', txt: '兩個都消失',        sub: 'RS 停滯' },
+      { val: 'down',    emoji: '⚠️', txt: 'RS 走弱(⚠️ 標籤)', sub: 'RS 一月下降 10+' },
+    ]
+  },
+  {
+    key: 'macd',
+    title: 'MACD 狀態?',
+    hint: '看技術標籤的 MACD',
+    options: [
+      { val: 'strong', emoji: '🟢', txt: 'MACD 強勢(零軸上)', sub: '動能完整' },
+      { val: 'weak',   emoji: '🟡', txt: 'MACD 柱縮',          sub: '動能放緩' },
+      { val: 'down',   emoji: '🔴', txt: 'MACD 零軸下',        sub: '動能轉弱' },
+    ]
+  },
+  {
+    key: 'gainWeek',
+    title: '最近一週漲幅?',
+    hint: '短期是否過熱',
+    options: [
+      { val: 'normal', emoji: '🟢', txt: '低於 10%',      sub: '正常' },
+      { val: 'hot',    emoji: '🟡', txt: '10-20%',        sub: '偏熱' },
+      { val: 'crazy',  emoji: '🔴', txt: '20% 以上',      sub: '過熱警示' },
+    ]
+  },
+  {
+    key: 'stop',
+    title: '有跌破主力成本 -8% 嗎?',
+    hint: '硬性停損線檢查',
+    options: [
+      { val: 'above',  emoji: '✅', txt: '現價在停損線以上', sub: '安全區' },
+      { val: 'near',   emoji: '⚠️', txt: '接近停損線(差 2% 內)', sub: '警戒' },
+      { val: 'broken', emoji: '🚨', txt: '已跌破 -8%',          sub: '必須停損' },
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════
+// 渲染題目
+// ═══════════════════════════════════════════
+function render(){
+  var qs = state.mode === 'buy' ? BUY_QUESTIONS : HOLD_QUESTIONS;
+
+  if(state.step >= qs.length){
+    renderResult();
+    return;
+  }
+
+  var q = qs[state.step];
+  var total = qs.length;
+
+  // 進度條
+  var progressHtml = '<div class="progress">';
+  for(var i = 0; i < total; i++){
+    var cls = i < state.step ? 'done' : (i === state.step ? 'active' : '');
+    progressHtml += '<div class="pstep ' + cls + '"></div>';
+  }
+  progressHtml += '</div>';
+
+  // 題目卡
+  var optsHtml = '';
+  q.options.forEach(function(o){
+    var sel = state.answers[q.key] === o.val ? ' sel' : '';
+    optsHtml += '<div class="opt' + sel + '" onclick="selectAnswer(\'' + q.key + '\',\'' + o.val + '\')">' +
+      '<span class="opt-emoji">' + o.emoji + '</span>' +
+      '<div class="opt-txt">' + o.txt +
+      (o.sub ? '<div class="opt-sub">' + o.sub + '</div>' : '') +
+      '</div></div>';
+  });
+
+  var symLabel = state.sym ? '<div style="font-size:11px;color:#c8952a;font-weight:700;margin-bottom:4px;">📌 ' + state.sym + '</div>' : '';
+
+  var actionsHtml = '<div class="actions">';
+  if(state.step > 0){
+    actionsHtml += '<button class="btn btn-back" onclick="goBack()">← 上一題</button>';
+  }
+  actionsHtml += '<button class="btn btn-reset" onclick="resetAll()">重新開始</button>';
+  actionsHtml += '</div>';
+
+  app.innerHTML =
+    progressHtml +
+    '<div class="qcard">' +
+      symLabel +
+      '<div class="qnum">第 ' + (state.step + 1) + ' / ' + total + ' 題 · ' + (state.mode === 'buy' ? '空手判斷' : '持有判斷') + '</div>' +
+      '<div class="qtitle">' + q.title + '</div>' +
+      '<div class="qhint">' + q.hint + '</div>' +
+      '<div class="opts">' + optsHtml + '</div>' +
+    '</div>' +
+    actionsHtml;
+}
+
+function selectAnswer(key, val){
+  state.answers[key] = val;
+  setTimeout(function(){
+    state.step++;
+    render();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }, 150);
+}
+
+function goBack(){
+  if(state.step > 0){
+    state.step--;
+    render();
+  }
+}
+
+function resetAll(){
+  state = { mode: null, sym: state.sym, step: 0, answers: {} };
+  renderMenu();
+}
+
+// ═══════════════════════════════════════════
+// 空手進場 — 判斷邏輯
+// ═══════════════════════════════════════════
+function judgeBuy(a){
+  var r = { verdict: '', pos: '', emoji: '', vClass: '', reasons: [], warns: [], stop: '', target: '' };
+
+  // 硬性剔除條件
+  if(a.sellSignal === 'yes'){
+    r.verdict = '❌ 跳過';
+    r.pos = '不進場';
+    r.emoji = '🚫';
+    r.vClass = 'v-skip';
+    r.warns.push('近 15 天有大單賣出訊號,主力可能在出貨。即使其他條件好也不該進場,等賣出訊號消退後再看。');
+    return r;
+  }
+  if(a.gain === '60+'){
+    r.verdict = '❌ 不追高';
+    r.pos = '不進場';
+    r.emoji = '🚫';
+    r.vClass = 'v-skip';
+    r.warns.push('距主力成本已漲超過 60%,R/R 比太差。等回測主力成本 +20-30% 區間再考慮。');
+    return r;
+  }
+  if(a.rs === '<50'){
+    r.verdict = '❌ 跳過';
+    r.pos = '不進場';
+    r.emoji = '🚫';
+    r.vClass = 'v-skip';
+    r.warns.push('RS 低於 50 代表跑輸大盤。Minervini 硬底線:跑輸的不碰,不管其他訊號多好。');
+    return r;
+  }
+  if(a.breakout === '15+'){
+    r.verdict = '⏸ 等回測';
+    r.pos = '不進場,等拉回';
+    r.emoji = '⏸';
+    r.vClass = 'v-watch';
+    r.reasons.push('突破超過 15 天,已錯過最佳進場窗口。等回測支撐位時再進。');
+    return r;
+  }
+
+  // 計分系統
+  var score = 0;
+
+  // RS 分數
+  if(a.rs === '85+') score += 3;
+  else if(a.rs === '70-84') score += 2;
+  else if(a.rs === '50-69') score += 0;
+
+  // 動能
+  if(a.momentum === 'both') score += 3;
+  else if(a.momentum === 'one') score += 1;
+  else if(a.momentum === 'none') score -= 1;
+
+  // 漲幅
+  if(a.gain === '0-20') score += 3;
+  else if(a.gain === '20-40') score += 1;
+  else if(a.gain === '40-60') score -= 1;
+
+  // 突破階段
+  if(a.breakout === '1-5') score += 2;
+  else if(a.breakout === 'pre') score += 1;
+  else if(a.breakout === '6-15') score += 0;
+
+  // 評分 → 建議
+  // RS 50-69 特殊處理
+  if(a.rs === '50-69'){
+    if(a.momentum === 'both' || a.momentum === 'one'){
+      r.verdict = '🟡 輕倉試探';
+      r.pos = '倉位 10%';
+      r.emoji = '🟡';
+      r.vClass = 'v-watch';
+      r.reasons.push('RS 介於 50-69 屬於「合格邊緣」,但有動能訊號(✨或🔥),代表可能從普通轉強勢。');
+      r.reasons.push('只能小倉位試探,停損嚴格;如果 RS 沒繼續上升,立刻出場。');
+    } else {
+      r.verdict = '❌ 跳過';
+      r.pos = '不進場';
+      r.emoji = '🚫';
+      r.vClass = 'v-skip';
+      r.reasons.push('RS 50-69 且無動能訊號,屬於普通股等待中。等 RS 升到 70+ 或出現 🔥 再考慮。');
+      return r;
+    }
+    r.stop = '-7%(嚴格停損)';
+    r.target = '+15%(觀察 RS 變化)';
+    return r;
+  }
+
+  // 高原期警示
+  if(a.momentum === 'none' && (a.rs === '85+' || a.rs === '70-84')){
+    r.verdict = '🟡 高原期,觀望';
+    r.pos = '不進場';
+    r.emoji = '⏸';
+    r.vClass = 'v-watch';
+    r.reasons.push('RS 高但動能訊號都消失,很可能進入高原期(盤整見頂)。');
+    r.reasons.push('等 ✨ 新高或 🔥 上升回來再進,否則容易買在反轉前。');
+    return r;
+  }
+
+  // 主流判斷:依漲幅決定倉位
+  if(a.gain === '0-20'){
+    if(a.rs === '85+' && a.momentum === 'both'){
+      r.verdict = '🚀 最佳進場!';
+      r.pos = '標準倉位 30-50%';
+      r.vClass = 'v-buy';
+      r.emoji = '🥇';
+      r.reasons.push('強勢股(RS 85+)+ 動能加速(✨+🔥)+ 低漲幅,是 Minervini 策略的黃金組合。');
+      r.stop = '-7% 至 -8%';
+      r.target = '+20-30%(視動能延續)';
+    } else if(a.rs === '85+'){
+      r.verdict = '🚀 強力買入';
+      r.pos = '倉位 25-35%';
+      r.vClass = 'v-buy';
+      r.emoji = '🚀';
+      r.reasons.push('強勢股 + 低漲幅,進場位置優秀。');
+      if(a.momentum === 'one') r.reasons.push('動能部分展開(只有一個訊號),可能剛啟動或放緩中。');
+      r.stop = '-8%';
+      r.target = '+20%';
+    } else {
+      r.verdict = '👀 可進場';
+      r.pos = '倉位 15-25%';
+      r.vClass = 'v-buy';
+      r.emoji = '👀';
+      r.reasons.push('RS 合格 + 低漲幅,位置好但強度普通。');
+      r.stop = '-8%';
+      r.target = '+15-20%';
+    }
+  } else if(a.gain === '20-40'){
+    if(a.rs === '85+' && a.momentum === 'both'){
+      r.verdict = '🚀 強力買入 · 倉位減半';
+      r.pos = '倉位 15-25%';
+      r.vClass = 'v-buy';
+      r.emoji = '🚀';
+      r.reasons.push('雖已漲 20-40%,但強勢股 + 動能加速仍值得進場。');
+      r.reasons.push('倉位減半是因為距主力成本已有距離,R/R 比下降。');
+      r.stop = '-8%';
+      r.target = '+15-20%';
+    } else if(a.rs === '85+' || a.rs === '70-84'){
+      r.verdict = '👀 輕倉試探';
+      r.pos = '倉位 10-15%';
+      r.vClass = 'v-watch';
+      r.emoji = '👀';
+      r.reasons.push('已漲 20-40%,強度合格但非最佳位置。');
+      r.stop = '-8%';
+      r.target = '+12-15%';
+    } else {
+      r.verdict = '⏸ 觀望';
+      r.pos = '不進場';
+      r.vClass = 'v-watch';
+      r.emoji = '⏸';
+      r.reasons.push('已漲一段 + 強度不夠,不如等更好的機會。');
+      return r;
+    }
+  } else if(a.gain === '40-60'){
+    if(a.rs === '85+' && a.momentum === 'both'){
+      r.verdict = '⚠️ 輕倉試探';
+      r.pos = '倉位 10-15%';
+      r.vClass = 'v-watch';
+      r.emoji = '⚠️';
+      r.reasons.push('已漲 40-60%,即使強勢股也要控制倉位。');
+      r.reasons.push('停損要比平常更嚴格(-6%),因為追高本身風險高。');
+      r.stop = '-6%(嚴格)';
+      r.target = '+10-15%';
+    } else {
+      r.verdict = '⏸ 觀望';
+      r.pos = '不進場';
+      r.vClass = 'v-watch';
+      r.emoji = '⏸';
+      r.reasons.push('漲幅已大 + 強度不頂尖,R/R 比太差,寧可等下一檔。');
+      return r;
+    }
+  }
+
+  // 突破階段補充說明
+  if(a.breakout === '1-5' && r.vClass === 'v-buy'){
+    r.reasons.push('加分:剛突破 1-5 天,正是爆發期,倉位可取建議上限。');
+  } else if(a.breakout === '6-15' && r.vClass === 'v-buy'){
+    r.reasons.push('提醒:突破已 6-15 天,倉位取建議下限,別追最後一段。');
+  } else if(a.breakout === 'pre'){
+    r.reasons.push('備註:尚未突破 TR,可先建立底倉,等突破放量再加碼。');
+  }
+
+  return r;
+}
+
+// ═══════════════════════════════════════════
+// 已持有 — 判斷邏輯
+// ═══════════════════════════════════════════
+function judgeHold(a){
+  var r = { verdict: '', pos: '', emoji: '', vClass: '', reasons: [], warns: [] };
+
+  // 硬性停損
+  if(a.stop === 'broken'){
+    r.verdict = '🚨 立刻停損';
+    r.pos = '全部出場';
+    r.emoji = '🚨';
+    r.vClass = 'v-skip';
+    r.warns.push('已跌破主力成本 -8%,這是硬性停損線。不管其他訊號如何,必須無條件出場。');
+    r.warns.push('停損紀律是長期獲利的關鍵,不要因為「再等等看」而擴大虧損。');
+    return r;
+  }
+
+  // 嚴重賣出訊號
+  if(a.sellSignal === 'heavy'){
+    r.verdict = '🚨 立刻減倉';
+    r.pos = '減倉 50-70%';
+    r.emoji = '🚨';
+    r.vClass = 'v-skip';
+    r.reasons.push('近 15 天有 2 次以上大單賣出,主力明確在出貨。');
+    r.reasons.push('即使技術還沒破,籌碼已經在變壞,先減倉保護利潤。');
+    return r;
+  }
+
+  // MACD 破位
+  if(a.macd === 'down'){
+    r.verdict = '🔴 減倉出場';
+    r.pos = '減倉 50%';
+    r.emoji = '🔴';
+    r.vClass = 'v-skip';
+    r.reasons.push('MACD 跌回零軸下,動能完整轉弱。');
+    r.reasons.push('這是技術面警訊,搭配其他弱勢訊號應該大幅減倉。');
+    return r;
+  }
+
+  // 過熱警示
+  if(a.gainWeek === 'crazy'){
+    r.verdict = '🟡 減倉一半';
+    r.pos = '減倉 30-50%';
+    r.emoji = '🟡';
+    r.vClass = 'v-watch';
+    r.reasons.push('一週漲 20% 以上屬於過熱,短線有回調壓力。');
+    r.reasons.push('先落袋一半獲利,剩下的繼續持有參與主升段。');
+    return r;
+  }
+
+  // RS 走弱
+  if(a.rsState === 'down'){
+    r.verdict = '🟡 考慮減倉';
+    r.pos = '減倉 30-40%';
+    r.emoji = '🟡';
+    r.vClass = 'v-watch';
+    r.reasons.push('RS 走弱(一月下降 10+)代表相對強度衰退。');
+    r.reasons.push('即使絕對價格還在漲,Minervini 會提前減倉,因為強度變化領先價格。');
+    return r;
+  }
+
+  // 計分評估剩餘情況
+  var score = 0;
+  if(a.rsState === 'strong') score += 3;
+  else if(a.rsState === 'weaken') score += 1;
+  else if(a.rsState === 'gone') score -= 1;
+
+  if(a.macd === 'strong') score += 2;
+  else if(a.macd === 'weak') score += 0;
+
+  if(a.sellSignal === 'no') score += 1;
+  else if(a.sellSignal === 'light') score -= 1;
+
+  if(a.stop === 'above') score += 1;
+  else if(a.stop === 'near') score -= 1;
+
+  if(a.gainWeek === 'hot') score -= 1;
+
+  // 判決
+  if(score >= 5){
+    r.verdict = '🟢 繼續持有';
+    r.pos = '維持倉位';
+    r.emoji = '🟢';
+    r.vClass = 'v-buy';
+    r.reasons.push('所有訊號都還在,主升段延續中。');
+    r.reasons.push('Minervini 原則:訊號不變就不動作,讓獲利奔跑。');
+    if(a.rsState === 'strong'){
+      r.reasons.push('✨+🔥 都在 = 動能還在加速,甚至可以續抱到訊號衰退為止。');
+    }
+  } else if(score >= 2){
+    r.verdict = '🟡 減倉一半';
+    r.pos = '減倉 30-50%';
+    r.emoji = '🟡';
+    r.vClass = 'v-watch';
+    r.reasons.push('訊號開始衰退但還沒破位,屬於「動能放緩」階段。');
+    r.reasons.push('先減倉一半落袋獲利,剩下觀察;如果訊號繼續弱化再全出。');
+    if(a.stop === 'near') r.warns.push('接近停損線,減倉後務必設好警示,跌破立刻全出。');
+  } else {
+    r.verdict = '🔴 大幅減倉';
+    r.pos = '減倉 70%+';
+    r.emoji = '🔴';
+    r.vClass = 'v-skip';
+    r.reasons.push('多個訊號轉弱,主升段可能已經結束。');
+    r.reasons.push('保留少量倉位(20-30%)觀察,如果重新轉強再加回來。');
+  }
+
+  return r;
+}
+
+// ═══════════════════════════════════════════
+// 渲染結果
+// ═══════════════════════════════════════════
+function renderResult(){
+  var r = state.mode === 'buy' ? judgeBuy(state.answers) : judgeHold(state.answers);
+  var qs = state.mode === 'buy' ? BUY_QUESTIONS : HOLD_QUESTIONS;
+
+  // 進度條全滿
+  var progressHtml = '<div class="progress">';
+  for(var i = 0; i < qs.length; i++){
+    progressHtml += '<div class="pstep done"></div>';
+  }
+  progressHtml += '</div>';
+
+  var symHtml = state.sym ? '<div style="font-size:13px;color:#8a6e2f;font-weight:700;margin-bottom:6px;">📌 ' + state.sym + '</div>' : '';
+
+  // 結果卡主體
+  var h = progressHtml + '<div class="result">';
+  h += '<div class="result-hero">';
+  h += symHtml;
+  h += '<div class="result-emoji">' + r.emoji + '</div>';
+  h += '<div class="result-verdict ' + r.vClass + '">' + r.verdict + '</div>';
+  h += '<div class="result-pos">建議:' + r.pos + '</div>';
+  h += '</div>';
+
+  h += '<div class="result-body">';
+
+  if(r.stop){
+    h += '<div class="result-row"><span class="result-lbl">🛑 停損位</span><span class="result-val">' + r.stop + '</span></div>';
+  }
+  if(r.target){
+    h += '<div class="result-row"><span class="result-lbl">🎯 目標區</span><span class="result-val">' + r.target + '</span></div>';
+  }
+
+  if(r.reasons.length){
+    h += '<div class="reason-box">';
+    h += '<div class="reason-lbl">📊 為什麼?</div>';
+    h += '<div class="reason-txt">';
+    r.reasons.forEach(function(x, i){
+      h += (i > 0 ? '<br>• ' : '• ') + x;
+    });
+    h += '</div></div>';
+  }
+
+  if(r.warns.length){
+    h += '<div class="warn-box">';
+    h += '<div class="warn-lbl">⚠️ 警訊</div>';
+    h += '<div class="warn-txt">';
+    r.warns.forEach(function(x, i){
+      h += (i > 0 ? '<br>• ' : '• ') + x;
+    });
+    h += '</div></div>';
+  }
+
+  // 回答記錄
+  h += '<div class="choices-recap">';
+  h += '<b>📝 你的回答:</b><br>';
+  qs.forEach(function(q){
+    var ans = state.answers[q.key];
+    var opt = q.options.find(function(o){ return o.val === ans; });
+    if(opt){
+      h += q.title.replace(/[?。,]/g, '') + ' → <b>' + opt.txt + '</b><br>';
+    }
+  });
+  h += '</div>';
+
+  h += '</div></div>';
+
+  h += '<button class="restart" onclick="resetAll()">🔄 分析下一檔</button>';
+
+  app.innerHTML = h;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════
+// 啟動
+// ═══════════════════════════════════════════
+renderMenu();
+</script>
+
+</body>
+</html>
