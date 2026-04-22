@@ -1964,6 +1964,181 @@ function showBestList(){
 
 initAccumSectors();
 </script>
-<script src="decision-hook.js"></script>
+<!--
+═══════════════════════════════════════════════════════════
+  決策樹整合 — 內嵌版(貼到 test-accum.html 最底部)
+═══════════════════════════════════════════════════════════
+
+  使用方式:
+  1. 打開 test-accum.html
+  2. 拉到最底部,找到這一行:
+     <script src="decision-hook.js"></script>
+  3. 刪掉那一行
+  4. 把下面整個區塊(從 <style> 到 </script>)貼進去取代
+  5. Commit
+
+  ═══════════════════════════════════════════════════════════
+  (複製下面所有內容,從 <style> 開始到 </script> 結束)
+-->
+
+<style>
+.dt-overlay{position:fixed;inset:0;background:rgba(26,26,46,.6);z-index:9999;display:none;align-items:flex-start;justify-content:center;padding:20px 10px;overflow-y:auto;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.dt-overlay.open{display:flex;}
+.dt-modal{background:#fffdf5;border-radius:16px;width:100%;max-width:560px;max-height:calc(100vh - 40px);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;position:relative;}
+.dt-modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,#fffbec,#fff8e0);border-bottom:1px solid #e8dfc0;}
+.dt-modal-title{font-size:14px;font-weight:700;color:#8a6e2f;letter-spacing:1px;}
+.dt-modal-close{background:#f0e8d0;color:#8a6e2f;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.dt-modal-close:active{background:#c8a84b;color:#fff;}
+.dt-modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.dt-iframe{width:100%;min-height:600px;border:none;display:block;}
+.dt-launch-btn{display:block;width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,#3a7bd5,#5b21b6);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(58,123,213,.3);-webkit-tap-highlight-color:transparent;}
+.dt-launch-btn:active{transform:scale(.98);box-shadow:0 1px 4px rgba(58,123,213,.3);}
+.dt-launch-hint{text-align:center;font-size:11px;color:#888;margin-top:6px;}
+</style>
+
+<div class="dt-overlay" id="dtOverlay">
+<div class="dt-modal" onclick="event.stopPropagation()">
+<div class="dt-modal-hdr">
+<span class="dt-modal-title">快速判斷決策樹</span>
+<button class="dt-modal-close" onclick="dtClose()">關閉</button>
+</div>
+<div class="dt-modal-body">
+<iframe id="dtFrame" class="dt-iframe" src="about:blank"></iframe>
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+  var ol = document.getElementById('dtOverlay');
+  ol.addEventListener('click', function(e){
+    if(e.target === ol) dtClose();
+  });
+
+  window.dtOpen = function(params){
+    var url = 'decision.html';
+    if(params){
+      var qs = [];
+      for(var k in params){
+        var v = params[k];
+        if(v === null || v === undefined || v === '') continue;
+        qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+      }
+      if(qs.length) url += '?' + qs.join('&');
+    }
+    document.getElementById('dtFrame').src = url;
+    document.getElementById('dtOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.dtClose = function(){
+    var ol = document.getElementById('dtOverlay');
+    ol.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(function(){
+      if(!ol.classList.contains('open')){
+        document.getElementById('dtFrame').src = 'about:blank';
+      }
+    }, 300);
+  };
+
+  function extractData(sym){
+    var params = {sym: sym};
+    var root = document.getElementById('accumOut');
+    if(!root) return params;
+    var txt = root.innerText || root.textContent || '';
+
+    var m;
+    m = txt.match(/\+(\d+)%/);
+    if(m) params.gain = parseInt(m[1]);
+    if(!params.gain){
+      m = txt.match(/距主力成本\s*\+?(\-?\d+)%/);
+      if(m) params.gain = parseInt(m[1]);
+    }
+
+    m = txt.match(/RS\s+(\d+)/);
+    if(m) params.rs = parseInt(m[1]);
+
+    var sellCount = (txt.match(/⚠️\s*賣出/g) || []).length;
+    if(sellCount >= 2) params.sell = 'heavy';
+    else if(sellCount === 1) params.sell = 'light';
+    else params.sell = 'no';
+
+    params.newhigh = /✨\s*RS\s*創/.test(txt) || /✨\s*新高/.test(txt) || /RS\s*創3月新高/.test(txt) ? 1 : 0;
+
+    if(/🔥\s*RS\s*上升/.test(txt) || /RS上升/.test(txt)) params.trend = 'up';
+    else if(/⚠️\s*RS\s*走弱/.test(txt) || /RS走弱/.test(txt)) params.trend = 'down';
+    else params.trend = 'stable';
+
+    m = txt.match(/突破後第\s*(\d+)\s*天/);
+    if(m) params.break = parseInt(m[1]);
+    else if(/底部震盪中/.test(txt)) params.break = 'pre';
+
+    if(/MACD\s*強勢/.test(txt)) params.macd = 'strong';
+    else if(/MACD\s*柱縮/.test(txt)) params.macd = 'weak';
+    else if(/MACD\s*零軸下/.test(txt)) params.macd = 'down';
+
+    return params;
+  }
+
+  function injectBtn(){
+    var root = document.getElementById('accumOut');
+    if(!root) return;
+    var blocks = root.querySelectorAll('.verdict-block');
+    for(var i = 0; i < blocks.length; i++){
+      var block = blocks[i];
+      if(block.querySelector('.dt-launch-btn')) continue;
+      var card = block.closest('.card');
+      if(!card) continue;
+      var tk = card.querySelector('.tk');
+      if(!tk) continue;
+      var sym = (tk.textContent || '').trim().toUpperCase();
+      if(!sym) continue;
+
+      var btn = document.createElement('button');
+      btn.className = 'dt-launch-btn';
+      btn.textContent = '🎯 用決策樹快速判斷';
+      (function(s){
+        btn.onclick = function(){
+          var p = extractData(s);
+          window.dtOpen(p);
+        };
+      })(sym);
+
+      var hint = document.createElement('div');
+      hint.className = 'dt-launch-hint';
+      hint.textContent = '自動帶入此頁數據,可手動修改';
+
+      var inner = block.querySelector('.verdict-inner');
+      if(inner){
+        inner.appendChild(btn);
+        inner.appendChild(hint);
+      } else {
+        block.appendChild(btn);
+        block.appendChild(hint);
+      }
+    }
+  }
+
+  function start(){
+    var root = document.getElementById('accumOut');
+    if(!root){
+      setTimeout(start, 500);
+      return;
+    }
+    var obs = new MutationObserver(function(){
+      setTimeout(injectBtn, 50);
+    });
+    obs.observe(root, {childList: true, subtree: true});
+    injectBtn();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();
+</script>
 </body>
 </html>
