@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>診斷工具</title>
+<style>
+body{background:#f5f0e8;font-family:-apple-system,sans-serif;padding:20px;color:#1a1a2e;}
+h1{font-size:18px;color:#8a6e2f;margin-bottom:16px;}
+.test{background:#fffdf5;border:1px solid #e8dfc0;border-radius:12px;padding:14px;margin-bottom:12px;}
+.test h2{font-size:14px;color:#5a4010;margin-bottom:8px;}
+.result{font-size:13px;padding:10px;border-radius:8px;margin-top:8px;font-family:monospace;word-break:break-all;}
+.ok{background:#edfaf3;color:#2ea86e;border:1px solid #c5eedd;}
+.fail{background:#fef0f0;color:#d94f4f;border:1px solid #f5cccc;}
+.info{background:#e8f0fe;color:#3a7bd5;border:1px solid #b8d0f8;}
+.btn{background:#c8a84b;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;margin-top:10px;cursor:pointer;}
+#summary{background:#fffbec;border:2px solid #c8a84b;border-radius:12px;padding:14px;margin-top:16px;font-size:14px;}
+code{background:#f0e8d0;padding:2px 6px;border-radius:4px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<h1>🔍 決策樹診斷工具</h1>
+
+<div class="test">
+  <h2>測試 1:decision-hook.js 是否能載入</h2>
+  <div id="t1">⏳ 測試中...</div>
+</div>
+
+<div class="test">
+  <h2>測試 2:window.dtOpen 函數是否存在</h2>
+  <div id="t2">⏳ 等待測試 1...</div>
+</div>
+
+<div class="test">
+  <h2>測試 3:decision.html 是否能載入</h2>
+  <div id="t3">⏳ 等待...</div>
+</div>
+
+<div id="summary"></div>
+
+<script>
+var results = {};
+
+// 測試 1:載入 decision-hook.js
+var t1 = document.getElementById('t1');
+var script = document.createElement('script');
+script.src = 'decision-hook.js?nocache=' + Date.now();
+
+script.onload = function(){
+  t1.innerHTML = '<div class="result ok">✅ decision-hook.js 載入成功</div>';
+  results.t1 = true;
+
+  // 測試 2
+  var t2 = document.getElementById('t2');
+  if(typeof window.dtOpen === 'function'){
+    t2.innerHTML = '<div class="result ok">✅ window.dtOpen 存在且為 function</div>';
+    results.t2 = true;
+  } else {
+    t2.innerHTML = '<div class="result fail">❌ window.dtOpen 不存在(型別:' + (typeof window.dtOpen) + ')<br>代表 hook 載入但沒執行完</div>';
+    results.t2 = false;
+  }
+  runTest3();
+  renderSummary();
+};
+
+script.onerror = function(){
+  t1.innerHTML = '<div class="result fail">❌ decision-hook.js 載入失敗<br>可能原因:<br>1. 檔案不存在<br>2. 檔名錯誤<br>3. 放錯位置</div>';
+  results.t1 = false;
+
+  var t2 = document.getElementById('t2');
+  t2.innerHTML = '<div class="result fail">⛔ 跳過(hook 沒載入)</div>';
+  results.t2 = false;
+
+  runTest3();
+  renderSummary();
+};
+
+document.head.appendChild(script);
+
+// 測試 3:decision.html 能否開啟
+function runTest3(){
+  var t3 = document.getElementById('t3');
+  fetch('decision.html?nocache=' + Date.now())
+    .then(function(r){
+      if(r.ok){
+        t3.innerHTML = '<div class="result ok">✅ decision.html 可以存取(HTTP ' + r.status + ')</div>';
+        results.t3 = true;
+      } else {
+        t3.innerHTML = '<div class="result fail">❌ decision.html 有問題(HTTP ' + r.status + ')</div>';
+        results.t3 = false;
+      }
+      renderSummary();
+    })
+    .catch(function(e){
+      t3.innerHTML = '<div class="result fail">❌ 無法存取 decision.html<br>' + e.message + '</div>';
+      results.t3 = false;
+      renderSummary();
+    });
+}
+
+function renderSummary(){
+  var s = document.getElementById('summary');
+  var html = '<b>📋 診斷結果總結:</b><br><br>';
+
+  if(results.t1 && results.t2 && results.t3){
+    html += '<div class="result ok">🎉 所有測試通過!<br>決策樹應該能正常運作。<br>如果 test-accum.html 還是沒按鈕,問題在於 hook 找不到分析卡的 <code>.verdict-block</code>。</div>';
+  } else if(!results.t1){
+    html += '<div class="result fail">⚠️ <b>decision-hook.js 載入失敗</b><br><br>可能原因:<br>1. 檔案不在 Gstock-v6/ 目錄<br>2. 檔名打錯(應該是 <code>decision-hook.js</code>)<br>3. GitHub Pages 還沒部署完(等幾分鐘)</div>';
+  } else if(!results.t2){
+    html += '<div class="result fail">⚠️ <b>hook 載入但沒執行</b><br><br>可能原因:<br>1. 程式碼有語法錯誤<br>2. 內容貼不完整<br>3. 被 Safari 擋掉</div>';
+  } else if(!results.t3){
+    html += '<div class="result fail">⚠️ <b>decision.html 無法存取</b><br><br>檢查檔案是否在 Gstock-v6/ 目錄</div>';
+  }
+
+  s.innerHTML = html;
+}
+</script>
+
+</body>
+</html>
