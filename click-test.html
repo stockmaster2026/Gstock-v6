@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>點擊測試</title>
+<style>
+body{font-family:sans-serif;padding:20px;background:#f5f0e8;}
+button{background:#c8a84b;color:#fff;border:none;padding:15px 30px;border-radius:10px;font-size:16px;margin:10px;cursor:pointer;}
+#result{background:#fff;padding:15px;border-radius:10px;margin:10px 0;min-height:50px;}
+</style></head>
+<body>
+<h2>🧪 點擊測試</h2>
+<p>這個頁面測試 Safari 最基本的 JavaScript 是否正常</p>
+
+<button onclick="test1()">測試 1: 內嵌 onclick</button>
+<button id="btn2">測試 2: addEventListener</button>
+<button onclick="test3()">測試 3: alert</button>
+<button onclick="test4()">測試 4: localStorage</button>
+
+<div id="result">結果會顯示在這裡...</div>
+
+<script>
+function log(msg) {
+  document.getElementById('result').innerHTML += '<div>' + msg + '</div>';
+}
+
+function test1() {
+  log('✅ 測試 1 成功: onclick="test1()" 可以執行');
+}
+
+function test3() {
+  alert('測試 3: alert 正常');
+  log('✅ 測試 3 完成');
+}
+
+function test4() {
+  try {
+    localStorage.setItem('test', 'hello');
+    var v = localStorage.getItem('test');
+    log('✅ 測試 4 成功: localStorage 可以用,值 = ' + v);
+  } catch(e) {
+    log('❌ 測試 4 失敗: ' + e.message);
+  }
+}
+
+document.getElementById('btn2').addEventListener('click', function() {
+  log('✅ 測試 2 成功: addEventListener 可以執行');
+});
+
+log('📋 script 已載入,請點上方按鈕測試');
+</script>
+
+</body></html>
