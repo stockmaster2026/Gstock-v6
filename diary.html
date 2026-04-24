@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>操作日記</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="操作日記">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#c8a84b">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,"PingFang TC",sans-serif;background:#f5f0e8;color:#1a1a2e;padding:12px;padding-bottom:80px;min-height:100vh;}
+.wrap{max-width:760px;margin:0 auto;}
+
+/* 頂部標題 */
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 0 16px;}
+.hdr h1{font-size:20px;color:#8a6e2f;font-weight:700;}
+.hdr .sub{font-size:11px;color:#aa9a70;margin-top:2px;}
+.hdr-btns{display:flex;gap:8px;}
+.icon-btn{background:#fffdf5;border:1px solid #e8dfc0;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;}
+.icon-btn:active{background:#f0e8d0;transform:scale(.95);}
+
+/* 資金池切換 Tab */
+.pool-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.pool-tab{background:#fffdf5;border:2px solid #e8dfc0;border-radius:12px;padding:12px;cursor:pointer;text-align:center;transition:all .2s;}
+.pool-tab.active{border-color:#c8a84b;background:linear-gradient(135deg,#fffbec,#fff8e0);box-shadow:0 2px 8px rgba(200,168,75,.15);}
+.pool-tab .pool-name{font-size:14px;font-weight:700;color:#5a4010;margin-bottom:4px;}
+.pool-tab .pool-stats{font-size:11px;color:#888;}
+.pool-tab.new{border-color:#2ea86e;}
+.pool-tab.new.active{background:linear-gradient(135deg,#edfaf3,#d5f2e2);}
+
+/* 資金池摘要卡 */
+.pool-summary{background:#fffdf5;border:1px solid #e8dfc0;border-radius:14px;padding:14px;margin-bottom:14px;}
+.ps-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+.ps-row:last-child{margin-bottom:0;}
+.ps-cell{background:#f0e8d0;border-radius:8px;padding:8px;text-align:center;}
+.ps-cell.green{background:#d5f2e2;}
+.ps-cell.red{background:#fcdcdc;}
+.ps-cell.blue{background:#d5e4f7;}
+.ps-num{font-size:17px;font-weight:700;color:#5a4010;}
+.ps-num.green{color:#2ea86e;}
+.ps-num.red{color:#d94f4f;}
+.ps-num.blue{color:#3a7bd5;}
+.ps-label{font-size:10px;color:#8a8068;margin-top:2px;}
+
+/* 實驗池特別提示條 */
+.exp-info{background:linear-gradient(135deg,#edfaf3,#d5f2e2);border-left:4px solid #2ea86e;padding:10px 12px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#1e5a3f;line-height:1.6;}
+
+/* 區塊標題 */
+.sect-title{font-size:13px;color:#5a4010;font-weight:700;margin:16px 0 8px;padding-left:4px;display:flex;justify-content:space-between;align-items:center;}
+.sect-title .count{font-size:11px;color:#aa9a70;font-weight:500;}
+
+/* 交易卡 */
+.card{background:#fffdf5;border:1px solid #e8dfc0;border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;transition:all .15s;}
+.card:active{transform:scale(.99);}
+.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.card-sym{font-size:17px;font-weight:700;color:#1a1a2e;letter-spacing:.5px;}
+.card-badge{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;}
+.badge-profit{background:#d5f2e2;color:#1e7a4f;}
+.badge-loss{background:#fcdcdc;color:#a03030;}
+.badge-flat{background:#f0e8d0;color:#8a6e2f;}
+.card-row{display:flex;justify-content:space-between;font-size:12px;color:#666;margin:3px 0;}
+.card-row .lbl{color:#8a8068;}
+.card-row .val{font-weight:600;color:#1a1a2e;}
+.card-row .val.green{color:#2ea86e;}
+.card-row .val.red{color:#d94f4f;}
+
+/* 分批進度條 */
+.batch-progress{margin-top:8px;padding-top:8px;border-top:1px dashed #e8dfc0;}
+.batch-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;}
+.batch-row.done{color:#2ea86e;}
+.batch-row.next{color:#c8a84b;font-weight:700;}
+.batch-row.todo{color:#aaa;}
+.batch-icon{display:inline-block;width:16px;}
+
+/* 動態建議 */
+.card-hint{margin-top:8px;padding:6px 10px;border-radius:6px;font-size:11px;line-height:1.5;}
+.hint-warn{background:#fef4e6;color:#7a5210;border-left:3px solid #e8a940;}
+.hint-danger{background:#fef0f0;color:#7a2020;border-left:3px solid #d94f4f;}
+.hint-good{background:#edfaf3;color:#1e5a3f;border-left:3px solid #2ea86e;}
+.hint-info{background:#e8f0fe;color:#1a4a70;border-left:3px solid #3a7bd5;}
+
+/* 空狀態 */
+.empty{background:#fffdf5;border:1px dashed #d0c090;border-radius:12px;padding:30px 20px;text-align:center;color:#aa9a70;font-size:13px;line-height:1.7;}
+.empty .big{font-size:36px;margin-bottom:8px;opacity:.5;}
+
+/* FAB 浮動新增按鈕 */
+.fab{position:fixed;bottom:20px;right:20px;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#c8a84b,#8a6e2f);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 14px rgba(200,168,75,.5);z-index:100;}
+.fab:active{transform:scale(.92);}
+.fab.new-pool{background:linear-gradient(135deg,#2ea86e,#1e7a4f);box-shadow:0 4px 14px rgba(46,168,110,.5);}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,26,46,.5);z-index:999;display:none;align-items:flex-start;justify-content:center;padding:20px 10px;overflow-y:auto;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:#fffdf5;border-radius:16px;width:100%;max-width:560px;max-height:calc(100vh - 40px);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,#fffbec,#fff8e0);border-bottom:1px solid #e8dfc0;}
+.modal-title{font-size:15px;font-weight:700;color:#8a6e2f;}
+.modal-close{background:#f0e8d0;color:#8a6e2f;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+.modal-close:active{background:#c8a84b;color:#fff;}
+.modal-body{flex:1;overflow-y:auto;padding:16px 18px;-webkit-overflow-scrolling:touch;}
+
+/* 表單 */
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:12px;color:#5a4010;font-weight:700;margin-bottom:4px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 12px;border:1px solid #d0c090;border-radius:8px;font-size:14px;background:#fffbec;color:#1a1a2e;font-family:inherit;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:#c8a84b;background:#fff;}
+.fg .hint{font-size:11px;color:#aa9a70;margin-top:3px;}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* 目標價建議框 */
+.target-box{background:linear-gradient(135deg,#fffbec,#fff8e0);border:1px solid #c8a84b;border-radius:10px;padding:12px;margin-bottom:12px;}
+.target-box h4{font-size:13px;color:#8a6e2f;margin-bottom:8px;}
+.target-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:6px;margin:4px 0;cursor:pointer;border:1px solid transparent;}
+.target-row:active{background:#f0e8d0;}
+.target-row.selected{background:#d5f2e2;border-color:#2ea86e;}
+.target-row .t-name{font-size:12px;font-weight:700;color:#5a4010;}
+.target-row .t-val{font-size:13px;color:#1a1a2e;}
+.target-row .t-rr{font-size:11px;color:#2ea86e;font-weight:700;}
+
+/* R/R 結果框 */
+.rr-result{background:#e8f0fe;border-left:4px solid #3a7bd5;padding:10px 12px;border-radius:8px;margin:10px 0;font-size:12px;color:#1a4a70;line-height:1.6;}
+.rr-result.ok{background:#edfaf3;border-color:#2ea86e;color:#1e5a3f;}
+.rr-result.fail{background:#fef0f0;border-color:#d94f4f;color:#7a2020;}
+.rr-big{font-size:18px;font-weight:700;margin:4px 0;}
+
+/* 紀律檢查 */
+.discipline{background:#fef4e6;border-left:4px solid #e8a940;padding:10px 12px;border-radius:8px;margin:10px 0;font-size:12px;color:#7a5210;}
+.disc-item{padding:3px 0;display:flex;align-items:center;gap:6px;}
+.disc-item.pass{color:#1e5a3f;}
+.disc-item.fail{color:#7a2020;}
+
+/* 按鈕 */
+.btn{display:block;width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:linear-gradient(135deg,#c8a84b,#8a6e2f);color:#fff;}
+.btn-success{background:linear-gradient(135deg,#2ea86e,#1e7a4f);color:#fff;}
+.btn-danger{background:linear-gradient(135deg,#d94f4f,#a03030);color:#fff;}
+.btn-ghost{background:#f0e8d0;color:#8a6e2f;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* 詳情頁 */
+.detail-block{background:#faf5e8;border-radius:10px;padding:12px;margin-bottom:10px;}
+.detail-block h3{font-size:13px;color:#8a6e2f;margin-bottom:8px;}
+.dt-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dotted #e8dfc0;}
+.dt-row:last-child{border-bottom:none;}
+.dt-row .lbl{color:#8a8068;}
+
+/* 分批賣出選項 */
+.sell-opt{background:#fff;border:1px solid #e8dfc0;border-radius:10px;padding:10px;margin:6px 0;cursor:pointer;}
+.sell-opt:active{background:#f0e8d0;}
+.sell-opt.done{opacity:.5;background:#f5f5f5;}
+.so-row{display:flex;justify-content:space-between;font-size:13px;}
+.so-name{font-weight:700;color:#5a4010;}
+
+/* 底部導航 */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fffdf5;border-top:1px solid #e8dfc0;display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
+.nav-btn{flex:1;text-align:center;font-size:11px;color:#8a8068;padding:4px;cursor:pointer;}
+.nav-btn.active{color:#c8a84b;font-weight:700;}
+.nav-btn .nav-icon{font-size:20px;display:block;margin-bottom:2px;}
+
+/* 統計頁 */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat-card{background:#fffdf5;border:1px solid #e8dfc0;border-radius:10px;padding:12px;}
+.stat-card h4{font-size:11px;color:#8a8068;margin-bottom:4px;}
+.stat-card .big-num{font-size:22px;font-weight:700;color:#5a4010;}
+.stat-card .big-num.green{color:#2ea86e;}
+.stat-card .big-num.red{color:#d94f4f;}
+
+/* 出場原因標籤 */
+.exit-tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px;}
+.et-t1{background:#d5f2e2;color:#1e7a4f;}
+.et-t2{background:#c5eedd;color:#1e5a3f;}
+.et-t3{background:#b5e8d2;color:#0e4a2f;}
+.et-stop{background:#fcdcdc;color:#7a2020;}
+.et-weak{background:#fef4e6;color:#7a5210;}
+.et-other{background:#e8dfc0;color:#5a4010;}
+</style>
+
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- 頂部 -->
+
+<div class="hdr">
+  <div>
+    <h1>📒 操作日記</h1>
+    <div class="sub" id="todayInfo"></div>
+  </div>
+  <div class="hdr-btns">
+    <button class="icon-btn" onclick="showStats()" title="統計">📊</button>
+    <button class="icon-btn" onclick="showSettings()" title="設定">⚙️</button>
+  </div>
+</div>
+
+<!-- 資金池切換 -->
+
+<div class="pool-tabs">
+  <div class="pool-tab" id="tabOld" onclick="switchPool('old')">
+    <div class="pool-name">🟦 舊持倉</div>
+    <div class="pool-stats" id="oldStats">-</div>
+  </div>
+  <div class="pool-tab new active" id="tabNew" onclick="switchPool('new')">
+    <div class="pool-name">🧪 實驗池</div>
+    <div class="pool-stats" id="newStats">-</div>
+  </div>
+</div>
+
+<!-- 資金池摘要 -->
+
+<div id="poolSummary"></div>
+
+<!-- 持倉/觀察/歷史 -->
+
+<div id="contentArea"></div>
+
+</div>
+
+<!-- FAB 新增按鈕 -->
+
+<button class="fab" id="fabBtn" onclick="openAddTrade()" title="新增交易">+</button>
+
+<!-- Modal:新增交易 -->
+
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">📝 新增交易</span>
+      <button class="modal-close" onclick="closeModal('addModal')">關閉</button>
+    </div>
+    <div class="modal-body" id="addBody"></div>
+  </div>
+</div>
+
+<!-- Modal:個股詳情 -->
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="detailTitle">持倉詳情</span>
+      <button class="modal-close" onclick="closeModal('detailModal')">關閉</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- Modal:分批賣出 -->
+
+<div class="modal-overlay" id="sellModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">📤 出場結算</span>
+      <button class="modal-close" onclick="closeModal('sellModal')">關閉</button>
+    </div>
+    <div class="modal-body" id="sellBody"></div>
+  </div>
+</div>
+
+<!-- Modal:統計 -->
+
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">📊 績效統計</span>
+      <button class="modal-close" onclick="closeModal('statsModal')">關閉</button>
+    </div>
+    <div class="modal-body" id="statsBody"></div>
+  </div>
+</div>
+
+<!-- Modal:設定 -->
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">⚙️ 設定</span>
+      <button class="modal-close" onclick="closeModal('settingsModal')">關閉</button>
+    </div>
+    <div class="modal-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  資料結構
+// ═══════════════════════════════════════════════════════════════
+//
+// localStorage keys:
+//   diary_trades:     交易陣列 [{ id, pool, sym, ... }]
+//   diary_settings:   設定 { expCapital, expMaxPerTrade, expEndDate, ... }
+//
+// 交易物件:
+//   {
+//     id: 時間戳 (主鍵)
+//     pool: 'old' | 'new'
+//     sym: 股票代號
+//     entryDate: 進場日期 YYYY-MM-DD
+//     entryPrice: 買入價
+//     shares: 股數
+//     cost: 總成本 (entryPrice × shares)
+//     stopLoss: 停損價
+//     targets: [{ price, pct, shares, sold, soldPrice, soldDate }]  分批目標
+//     mainCost: 主力成本底部(來自 ACCUM,選填)
+//     entryReason: 進場原因
+//     note: 筆記
+//     status: 'holding' | 'closed'
+//     exits: [{ date, price, shares, reason, pnl, note }]  出場記錄
+//     closedDate: 全部出場日期
+//   }
+// ═══════════════════════════════════════════════════════════════
+
+var state = {
+  currentPool: 'new',
+  trades: [],
+  settings: {
+    expCapital: 50000,
+    expMaxPerTrade: 10000,
+    expStartDate: '',
+    expEndDate: '',
+    rrMin: 3,
+    stopPct: 8
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  資料讀寫
+// ═══════════════════════════════════════════════════════════════
+
+function loadData() {
+  try {
+    var t = localStorage.getItem('diary_trades');
+    state.trades = t ? JSON.parse(t) : [];
+  } catch(e) { state.trades = []; }
+  try {
+    var s = localStorage.getItem('diary_settings');
+    if(s) {
+      var parsed = JSON.parse(s);
+      for(var k in parsed) state.settings[k] = parsed[k];
+    }
+  } catch(e) {}
+
+  // 第一次使用:設定實驗開始/結束日期
+  if(!state.settings.expStartDate) {
+    var today = new Date();
+    state.settings.expStartDate = fmtDate(today);
+    var end = new Date(today);
+    end.setMonth(end.getMonth() + 3);
+    state.settings.expEndDate = fmtDate(end);
+    saveSettings();
+  }
+}
+
+function saveTrades() {
+  localStorage.setItem('diary_trades', JSON.stringify(state.trades));
+}
+
+function saveSettings() {
+  localStorage.setItem('diary_settings', JSON.stringify(state.settings));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  工具函數
+// ═══════════════════════════════════════════════════════════════
+
+function fmtDate(d) {
+  if(typeof d === 'string') return d;
+  var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + day;
+}
+
+function fmtMoney(n) {
+  if(n === null || n === undefined || isNaN(n)) return '-';
+  return '$' + n.toLocaleString('en-US', {maximumFractionDigits: 2});
+}
+
+function fmtPct(n) {
+  if(n === null || n === undefined || isNaN(n)) return '-';
+  var sign = n > 0 ? '+' : '';
+  return sign + n.toFixed(1) + '%';
+}
+
+function daysBetween(d1, d2) {
+  var a = new Date(d1), b = new Date(d2);
+  return Math.floor((b - a) / (1000*60*60*24));
+}
+
+function todayStr() {
+  return fmtDate(new Date());
+}
+
+function escapeHtml(s) {
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function uuid() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  資金池切換
+// ═══════════════════════════════════════════════════════════════
+
+function switchPool(pool) {
+  state.currentPool = pool;
+  document.getElementById('tabOld').classList.toggle('active', pool === 'old');
+  document.getElementById('tabNew').classList.toggle('active', pool === 'new');
+  document.getElementById('fabBtn').classList.toggle('new-pool', pool === 'new');
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  主渲染
+// ═══════════════════════════════════════════════════════════════
+
+function render() {
+  renderTabStats();
+  renderPoolSummary();
+  renderContent();
+  renderTodayInfo();
+}
+
+function renderTodayInfo() {
+  var t = new Date();
+  var d = ['日','一','二','三','四','五','六'][t.getDay()];
+  document.getElementById('todayInfo').textContent =
+    t.getMonth()+1 + '/' + t.getDate() + ' 週' + d + '  •  波段交易紀錄';
+}
+
+function renderTabStats() {
+  var oldTrades = state.trades.filter(function(t){return t.pool === 'old';});
+  var newTrades = state.trades.filter(function(t){return t.pool === 'new';});
+  var oldHolding = oldTrades.filter(function(t){return t.status === 'holding';}).length;
+  var newHolding = newTrades.filter(function(t){return t.status === 'holding';}).length;
+  var oldClosed = oldTrades.filter(function(t){return t.status === 'closed';}).length;
+  var newClosed = newTrades.filter(function(t){return t.status === 'closed';}).length;
+  document.getElementById('oldStats').textContent =
+    '持有 ' + oldHolding + ' / 已出 ' + oldClosed;
+  document.getElementById('newStats').textContent =
+    '持有 ' + newHolding + ' / 已出 ' + newClosed;
+}
+
+function renderPoolSummary() {
+  var poolTrades = state.trades.filter(function(t){return t.pool === state.currentPool;});
+  var holding = poolTrades.filter(function(t){return t.status === 'holding';});
+  var closed = poolTrades.filter(function(t){return t.status === 'closed';});
+
+  var totalCost = 0, closedPnl = 0, wins = 0;
+  holding.forEach(function(t){ totalCost += (t.cost || 0); });
+  closed.forEach(function(t){
+    var pnl = calcClosedPnl(t);
+    closedPnl += pnl;
+    if(pnl > 0) wins++;
+  });
+
+  var winRate = closed.length > 0 ? (wins / closed.length * 100) : 0;
+  var html = '';
+
+  if(state.currentPool === 'new') {
+    // 實驗池:顯示紀律資訊
+    var used = totalCost;
+    var cash = state.settings.expCapital - used - (-closedPnl);
+    // 實際現金 = 初始資金 - 當前持倉成本 + 已實現損益
+    cash = state.settings.expCapital + closedPnl - totalCost;
+    var usedPct = state.settings.expCapital > 0 ? (totalCost / state.settings.expCapital * 100) : 0;
+    var daysLeft = daysBetween(todayStr(), state.settings.expEndDate);
+
+    html += '<div class="exp-info">';
+    html += '🧪 <b>實驗池紀律模式</b><br>';
+    html += '實驗期間:' + state.settings.expStartDate + ' ~ ' + state.settings.expEndDate;
+    if(daysLeft > 0) html += '(剩 ' + daysLeft + ' 天)';
+    else if(daysLeft === 0) html += '(今天到期!)';
+    else html += '(已結束)';
+    html += '<br>紀律:R/R ≥ 1:3 · 停損 -8% · 分 3 批出場 · 單筆 ≤ ' + fmtMoney(state.settings.expMaxPerTrade);
+    html += '</div>';
+
+    html += '<div class="pool-summary">';
+    html += '<div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + fmtMoney(state.settings.expCapital) + '</div><div class="ps-label">起始資金</div></div>';
+    html += '<div class="ps-cell blue"><div class="ps-num blue">' + fmtMoney(cash) + '</div><div class="ps-label">剩餘現金</div></div>';
+    html += '<div class="ps-cell ' + (closedPnl >= 0 ? 'green' : 'red') + '"><div class="ps-num ' + (closedPnl >= 0 ? 'green' : 'red') + '">' + fmtMoney(closedPnl) + '</div><div class="ps-label">已實現損益</div></div>';
+    html += '</div>';
+    html += '<div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + holding.length + '</div><div class="ps-label">持有中</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + closed.length + '</div><div class="ps-label">已出場</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + winRate.toFixed(0) + '%</div><div class="ps-label">勝率</div></div>';
+    html += '</div>';
+    html += '</div>';
+  } else {
+    // 舊持倉
+    html += '<div class="pool-summary">';
+    html += '<div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + fmtMoney(totalCost) + '</div><div class="ps-label">持倉成本</div></div>';
+    html += '<div class="ps-cell ' + (closedPnl >= 0 ? 'green' : 'red') + '"><div class="ps-num ' + (closedPnl >= 0 ? 'green' : 'red') + '">' + fmtMoney(closedPnl) + '</div><div class="ps-label">已實現</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + winRate.toFixed(0) + '%</div><div class="ps-label">勝率</div></div>';
+    html += '</div>';
+    html += '<div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + holding.length + '</div><div class="ps-label">持有中</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + closed.length + '</div><div class="ps-label">已出場</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + (holding.length + closed.length) + '</div><div class="ps-label">總交易</div></div>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  document.getElementById('poolSummary').innerHTML = html;
+}
+
+function renderContent() {
+  var poolTrades = state.trades.filter(function(t){return t.pool === state.currentPool;});
+  var holding = poolTrades.filter(function(t){return t.status === 'holding';})
+    .sort(function(a,b){return (b.entryDate || '').localeCompare(a.entryDate || '');});
+  var closed = poolTrades.filter(function(t){return t.status === 'closed';})
+    .sort(function(a,b){return (b.closedDate || '').localeCompare(a.closedDate || '');});
+
+  var html = '';
+
+  // 持有中
+  html += '<div class="sect-title">🟢 持有中 <span class="count">共 ' + holding.length + ' 檔</span></div>';
+  if(holding.length === 0) {
+    html += '<div class="empty"><div class="big">📦</div>目前沒有持倉<br>點右下角 + 新增交易</div>';
+  } else {
+    holding.forEach(function(t){ html += renderHoldingCard(t); });
+  }
+
+  // 已出場
+  if(closed.length > 0) {
+    html += '<div class="sect-title">⚫ 已出場 <span class="count">共 ' + closed.length + ' 筆</span></div>';
+    closed.slice(0, 10).forEach(function(t){ html += renderClosedCard(t); });
+    if(closed.length > 10) {
+      html += '<div style="text-align:center;color:#aa9a70;font-size:12px;padding:10px;">顯示最近 10 筆,共 ' + closed.length + ' 筆</div>';
+    }
+  }
+
+  document.getElementById('contentArea').innerHTML = html;
+}
+
+function renderHoldingCard(t) {
+  var remainingShares = getRemainingShares(t);
+  var avgCost = t.entryPrice;
+  var totalSoldPnl = (t.exits || []).reduce(function(sum, e){ return sum + (e.pnl || 0); }, 0);
+
+  // 批次進度
+  var batchHtml = '';
+  if(t.targets && t.targets.length > 0) {
+    t.targets.forEach(function(tg, i){
+      var label = ['T1', 'T2', 'T3'][i] || ('T' + (i+1));
+      if(tg.sold) {
+        batchHtml += '<div class="batch-row done"><span class="batch-icon">✅</span>' + label + ' ' + fmtMoney(tg.price) + ' (' + fmtPct(tg.pct) + ')  已賣 ' + tg.shares + ' 股</div>';
+      } else if(i === 0 || (t.targets[i-1] && t.targets[i-1].sold)) {
+        batchHtml += '<div class="batch-row next"><span class="batch-icon">🎯</span>' + label + ' ' + fmtMoney(tg.price) + ' (' + fmtPct(tg.pct) + ')  待賣 ' + tg.shares + ' 股</div>';
+      } else {
+        batchHtml += '<div class="batch-row todo"><span class="batch-icon">⏳</span>' + label + ' ' + fmtMoney(tg.price) + ' (' + fmtPct(tg.pct) + ')</div>';
+      }
+    });
+    batchHtml += '<div class="batch-row" style="color:#d94f4f;"><span class="batch-icon">🛑</span>停損 ' + fmtMoney(t.stopLoss) + ' (-8%)</div>';
+  }
+
+  // 動態建議(根據買入日計算)
+  var hintHtml = '';
+  var heldDays = daysBetween(t.entryDate, todayStr());
+
+  var html = '<div class="card" onclick="openDetail(\'' + t.id + '\')">';
+  html += '<div class="card-top">';
+  html += '<span class="card-sym">📌 ' + escapeHtml(t.sym) + '</span>';
+  if(totalSoldPnl > 0) {
+    html += '<span class="card-badge badge-profit">已落袋 ' + fmtMoney(totalSoldPnl) + '</span>';
+  } else {
+    html += '<span class="card-badge badge-flat">持有 ' + heldDays + ' 天</span>';
+  }
+  html += '</div>';
+  html += '<div class="card-row"><span class="lbl">買入成本</span><span class="val">' + fmtMoney(avgCost) + ' × ' + remainingShares + ' 股</span></div>';
+  html += '<div class="card-row"><span class="lbl">持倉成本</span><span class="val">' + fmtMoney(avgCost * remainingShares) + '</span></div>';
+  if(t.stopLoss) {
+    html += '<div class="card-row"><span class="lbl">停損價</span><span class="val red">' + fmtMoney(t.stopLoss) + '</span></div>';
+  }
+  if(batchHtml) {
+    html += '<div class="batch-progress">' + batchHtml + '</div>';
+  }
+  if(hintHtml) html += hintHtml;
+  html += '</div>';
+  return html;
+}
+
+function renderClosedCard(t) {
+  var totalPnl = calcClosedPnl(t);
+  var totalPct = calcClosedPct(t);
+  var heldDays = t.closedDate ? daysBetween(t.entryDate, t.closedDate) : 0;
+  var badge = totalPnl >= 0 ? 'badge-profit' : 'badge-loss';
+  var exits = t.exits || [];
+
+  var html = '<div class="card" onclick="openDetail(\'' + t.id + '\')">';
+  html += '<div class="card-top">';
+  html += '<span class="card-sym">' + escapeHtml(t.sym) + '</span>';
+  html += '<span class="card-badge ' + badge + '">' + fmtPct(totalPct) + ' / ' + fmtMoney(totalPnl) + '</span>';
+  html += '</div>';
+  html += '<div class="card-row"><span class="lbl">買入</span><span class="val">' + fmtMoney(t.entryPrice) + ' × ' + t.shares + ' 股 (' + (t.entryDate||'') + ')</span></div>';
+
+  // 顯示每一筆賣出
+  exits.forEach(function(e){
+    var tag = '<span class="exit-tag et-' + (e.tag || 'other') + '">' + (e.tagLabel || e.reason || '出場') + '</span>';
+    html += '<div class="card-row"><span class="lbl">' + e.date + ' 賣 ' + e.shares + ' 股 ' + tag + '</span><span class="val ' + (e.pnl >= 0 ? 'green' : 'red') + '">' + fmtMoney(e.price) + ' / ' + fmtMoney(e.pnl) + '</span></div>';
+  });
+
+  html += '<div class="card-row"><span class="lbl">持有天數</span><span class="val">' + heldDays + ' 天</span></div>';
+  html += '</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  計算函數
+// ═══════════════════════════════════════════════════════════════
+
+function getRemainingShares(t) {
+  var sold = (t.exits || []).reduce(function(sum, e){ return sum + e.shares; }, 0);
+  return t.shares - sold;
+}
+
+function calcClosedPnl(t) {
+  return (t.exits || []).reduce(function(sum, e){ return sum + (e.pnl || 0); }, 0);
+}
+
+function calcClosedPct(t) {
+  if(!t.cost || t.cost === 0) return 0;
+  return calcClosedPnl(t) / t.cost * 100;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  新增交易(Modal)
+// ═══════════════════════════════════════════════════════════════
+
+var addFormData = {};
+
+function openAddTrade() {
+  addFormData = {
+    pool: state.currentPool,
+    entryDate: todayStr(),
+    selectedTarget: 1  // 預設選中級目標(T2)
+  };
+  renderAddForm();
+  openModal('addModal');
+}
+
+function renderAddForm() {
+  var pool = addFormData.pool;
+  var isExp = pool === 'new';
+
+  var html = '';
+
+  // 選資金池(只有舊持倉的時候可以再切換到實驗池,反之亦然)
+  html += '<div class="fg"><label>資金池</label>';
+  html += '<select onchange="addFormData.pool=this.value;renderAddForm()">';
+  html += '<option value="old"' + (pool==='old'?' selected':'') + '>🟦 舊持倉(僅追蹤)</option>';
+  html += '<option value="new"' + (pool==='new'?' selected':'') + '>🧪 實驗池(嚴格紀律)</option>';
+  html += '</select></div>';
+
+  // 基本資訊
+  html += '<div class="fg"><label>股票代號 *</label>';
+  html += '<input type="text" id="f_sym" value="' + (addFormData.sym||'') + '" placeholder="例:LITE" onblur="addFormData.sym=this.value.toUpperCase();this.value=addFormData.sym;updateCalc()" style="text-transform:uppercase">';
+  html += '</div>';
+
+  html += '<div class="fg-row">';
+  html += '<div class="fg"><label>買入價 * ($)</label>';
+  html += '<input type="number" step="0.01" id="f_price" value="' + (addFormData.entryPrice||'') + '" placeholder="75.00" oninput="addFormData.entryPrice=parseFloat(this.value)||0;updateCalc()">';
+  html += '</div>';
+  html += '<div class="fg"><label>買入日期 *</label>';
+  html += '<input type="date" id="f_date" value="' + (addFormData.entryDate||todayStr()) + '" onchange="addFormData.entryDate=this.value">';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="fg-row">';
+  html += '<div class="fg"><label>股數 *</label>';
+  html += '<input type="number" step="1" id="f_shares" value="' + (addFormData.shares||'') + '" placeholder="100" oninput="addFormData.shares=parseInt(this.value)||0;updateCalc()">';
+  html += '</div>';
+  html += '<div class="fg"><label>總成本(自動算)</label>';
+  html += '<input type="text" id="f_cost" value="' + fmtMoney((addFormData.entryPrice||0)*(addFormData.shares||0)) + '" readonly style="background:#f0e8d0">';
+  html += '</div>';
+  html += '</div>';
+
+  // 舊持倉:簡化流程
+  if(!isExp) {
+    html += '<div class="fg"><label>停損價(選填)</label>';
+    html += '<input type="number" step="0.01" id="f_stop" value="' + (addFormData.stopLoss||'') + '" placeholder="自動 -8%" oninput="addFormData.stopLoss=parseFloat(this.value)||null">';
+    html += '</div>';
+
+    html += '<div class="fg"><label>筆記(選填)</label>';
+    html += '<textarea id="f_note" rows="2" placeholder="這筆當時的想法..." oninput="addFormData.note=this.value">' + escapeHtml(addFormData.note||'') + '</textarea>';
+
+```
+html += '</div>';
+
+html += '<button class="btn btn-primary" onclick="submitTrade()">💾 儲存到舊持倉</button>';
+```
+
+} else {
+// 實驗池:完整流程
+html += ‘<div class="fg"><label>主力成本底部(選填,用於算目標)</label>’;
+html += ‘<input type="number" step="0.01" id="f_main" value="' + (addFormData.mainCost||'') + '" placeholder="從 ACCUM 抓" oninput="addFormData.mainCost=parseFloat(this.value)||null;updateCalc()">’;
+html += ‘<div class="hint">💡 打開 ACCUM 看此股的「主力成本底部」填進來</div>’;
+html += ‘</div>’;
+
+```
+// 目標價計算結果
+html += '<div id="targetBox"></div>';
+
+// R/R 檢查
+html += '<div id="rrBox"></div>';
+
+// 進場原因(必填)
+html += '<div class="fg"><label>進場原因 *(必填)</label>';
+html += '<select id="f_reason" onchange="addFormData.entryReason=this.value">';
+html += '<option value="">-- 請選擇 --</option>';
+['主力剛進場(離成本<20%)',
+ 'MACD 零軸突破',
+ '放量突破前高',
+ '系統掃描熱門股',
+ '決策樹評估可進場',
+ 'RS 創新高',
+ 'Phase 2 起漲確認',
+ '其他(請填筆記)'].forEach(function(r){
+  html += '<option value="' + r + '"' + (addFormData.entryReason === r ? ' selected' : '') + '>' + r + '</option>';
+});
+html += '</select></div>';
+
+// 系統評分
+html += '<div class="fg"><label>ACCUM 系統評分(選填,0-10)</label>';
+html += '<input type="number" step="1" min="0" max="10" id="f_score" value="' + (addFormData.sysScore||'') + '" placeholder="例:8" oninput="addFormData.sysScore=parseInt(this.value)||null">';
+html += '</div>';
+
+// 決策樹判斷
+html += '<div class="fg"><label>決策樹判斷(選填)</label>';
+html += '<select id="f_dt" onchange="addFormData.dtResult=this.value">';
+html += '<option value="">-- 請選擇 --</option>';
+['🟢 最佳進場','🟢 可以進場','🟡 輕倉試水','🟡 建底倉','🟡 等回測','🔴 不建議'].forEach(function(r){
+  html += '<option value="' + r + '"' + (addFormData.dtResult === r ? ' selected' : '') + '>' + r + '</option>';
+});
+html += '</select></div>';
+
+html += '<div class="fg"><label>筆記(選填)</label>';
+html += '<textarea id="f_note" rows="2" placeholder="其他想記的..." oninput="addFormData.note=this.value">' + escapeHtml(addFormData.note||'') + '</textarea>';
+html += '</div>';
+
+// 紀律檢查
+html += '<div id="disciplineBox"></div>';
+
+html += '<button class="btn btn-success" id="submitBtn" onclick="submitTrade()">💾 儲存到實驗池</button>';
+```
+
+}
+
+document.getElementById(‘addBody’).innerHTML = html;
+updateCalc();
+}
+
+function updateCalc() {
+var p = addFormData.entryPrice || 0;
+var s = addFormData.shares || 0;
+var cost = p * s;
+
+// 更新總成本
+var costEl = document.getElementById(‘f_cost’);
+if(costEl) costEl.value = fmtMoney(cost);
+
+if(addFormData.pool !== ‘new’) return;
+
+// 算停損
+var stopLoss = p * (1 - state.settings.stopPct / 100);
+addFormData.stopLoss = stopLoss;
+
+// 算目標價(分 3 批)
+var targets = calcTargets(p, addFormData.mainCost);
+addFormData.targets = targets;
+
+// 顯示目標
+var tHtml = ‘’;
+if(p > 0) {
+tHtml += ‘<div class="target-box">’;
+tHtml += ‘<h4>🎯 分批目標價(自動計算)</h4>’;
+targets.forEach(function(tg, i){
+var label = [‘T1 保守’, ‘T2 標準 ⭐’, ‘T3 積極’][i];
+var sel = addFormData.selectedTarget === i ? ‘selected’ : ‘’;
+tHtml += ‘<div class="target-row ' + sel + '" onclick="selectTarget(' + i + ')">’;
+tHtml += ‘<span class="t-name">’ + label + ‘</span>’;
+tHtml += ‘<span class="t-val">’ + fmtMoney(tg.price) + ’ (’ + fmtPct(tg.pct) + ‘)</span>’;
+tHtml += ’<span class="t-rr">R/R ’ + tg.rr.toFixed(1) + ‘</span>’;
+tHtml += ‘</div>’;
+});
+tHtml += ‘<div class="hint" style="font-size:11px;color:#888;margin-top:6px;">出場計畫:T1 賣 1/3、T2 賣 1/3、T3 剩下</div>’;
+tHtml += ‘</div>’;
+}
+var tbox = document.getElementById(‘targetBox’);
+if(tbox) tbox.innerHTML = tHtml;
+
+// 平均 R/R 檢查
+var rrHtml = ‘’;
+if(p > 0 && targets.length > 0) {
+var avgRR = targets.reduce(function(sum,x){return sum+x.rr;}, 0) / targets.length;
+var pass = avgRR >= state.settings.rrMin;
+rrHtml += ‘<div class="rr-result ' + (pass ? 'ok' : 'fail') + '">’;
+rrHtml += ‘<div>📊 <b>風險/獎勵比檢查</b></div>’;
+rrHtml += ’<div class="rr-big">平均 R/R = 1 : ’ + avgRR.toFixed(1) + ‘</div>’;
+rrHtml += ‘<div>停損風險:’ + fmtMoney(p - stopLoss) + ‘/股(-8%)</div>’;
+rrHtml += ‘<div>’ + (pass ? ‘✅ 合格!符合 1:3 標準’ : ‘❌ 不合格!低於 1:3 標準,建議重新評估’) + ‘</div>’;
+rrHtml += ‘</div>’;
+}
+var rb = document.getElementById(‘rrBox’);
+if(rb) rb.innerHTML = rrHtml;
+
+// 紀律檢查
+renderDisciplineCheck();
+}
+
+function selectTarget(idx) {
+addFormData.selectedTarget = idx;
+updateCalc();
+}
+
+function calcTargets(entryPrice, mainCost) {
+if(!entryPrice) return [];
+
+// 策略:
+// 如果有主力成本 → 用 1.3 / 1.5 / 1.8 算
+// 如果沒有 → 用 +20% / +30% / +50%
+// 但無論如何,都要保證 T1 < T2 < T3 且都 > entryPrice
+var t1, t2, t3;
+if(mainCost && mainCost > 0) {
+t1 = mainCost * 1.3;
+t2 = mainCost * 1.5;
+t3 = mainCost * 1.8;
+// 如果已漲多(目標價低於或太接近買入價),改用百分比(從 entryPrice 算起)
+// 判斷基準:T1 如果低於 entryPrice * 1.10(漲不到 10% 沒意義)就整組改用百分比
+if(t1 < entryPrice * 1.10) {
+t1 = entryPrice * 1.20;
+t2 = entryPrice * 1.30;
+t3 = entryPrice * 1.50;
+} else {
+// T1 合理,但要確保 T2 > T1、T3 > T2
+if(t2 < t1 * 1.08) t2 = t1 * 1.10;
+if(t3 < t2 * 1.08) t3 = t2 * 1.15;
+}
+} else {
+t1 = entryPrice * 1.20;
+t2 = entryPrice * 1.30;
+t3 = entryPrice * 1.50;
+}
+
+var stopLoss = entryPrice * (1 - state.settings.stopPct / 100);
+var risk = entryPrice - stopLoss;
+
+return [t1, t2, t3].map(function(p){
+var pct = (p - entryPrice) / entryPrice * 100;
+var reward = p - entryPrice;
+var rr = risk > 0 ? reward / risk : 0;
+return { price: p, pct: pct, rr: rr };
+});
+}
+
+function renderDisciplineCheck() {
+var box = document.getElementById(‘disciplineBox’);
+if(!box) return;
+
+var p = addFormData.entryPrice || 0;
+var s = addFormData.shares || 0;
+var cost = p * s;
+var targets = addFormData.targets || [];
+
+var checks = [];
+checks.push({
+label: ‘股票代號已填’,
+pass: !!(addFormData.sym && addFormData.sym.trim())
+});
+checks.push({
+label: ‘買入價 > 0’,
+pass: p > 0
+});
+checks.push({
+label: ‘股數 > 0’,
+pass: s > 0
+});
+if(targets.length > 0) {
+var avgRR = targets.reduce(function(sum,x){return sum+x.rr;}, 0) / targets.length;
+checks.push({
+label: ‘R/R ≥ 1:’ + state.settings.rrMin + ’(目前 ’ + avgRR.toFixed(1) + ‘)’,
+pass: avgRR >= state.settings.rrMin
+});
+}
+checks.push({
+label: ’單筆 ≤ ’ + fmtMoney(state.settings.expMaxPerTrade),
+pass: cost > 0 && cost <= state.settings.expMaxPerTrade
+});
+checks.push({
+label: ‘進場原因已選’,
+pass: !!addFormData.entryReason
+});
+
+// 漲多警告(離主力成本 >40% 提醒)
+if(addFormData.mainCost && addFormData.mainCost > 0 && p > 0) {
+var gainFromMain = (p - addFormData.mainCost) / addFormData.mainCost * 100;
+if(gainFromMain > 40) {
+checks.push({
+label: ‘⚠️ 離主力成本 +’ + gainFromMain.toFixed(0) + ‘%(漲多!建議輕倉或觀望)’,
+pass: false
+});
+} else if(gainFromMain > 25) {
+checks.push({
+label: ‘⚠️ 離主力 +’ + gainFromMain.toFixed(0) + ‘%(注意:已有漲幅)’,
+pass: true  // 警告但不擋
+});
+} else {
+checks.push({
+label: ‘✨ 離主力 +’ + gainFromMain.toFixed(0) + ‘%(理想進場區)’,
+pass: true
+});
+}
+}
+
+var allPass = checks.every(function(c){return c.pass;});
+var html = ‘<div class="discipline">’;
+html += ‘<div style="font-weight:700;margin-bottom:6px;">🎯 實驗池紀律檢查</div>’;
+checks.forEach(function(c){
+html += ‘<div class="disc-item ' + (c.pass ? 'pass' : 'fail') + '">’;
+html += (c.pass ? ‘✅’ : ‘❌’) + ’ ’ + c.label;
+html += ‘</div>’;
+});
+if(!allPass) {
+html += ‘<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e8a940;font-weight:700;">⚠️ 請先通過所有檢查再儲存</div>’;
+}
+html += ‘</div>’;
+box.innerHTML = html;
+
+var btn = document.getElementById(‘submitBtn’);
+if(btn) btn.disabled = !allPass;
+}
+
+function submitTrade() {
+var data = addFormData;
+if(!data.sym || !data.entryPrice || !data.shares) {
+alert(‘請填寫完整資料’);
+return;
+}
+
+var cost = data.entryPrice * data.shares;
+var stopLoss = data.stopLoss || (data.entryPrice * (1 - state.settings.stopPct / 100));
+
+// 實驗池:必須通過紀律檢查
+if(data.pool === ‘new’) {
+if(!data.entryReason) {
+alert(‘實驗池必須填寫進場原因’);
+return;
+}
+if(cost > state.settings.expMaxPerTrade) {
+alert(‘單筆超過 ’ + fmtMoney(state.settings.expMaxPerTrade) + ’ 上限,請調整股數’);
+return;
+}
+var targets = data.targets || calcTargets(data.entryPrice, data.mainCost);
+var avgRR = targets.reduce(function(sum,x){return sum+x.rr;}, 0) / targets.length;
+if(avgRR < state.settings.rrMin) {
+if(!confirm(‘⚠️ R/R 只有 1:’ + avgRR.toFixed(1) + ‘,低於 1:’ + state.settings.rrMin + ’ 標準\n\n真的要強行進場嗎?(違反紀律!)’)) return;
+}
+}
+
+// 建立交易物件
+var share1 = Math.floor(data.shares / 3);
+var share2 = Math.floor(data.shares / 3);
+var share3 = data.shares - share1 - share2;
+
+var tradeTargets = (data.targets || []).map(function(tg, i){
+return {
+price: tg.price,
+pct: tg.pct,
+shares: [share1, share2, share3][i],
+sold: false
+};
+});
+
+var trade = {
+id: uuid(),
+pool: data.pool,
+sym: data.sym.toUpperCase().trim(),
+entryDate: data.entryDate || todayStr(),
+entryPrice: data.entryPrice,
+shares: data.shares,
+cost: cost,
+stopLoss: stopLoss,
+targets: data.pool === ‘new’ ? tradeTargets : [],
+mainCost: data.mainCost || null,
+entryReason: data.entryReason || ‘’,
+sysScore: data.sysScore || null,
+dtResult: data.dtResult || ‘’,
+note: data.note || ‘’,
+status: ‘holding’,
+exits: []
+};
+
+state.trades.push(trade);
+saveTrades();
+closeModal(‘addModal’);
+render();
+alert(‘✅ 已儲存!\n\n’ + trade.sym + ’  ’ + fmtMoney(trade.entryPrice) + ’ × ’ + trade.shares + ’ 股\n總成本:’ + fmtMoney(trade.cost));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  詳情頁
+// ═══════════════════════════════════════════════════════════════
+
+function openDetail(id) {
+var t = state.trades.find(function(x){return x.id === id;});
+if(!t) return;
+renderDetail(t);
+openModal(‘detailModal’);
+}
+
+function renderDetail(t) {
+document.getElementById(‘detailTitle’).textContent = (t.status === ‘holding’ ? ’📊 ’ : ’⚫ ’) + t.sym;
+var html = ‘’;
+var remaining = getRemainingShares(t);
+var realizedPnl = calcClosedPnl(t);
+
+html += ‘<div class="detail-block">’;
+html += ‘<h3>💼 基本資訊</h3>’;
+html += ‘<div class="dt-row"><span class="lbl">資金池</span><span>’ + (t.pool === ‘new’ ? ‘🧪 實驗池’ : ‘🟦 舊持倉’) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">買入日期</span><span>’ + (t.entryDate || ‘-’) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">買入價</span><span>’ + fmtMoney(t.entryPrice) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">總股數</span><span>’ + t.shares + ’ 股</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">總成本</span><span>’ + fmtMoney(t.cost) + ‘</span></div>’;
+if(t.stopLoss) html += ‘<div class="dt-row"><span class="lbl">停損價</span><span>’ + fmtMoney(t.stopLoss) + ‘</span></div>’;
+if(t.mainCost) html += ‘<div class="dt-row"><span class="lbl">主力成本</span><span>’ + fmtMoney(t.mainCost) + ‘</span></div>’;
+if(t.status === ‘holding’) {
+html += ‘<div class="dt-row"><span class="lbl">持有天數</span><span>’ + daysBetween(t.entryDate, todayStr()) + ’ 天</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">剩餘股數</span><span>’ + remaining + ’ 股</span></div>’;
+} else {
+html += ‘<div class="dt-row"><span class="lbl">結算日期</span><span>’ + (t.closedDate || ‘-’) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">持有天數</span><span>’ + (t.closedDate ? daysBetween(t.entryDate, t.closedDate) : 0) + ’ 天</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">總損益</span><span class="' + (realizedPnl >= 0 ? 'green' : 'red') + '" style="font-weight:700">’ + fmtMoney(realizedPnl) + ’ (’ + fmtPct(calcClosedPct(t)) + ‘)</span></div>’;
+}
+html += ‘</div>’;
+
+// 進場資訊
+if(t.entryReason || t.sysScore || t.dtResult) {
+html += ‘<div class="detail-block">’;
+html += ‘<h3>📝 進場時評估</h3>’;
+if(t.entryReason) html += ‘<div class="dt-row"><span class="lbl">進場原因</span><span>’ + escapeHtml(t.entryReason) + ‘</span></div>’;
+if(t.sysScore !== null && t.sysScore !== undefined) html += ‘<div class="dt-row"><span class="lbl">系統評分</span><span>’ + t.sysScore + ‘/10</span></div>’;
+if(t.dtResult) html += ‘<div class="dt-row"><span class="lbl">決策樹判斷</span><span>’ + escapeHtml(t.dtResult) + ‘</span></div>’;
+if(t.note) html += ‘<div class="dt-row"><span class="lbl">筆記</span><span style="font-size:11px">’ + escapeHtml(t.note) + ‘</span></div>’;
+html += ‘</div>’;
+}
+
+// 分批目標
+if(t.targets && t.targets.length > 0) {
+html += ‘<div class="detail-block">’;
+html += ‘<h3>🎯 分批出場計畫</h3>’;
+t.targets.forEach(function(tg, i){
+var label = [‘T1 保守’, ‘T2 標準’, ‘T3 積極’][i];
+var status = tg.sold ? ‘✅ 已賣’ : ‘⏳ 待賣’;
+html += ‘<div class="dt-row"><span class="lbl">’ + label + ‘</span><span>’ + fmtMoney(tg.price) + ’ (’ + fmtPct(tg.pct) + ’) · ’ + tg.shares + ’ 股 · ’ + status + ‘</span></div>’;
+});
+html += ‘</div>’;
+}
+
+// 出場記錄
+if(t.exits && t.exits.length > 0) {
+html += ‘<div class="detail-block">’;
+html += ‘<h3>📤 出場記錄</h3>’;
+t.exits.forEach(function(e, i){
+html += ‘<div class="dt-row"><span class="lbl">’ + e.date + ‘</span><span>賣 ’ + e.shares + ’ @ ’ + fmtMoney(e.price) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl" style="font-size:11px">　原因</span><span style="font-size:11px">’ + escapeHtml(e.reason || ‘’) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl" style="font-size:11px">　損益</span><span class="' + (e.pnl >= 0 ? 'green' : 'red') + '" style="font-size:11px;font-weight:700">’ + fmtMoney(e.pnl) + ’ (’ + fmtPct(e.pct) + ‘)</span></div>’;
+if(e.note) html += ‘<div class="dt-row"><span class="lbl" style="font-size:11px">　筆記</span><span style="font-size:11px">’ + escapeHtml(e.note) + ‘</span></div>’;
+});
+html += ‘</div>’;
+}
+
+// 操作按鈕
+if(t.status === ‘holding’) {
+html += ‘<button class="btn btn-success" onclick="openSell(\'' + t.id + '\')">📤 出場 / 減碼</button>’;
+html += ‘<button class="btn btn-ghost" onclick="editTrade(\'' + t.id + '\')">✏️ 修改</button>’;
+html += ‘<button class="btn btn-danger" onclick="deleteTrade(\'' + t.id + '\')">🗑️ 刪除這筆</button>’;
+} else {
+html += ‘<button class="btn btn-danger" onclick="deleteTrade(\'' + t.id + '\')">🗑️ 刪除這筆紀錄</button>’;
+}
+
+document.getElementById(‘detailBody’).innerHTML = html;
+}
+
+function deleteTrade(id) {
+if(!confirm(‘確定要刪除這筆交易紀錄?無法復原。’)) return;
+state.trades = state.trades.filter(function(t){return t.id !== id;});
+saveTrades();
+closeModal(‘detailModal’);
+render();
+}
+
+function editTrade(id) {
+alert(‘修改功能下一版再加,目前只能刪除重新輸入 🙏’);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  出場(分批賣出)
+// ═══════════════════════════════════════════════════════════════
+
+var sellData = {};
+
+function openSell(id) {
+var t = state.trades.find(function(x){return x.id === id;});
+if(!t) return;
+sellData = {
+tradeId: id,
+exitDate: todayStr(),
+batchIdx: null,   // 選擇哪個批次(T1/T2/T3 或自訂)
+customShares: 0,
+price: 0,
+reason: ‘’,
+reasonTag: ‘’,
+note: ‘’
+};
+renderSellForm(t);
+closeModal(‘detailModal’);
+openModal(‘sellModal’);
+}
+
+function renderSellForm(t) {
+var remaining = getRemainingShares(t);
+var html = ‘’;
+
+html += ‘<div class="detail-block">’;
+html += ‘<h3>📊 目前持倉</h3>’;
+html += ‘<div class="dt-row"><span class="lbl">股票</span><span class="val" style="font-weight:700">’ + t.sym + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">買入價</span><span>’ + fmtMoney(t.entryPrice) + ‘</span></div>’;
+html += ‘<div class="dt-row"><span class="lbl">剩餘股數</span><span>’ + remaining + ’ 股</span></div>’;
+html += ‘</div>’;
+
+// 選擇批次
+html += ‘<div class="fg"><label>賣出批次 *</label></div>’;
+var pendingBatches = (t.targets || []).filter(function(tg){return !tg.sold;});
+
+if(t.targets && t.targets.length > 0) {
+t.targets.forEach(function(tg, i){
+var label = [‘T1 保守’, ‘T2 標準’, ‘T3 積極’][i];
+var isDone = tg.sold;
+var cls = isDone ? ‘sell-opt done’ : ‘sell-opt’;
+var onclick = isDone ? ‘’ : ‘onclick=“selectBatch(’ + i + ‘,'’ + t.id + ‘')”’;
+html += ‘<div class=”’ + cls + ‘” id=“batch_’ + i + ‘” ’ + onclick + ‘>’;
+html += ‘<div class="so-row"><span class="so-name">’ + label + (isDone ? ’ ✅已賣’ : ‘’) + ‘</span><span>’ + fmtMoney(tg.price) + ’ · ’ + tg.shares + ’ 股</span></div>’;
+html += ‘</div>’;
+});
+}
+
+html += ‘<div class="sell-opt" id="batch_custom" onclick="selectBatch(\'custom\',\'' + t.id + '\')">’;
+html += ‘<div class="so-row"><span class="so-name">🔧 自訂股數</span><span>最多 ’ + remaining + ’ 股</span></div>’;
+html += ‘</div>’;
+
+// 自訂股數輸入(初始隱藏)
+html += ‘<div id="customSharesBox" style="display:none">’;
+html += ‘<div class="fg"><label>賣出股數</label>’;
+html += ‘<input type="number" id="sell_shares" max="' + remaining + '" min="1" step="1" oninput="sellData.customShares=parseInt(this.value)||0">’;
+html += ‘</div></div>’;
+
+html += ‘<div class="fg-row">’;
+html += ‘<div class="fg"><label>賣出價 * ($)</label>’;
+html += ‘<input type="number" step="0.01" id="sell_price" oninput="sellData.price=parseFloat(this.value)||0">’;
+html += ‘</div>’;
+html += ‘<div class="fg"><label>賣出日期 *</label>’;
+html += ‘<input type="date" id="sell_date" value="' + todayStr() + '" onchange="sellData.exitDate=this.value">’;
+html += ‘</div>’;
+html += ‘</div>’;
+
+// 賣出原因
+html += ‘<div class="fg"><label>賣出原因 *</label>’;
+html += ‘<select id="sell_reason" onchange="updateSellReason(this.value)">’;
+html += ‘<option value="">– 請選擇 –</option>’;
+[{v:‘t1’,l:‘🎯 達到 T1 目標’},
+{v:‘t2’,l:‘🎯 達到 T2 目標’},
+{v:‘t3’,l:‘🎯 達到 T3 目標’},
+{v:‘stop’,l:‘🛑 觸及停損’},
+{v:‘weak’,l:‘⚠️ 訊號轉弱’},
+{v:‘other’,l:‘📌 其他(請填筆記)’}].forEach(function(r){
+html += ‘<option value="' + r.v + '">’ + r.l + ‘</option>’;
+});
+html += ‘</select></div>’;
+
+html += ‘<div class="fg"><label>筆記(選填)</label>’;
+html += ‘<textarea id="sell_note" rows="2" placeholder="這次出場的想法、檢討..." oninput="sellData.note=this.value"></textarea>’;
+html += ‘</div>’;
+
+// 損益預覽
+html += ‘<div id="sellPreview"></div>’;
+
+html += ‘<button class="btn btn-success" onclick="confirmSell()">💾 確認出場</button>’;
+
+document.getElementById(‘sellBody’).innerHTML = html;
+}
+
+function selectBatch(idx, tradeId) {
+sellData.batchIdx = idx;
+var t = state.trades.find(function(x){return x.id === tradeId;});
+if(!t) return;
+
+// 清掉舊的選中狀態
+document.querySelectorAll(’.sell-opt’).forEach(function(el){ el.style.borderColor = ‘#e8dfc0’; el.style.background = ‘’; });
+
+var target = document.getElementById(‘batch_’ + idx);
+if(target) { target.style.borderColor = ‘#2ea86e’; target.style.background = ‘#d5f2e2’; }
+
+if(idx === ‘custom’) {
+document.getElementById(‘customSharesBox’).style.display = ‘block’;
+} else {
+document.getElementById(‘customSharesBox’).style.display = ‘none’;
+var tg = t.targets[idx];
+if(tg) {
+// 預填目標價
+var pel = document.getElementById(‘sell_price’);
+if(pel && !pel.value) {
+pel.value = tg.price.toFixed(2);
+sellData.price = tg.price;
+}
+// 預選原因
+var rsel = document.getElementById(‘sell_reason’);
+if(rsel) {
+rsel.value = ‘t’ + (idx + 1);
+updateSellReason(rsel.value);
+}
+}
+}
+updateSellPreview();
+}
+
+function updateSellReason(v) {
+var map = {
+‘t1’:‘🎯 達到 T1 目標’,‘t2’:‘🎯 達到 T2 目標’,‘t3’:‘🎯 達到 T3 目標’,
+‘stop’:‘🛑 觸及停損’,‘weak’:‘⚠️ 訊號轉弱’,‘other’:‘📌 其他’
+};
+sellData.reason = map[v] || ‘’;
+sellData.reasonTag = v;
+}
+
+function updateSellPreview() {
+// 簡化的預覽(實際計算在 confirmSell)
+}
+
+function confirmSell() {
+var t = state.trades.find(function(x){return x.id === sellData.tradeId;});
+if(!t) return;
+
+if(sellData.batchIdx === null || sellData.batchIdx === undefined) {
+alert(‘請選擇賣出批次’);
+return;
+}
+if(!sellData.price || sellData.price <= 0) {
+alert(‘請填賣出價’);
+return;
+}
+if(!sellData.reason) {
+alert(‘請選擇賣出原因’);
+return;
+}
+
+// 決定股數
+var shares;
+if(sellData.batchIdx === ‘custom’) {
+shares = sellData.customShares;
+if(!shares || shares <= 0) { alert(‘請填賣出股數’); return; }
+var remaining = getRemainingShares(t);
+if(shares > remaining) { alert(‘賣出股數超過剩餘股數(’ + remaining + ‘)’); return; }
+} else {
+var tg = t.targets[sellData.batchIdx];
+if(!tg || tg.sold) { alert(‘此批次已賣或不存在’); return; }
+shares = tg.shares;
+}
+
+// 計算損益
+var pnl = (sellData.price - t.entryPrice) * shares;
+var pct = (sellData.price - t.entryPrice) / t.entryPrice * 100;
+
+// 記錄出場
+var exit = {
+date: sellData.exitDate || todayStr(),
+price: sellData.price,
+shares: shares,
+reason: sellData.reason,
+tag: sellData.reasonTag,
+tagLabel: { t1:‘T1’, t2:‘T2’, t3:‘T3’, stop:‘停損’, weak:‘轉弱’, other:‘其他’ }[sellData.reasonTag] || ‘’,
+pnl: pnl,
+pct: pct,
+note: sellData.note || ‘’
+};
+
+t.exits = t.exits || [];
+t.exits.push(exit);
+
+// 標記該批次已賣
+if(sellData.batchIdx !== ‘custom’ && t.targets[sellData.batchIdx]) {
+t.targets[sellData.batchIdx].sold = true;
+t.targets[sellData.batchIdx].soldPrice = sellData.price;
+t.targets[sellData.batchIdx].soldDate = sellData.exitDate;
+}
+
+// 檢查是否全部出場
+var remaining = getRemainingShares(t);
+if(remaining <= 0) {
+t.status = ‘closed’;
+t.closedDate = sellData.exitDate || todayStr();
+}
+
+saveTrades();
+closeModal(‘sellModal’);
+render();
+alert(‘✅ 已記錄!\n\n賣 ’ + shares + ’ 股 @ ’ + fmtMoney(sellData.price) + ‘\n損益:’ + fmtMoney(pnl) + ’ (’ + fmtPct(pct) + ‘)’ + (remaining <= 0 ? ‘\n\n🎉 此筆交易全部出場!’ : ‘\n剩餘:’ + remaining + ’ 股’));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  統計
+// ═══════════════════════════════════════════════════════════════
+
+function showStats() {
+var html = ‘’;
+[‘new’,‘old’].forEach(function(pool){
+var poolName = pool === ‘new’ ? ‘🧪 實驗池’ : ‘🟦 舊持倉’;
+var tradesPool = state.trades.filter(function(t){return t.pool === pool;});
+var closed = tradesPool.filter(function(t){return t.status === ‘closed’;});
+var holding = tradesPool.filter(function(t){return t.status === ‘holding’;});
+
+```
+var totalPnl = 0, wins = 0, losses = 0, maxWin = 0, maxLoss = 0;
+closed.forEach(function(t){
+  var pnl = calcClosedPnl(t);
+  totalPnl += pnl;
+  if(pnl > 0) { wins++; if(pnl > maxWin) maxWin = pnl; }
+  else if(pnl < 0) { losses++; if(pnl < maxLoss) maxLoss = pnl; }
+});
+var winRate = closed.length > 0 ? (wins / closed.length * 100) : 0;
+
+html += '<div class="detail-block">';
+html += '<h3>' + poolName + '</h3>';
+html += '<div class="stat-grid">';
+html += '<div class="stat-card"><h4>持有中</h4><div class="big-num">' + holding.length + '</div></div>';
+html += '<div class="stat-card"><h4>已出場</h4><div class="big-num">' + closed.length + '</div></div>';
+html += '<div class="stat-card"><h4>勝率</h4><div class="big-num">' + winRate.toFixed(0) + '%</div></div>';
+html += '<div class="stat-card"><h4>已實現損益</h4><div class="big-num ' + (totalPnl >= 0 ? 'green' : 'red') + '">' + fmtMoney(totalPnl) + '</div></div>';
+html += '<div class="stat-card"><h4>最大獲利</h4><div class="big-num green">' + fmtMoney(maxWin) + '</div></div>';
+html += '<div class="stat-card"><h4>最大虧損</h4><div class="big-num red">' + fmtMoney(maxLoss) + '</div></div>';
+html += '</div>';
+html += '</div>';
+```
+
+});
+
+// 實驗池紀律分析
+var expTrades = state.trades.filter(function(t){return t.pool === ‘new’ && t.status === ‘closed’;});
+if(expTrades.length > 0) {
+var tagStats = {};
+expTrades.forEach(function(t){
+(t.exits || []).forEach(function(e){
+tagStats[e.tag] = (tagStats[e.tag] || 0) + 1;
+});
+});
+
+```
+html += '<div class="detail-block">';
+html += '<h3>🎯 實驗池出場原因分佈</h3>';
+[{v:'t1',l:'T1 達標'},{v:'t2',l:'T2 達標'},{v:'t3',l:'T3 達標'},
+ {v:'stop',l:'停損'},{v:'weak',l:'轉弱'},{v:'other',l:'其他'}].forEach(function(r){
+  var c = tagStats[r.v] || 0;
+  html += '<div class="dt-row"><span class="lbl">' + r.l + '</span><span>' + c + ' 次</span></div>';
+});
+html += '</div>';
+```
+
+}
+
+document.getElementById(‘statsBody’).innerHTML = html;
+openModal(‘statsModal’);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  設定
+// ═══════════════════════════════════════════════════════════════
+
+function showSettings() {
+var s = state.settings;
+var html = ‘’;
+
+html += ‘<div class="detail-block">’;
+html += ‘<h3>🧪 實驗池設定</h3>’;
+html += ‘<div class="fg"><label>初始資金 ($)</label>’;
+html += ‘<input type="number" id="set_cap" value="' + s.expCapital + '">’;
+html += ‘</div>’;
+html += ‘<div class="fg"><label>單筆上限 ($)</label>’;
+html += ‘<input type="number" id="set_max" value="' + s.expMaxPerTrade + '">’;
+html += ‘</div>’;
+html += ‘<div class="fg"><label>實驗開始日</label>’;
+html += ‘<input type="date" id="set_start" value="' + s.expStartDate + '">’;
+html += ‘</div>’;
+html += ‘<div class="fg"><label>實驗結束日</label>’;
+html += ‘<input type="date" id="set_end" value="' + s.expEndDate + '">’;
+html += ‘</div>’;
+html += ‘</div>’;
+
+html += ‘<div class="detail-block">’;
+html += ‘<h3>🎯 紀律標準</h3>’;
+html += ‘<div class="fg"><label>R/R 最低要求(1:X)</label>’;
+html += ‘<input type="number" step="0.5" id="set_rr" value="' + s.rrMin + '">’;
+html += ‘</div>’;
+html += ‘<div class="fg"><label>停損 %(-X%)</label>’;
+html += ‘<input type="number" step="1" id="set_stop" value="' + s.stopPct + '">’;
+html += ‘</div>’;
+html += ‘</div>’;
+
+html += ‘<div class="detail-block">’;
+html += ‘<h3>🔗 其他</h3>’;
+html += ‘<a href="test-accum.html" class="btn btn-ghost" style="display:block;text-align:center;text-decoration:none">← 回 ACCUM 分析</a>’;
+html += ‘<a href="sync.html" class="btn btn-ghost" style="display:block;text-align:center;text-decoration:none;margin-top:10px">🔄 資料同步</a>’;
+html += ‘</div>’;
+
+html += ‘<button class="btn btn-primary" onclick="saveSettingsFromForm()">💾 儲存設定</button>’;
+
+document.getElementById(‘settingsBody’).innerHTML = html;
+openModal(‘settingsModal’);
+}
+
+function saveSettingsFromForm() {
+state.settings.expCapital = parseFloat(document.getElementById(‘set_cap’).value) || 50000;
+state.settings.expMaxPerTrade = parseFloat(document.getElementById(‘set_max’).value) || 10000;
+state.settings.expStartDate = document.getElementById(‘set_start’).value || todayStr();
+state.settings.expEndDate = document.getElementById(‘set_end’).value || todayStr();
+state.settings.rrMin = parseFloat(document.getElementById(‘set_rr’).value) || 3;
+state.settings.stopPct = parseFloat(document.getElementById(‘set_stop’).value) || 8;
+saveSettings();
+closeModal(‘settingsModal’);
+render();
+alert(‘✅ 設定已儲存’);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Modal 控制
+// ═══════════════════════════════════════════════════════════════
+
+function openModal(id) {
+document.getElementById(id).classList.add(‘open’);
+document.body.style.overflow = ‘hidden’;
+}
+
+function closeModal(id) {
+document.getElementById(id).classList.remove(‘open’);
+document.body.style.overflow = ‘’;
+}
+
+// 點背景關閉
+document.querySelectorAll(’.modal-overlay’).forEach(function(el){
+el.addEventListener(‘click’, function(e){
+if(e.target === el) closeModal(el.id);
+});
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  啟動
+// ═══════════════════════════════════════════════════════════════
+
+loadData();
+render();
+</script>
+
+</body>
+</html>
