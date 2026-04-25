@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>diary 測試</title>
+<style>
+body{font-family:-apple-system,sans-serif;background:#f5f0e8;padding:20px;}
+button{display:block;width:100%;padding:15px;margin:8px 0;background:#c8a84b;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;}
+button:active{transform:scale(.98);}
+.card{background:#fff;padding:15px;border-radius:10px;margin:10px 0;border:1px solid #ddd;}
+#log{background:#fffdf5;padding:10px;border:1px solid #e8dfc0;border-radius:8px;min-height:80px;font-size:12px;font-family:monospace;}
+</style>
+</head>
+<body>
+
+<h2>📒 操作日記 (最小測試版)</h2>
+
+<button onclick="logIt('1. fab 按鈕被點擊')">+ 新增交易</button>
+<button onclick="logIt('2. 統計按鈕被點擊')">📊 統計</button>
+<button onclick="logIt('3. 設定按鈕被點擊')">⚙️ 設定</button>
+<button onclick="testStorage()">💾 測試 localStorage</button>
+<button onclick="testRender()">🎨 測試 render</button>
+
+<div class="card">
+  <h3>📋 點擊紀錄</h3>
+  <div id="log">尚未點擊...</div>
+</div>
+
+<div class="card">
+  <h3>🔍 環境檢查</h3>
+  <div id="env"></div>
+</div>
+
+<script>
+// ─── 全域變數(學 click-test 的成功架構)───
+var state = {
+  trades: [],
+  count: 0
+};
+
+// ─── 函數 ───
+function logIt(msg) {
+  state.count++;
+  var log = document.getElementById('log');
+  log.innerHTML = '✅ [' + state.count + '次] ' + msg + '<br>' + log.innerHTML;
+}
+
+function testStorage() {
+  try {
+    localStorage.setItem('test_key', JSON.stringify({hi: 'hello', n: state.count}));
+    var v = localStorage.getItem('test_key');
+    logIt('💾 localStorage OK: ' + v);
+  } catch(e) {
+    logIt('❌ localStorage 失敗: ' + e.message);
+  }
+}
+
+function testRender() {
+  state.trades.push({id: Date.now(), msg: '測試 ' + state.count});
+  logIt('🎨 render: 加了 1 筆,目前共 ' + state.trades.length + ' 筆');
+}
+
+// ─── 環境檢查(立即執行)───
+function checkEnv() {
+  var env = document.getElementById('env');
+  var ua = navigator.userAgent;
+  var info = '';
+  info += '<div>UA: ' + ua.substring(0, 60) + '...</div>';
+  info += '<div>Standalone: ' + (window.navigator.standalone === true) + '</div>';
+  info += '<div>localStorage: ' + (typeof localStorage !== 'undefined' ? '✅' : '❌') + '</div>';
+  info += '<div>document.readyState: ' + document.readyState + '</div>';
+  info += '<div>Date: ' + new Date().toISOString() + '</div>';
+  env.innerHTML = info;
+}
+
+checkEnv();
+logIt('🚀 script 已載入並執行');
+</script>
+
+</body>
+</html>
