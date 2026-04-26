@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>diary step 3</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,sans-serif;background:#f5f0e8;padding:20px;padding-bottom:80px;}
+h2{color:#8a6e2f;margin-bottom:10px;}
+.box{background:#fff;padding:15px;border-radius:10px;margin:10px 0;border:1px solid #ddd;}
+button{display:block;width:100%;padding:15px;margin:8px 0;background:#c8a84b;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-family:inherit;}
+button:active{transform:scale(.98);}
+#cp{font-family:monospace;font-size:11px;background:#222;color:#0f0;padding:10px;border-radius:8px;}
+.fail{color:#fff;background:#d94f4f;padding:5px;margin:3px 0;}
+
+/* Tab(diary 的) */
+.pool-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.pool-tab{background:#fffdf5;border:2px solid #e8dfc0;border-radius:12px;padding:12px;cursor:pointer;text-align:center;width:100%;font-family:inherit;color:inherit;}
+.pool-tab.active{border-color:#c8a84b;background:#fffbec;}
+.pool-tab.new{border-color:#2ea86e;}
+.pool-tab.new.active{background:#edfaf3;}
+
+/* 摘要 */
+.exp-info{background:#edfaf3;border-left:4px solid #2ea86e;padding:10px 12px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#1e5a3f;}
+.pool-summary{background:#fffdf5;border:1px solid #e8dfc0;border-radius:14px;padding:14px;margin-bottom:14px;}
+.ps-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+.ps-row:last-child{margin-bottom:0;}
+.ps-cell{background:#f0e8d0;border-radius:8px;padding:8px;text-align:center;}
+.ps-cell.green{background:#d5f2e2;}
+.ps-cell.blue{background:#d5e4f7;}
+.ps-num{font-size:17px;font-weight:700;color:#5a4010;}
+.ps-num.green{color:#2ea86e;}
+.ps-num.blue{color:#3a7bd5;}
+.ps-label{font-size:10px;color:#8a8068;margin-top:2px;}
+
+/* FAB(浮動按鈕) */
+.fab{position:fixed;bottom:20px;right:20px;width:58px;height:58px;border-radius:50%;background:#c8a84b;color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 14px rgba(200,168,75,.5);z-index:100;}
+.fab:active{transform:scale(.92);}
+.fab.new-pool{background:#2ea86e;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,26,46,.5);z-index:999;display:none;align-items:flex-start;justify-content:center;padding:20px 10px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fffdf5;border-radius:16px;width:100%;max-width:560px;display:flex;flex-direction:column;}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#fffbec;border-bottom:1px solid #e8dfc0;}
+.modal-title{font-size:15px;font-weight:700;color:#8a6e2f;}
+.modal-close{background:#f0e8d0;color:#8a6e2f;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;}
+.modal-body{flex:1;padding:16px 18px;}
+</style>
+
+</head>
+<body>
+
+<h2>📒 Step 3:加上 Tab 切換 + 1 個 Modal</h2>
+
+<div class="box">
+  <h3>🔍 啟動檢查點</h3>
+  <div id="cp">等待 JS...</div>
+</div>
+
+<!-- Tab -->
+
+<div class="pool-tabs">
+<button class="pool-tab" id="tabOld" onclick="switchPool('old')">🟦 舊持倉</button>
+<button class="pool-tab new active" id="tabNew" onclick="switchPool('new')">🧪 實驗池</button>
+</div>
+
+<!-- 摘要 -->
+
+<div id="poolSummary"></div>
+
+<!-- FAB -->
+
+<button class="fab" id="fabBtn" onclick="openMyModal()">+</button>
+
+<!-- Modal -->
+
+<div class="modal-overlay" id="myModal" onclick="onModalBgClick(event,'myModal')">
+<div class="modal" onclick="event.stopPropagation()">
+<div class="modal-hdr"><span class="modal-title">📝 新增交易(測試)</span><button class="modal-close" onclick="closeModal('myModal')">關閉</button></div>
+<div class="modal-body" id="myModalBody"></div>
+</div>
+</div>
+
+<script>
+var cpEl = document.getElementById('cp');
+cpEl.innerHTML = '✅ CP1: script 開始<br>';
+
+try {
+  // state
+  cpEl.innerHTML += '⏳ CP2: state...<br>';
+  var state = {
+    currentPool: 'new',
+    trades: [],
+    settings: {
+      expCapital: 50000, expMaxPerTrade: 10000,
+      expStartDate: '', expEndDate: '',
+      rrMin: 3, stopPct: 8
+    }
+  };
+  cpEl.innerHTML += '✅ CP2: state OK<br>';
+
+  // 工具
+  cpEl.innerHTML += '⏳ CP3: 工具...<br>';
+  function $(id){ return document.getElementById(id); }
+  function fmtDate(d){
+    if(typeof d === 'string') return d;
+    var y = d.getFullYear();
+    var m = String(d.getMonth()+1);
+    var day = String(d.getDate());
+    if(m.length < 2) m = '0' + m;
+    if(day.length < 2) day = '0' + day;
+    return y + '-' + m + '-' + day;
+  }
+  function fmtMoney(n){
+    if(n === null || n === undefined || isNaN(n)) return '-';
+    return '$' + n.toLocaleString('en-US', {maximumFractionDigits: 2});
+  }
+  function daysBetween(d1, d2){
+    var a = new Date(d1), b = new Date(d2);
+    return Math.floor((b - a) / 86400000);
+  }
+  function todayStr(){ return fmtDate(new Date()); }
+  cpEl.innerHTML += '✅ CP3: 工具 OK<br>';
+
+  // loadData
+  cpEl.innerHTML += '⏳ CP4: loadData...<br>';
+  function loadData(){
+    try {
+      var t = localStorage.getItem('diary_s3_trades');
+      state.trades = t ? JSON.parse(t) : [];
+    } catch(e) { state.trades = []; }
+    try {
+      var s = localStorage.getItem('diary_s3_settings');
+      if(s) {
+        var p = JSON.parse(s);
+        for(var k in p) state.settings[k] = p[k];
+      }
+    } catch(e) {}
+    if(!state.settings.expStartDate){
+      var d = new Date();
+      state.settings.expStartDate = fmtDate(d);
+      var end = new Date(d);
+      end.setMonth(end.getMonth() + 3);
+      state.settings.expEndDate = fmtDate(end);
+      saveSettings();
+    }
+  }
+  function saveSettings(){
+    localStorage.setItem('diary_s3_settings', JSON.stringify(state.settings));
+  }
+  cpEl.innerHTML += '✅ CP4: loadData OK<br>';
+
+  // render
+  cpEl.innerHTML += '⏳ CP5: render...<br>';
+  function render(){
+    var pool = state.currentPool;
+    var poolTrades = state.trades.filter(function(t){ return t.pool === pool; });
+    var holding = poolTrades.filter(function(t){ return t.status === 'holding'; });
+    var closed = poolTrades.filter(function(t){ return t.status === 'closed'; });
+    var totalCost = 0, closedPnl = 0, wins = 0;
+    holding.forEach(function(t){ totalCost += (t.cost || 0); });
+    var winRate = closed.length > 0 ? (wins / closed.length * 100) : 0;
+    var html = '';
+    var cash = state.settings.expCapital + closedPnl - totalCost;
+    var daysLeft = daysBetween(todayStr(), state.settings.expEndDate);
+
+    if(pool === 'new'){
+      html += '<div class="exp-info">🧪 <b>實驗池</b> 期間:' + state.settings.expStartDate + ' ~ ' + state.settings.expEndDate + '(剩 ' + daysLeft + ' 天)</div>';
+    } else {
+      html += '<div class="exp-info" style="background:#fffbec;border-color:#c8a84b;color:#8a6e2f">🟦 <b>舊持倉池</b></div>';
+    }
+
+    html += '<div class="pool-summary"><div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + fmtMoney(state.settings.expCapital) + '</div><div class="ps-label">起始</div></div>';
+    html += '<div class="ps-cell blue"><div class="ps-num blue">' + fmtMoney(cash) + '</div><div class="ps-label">現金</div></div>';
+    html += '<div class="ps-cell green"><div class="ps-num green">' + fmtMoney(closedPnl) + '</div><div class="ps-label">已實現</div></div>';
+    html += '</div><div class="ps-row">';
+    html += '<div class="ps-cell"><div class="ps-num">' + holding.length + '</div><div class="ps-label">持有</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + closed.length + '</div><div class="ps-label">已出</div></div>';
+    html += '<div class="ps-cell"><div class="ps-num">' + winRate.toFixed(0) + '%</div><div class="ps-label">勝率</div></div>';
+    html += '</div></div>';
+
+    $('poolSummary').innerHTML = html;
+  }
+  cpEl.innerHTML += '✅ CP5: render OK<br>';
+
+  // tab 切換
+  cpEl.innerHTML += '⏳ CP6: switchPool/Modal...<br>';
+  function switchPool(pool){
+    state.currentPool = pool;
+    $('tabOld').className = 'pool-tab' + (pool === 'old' ? ' active' : '');
+    $('tabNew').className = 'pool-tab new' + (pool === 'new' ? ' active' : '');
+    $('fabBtn').className = 'fab' + (pool === 'new' ? ' new-pool' : '');
+    render();
+  }
+
+  function openModal(id){
+    $(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(id){
+    $(id).classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function onModalBgClick(e, id){
+    if(e.target && e.target.id === id) closeModal(id);
+  }
+
+  function openMyModal(){
+    var html = '<p>這是 modal 內容!</p>';
+    html += '<p>目前 pool: ' + state.currentPool + '</p>';
+    html += '<button onclick="modalAction()">點這裡測試 modal 內按鈕</button>';
+    $('myModalBody').innerHTML = html;
+    openModal('myModal');
+  }
+
+  function modalAction(){
+    alert('✅ Modal 內按鈕成功!');
+  }
+  cpEl.innerHTML += '✅ CP6: switchPool/Modal OK<br>';
+
+  // 啟動
+  cpEl.innerHTML += '⏳ CP7: 執行 loadData + render...<br>';
+  loadData();
+  render();
+  cpEl.innerHTML += '✅ CP7: 完成<br>';
+  cpEl.innerHTML += '<b style="color:#2ea86e">🎉 全部成功!請點 Tab、+ 按鈕測試</b>';
+
+} catch(err) {
+  cpEl.innerHTML += '<div class="fail">❌ 錯誤: ' + err.message + '<br>位置: ' + (err.stack||'').split('\n').slice(0,3).join(' | ') + '</div>';
+}
+</script>
+
+</body>
+</html>
