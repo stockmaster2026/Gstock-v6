@@ -1,1 +1,537 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📔 操作日記</title>
+<style>
+/* ========== 基礎 reset & 變數 ========== */
+:root {
+  --cream-50:  #fdfaf3;
+  --cream-100: #f9f1df;
+  --cream-200: #f3e6c4;
+  --cream-300: #e8d6a0;
+  --ink-900:   #3d2f15;
+  --ink-700:   #6b5230;
+  --ink-500:   #9a8456;
+  --ink-300:   #c9b88a;
+
+–pool-old-bg:    #e8f0fb;
+–pool-old-line:  #4a78c8;
+–pool-old-ink:   #1f3d75;
+
+–pool-new-bg:    #e3f3e6;
+–pool-new-line:  #2f9d4a;
+–pool-new-ink:   #1a6b2f;
+
+–gold:    #c89b3c;
+–gold-dk: #a37b22;
+–danger:  #c3502f;
+–shadow-sm: 0 1px 3px rgba(80,55,15,.08);
+–shadow-md: 0 4px 12px rgba(80,55,15,.12);
+–shadow-lg: 0 8px 24px rgba(80,55,15,.18);
+–radius:   12px;
+–radius-lg:18px;
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+background: var(–cream-50);
+color: var(–ink-900);
+font-family: -apple-system, “PingFang TC”, “Helvetica Neue”, Arial, sans-serif;
+font-size: 16px;
+line-height: 1.5;
+min-height: 100vh;
+}
+
+body {
+padding: 16px 16px 100px;
+max-width: 880px;
+margin: 0 auto;
+}
+
+/* ========== 標題 ========== */
+.page-title {
+font-size: 22px;
+font-weight: 700;
+color: var(–ink-900);
+padding: 4px 0 14px;
+letter-spacing: 0.5px;
+}
+
+/* ========== Checkpoint 區塊 ========== */
+.cp-card {
+background: #fff;
+border-radius: var(–radius-lg);
+padding: 14px;
+margin-bottom: 16px;
+box-shadow: var(–shadow-sm);
+border: 1px solid var(–cream-200);
+}
+.cp-card h3 {
+font-size: 16px;
+color: var(–ink-700);
+margin-bottom: 10px;
+}
+#cpLog {
+background: #1a1a1a;
+color: #c8e6c9;
+font-family: ui-monospace, “SF Mono”, Menlo, monospace;
+font-size: 13px;
+line-height: 1.7;
+padding: 12px 14px;
+border-radius: 10px;
+white-space: pre-wrap;
+max-height: 280px;
+overflow-y: auto;
+}
+
+/* ========== Tab（雙資金池）========== */
+.pool-tabs {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+margin-bottom: 14px;
+}
+.pool-tab {
+background: var(–cream-100);
+border: 2px solid transparent;
+border-radius: var(–radius);
+padding: 16px 12px;
+font-size: 16px;
+font-weight: 600;
+color: var(–ink-500);
+cursor: pointer;
+transition: all .18s ease;
+text-align: center;
+-webkit-appearance: none;
+}
+.pool-tab.active.old {
+background: var(–pool-old-bg);
+border-color: var(–pool-old-line);
+color: var(–pool-old-ink);
+box-shadow: var(–shadow-sm);
+}
+.pool-tab.active.new {
+background: var(–pool-new-bg);
+border-color: var(–pool-new-line);
+color: var(–pool-new-ink);
+box-shadow: var(–shadow-sm);
+}
+.pool-tab:active { transform: scale(.98); }
+
+/* ========== 池子標題列（期間） ========== */
+.pool-header {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 10px 14px;
+border-radius: var(–radius);
+margin-bottom: 12px;
+font-size: 14px;
+font-weight: 500;
+}
+.pool-header.old { background: var(–pool-old-bg); color: var(–pool-old-ink); border-left: 4px solid var(–pool-old-line); }
+.pool-header.new { background: var(–pool-new-bg); color: var(–pool-new-ink); border-left: 4px solid var(–pool-new-line); }
+
+/* ========== 摘要卡 ========== */
+.summary-card {
+background: #fff;
+border-radius: var(–radius-lg);
+padding: 14px;
+box-shadow: var(–shadow-sm);
+border: 1px solid var(–cream-200);
+}
+.summary-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+.summary-cell {
+background: var(–cream-100);
+border-radius: 10px;
+padding: 14px 8px;
+text-align: center;
+}
+.summary-cell .num {
+font-size: 20px;
+font-weight: 700;
+color: var(–ink-900);
+line-height: 1.2;
+}
+.summary-cell .lbl {
+font-size: 12px;
+color: var(–ink-500);
+margin-top: 4px;
+}
+.summary-cell.cash  { background: #eaf0f9; }
+.summary-cell.cash  .num { color: var(–pool-old-ink); }
+.summary-cell.realized { background: #e8f3eb; }
+.summary-cell.realized .num { color: var(–pool-new-ink); }
+.summary-cell.win .num.green  { color: var(–pool-new-ink); }
+.summary-cell.win .num.red    { color: var(–danger); }
+
+/* ========== FAB ========== */
+.fab {
+position: fixed;
+right: 22px;
+bottom: 22px;
+width: 60px; height: 60px;
+border-radius: 50%;
+background: linear-gradient(135deg, #2f9d4a, #1a6b2f);
+color: #fff;
+font-size: 32px;
+font-weight: 300;
+border: none;
+box-shadow: var(–shadow-lg);
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 50;
+transition: transform .15s ease;
+-webkit-appearance: none;
+}
+.fab:active { transform: scale(.92); }
+
+/* ========== Modal ========== */
+.modal-mask {
+position: fixed; inset: 0;
+background: rgba(40, 28, 10, .55);
+display: none;
+align-items: center;
+justify-content: center;
+z-index: 100;
+padding: 16px;
+animation: fadeIn .18s ease;
+}
+.modal-mask.show { display: flex; }
+.modal-card {
+background: var(–cream-50);
+border-radius: var(–radius-lg);
+width: 100%;
+max-width: 520px;
+max-height: 90vh;
+overflow-y: auto;
+box-shadow: var(–shadow-lg);
+border: 1px solid var(–cream-200);
+animation: slideUp .22s ease;
+}
+.modal-head {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 16px 18px;
+border-bottom: 1px solid var(–cream-200);
+background: var(–cream-100);
+border-radius: var(–radius-lg) var(–radius-lg) 0 0;
+}
+.modal-head h3 {
+font-size: 17px;
+color: var(–ink-900);
+font-weight: 700;
+}
+.modal-close {
+background: var(–cream-200);
+border: none;
+color: var(–ink-700);
+padding: 8px 16px;
+border-radius: 8px;
+font-size: 14px;
+cursor: pointer;
+font-weight: 600;
+-webkit-appearance: none;
+}
+.modal-close:active { background: var(–cream-300); }
+.modal-body { padding: 18px; }
+.modal-body p { margin-bottom: 10px; color: var(–ink-700); }
+
+.btn-primary {
+width: 100%;
+background: linear-gradient(135deg, var(–gold), var(–gold-dk));
+color: #fff;
+border: none;
+padding: 14px;
+border-radius: 10px;
+font-size: 15px;
+font-weight: 600;
+cursor: pointer;
+margin-top: 8px;
+box-shadow: var(–shadow-sm);
+-webkit-appearance: none;
+}
+.btn-primary:active { transform: scale(.98); }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ========== 小螢幕適配 ========== */
+@media (max-width: 480px) {
+.page-title { font-size: 19px; }
+.summary-cell .num { font-size: 17px; }
+.pool-tab { font-size: 15px; padding: 14px 8px; }
+}
+</style>
+
+</head>
+<body>
+
+<h1 class="page-title">📔 操作日記 v1</h1>
+
+<!-- Checkpoint -->
+
+<div class="cp-card">
+  <h3>🔍 啟動檢查點</h3>
+  <div id="cpLog"></div>
+</div>
+
+<!-- 雙資金池 Tab -->
+
+<div class="pool-tabs">
+  <button class="pool-tab old" id="tabOld" onclick="switchPool('old')">🟦 舊持倉</button>
+  <button class="pool-tab new active new" id="tabNew" onclick="switchPool('new')">🧪 實驗池</button>
+</div>
+
+<!-- 池子標題 -->
+
+<div class="pool-header new" id="poolHeader">🧪 實驗池 期間：2026-04-25 ~ 2026-07-25（剩 91 天）</div>
+
+<!-- 摘要 -->
+
+<div class="summary-card">
+  <div class="summary-grid" id="summaryGrid"></div>
+</div>
+
+<!-- 持倉列表（s5a5：JS 動態渲染） -->
+
+<div style="background:#fff;border-radius:18px;padding:14px;margin-top:14px;border:1px solid #f3e6c4;">
+  <h3 style="font-size:15px;color:#6b5230;margin-bottom:10px;">📦 持倉 <span id="holdingsCount" style="font-size:12px;color:#9a8456;font-weight:400;"></span></h3>
+  <div id="holdingsList"></div>
+</div>
+
+<!-- FAB -->
+
+<button class="fab" onclick="openModal()">+</button>
+
+<!-- Modal -->
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>新增交易</h3>
+      <button class="modal-close" onclick="closeModal()">關閉</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ===== Checkpoint helper ===== */
+const cpLog = document.getElementById('cpLog');
+function cp(msg, ok=null) {
+  const icon = ok === true ? '✅' : ok === false ? '❌' : '⏳';
+  cpLog.textContent += `${icon} ${msg}\n`;
+  cpLog.scrollTop = cpLog.scrollHeight;
+}
+
+try {
+  cp('CP1: script 開始', true);
+
+  /* ===== state ===== */
+  cp('CP2: state...');
+  let state = {
+    currentPool: 'new',
+    pools: {
+      old: { name: '舊持倉', startDate: '2025-01-01', endDate: '2099-12-31', startCash: 0, cash: 0, realized: 0, holdings: [], closed: [] },
+      new: { name: '實驗池', startDate: '2026-04-25', endDate: '2026-07-25', startCash: 50000, cash: 50000, realized: 0, holdings: [], closed: [] }
+    }
+  };
+  cp('CP2: state OK', true);
+
+  /* ===== utils ===== */
+  cp('CP3: 工具...');
+  const $ = id => document.getElementById(id);
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  function daysLeft(endDate) {
+    const t = (new Date(endDate) - new Date()) / 86400000;
+    return Math.max(0, Math.ceil(t));
+  }
+  function fmt2(n) { return '$' + (Math.round(n*100)/100).toFixed(2); }
+  function uid() { return 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function todayISO() { return new Date().toISOString().slice(0,10); }
+  function calcTargets(entry, main) {
+    if (main && main > 0) {
+      return { t1: main*1.3, t2: main*1.5, t3: main*1.8, mode: '主力成本' };
+    }
+    return { t1: entry*1.20, t2: entry*1.30, t3: entry*1.50, mode: '進場 %' };
+  }
+  function calcRR(entry, stop, t2) {
+    const risk = entry - stop;
+    const reward = t2 - entry;
+    if (risk <= 0) return null;
+    return reward / risk;
+  }
+  // 自我測試：calcTargets 應該回傳正確值
+  var _t = calcTargets(5, 5.5);
+  cp('CP3.5: calcTargets(5,5.5).t1 = ' + _t.t1 + '（應為 7.15）', _t.t1 === 7.15);
+  var _rr = calcRR(5, 4.6, 6.5);
+  cp('CP3.6: calcRR(5,4.6,6.5) = ' + (_rr ? _rr.toFixed(2) : 'null') + '（應為 3.75）', _rr && _rr.toFixed(2) === '3.75');
+  cp('CP3: 工具 OK', true);
+
+  /* ===== loadData ===== */
+  cp('CP4: loadData...');
+  function loadData() {
+    try {
+      const raw = localStorage.getItem('diary_v1_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.pools) state = parsed;
+      }
+    } catch (e) { console.warn('loadData', e); }
+  }
+  function saveData() {
+    try { localStorage.setItem('diary_v1_state', JSON.stringify(state)); } catch(e){}
+  }
+  cp('CP4: loadData OK', true);
+
+  /* ===== render ===== */
+  cp('CP5: render...');
+  function renderHeader() {
+    const p = state.pools[state.currentPool];
+    const head = $('poolHeader');
+    head.classList.remove('old', 'new');
+    head.classList.add(state.currentPool);
+    const icon = state.currentPool === 'new' ? '🧪' : '🟦';
+    head.textContent = `${icon} ${p.name} 期間：${p.startDate} ~ ${p.endDate}（剩 ${daysLeft(p.endDate)} 天）`;
+  }
+  function renderSummary() {
+    const p = state.pools[state.currentPool];
+    const held = p.holdings.length;
+    const closed = p.closed.length;
+    const wins = p.closed.filter(c => (c.pnl || 0) > 0).length;
+    const winRate = closed ? Math.round((wins / closed) * 100) : 0;
+    const winColor = winRate >= 50 ? 'green' : winRate > 0 ? 'red' : '';
+    $('summaryGrid').innerHTML = `
+      <div class="summary-cell"><div class="num">${fmt(p.startCash)}</div><div class="lbl">起始</div></div>
+      <div class="summary-cell cash"><div class="num">${fmt(p.cash)}</div><div class="lbl">現金</div></div>
+      <div class="summary-cell realized"><div class="num">${fmt(p.realized)}</div><div class="lbl">已實現</div></div>
+      <div class="summary-cell"><div class="num">${held}</div><div class="lbl">持有</div></div>
+      <div class="summary-cell"><div class="num">${closed}</div><div class="lbl">已出</div></div>
+      <div class="summary-cell win"><div class="num ${winColor}">${winRate}%</div><div class="lbl">勝率</div></div>
+    `;
+  }
+  function renderHoldings() {
+    var p = state.pools[state.currentPool];
+    var countEl = $('holdingsCount');
+    if (countEl) countEl.textContent = '(' + p.holdings.length + ')';
+    var list = $('holdingsList');
+    if (!list) return;
+    if (!p.holdings.length) {
+      list.innerHTML = '<div style="text-align:center;color:#9a8456;padding:20px 10px;font-size:14px;">目前無持倉，按右下 + 新增交易</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < p.holdings.length; i++) {
+      var h = p.holdings[i];
+      var tgs = h.targets || {};
+      html += '<div style="background:#f9f1df;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #2f9d4a;">' +
+        '<div style="font-size:17px;font-weight:700;color:#3d2f15;">' + h.ticker + '</div>' +
+        '<div style="font-size:12px;color:#9a8456;margin-top:6px;">' +
+          '<b style="color:#6b5230;">' + h.shares + '</b> 股 @ ' + fmt2(h.entryPrice) +
+          '　停損 <b style="color:#6b5230;">' + fmt2(h.stopLoss) + '</b>' +
+          '<br>T1/T2/T3: ' + fmt2(tgs.t1||0) + ' / ' + fmt2(tgs.t2||0) + ' / ' + fmt2(tgs.t3||0) +
+          '　進場 ' + h.entryDate +
+        '</div>' +
+      '</div>';
+    }
+    list.innerHTML = html;
+  }
+  function render() { renderHeader(); renderSummary(); renderHoldings(); }
+  // 自我測試 renderHoldings 不會炸
+  try { renderHoldings(); cp('CP5.5: renderHoldings 測試 OK', true); }
+  catch(e) { cp('CP5.5: renderHoldings 失敗 - ' + e.message, false); }
+  cp('CP5: render OK', true);
+
+  /* ===== switchPool / Modal ===== */
+  cp('CP6: switchPool/Modal...');
+  window.switchPool = function(pool) {
+    state.currentPool = pool;
+    $('tabOld').classList.toggle('active', pool === 'old');
+    $('tabNew').classList.toggle('active', pool === 'new');
+    render();
+    saveData();
+  };
+  window.openModal = function() {
+    var p = state.pools[state.currentPool];
+    $('modalBody').innerHTML =
+      '<p style="font-size:13px;color:#6b5230;margin-bottom:14px;">池：<b>' + p.name + '</b>　現金：<b>' + fmt(p.cash) + '</b></p>' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:8px;">股票代號</label>' +
+      '<input id="f_ticker" type="text" placeholder="例如 PL" autocapitalize="characters" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">進場價</label>' +
+      '<input id="f_entry" type="number" step="0.01" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">股數</label>' +
+      '<input id="f_shares" type="number" step="1" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">停損價(可空,預設-8%)</label>' +
+      '<input id="f_stop" type="number" step="0.01" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">主力成本(可空,影響目標價)</label>' +
+      '<input id="f_main" type="number" step="0.01" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">進場日</label>' +
+      '<input id="f_date" type="date" value="' + todayISO() + '" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">備註</label>' +
+      '<input id="f_note" type="text" placeholder="進場理由..." style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<button class="btn-primary" onclick="submitAdd()" style="margin-top:14px;">確認新增</button>';
+    $('modalMask').classList.add('show');
+  };
+
+  window.submitAdd = function() {
+    var ticker = ($('f_ticker').value || '').trim().toUpperCase();
+    var entry = parseFloat($('f_entry').value);
+    var shares = parseFloat($('f_shares').value);
+    var stop = parseFloat($('f_stop').value);
+    var main = parseFloat($('f_main').value) || 0;
+    var date = $('f_date').value || todayISO();
+    var note = ($('f_note').value || '').trim();
+    if (!ticker) { alert('請輸入股票代號'); return; }
+    if (!entry || entry <= 0) { alert('請輸入進場價'); return; }
+    if (!shares || shares <= 0) { alert('請輸入股數'); return; }
+    if (!stop) stop = entry * 0.92;
+    var cost = entry * shares;
+    var p = state.pools[state.currentPool];
+    if (cost > p.cash) { alert('現金不足，需 ' + fmt(cost) + '，剩 ' + fmt(p.cash)); return; }
+    var tgs = calcTargets(entry, main);
+    p.holdings.push({
+      id: uid(),
+      ticker: ticker, entryPrice: entry, shares: shares,
+      stopLoss: stop, mainCost: main || null,
+      targets: { t1: tgs.t1, t2: tgs.t2, t3: tgs.t3, mode: tgs.mode },
+      entryDate: date, note: note
+    });
+    p.cash -= cost;
+    saveData(); render(); closeModal();
+  };
+  window.closeModal = function() {
+    $('modalMask').classList.remove('show');
+  };
+  cp('CP6: switchPool/Modal OK', true);
+
+  /* ===== run ===== */
+  cp('CP7: 執行 loadData + render...');
+  loadData();
+  // 啟動 tab class 同步
+  $('tabOld').classList.toggle('active', state.currentPool === 'old');
+  $('tabNew').classList.toggle('active', state.currentPool === 'new');
+  render();
+  cp('CP7: 完成', true);
+  cp('🎉 全部成功！請點 Tab、+ 按鈕測試');
+
+} catch (err) {
+  cp('💥 錯誤：' + err.message, false);
+  console.error(err);
+}
+</script>
+
+</body>
+</html>
