@@ -1,1 +1,1627 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📔 操作日記 v8</title>
+<style>
+/* ========== 基礎 reset & 變數 ========== */
+:root {
+  --cream-50:  #fdfaf3;
+  --cream-100: #f9f1df;
+  --cream-200: #f3e6c4;
+  --cream-300: #e8d6a0;
+  --ink-900:   #3d2f15;
+  --ink-700:   #6b5230;
+  --ink-500:   #9a8456;
+  --ink-300:   #c9b88a;
+
+–pool-old-bg:    #e8f0fb;
+–pool-old-line:  #4a78c8;
+–pool-old-ink:   #1f3d75;
+
+–pool-new-bg:    #e3f3e6;
+–pool-new-line:  #2f9d4a;
+–pool-new-ink:   #1a6b2f;
+
+–gold:    #c89b3c;
+–gold-dk: #a37b22;
+–danger:  #c3502f;
+–shadow-sm: 0 1px 3px rgba(80,55,15,.08);
+–shadow-md: 0 4px 12px rgba(80,55,15,.12);
+–shadow-lg: 0 8px 24px rgba(80,55,15,.18);
+–radius:   12px;
+–radius-lg:18px;
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+background: var(–cream-50);
+color: var(–ink-900);
+font-family: -apple-system, “PingFang TC”, “Helvetica Neue”, Arial, sans-serif;
+font-size: 16px;
+line-height: 1.5;
+min-height: 100vh;
+}
+
+body {
+padding: 16px 16px 100px;
+max-width: 880px;
+margin: 0 auto;
+}
+
+/* ========== 標題 ========== */
+.page-title {
+font-size: 22px;
+font-weight: 700;
+color: var(–ink-900);
+padding: 4px 0 14px;
+letter-spacing: 0.5px;
+}
+
+/* ========== Checkpoint 區塊 ========== */
+.cp-card {
+background: #fff;
+border-radius: var(–radius-lg);
+padding: 14px;
+margin-bottom: 16px;
+box-shadow: var(–shadow-sm);
+border: 1px solid var(–cream-200);
+}
+.cp-card h3 {
+font-size: 16px;
+color: var(–ink-700);
+margin-bottom: 10px;
+}
+#cpLog {
+background: #1a1a1a;
+color: #c8e6c9;
+font-family: ui-monospace, “SF Mono”, Menlo, monospace;
+font-size: 13px;
+line-height: 1.7;
+padding: 12px 14px;
+border-radius: 10px;
+white-space: pre-wrap;
+max-height: 280px;
+overflow-y: auto;
+}
+
+/* ========== Tab（雙資金池）========== */
+.pool-tabs {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+margin-bottom: 14px;
+}
+.pool-tab {
+background: var(–cream-100);
+border: 2px solid transparent;
+border-radius: var(–radius);
+padding: 16px 12px;
+font-size: 16px;
+font-weight: 600;
+color: var(–ink-500);
+cursor: pointer;
+transition: all .18s ease;
+text-align: center;
+-webkit-appearance: none;
+}
+.pool-tab.active.old {
+background: var(–pool-old-bg);
+border-color: var(–pool-old-line);
+color: var(–pool-old-ink);
+box-shadow: var(–shadow-sm);
+}
+.pool-tab.active.new {
+background: var(–pool-new-bg);
+border-color: var(–pool-new-line);
+color: var(–pool-new-ink);
+box-shadow: var(–shadow-sm);
+}
+.pool-tab:active { transform: scale(.98); }
+
+/* ========== 池子標題列（期間） ========== */
+.pool-header {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 10px 14px;
+border-radius: var(–radius);
+margin-bottom: 12px;
+font-size: 14px;
+font-weight: 500;
+}
+.pool-header.old { background: var(–pool-old-bg); color: var(–pool-old-ink); border-left: 4px solid var(–pool-old-line); }
+.pool-header.new { background: var(–pool-new-bg); color: var(–pool-new-ink); border-left: 4px solid var(–pool-new-line); }
+
+/* ========== 摘要卡 ========== */
+.summary-card {
+background: #fff;
+border-radius: var(–radius-lg);
+padding: 14px;
+box-shadow: var(–shadow-sm);
+border: 1px solid var(–cream-200);
+}
+.summary-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+.summary-cell {
+background: var(–cream-100);
+border-radius: 10px;
+padding: 14px 8px;
+text-align: center;
+}
+.summary-cell .num {
+font-size: 20px;
+font-weight: 700;
+color: var(–ink-900);
+line-height: 1.2;
+}
+.summary-cell .lbl {
+font-size: 12px;
+color: var(–ink-500);
+margin-top: 4px;
+}
+.summary-cell.cash  { background: #eaf0f9; }
+.summary-cell.cash  .num { color: var(–pool-old-ink); }
+.summary-cell.realized { background: #e8f3eb; }
+.summary-cell.realized .num { color: var(–pool-new-ink); }
+.summary-cell.win .num.green  { color: var(–pool-new-ink); }
+.summary-cell.win .num.red    { color: var(–danger); }
+
+/* ========== FAB ========== */
+.fab {
+position: fixed;
+right: 22px;
+bottom: 22px;
+width: 60px; height: 60px;
+border-radius: 50%;
+background: linear-gradient(135deg, #2f9d4a, #1a6b2f);
+color: #fff;
+font-size: 32px;
+font-weight: 300;
+border: none;
+box-shadow: var(–shadow-lg);
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 50;
+transition: transform .15s ease;
+-webkit-appearance: none;
+}
+.fab:active { transform: scale(.92); }
+
+/* ========== Modal ========== */
+.modal-mask {
+position: fixed;
+top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(40, 28, 10, .55);
+display: none;
+align-items: flex-start;
+justify-content: center;
+z-index: 100;
+padding: 16px;
+overflow-y: auto;
+animation: fadeIn .18s ease;
+}
+.modal-mask.show { display: flex; }
+.modal-card {
+background: #fdfaf3;
+border-radius: var(–radius-lg);
+width: 100%;
+max-width: 520px;
+box-shadow: var(–shadow-lg);
+border: 1px solid var(–cream-200);
+animation: slideUp .22s ease;
+margin: 20px auto;
+}
+.modal-head {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 16px 18px;
+border-bottom: 1px solid var(–cream-200);
+background: var(–cream-100);
+border-radius: var(–radius-lg) var(–radius-lg) 0 0;
+}
+.modal-head h3 {
+font-size: 17px;
+color: var(–ink-900);
+font-weight: 700;
+}
+.modal-close {
+background: var(–cream-200);
+border: none;
+color: var(–ink-700);
+padding: 8px 16px;
+border-radius: 8px;
+font-size: 14px;
+cursor: pointer;
+font-weight: 600;
+-webkit-appearance: none;
+}
+.modal-close:active { background: var(–cream-300); }
+.modal-body { padding: 18px; }
+.modal-body p { margin-bottom: 10px; color: var(–ink-700); }
+
+.btn-primary {
+width: 100%;
+background: linear-gradient(135deg, var(–gold), var(–gold-dk));
+color: #fff;
+border: none;
+padding: 14px;
+border-radius: 10px;
+font-size: 15px;
+font-weight: 600;
+cursor: pointer;
+margin-top: 8px;
+box-shadow: var(–shadow-sm);
+-webkit-appearance: none;
+}
+.btn-primary:active { transform: scale(.98); }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ========== 小螢幕適配 ========== */
+@media (max-width: 480px) {
+.page-title { font-size: 19px; }
+.summary-cell .num { font-size: 17px; }
+.pool-tab { font-size: 15px; padding: 14px 8px; }
+}
+</style>
+
+</head>
+<body>
+
+<h1 class="page-title" style="display:flex;justify-content:space-between;align-items:center;">
+  <span>📔 操作日記 v8</span>
+  <button onclick="openSettings()" style="background:#f3e6c4;border:none;padding:8px 14px;border-radius:8px;font-size:14px;color:#6b5230;cursor:pointer;font-weight:600;-webkit-appearance:none;">⚙ 設定</button>
+</h1>
+
+<!-- Checkpoint -->
+
+<div class="cp-card">
+  <h3>🔍 啟動檢查點</h3>
+  <div id="cpLog"></div>
+</div>
+
+<!-- 進場守護員警報區 -->
+
+<div id="guardAlerts"></div>
+
+<!-- 雙資金池 Tab -->
+
+<div class="pool-tabs">
+  <button class="pool-tab old" id="tabOld" onclick="switchPool('old')">🟦 舊持倉</button>
+  <button class="pool-tab new active new" id="tabNew" onclick="switchPool('new')">🧪 實驗池</button>
+</div>
+
+<!-- 池子標題 -->
+
+<div class="pool-header new" id="poolHeader">🧪 實驗池 期間：2026-04-25 ~ 2026-07-25（剩 91 天）</div>
+
+<!-- 摘要 -->
+
+<div class="summary-card">
+  <div class="summary-grid" id="summaryGrid"></div>
+</div>
+
+<!-- 持倉列表（s5a5：JS 動態渲染） -->
+
+<div style="background:#fff;border-radius:18px;padding:14px;margin-top:14px;border:1px solid #f3e6c4;">
+  <h3 style="font-size:15px;color:#6b5230;margin-bottom:10px;">📦 持倉 <span id="holdingsCount" style="font-size:12px;color:#9a8456;font-weight:400;"></span></h3>
+  <div id="holdingsList"></div>
+</div>
+
+<!-- 已出場列表 -->
+
+<div style="background:#fff;border-radius:18px;padding:14px;margin-top:14px;border:1px solid #f3e6c4;">
+  <h3 style="font-size:15px;color:#6b5230;margin-bottom:10px;">📋 已出場 <span id="closedCount" style="font-size:12px;color:#9a8456;font-weight:400;"></span></h3>
+  <div id="closedList"></div>
+</div>
+
+<!-- 績效檢討 -->
+
+<div style="background:#fff;border-radius:18px;padding:14px;margin-top:14px;border:1px solid #f3e6c4;">
+  <h3 style="font-size:15px;color:#6b5230;margin-bottom:10px;">📊 績效檢討</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+    <button id="perfTabWeek" onclick="switchPerfTab('week')" style="padding:10px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;background:#c89b3c;color:#fff;">本週</button>
+    <button id="perfTabMonth" onclick="switchPerfTab('month')" style="padding:10px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;background:#f3e6c4;color:#6b5230;">本月</button>
+    <button id="perfTabQuarter" onclick="switchPerfTab('quarter')" style="padding:10px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;background:#f3e6c4;color:#6b5230;">本季</button>
+  </div>
+  <div id="perfContent"></div>
+</div>
+
+<!-- FAB -->
+
+<button class="fab" onclick="openModal()">+</button>
+
+<!-- Modal -->
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">新增交易</h3>
+      <button class="modal-close" onclick="closeModal()">關閉</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ===== Checkpoint helper ===== */
+const cpLog = document.getElementById('cpLog');
+function cp(msg, ok=null) {
+  const icon = ok === true ? '✅' : ok === false ? '❌' : '⏳';
+  cpLog.textContent += `${icon} ${msg}\n`;
+  cpLog.scrollTop = cpLog.scrollHeight;
+}
+
+try {
+  cp('CP1: script 開始', true);
+
+  /* ===== state ===== */
+  cp('CP2: state...');
+  let state = {
+    currentPool: 'new',
+    currentPerfTab: 'week',
+    pools: {
+      old: { name: '舊持倉', startDate: '2025-01-01', endDate: '2099-12-31', startCash: 30000, cash: 30000, realized: 0, holdings: [], closed: [] },
+      new: { name: '實驗池', startDate: '2026-04-25', endDate: '2026-07-25', startCash: 50000, cash: 50000, realized: 0, holdings: [], closed: [] }
+    }
+  };
+  cp('CP2: state OK', true);
+
+  /* ===== utils ===== */
+  cp('CP3: 工具...');
+  const $ = id => document.getElementById(id);
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  function daysLeft(endDate) {
+    const t = (new Date(endDate) - new Date()) / 86400000;
+    return Math.max(0, Math.ceil(t));
+  }
+  function fmt2(n) { return '$' + (Math.round(n*100)/100).toFixed(2); }
+  function uid() { return 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function todayISO() { return new Date().toISOString().slice(0,10); }
+  function calcTargets(entry, main) {
+    if (main && main > 0) {
+      return { t1: main*1.3, t2: main*1.5, t3: main*1.8, mode: '主力成本' };
+    }
+    return { t1: entry*1.20, t2: entry*1.30, t3: entry*1.50, mode: '進場 %' };
+  }
+  function calcRR(entry, stop, t2) {
+    const risk = entry - stop;
+    const reward = t2 - entry;
+    if (risk <= 0) return null;
+    return reward / risk;
+  }
+  // 自我測試：calcTargets 應該回傳正確值
+  var _t = calcTargets(5, 5.5);
+  cp('CP3.5: calcTargets(5,5.5).t1 = ' + _t.t1 + '（應為 7.15）', _t.t1 === 7.15);
+  var _rr = calcRR(5, 4.6, 6.5);
+  cp('CP3.6: calcRR(5,4.6,6.5) = ' + (_rr ? _rr.toFixed(2) : 'null') + '（應為 3.75）', _rr && _rr.toFixed(2) === '3.75');
+  cp('CP3: 工具 OK', true);
+
+  /* ===== loadData ===== */
+  cp('CP4: loadData...');
+  function loadData() {
+    try {
+      const raw = localStorage.getItem('diary_v1_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.pools) state = parsed;
+      }
+    } catch (e) { console.warn('loadData', e); }
+  }
+  function saveData() {
+    try { localStorage.setItem('diary_v1_state', JSON.stringify(state)); } catch(e){}
+  }
+  cp('CP4: loadData OK', true);
+
+  /* ===== render ===== */
+  cp('CP5: render...');
+  function renderHeader() {
+    const p = state.pools[state.currentPool];
+    const head = $('poolHeader');
+    head.classList.remove('old', 'new');
+    head.classList.add(state.currentPool);
+    const icon = state.currentPool === 'new' ? '🧪' : '🟦';
+    head.textContent = `${icon} ${p.name} 期間：${p.startDate} ~ ${p.endDate}（剩 ${daysLeft(p.endDate)} 天）`;
+  }
+  function renderSummary() {
+    const p = state.pools[state.currentPool];
+    const held = p.holdings.length;
+    const closed = p.closed.length;
+    const wins = p.closed.filter(c => (c.pnl || 0) > 0).length;
+    const winRate = closed ? Math.round((wins / closed) * 100) : 0;
+    const winColor = winRate >= 50 ? 'green' : winRate > 0 ? 'red' : '';
+    $('summaryGrid').innerHTML = `
+      <div class="summary-cell"><div class="num">${fmt(p.startCash)}</div><div class="lbl">起始</div></div>
+      <div class="summary-cell cash"><div class="num">${fmt(p.cash)}</div><div class="lbl">現金</div></div>
+      <div class="summary-cell realized"><div class="num">${fmt(p.realized)}</div><div class="lbl">已實現</div></div>
+      <div class="summary-cell"><div class="num">${held}</div><div class="lbl">持有</div></div>
+      <div class="summary-cell"><div class="num">${closed}</div><div class="lbl">已出</div></div>
+      <div class="summary-cell win"><div class="num ${winColor}">${winRate}%</div><div class="lbl">勝率</div></div>
+    `;
+  }
+  function renderHoldings() {
+    var p = state.pools[state.currentPool];
+    var countEl = $('holdingsCount');
+    if (countEl) countEl.textContent = '(' + p.holdings.length + ')';
+    var list = $('holdingsList');
+    if (!list) return;
+    if (!p.holdings.length) {
+      list.innerHTML = '<div style="text-align:center;color:#9a8456;padding:20px 10px;font-size:14px;">目前無持倉，按右下 + 新增交易</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < p.holdings.length; i++) {
+      var h = p.holdings[i];
+      var tgs = h.targets || {};
+      var remain = h.shares - (h.soldShares || 0);
+      var soldInfo = (h.soldShares || 0) > 0 ? '（已賣 ' + h.soldShares + '）' : '';
+      var isPlan = h.ordType === 'plan';
+      var bgColor = isPlan ? '#fef3c7' : '#f9f1df';
+      var borderColor = isPlan ? '#d97706' : '#2f9d4a';
+      var planBadge = isPlan ? '<span style="display:inline-block;background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px;font-weight:600;">計畫單</span>' : '';
+      var sopBadge = '';
+      if (h.sopChecks && h.sopChecks.length !== undefined) {
+        if (h.sopPassed) {
+          sopBadge = '<span style="display:inline-block;background:#2f9d4a;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px;font-weight:600;">SOP 6/6</span>';
+        } else {
+          sopBadge = '<span style="display:inline-block;background:#c3502f;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px;font-weight:600;">SOP ' + h.sopChecks.length + '/6</span>';
+        }
+      }
+
+      html += '<div style="background:' + bgColor + ';border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid ' + borderColor + ';">' +
+        '<div style="font-size:17px;font-weight:700;color:#3d2f15;">' + h.ticker + planBadge + sopBadge + '</div>' +
+        '<div style="font-size:12px;color:#9a8456;margin-top:6px;">' +
+          '<b style="color:#6b5230;">' + remain + '</b> 股 @ ' + fmt2(h.entryPrice) + soldInfo +
+          '　停損 <b style="color:#6b5230;">' + fmt2(h.stopLoss) + '</b>' +
+          '<br>T1/T2/T3: ' + fmt2(tgs.t1||0) + ' / ' + fmt2(tgs.t2||0) + ' / ' + fmt2(tgs.t3||0) +
+          '　' + (isPlan ? '預計進場' : '進場') + ' ' + h.entryDate +
+        '</div>';
+
+      if (isPlan) {
+        // 計畫單：顯示「執行進場」「取消計畫」按鈕
+        html += '<div style="display:flex;gap:6px;margin-top:10px;">' +
+          '<button onclick="executePlan(\'' + h.id + '\')" style="flex:1;background:#2f9d4a;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">執行進場</button>' +
+          '<button onclick="openEdit(\'' + h.id + '\')" style="flex:1;background:#f3e6c4;color:#6b5230;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">編輯</button>' +
+          '<button onclick="cancelPlan(\'' + h.id + '\')" style="flex:1;background:#c3502f;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">取消</button>' +
+        '</div>';
+      } else {
+        // 已進場：原本的加碼/賣出/編輯
+        html += '<div style="display:flex;gap:6px;margin-top:10px;">' +
+          '<button onclick="openAddOn(\'' + h.id + '\')" style="flex:1;background:#2f9d4a;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">加碼</button>' +
+          '<button onclick="openSell(\'' + h.id + '\')" style="flex:1;background:#c3502f;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">賣出</button>' +
+          '<button onclick="openEdit(\'' + h.id + '\')" style="flex:1;background:#f3e6c4;color:#6b5230;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">編輯</button>' +
+        '</div>';
+      }
+
+      html += '</div>';
+    }
+    list.innerHTML = html;
+  }
+  function renderClosed() {
+    var p = state.pools[state.currentPool];
+    var countEl = $('closedCount');
+    if (countEl) countEl.textContent = '(' + p.closed.length + ')';
+    var list = $('closedList');
+    if (!list) return;
+    if (!p.closed.length) {
+      list.innerHTML = '<div style="text-align:center;color:#9a8456;padding:20px 10px;font-size:14px;">尚無已出場紀錄</div>';
+      return;
+    }
+    var html = '';
+    // 反向排（最新在最上）
+    for (var i = p.closed.length - 1; i >= 0; i--) {
+      var c = p.closed[i];
+      var pnl = c.pnl || 0;
+      var pnlPct = c.pnlPct || 0;
+      var color = pnl >= 0 ? '#1a6b2f' : '#c3502f';
+      var sign = pnl >= 0 ? '+' : '';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f1df;border-radius:8px;margin-bottom:6px;font-size:13px;">' +
+        '<div>' +
+          '<b style="font-size:15px;color:#3d2f15;">' + c.ticker + '</b>' +
+          '<span style="color:#9a8456;margin-left:8px;">' + c.shares + '股 @ ' + fmt2(c.exitPrice) + '</span>' +
+        '</div>' +
+        '<div style="color:' + color + ';font-weight:700;">' + sign + fmt(pnl) + ' (' + sign + pnlPct.toFixed(1) + '%)</div>' +
+      '</div>';
+    }
+    list.innerHTML = html;
+  }
+  function renderGuard() {
+    var guard = $('guardAlerts');
+    if (!guard) return;
+
+    // 掃描兩個池子的所有 holdings
+    var stopAlerts = [];
+    var targetAlerts = [];
+    var poolKeys = ['old', 'new'];
+    for (var pk = 0; pk < poolKeys.length; pk++) {
+      var pool = state.pools[poolKeys[pk]];
+      var poolName = pool.name;
+      for (var i = 0; i < pool.holdings.length; i++) {
+        var h = pool.holdings[i];
+        if (h.ordType === 'plan') continue; // 計畫單不檢查
+        var last = h.lastPrice || h.entryPrice;
+        var tgs = h.targets || {};
+
+        // 跌破停損
+        if (last <= h.stopLoss) {
+          stopAlerts.push({pool: poolName, ticker: h.ticker, last: last, stop: h.stopLoss});
+        }
+
+        // 達 T1/T2/T3（且該批還沒賣）
+        var batches = h.batches || [];
+        function hasBatch(name) {
+          for (var j = 0; j < batches.length; j++) {
+            if (batches[j].name === name) return true;
+          }
+          return false;
+        }
+        if (tgs.t1 && last >= tgs.t1 && !hasBatch('T1')) {
+          targetAlerts.push({pool: poolName, ticker: h.ticker, last: last, target: 'T1', tprice: tgs.t1});
+        }
+        if (tgs.t2 && last >= tgs.t2 && !hasBatch('T2')) {
+          targetAlerts.push({pool: poolName, ticker: h.ticker, last: last, target: 'T2', tprice: tgs.t2});
+        }
+        if (tgs.t3 && last >= tgs.t3 && !hasBatch('T3')) {
+          targetAlerts.push({pool: poolName, ticker: h.ticker, last: last, target: 'T3', tprice: tgs.t3});
+        }
+      }
+    }
+
+    var html = '';
+
+    if (stopAlerts.length > 0) {
+      html += '<div style="background:#fee2e2;border:2px solid #c3502f;border-radius:12px;padding:14px;margin-bottom:12px;">';
+      html += '<div style="font-size:15px;font-weight:700;color:#991b1b;margin-bottom:8px;">🚨 停損警報！以下持倉已跌破停損：</div>';
+      for (var s = 0; s < stopAlerts.length; s++) {
+        var a = stopAlerts[s];
+        html += '<div style="font-size:13px;color:#7f1d1d;padding:4px 0;">• <b>' + a.ticker + '</b>（' + a.pool + '）最新 ' + fmt2(a.last) + ' &lt; 停損 ' + fmt2(a.stop) + ' → <b>應出場</b></div>';
+      }
+      html += '<div style="font-size:12px;color:#991b1b;margin-top:8px;">紀律提醒：跌破停損不停損，是散戶最常見的死因。請點該持倉的「賣出」執行。</div>';
+      html += '</div>';
+    }
+
+    if (targetAlerts.length > 0) {
+      html += '<div style="background:#fef3c7;border:2px solid #d97706;border-radius:12px;padding:14px;margin-bottom:12px;">';
+      html += '<div style="font-size:15px;font-weight:700;color:#7c5400;margin-bottom:8px;">🎯 達標提醒！以下持倉已達目標：</div>';
+      for (var t = 0; t < targetAlerts.length; t++) {
+        var b = targetAlerts[t];
+        html += '<div style="font-size:13px;color:#7c5400;padding:4px 0;">• <b>' + b.ticker + '</b>（' + b.pool + '）最新 ' + fmt2(b.last) + ' &gt;= ' + b.target + ' ' + fmt2(b.tprice) + ' → 可賣 ' + b.target + '</div>';
+      }
+      html += '<div style="font-size:12px;color:#7c5400;margin-top:8px;">紀律提醒：到目標就賣，這是訓練紀律的開始。</div>';
+      html += '</div>';
+    }
+
+    // 沒警報時，顯示「快速更新最新價」按鈕
+    if (!stopAlerts.length && !targetAlerts.length) {
+      var hasHoldings = false;
+      for (var pk2 = 0; pk2 < poolKeys.length; pk2++) {
+        var po = state.pools[poolKeys[pk2]];
+        for (var ii = 0; ii < po.holdings.length; ii++) {
+          if (po.holdings[ii].ordType !== 'plan') { hasHoldings = true; break; }
+        }
+        if (hasHoldings) break;
+      }
+      if (hasHoldings) {
+        html += '<div style="background:#e3f3e6;border:1px solid #2f9d4a;border-radius:12px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div style="font-size:13px;color:#1a6b2f;">✅ 所有持倉未觸及停損與目標。建議每天收盤後更新最新價檢查。</div>';
+        html += '<button onclick="openQuickPriceUpdate()" style="background:#2f9d4a;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">快速更新最新價</button>';
+        html += '</div>';
+      }
+    } else {
+      // 有警報時也提供更新最新價的按鈕（提醒用戶價格可能已過時）
+      html += '<div style="text-align:right;margin-bottom:12px;"><button onclick="openQuickPriceUpdate()" style="background:#f3e6c4;color:#6b5230;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;-webkit-appearance:none;cursor:pointer;">📈 快速更新最新價</button></div>';
+    }
+
+    guard.innerHTML = html;
+  }
+
+  function getPeriodStart(tab) {
+    var now = new Date();
+    if (tab === 'week') {
+      // 週一為起點（美股慣例）
+      var day = now.getDay(); // 0=Sun, 1=Mon, ...
+      var diff = (day === 0 ? 6 : day - 1);
+      var d = new Date(now);
+      d.setDate(now.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    } else if (tab === 'month') {
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (tab === 'quarter') {
+      var q = Math.floor(now.getMonth() / 3);
+      return new Date(now.getFullYear(), q * 3, 1);
+    }
+    return new Date(0);
+  }
+
+  function getPeriodLabel(tab) {
+    var now = new Date();
+    if (tab === 'week') return '本週（' + getPeriodStart('week').toISOString().slice(5, 10) + ' 起）';
+    if (tab === 'month') return '本月（' + (now.getMonth() + 1) + ' 月）';
+    if (tab === 'quarter') return '本季（Q' + (Math.floor(now.getMonth() / 3) + 1) + '）';
+    return '';
+  }
+
+  function renderPerformance() {
+    var box = $('perfContent');
+    if (!box) return;
+
+    var tab = state.currentPerfTab || 'week';
+    var since = getPeriodStart(tab);
+
+    // 從兩個池子收集已出場紀錄
+    var allClosed = [];
+    var poolKeys = ['old', 'new'];
+    for (var pk = 0; pk < poolKeys.length; pk++) {
+      var pool = state.pools[poolKeys[pk]];
+      for (var i = 0; i < pool.closed.length; i++) {
+        var c = pool.closed[i];
+        var exitD = new Date(c.exitDate || c.entryDate);
+        if (exitD >= since) {
+          allClosed.push({c: c, poolKey: poolKeys[pk], poolName: pool.name});
+        }
+      }
+    }
+
+    // 收集當期間建立的持倉（含 SOP 紀錄）
+    var allEnteredInPeriod = []; // 不論是否已出場，只要進場日在期間內
+    for (var pk2 = 0; pk2 < poolKeys.length; pk2++) {
+      var pool2 = state.pools[poolKeys[pk2]];
+      // 已出場
+      for (var ii = 0; ii < pool2.closed.length; ii++) {
+        var cc = pool2.closed[ii];
+        var entryD = new Date(cc.entryDate);
+        if (entryD >= since) {
+          allEnteredInPeriod.push({type: 'closed', data: cc});
+        }
+      }
+      // 持倉中
+      for (var jj = 0; jj < pool2.holdings.length; jj++) {
+        var hh = pool2.holdings[jj];
+        if (hh.ordType === 'plan') continue;
+        var entryD2 = new Date(hh.entryDate);
+        if (entryD2 >= since) {
+          allEnteredInPeriod.push({type: 'holding', data: hh});
+        }
+      }
+    }
+
+    var label = getPeriodLabel(tab);
+
+    if (allClosed.length === 0 && allEnteredInPeriod.length === 0) {
+      box.innerHTML = '<div style="text-align:center;color:#9a8456;padding:30px 10px;font-size:14px;">' + label + '尚無紀錄</div>';
+      return;
+    }
+
+    // 統計：勝率 / 總損益 / 平均報酬
+    var wins = 0, losses = 0, totalPnl = 0, totalPctSum = 0;
+    var bestTrade = null, worstTrade = null;
+    for (var k = 0; k < allClosed.length; k++) {
+      var c2 = allClosed[k].c;
+      var pnl = c2.pnl || 0;
+      totalPnl += pnl;
+      totalPctSum += (c2.pnlPct || 0);
+      if (pnl > 0) wins++;
+      else if (pnl < 0) losses++;
+      if (!bestTrade || pnl > bestTrade.pnl) bestTrade = c2;
+      if (!worstTrade || pnl < worstTrade.pnl) worstTrade = c2;
+    }
+    var totalClosed = wins + losses;
+    var winRate = totalClosed > 0 ? Math.round(wins / totalClosed * 100) : 0;
+    var avgPct = totalClosed > 0 ? totalPctSum / totalClosed : 0;
+
+    // SOP 通過 vs 沒通過 對比（用 entered in period）
+    var sopFullClosed = [], sopPartialClosed = [];
+    for (var m = 0; m < allEnteredInPeriod.length; m++) {
+      var item = allEnteredInPeriod[m];
+      if (item.type !== 'closed') continue;
+      var data = item.data;
+      // 從原始 holding 找 SOP 狀態（已出場時 SOP 資料應該還在 holding）
+      // 但 closed 結構沒帶 sopPassed，所以這裡用 note 或省略
+      // 暫時：v8 的 closed 沒有 sopPassed，我們之後升級時可以從 entry 紀錄帶過來
+    }
+
+    var html = '';
+
+    // 主要數字
+    var pnlColor = totalPnl >= 0 ? '#1a6b2f' : '#c3502f';
+    var pnlSign = totalPnl >= 0 ? '+' : '';
+    html += '<div style="background:#f9f1df;border-radius:10px;padding:14px;margin-bottom:10px;">';
+    html += '<div style="font-size:12px;color:#9a8456;margin-bottom:6px;">' + label + '</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
+    html += '<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:' + pnlColor + ';">' + pnlSign + fmt(totalPnl) + '</div><div style="font-size:11px;color:#9a8456;">總損益</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#3d2f15;">' + winRate + '%</div><div style="font-size:11px;color:#9a8456;">勝率（' + wins + '勝/' + losses + '敗）</div></div>';
+    var avgColor = avgPct >= 0 ? '#1a6b2f' : '#c3502f';
+    var avgSign = avgPct >= 0 ? '+' : '';
+    html += '<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:' + avgColor + ';">' + avgSign + avgPct.toFixed(1) + '%</div><div style="font-size:11px;color:#9a8456;">平均報酬</div></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 最賺 / 最賠
+    if (bestTrade || worstTrade) {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">';
+      if (bestTrade && bestTrade.pnl > 0) {
+        html += '<div style="background:#e3f3e6;border-radius:8px;padding:10px;border-left:3px solid #2f9d4a;">';
+        html += '<div style="font-size:11px;color:#1a6b2f;margin-bottom:4px;">🏆 最賺</div>';
+        html += '<div style="font-size:14px;font-weight:700;color:#3d2f15;">' + bestTrade.ticker + '</div>';
+        html += '<div style="font-size:13px;color:#1a6b2f;font-weight:600;">+' + fmt(bestTrade.pnl) + ' (+' + (bestTrade.pnlPct || 0).toFixed(1) + '%)</div>';
+        html += '</div>';
+      } else {
+        html += '<div></div>';
+      }
+      if (worstTrade && worstTrade.pnl < 0) {
+        html += '<div style="background:#fee2e2;border-radius:8px;padding:10px;border-left:3px solid #c3502f;">';
+        html += '<div style="font-size:11px;color:#991b1b;margin-bottom:4px;">💀 最賠</div>';
+        html += '<div style="font-size:14px;font-weight:700;color:#3d2f15;">' + worstTrade.ticker + '</div>';
+        html += '<div style="font-size:13px;color:#991b1b;font-weight:600;">' + fmt(worstTrade.pnl) + ' (' + (worstTrade.pnlPct || 0).toFixed(1) + '%)</div>';
+        html += '</div>';
+      } else {
+        html += '<div></div>';
+      }
+      html += '</div>';
+    }
+
+    // 待處理（持倉中且當期進場）
+    var holdingInPeriod = 0;
+    for (var n = 0; n < allEnteredInPeriod.length; n++) {
+      if (allEnteredInPeriod[n].type === 'holding') holdingInPeriod++;
+    }
+    if (holdingInPeriod > 0) {
+      html += '<div style="background:#eaf0f9;border-radius:8px;padding:10px;font-size:12px;color:#1f3d75;">當期還有 <b>' + holdingInPeriod + '</b> 筆持倉中（未結算，不計入勝率）</div>';
+    }
+
+    // 紀律提醒
+    if (totalClosed >= 3) {
+      var msg = '';
+      if (winRate < 40) msg = '! 勝率偏低，建議檢視進場 SOP 是否確實執行';
+      else if (avgPct < 0) msg = '! 平均報酬為負，建議檢視停損紀律';
+      else if (winRate >= 60 && avgPct >= 5) msg = '✅ 紀律穩定，繼續保持';
+      if (msg) {
+        html += '<div style="background:#fef3c7;border-radius:8px;padding:10px;font-size:12px;color:#7c5400;margin-top:8px;">' + msg + '</div>';
+      }
+    }
+
+    box.innerHTML = html;
+  }
+
+  window.switchPerfTab = function(tab) {
+    state.currentPerfTab = tab;
+    var ids = {week: 'perfTabWeek', month: 'perfTabMonth', quarter: 'perfTabQuarter'};
+    for (var k in ids) {
+      var btn = $(ids[k]);
+      if (btn) {
+        if (k === tab) {
+          btn.style.background = '#c89b3c';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = '#f3e6c4';
+          btn.style.color = '#6b5230';
+        }
+      }
+    }
+    renderPerformance();
+  };
+
+  function render() { renderHeader(); renderSummary(); renderHoldings(); renderClosed(); renderGuard(); renderPerformance(); }
+  // 自我測試 renderHoldings 不會炸
+  try { renderHoldings(); cp('CP5.5: renderHoldings 測試 OK', true); }
+  catch(e) { cp('CP5.5: renderHoldings 失敗 - ' + e.message, false); }
+  cp('CP5: render OK', true);
+
+  /* ===== switchPool / Modal ===== */
+  cp('CP6: switchPool/Modal...');
+  window.switchPool = function(pool) {
+    state.currentPool = pool;
+    $('tabOld').classList.toggle('active', pool === 'old');
+    $('tabNew').classList.toggle('active', pool === 'new');
+    render();
+    saveData();
+  };
+  window.openModal = function() {
+    var p = state.pools[state.currentPool];
+    $('modalTitle').textContent = '新增交易';
+
+    var lblStyle = 'display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;';
+    var inpStyle = 'display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;';
+    var sopStyle = 'background:#fef3c7;border-radius:8px;padding:12px;margin-bottom:14px;border-left:4px solid #d97706;';
+    var sopRowStyle = 'display:flex;align-items:center;padding:6px 0;font-size:14px;color:#6b5230;cursor:pointer;';
+    var checkStyle = 'width:20px;height:20px;margin-right:10px;flex-shrink:0;';
+
+    $('modalBody').innerHTML =
+      '<p style="font-size:13px;color:#6b5230;margin-bottom:14px;">池：<b>' + p.name + '</b>　現金：<b>' + fmt(p.cash) + '</b></p>' +
+
+      // === 訂單類型 ===
+      '<div style="background:#eaf0f9;border-radius:8px;padding:12px;margin-bottom:14px;">' +
+        '<div style="font-size:13px;color:#1f3d75;font-weight:600;margin-bottom:8px;">訂單類型</div>' +
+        '<label style="display:inline-block;margin-right:16px;font-size:14px;cursor:pointer;">' +
+          '<input type="radio" name="ordType" value="executed" checked style="margin-right:6px;"> 已進場（實際買了）' +
+        '</label>' +
+        '<label style="display:inline-block;font-size:14px;cursor:pointer;">' +
+          '<input type="radio" name="ordType" value="plan" style="margin-right:6px;"> 計畫單（明天才買）' +
+        '</label>' +
+      '</div>' +
+
+      // === SOP 檢查清單 ===
+      '<div style="' + sopStyle + '">' +
+        '<div style="font-size:13px;color:#7c5400;font-weight:700;margin-bottom:8px;">📋 進場前 SOP 檢查（建議全勾才進場）</div>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_1" style="' + checkStyle + '"> 大盤 SPY/QQQ 在 Stage 2（站 MA200、MA200 上行）</label>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_2" style="' + checkStyle + '"> 個股在 Stage 2（站 MA200、MA50&gt;MA200）</label>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_3" style="' + checkStyle + '"> 板塊熱度上升中（不是已經爆熱）</label>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_4" style="' + checkStyle + '"> 進場點：突破整理 + 量增（不是追高）</label>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_5" style="' + checkStyle + '"> 已收盤決定（非盤中情緒進場）</label>' +
+        '<label style="' + sopRowStyle + '"><input type="checkbox" id="sop_6" style="' + checkStyle + '"> R:R &gt;= 1:3</label>' +
+      '</div>' +
+
+      '<label style="' + lblStyle + '">股票代號</label>' +
+      '<input id="f_ticker" type="text" placeholder="例如 PL" autocapitalize="characters" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">進場價</label>' +
+      '<input id="f_entry" type="number" inputmode="decimal" step="0.01" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">股數</label>' +
+      '<input id="f_shares" type="number" inputmode="decimal" step="1" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">停損價(可空,預設-8%)</label>' +
+      '<input id="f_stop" type="number" inputmode="decimal" step="0.01" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">主力成本(可空,影響目標價)</label>' +
+      '<input id="f_main" type="number" inputmode="decimal" step="0.01" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">進場日（計畫單填預計日期）</label>' +
+      '<input id="f_date" type="date" value="' + todayISO() + '" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">備註（建議寫進場理由 / 風險判斷）</label>' +
+      '<input id="f_note" type="text" placeholder="進場理由..." style="' + inpStyle + '">' +
+      '<div id="autoCalc" style="background:#e3f3e6;border-radius:10px;padding:12px;margin-top:14px;border-left:4px solid #2f9d4a;font-size:13px;color:#1a6b2f;">填入價格後自動計算 R:R / 部位佔比 / 目標價</div>' +
+      '<button onclick="submitAdd()" style="width:100%;margin-top:14px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">確認新增</button>';
+    $('modalMask').classList.add('show');
+
+    // 綁 oninput 自動計算
+    var inpIds = ['f_entry', 'f_shares', 'f_stop', 'f_main'];
+    for (var ii = 0; ii < inpIds.length; ii++) {
+      var el = $(inpIds[ii]);
+      if (el) el.oninput = updateAutoCalc;
+    }
+  };
+
+  function updateAutoCalc() {
+    var entry = parseFloat($('f_entry').value) || 0;
+    var shares = parseFloat($('f_shares').value) || 0;
+    var stop = parseFloat($('f_stop').value);
+    var main = parseFloat($('f_main').value) || 0;
+    if (!stop && entry) stop = entry * 0.92;
+
+    var box = $('autoCalc');
+    if (!box) return;
+
+    if (!entry) {
+      box.innerHTML = '填入價格後自動計算 R:R / 部位佔比 / 目標價';
+      box.style.background = '#e3f3e6';
+      box.style.borderLeftColor = '#2f9d4a';
+      box.style.color = '#1a6b2f';
+      // 清掉 R:R 自動勾
+      var rrCb = $('sop_6');
+      if (rrCb) rrCb.checked = false;
+      return;
+    }
+
+    var t = calcTargets(entry, main);
+    var rr = calcRR(entry, stop, t.t2);
+    var cost = entry * shares;
+    var p = state.pools[state.currentPool];
+    var pctOfPool = p.startCash > 0 ? (cost / p.startCash * 100) : 0;
+
+    var html = '<div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#1a6b2f;">📊 自動計算</div>';
+
+    // 目標價
+    html += '<div style="padding:3px 0;">目標價（' + t.mode + '）：<b>T1 ' + fmt2(t.t1) + ' / T2 ' + fmt2(t.t2) + ' / T3 ' + fmt2(t.t3) + '</b></div>';
+
+    // R:R
+    var rrPass = rr && rr >= 3;
+    var rrColor = rrPass ? '#1a6b2f' : '#c3502f';
+    var rrIcon = rrPass ? '✅' : '❌';
+    if (rr) {
+      html += '<div style="padding:3px 0;color:' + rrColor + ';">R:R（用 T2 算）：<b>1:' + rr.toFixed(2) + '</b> ' + rrIcon + ' ' + (rrPass ? '通過 1:3 門檻' : '未達 1:3 門檻，建議調整停損或目標') + '</div>';
+    }
+
+    // 成本
+    if (cost > 0) {
+      var costColor = pctOfPool > 25 ? '#c3502f' : (pctOfPool > 15 ? '#d97706' : '#1a6b2f');
+      html += '<div style="padding:3px 0;color:' + costColor + ';">本筆成本：<b>' + fmt(cost) + '</b>';
+      if (pctOfPool > 0) {
+        html += '（佔池子 <b>' + pctOfPool.toFixed(1) + '%</b>）';
+        if (pctOfPool > 25) html += ' ❌ 超過 25%（部位過大）';
+        else if (pctOfPool > 15) html += ' ! 偏高（建議 &lt;=15%）';
+        else html += ' ✅ 合理';
+      }
+      html += '</div>';
+
+      // 現金不足
+      if (cost > p.cash) {
+        html += '<div style="padding:3px 0;color:#c3502f;font-weight:600;">❌ 現金不足（需 ' + fmt(cost) + '，剩 ' + fmt(p.cash) + '）</div>';
+      }
+    }
+
+    // 風險（每股虧多少 / 總虧多少）
+    if (entry && stop && shares) {
+      var riskPerShare = entry - stop;
+      var totalRisk = riskPerShare * shares;
+      var riskPct = riskPerShare / entry * 100;
+      html += '<div style="padding:3px 0;">最大風險：每股 <b>' + fmt2(riskPerShare) + '</b>（-' + riskPct.toFixed(1) + '%）　總虧 <b>' + fmt(totalRisk) + '</b></div>';
+    }
+
+    box.innerHTML = html;
+    box.style.background = rrPass ? '#e3f3e6' : '#fef3c7';
+    box.style.borderLeftColor = rrPass ? '#2f9d4a' : '#d97706';
+
+    // R:R 自動勾選 sop_6
+    var rrCb = $('sop_6');
+    if (rrCb) rrCb.checked = !!rrPass;
+  }
+
+  window.submitAdd = function() {
+    var ticker = ($('f_ticker').value || '').trim().toUpperCase();
+    var entry = parseFloat($('f_entry').value);
+    var shares = parseFloat($('f_shares').value);
+    var stop = parseFloat($('f_stop').value);
+    var main = parseFloat($('f_main').value) || 0;
+    var date = $('f_date').value || todayISO();
+    var note = ($('f_note').value || '').trim();
+
+    // 訂單類型
+    var ordType = 'executed';
+    var radios = document.getElementsByName('ordType');
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) { ordType = radios[i].value; break; }
+    }
+
+    // SOP 檢查
+    var sopChecks = [];
+    var sopLabels = ['大盤Stage2', '個股Stage2', '板塊上升中', '突破量增', '收盤決定', 'R:R>=1:3'];
+    for (var k = 1; k <= 6; k++) {
+      var cb = $('sop_' + k);
+      if (cb && cb.checked) sopChecks.push(sopLabels[k-1]);
+    }
+    var sopPassed = sopChecks.length === 6;
+
+    if (!ticker) { alert('請輸入股票代號'); return; }
+    if (!entry || entry <= 0) { alert('請輸入進場價'); return; }
+    if (!shares || shares <= 0) { alert('請輸入股數'); return; }
+    if (!stop) stop = entry * 0.92;
+
+    // SOP 未全勾警告
+    if (!sopPassed) {
+      var missed = 6 - sopChecks.length;
+      var ok = confirm('SOP 檢查未全勾（缺 ' + missed + ' 項）。\n紀律提醒：未通過 SOP 進場通常勝率較差。\n\n仍要繼續嗎？');
+      if (!ok) return;
+    }
+
+    var cost = entry * shares;
+    var p = state.pools[state.currentPool];
+
+    // 計畫單不扣現金、不扣股數
+    if (ordType === 'executed') {
+      if (cost > p.cash) { alert('現金不足，需 ' + fmt(cost) + '，剩 ' + fmt(p.cash)); return; }
+    }
+
+    var tgs = calcTargets(entry, main);
+    var newHolding = {
+      id: uid(),
+      ticker: ticker, entryPrice: entry, shares: shares,
+      stopLoss: stop, mainCost: main || null,
+      targets: { t1: tgs.t1, t2: tgs.t2, t3: tgs.t3, mode: tgs.mode },
+      entryDate: date, note: note,
+      ordType: ordType,
+      sopChecks: sopChecks,
+      sopPassed: sopPassed
+    };
+
+    p.holdings.push(newHolding);
+
+    // 已進場才扣現金
+    if (ordType === 'executed') {
+      p.cash -= cost;
+    }
+
+    saveData(); render(); closeModal();
+  };
+  window.closeModal = function() {
+    $('modalMask').classList.remove('show');
+  };
+  window.openSettings = function() {
+    var pOld = state.pools.old;
+    var pNew = state.pools.new;
+    var lblStyle = 'display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;';
+    var inpStyle = 'display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;';
+    var sectionStyle = 'background:#f9f1df;border-radius:10px;padding:14px;margin-bottom:14px;border-left:4px solid #2f9d4a;';
+    var sectionStyleOld = 'background:#eaf0f9;border-radius:10px;padding:14px;margin-bottom:14px;border-left:4px solid #4a78c8;';
+
+    $('modalTitle').textContent = '⚙ 設定';
+    $('modalBody').innerHTML =
+      '<p style="font-size:12px;color:#9a8456;margin-bottom:14px;">調整起始資金與期間。注意：改起始資金會同時調整現金（差額會加回 / 扣除）。</p>' +
+      '<div style="' + sectionStyleOld + '">' +
+        '<h4 style="font-size:15px;color:#1f3d75;margin-bottom:8px;">舊持倉</h4>' +
+        '<label style="' + lblStyle + '">起始資金</label>' +
+        '<input id="s_old_cash" type="number" inputmode="decimal" step="100" value="' + pOld.startCash + '" style="' + inpStyle + '">' +
+        '<label style="' + lblStyle + '">開始日期</label>' +
+        '<input id="s_old_start" type="date" value="' + pOld.startDate + '" style="' + inpStyle + '">' +
+        '<label style="' + lblStyle + '">結束日期</label>' +
+        '<input id="s_old_end" type="date" value="' + pOld.endDate + '" style="' + inpStyle + '">' +
+      '</div>' +
+      '<div style="' + sectionStyle + '">' +
+        '<h4 style="font-size:15px;color:#1a6b2f;margin-bottom:8px;">實驗池</h4>' +
+        '<label style="' + lblStyle + '">起始資金</label>' +
+        '<input id="s_new_cash" type="number" inputmode="decimal" step="100" value="' + pNew.startCash + '" style="' + inpStyle + '">' +
+        '<label style="' + lblStyle + '">開始日期</label>' +
+        '<input id="s_new_start" type="date" value="' + pNew.startDate + '" style="' + inpStyle + '">' +
+        '<label style="' + lblStyle + '">結束日期</label>' +
+        '<input id="s_new_end" type="date" value="' + pNew.endDate + '" style="' + inpStyle + '">' +
+      '</div>' +
+      '<button onclick="saveSettings()" style="width:100%;margin-top:6px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">儲存設定</button>' +
+      '<hr style="margin:20px 0;border:none;border-top:1px solid #e8d6a0;">' +
+      '<div style="background:#fee2e2;border-radius:10px;padding:12px;border-left:4px solid #c3502f;">' +
+        '<div style="font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px;">! 危險區（重置資料）</div>' +
+        '<div style="font-size:12px;color:#7f1d1d;margin-bottom:10px;">適合：清掉測試假資料、重新開始實戰。重置不影響起始資金與期間設定。</div>' +
+        '<button onclick="resetCurrentPool()" style="width:100%;margin-bottom:8px;background:#d97706;color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">重設目前池子（' + state.pools[state.currentPool].name + '）</button>' +
+        '<button onclick="resetAllData()" style="width:100%;background:#c3502f;color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;">完全重置（兩個池子都清空）</button>' +
+      '</div>';
+    $('modalMask').classList.add('show');
+  };
+
+  window.saveSettings = function() {
+    var pOld = state.pools.old;
+    var pNew = state.pools.new;
+
+    var oldCash = parseFloat($('s_old_cash').value);
+    var newCash = parseFloat($('s_new_cash').value);
+    if (isNaN(oldCash) || oldCash < 0) { alert('舊持倉起始資金需 >= 0'); return; }
+    if (isNaN(newCash) || newCash < 0) { alert('實驗池起始資金需 >= 0'); return; }
+
+    // 起始資金變動 → 同步調整現金
+    var diffOld = oldCash - pOld.startCash;
+    var diffNew = newCash - pNew.startCash;
+    pOld.startCash = oldCash;
+    pOld.cash += diffOld;
+    pNew.startCash = newCash;
+    pNew.cash += diffNew;
+
+    pOld.startDate = $('s_old_start').value || pOld.startDate;
+    pOld.endDate = $('s_old_end').value || pOld.endDate;
+    pNew.startDate = $('s_new_start').value || pNew.startDate;
+    pNew.endDate = $('s_new_end').value || pNew.endDate;
+
+    saveData(); render(); closeModal();
+  };
+
+  // ===== 賣出 Modal =====
+  window.openSell = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var remain = h.shares - (h.soldShares || 0);
+    var tgs = h.targets || {};
+    var batches = h.batches || [];
+
+    function hasBatch(name) {
+      for (var i = 0; i < batches.length; i++) {
+        if (batches[i].name === name) return true;
+      }
+      return false;
+    }
+
+    // T1=20%, T2=30%, T3=50%（用原始股數計）
+    var baseShares = h.shares;
+    var t1Sh = Math.floor(baseShares * 0.20);
+    var t2Sh = Math.floor(baseShares * 0.30);
+    var t3Sh = baseShares - t1Sh - t2Sh;
+
+    var rowStyle = 'display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f1df;border-radius:8px;margin-bottom:8px;font-size:13px;';
+    var btnStyle = 'background:#c3502f;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;cursor:pointer;';
+    var btnDoneStyle = 'background:#ccc;color:#666;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;-webkit-appearance:none;';
+
+    function batchRow(name, price, sh) {
+      var done = hasBatch(name);
+      var label = done ? '已賣' : '賣出';
+      var btn = done
+        ? '<button disabled style="' + btnDoneStyle + '">' + label + '</button>'
+        : '<button onclick="sellBatch(\'' + h.id + '\',\'' + name + '\',' + (price || 0) + ',' + sh + ')" style="' + btnStyle + '">' + label + '</button>';
+      var op = done ? 'opacity:0.5;' : '';
+      return '<div style="' + rowStyle + op + '">' +
+        '<div><b style="color:#3d2f15;">' + name + '</b>　目標 ' + fmt2(price || 0) + ' × ' + sh + ' 股</div>' +
+        btn +
+      '</div>';
+    }
+
+    var infoStyle = 'background:#f9f1df;border-radius:8px;padding:10px 12px;font-size:13px;color:#6b5230;margin-bottom:14px;border-left:4px solid #c89b3c;';
+
+    $('modalTitle').textContent = '賣出：' + h.ticker;
+    $('modalBody').innerHTML =
+      '<div style="' + infoStyle + '"><b>' + h.ticker + '</b>　剩 ' + remain + ' 股 @ 平均 ' + fmt2(h.entryPrice) + '</div>' +
+      '<p style="font-size:13px;color:#6b5230;font-weight:600;margin-bottom:8px;">分批出場（按目標價）</p>' +
+      batchRow('T1', tgs.t1, t1Sh) +
+      batchRow('T2', tgs.t2, t2Sh) +
+      batchRow('T3', tgs.t3, t3Sh) +
+      '<hr style="margin:14px 0;border:none;border-top:1px solid #e8d6a0;">' +
+      '<p style="font-size:13px;color:#6b5230;font-weight:600;margin-bottom:8px;">自訂賣出（用實際成交價）</p>' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:8px;">賣出價</label>' +
+      '<input id="s_price" type="number" inputmode="decimal" step="0.01" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">股數（留空=全賣 ' + remain + '）</label>' +
+      '<input id="s_shares" type="number" inputmode="decimal" step="1" placeholder="' + remain + '" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<label style="display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;">出場理由</label>' +
+      '<input id="s_note" type="text" placeholder="例如：跌破停損 / 達到目標" style="display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;">' +
+      '<button onclick="submitCustomSell(\'' + h.id + '\')" style="width:100%;margin-top:14px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">確認自訂賣出</button>';
+    $('modalMask').classList.add('show');
+  };
+
+  window.sellBatch = function(id, name, price, shares) {
+    if (!price || price <= 0) { alert(name + ' 目標價未設定，請改用自訂賣出'); return; }
+    doSell(id, price, shares, name, '');
+  };
+
+  window.submitCustomSell = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var price = parseFloat($('s_price').value);
+    var remain = h.shares - (h.soldShares || 0);
+    var shares = parseFloat($('s_shares').value);
+    if (!shares || shares <= 0) shares = remain;
+    var note = ($('s_note').value || '').trim();
+
+    if (!price || price <= 0) { alert('請輸入賣出價'); return; }
+    if (shares > remain) { alert('股數超過剩餘 ' + remain); return; }
+    doSell(id, price, shares, '自訂', note);
+  };
+
+  function doSell(id, price, shares, batchName, note) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) return;
+
+    var remain = h.shares - (h.soldShares || 0);
+    if (shares > remain) shares = remain;
+
+    var proceeds = price * shares;
+    var costBasis = h.entryPrice * shares;
+    var pnl = proceeds - costBasis;
+
+    h.soldShares = (h.soldShares || 0) + shares;
+    h.batches = h.batches || [];
+    h.batches.push({
+      name: batchName, price: price, shares: shares,
+      pnl: pnl, date: todayISO(), note: note
+    });
+
+    p.cash += proceeds;
+    p.realized += pnl;
+
+    // 全部賣完 → 移到 closed
+    if (h.soldShares >= h.shares) {
+      var totalPnl = 0;
+      var totalSh = 0;
+      var totalRev = 0;
+      for (var j = 0; j < h.batches.length; j++) {
+        var b = h.batches[j];
+        totalPnl += b.pnl || 0;
+        totalSh += b.shares;
+        totalRev += b.price * b.shares;
+      }
+      var avgExit = totalSh > 0 ? totalRev / totalSh : price;
+      var pnlPct = (avgExit - h.entryPrice) / h.entryPrice * 100;
+
+      p.closed.push({
+        ticker: h.ticker,
+        shares: h.shares,
+        entryPrice: h.entryPrice,
+        exitPrice: avgExit,
+        pnl: totalPnl,
+        pnlPct: pnlPct,
+        entryDate: h.entryDate,
+        exitDate: todayISO(),
+        batches: h.batches,
+        note: h.note
+      });
+
+      // 從 holdings 移除
+      var newHoldings = [];
+      for (var k = 0; k < p.holdings.length; k++) {
+        if (p.holdings[k].id !== id) newHoldings.push(p.holdings[k]);
+      }
+      p.holdings = newHoldings;
+    }
+
+    saveData(); render(); closeModal();
+  }
+  // ===== 賣出 Modal 結束 =====
+
+  // ===== 加碼 Modal =====
+  window.openAddOn = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var remain = h.shares - (h.soldShares || 0);
+    var infoStyle = 'background:#e3f3e6;border-radius:8px;padding:10px 12px;font-size:13px;color:#1a6b2f;margin-bottom:14px;border-left:4px solid #2f9d4a;';
+    var lblStyle = 'display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;';
+    var inpStyle = 'display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;';
+
+    $('modalTitle').textContent = '加碼：' + h.ticker;
+    $('modalBody').innerHTML =
+      '<div style="' + infoStyle + '"><b>' + h.ticker + '</b>　目前 ' + remain + ' 股 @ 平均 ' + fmt2(h.entryPrice) + '　現金 ' + fmt(p.cash) + '</div>' +
+      '<p style="font-size:12px;color:#9a8456;margin-bottom:10px;">加碼後會自動重算平均成本，停損與目標價維持原值（如需修改請用編輯）。</p>' +
+      '<label style="' + lblStyle + '">加碼價</label>' +
+      '<input id="a_price" type="number" inputmode="decimal" step="0.01" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">加碼股數</label>' +
+      '<input id="a_shares" type="number" inputmode="decimal" step="1" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">加碼日期</label>' +
+      '<input id="a_date" type="date" value="' + todayISO() + '" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">加碼理由</label>' +
+      '<input id="a_note" type="text" placeholder="例如：突破整理 / 量增" style="' + inpStyle + '">' +
+      '<div id="a_preview" style="background:#f9f1df;border-radius:8px;padding:10px;font-size:12px;color:#6b5230;margin-top:10px;">輸入價格與股數後預覽新平均成本</div>' +
+      '<button onclick="submitAddOn(\'' + h.id + '\')" style="width:100%;margin-top:14px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">確認加碼</button>';
+    $('modalMask').classList.add('show');
+
+    // 即時預覽（不用 addEventListener，改用 oninput 直接綁）
+    var priceEl = $('a_price');
+    var sharesEl = $('a_shares');
+    var preview = function() { updateAddOnPreview(h); };
+    if (priceEl) priceEl.oninput = preview;
+    if (sharesEl) sharesEl.oninput = preview;
+  };
+
+  function updateAddOnPreview(h) {
+    var p = state.pools[state.currentPool];
+    var price = parseFloat($('a_price').value) || 0;
+    var shares = parseFloat($('a_shares').value) || 0;
+    var pv = $('a_preview');
+    if (!pv) return;
+
+    if (!price || !shares) {
+      pv.innerHTML = '輸入價格與股數後預覽新平均成本';
+      return;
+    }
+
+    var cost = price * shares;
+    var remain = h.shares - (h.soldShares || 0);
+    var totalCost = h.entryPrice * remain + cost;
+    var totalShares = remain + shares;
+    var newAvg = totalCost / totalShares;
+
+    var html = '加碼成本：<b>' + fmt(cost) + '</b><br>' +
+               '新平均成本：<b style="color:#1a6b2f;">' + fmt2(newAvg) + '</b>（原 ' + fmt2(h.entryPrice) + '）<br>' +
+               '加碼後總股數：<b>' + totalShares + '</b>';
+    if (cost > p.cash) {
+      html += '<br><span style="color:#c3502f;font-weight:600;">! 現金不足（剩 ' + fmt(p.cash) + '）</span>';
+    }
+    pv.innerHTML = html;
+  }
+
+  window.submitAddOn = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var price = parseFloat($('a_price').value);
+    var shares = parseFloat($('a_shares').value);
+    var date = $('a_date').value || todayISO();
+    var note = ($('a_note').value || '').trim();
+
+    if (!price || price <= 0) { alert('請輸入加碼價'); return; }
+    if (!shares || shares <= 0) { alert('請輸入加碼股數'); return; }
+
+    var cost = price * shares;
+    if (cost > p.cash) { alert('現金不足，需 ' + fmt(cost) + '，剩 ' + fmt(p.cash)); return; }
+
+    // 重算平均成本
+    var remain = h.shares - (h.soldShares || 0);
+    var totalCost = h.entryPrice * remain + cost;
+    var totalShares = remain + shares;
+    var newAvg = totalCost / totalShares;
+
+    h.entryPrice = newAvg;
+    h.shares = totalShares + (h.soldShares || 0); // 累積股數含已賣出
+    h.addOns = h.addOns || [];
+    h.addOns.push({
+      price: price, shares: shares,
+      date: date, note: note
+    });
+
+    p.cash -= cost;
+
+    saveData(); render(); closeModal();
+  };
+  // ===== 加碼 Modal 結束 =====
+
+  // ===== 編輯持倉 Modal =====
+  window.openEdit = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var tgs = h.targets || {};
+    var infoStyle = 'background:#f9f1df;border-radius:8px;padding:10px 12px;font-size:13px;color:#6b5230;margin-bottom:14px;border-left:4px solid #c89b3c;';
+    var lblStyle = 'display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;';
+    var inpStyle = 'display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;';
+    var rowStyle = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;';
+
+    var t1 = tgs.t1 || 0;
+    var t2 = tgs.t2 || 0;
+    var t3 = tgs.t3 || 0;
+    var lastP = h.lastPrice || h.entryPrice;
+    var mainC = h.mainCost || '';
+
+    $('modalTitle').textContent = '編輯：' + h.ticker;
+    $('modalBody').innerHTML =
+      '<div style="' + infoStyle + '"><b>' + h.ticker + '</b>　平均成本 ' + fmt2(h.entryPrice) + '（不可改）　進場日 ' + h.entryDate + '（不可改）</div>' +
+      '<p style="font-size:12px;color:#9a8456;margin-bottom:10px;">提醒：紀律優於彈性。修改目標價建議只在「進場後立刻發現算錯」時使用，不要因為股價接近目標就改。</p>' +
+      '<label style="' + lblStyle + '">停損價</label>' +
+      '<input id="e_stop" type="number" inputmode="decimal" step="0.01" value="' + h.stopLoss + '" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">主力成本（可空，按下方按鈕重算 T1/T2/T3）</label>' +
+      '<input id="e_main" type="number" inputmode="decimal" step="0.01" value="' + mainC + '" style="' + inpStyle + '">' +
+      '<button onclick="recalcTargets(\'' + h.id + '\')" style="background:#f3e6c4;color:#6b5230;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;margin-top:8px;-webkit-appearance:none;cursor:pointer;">依主力成本重算 T1/T2/T3</button>' +
+      '<div style="' + rowStyle + 'margin-top:10px;">' +
+        '<div><label style="' + lblStyle.replace('margin-top:10px;','') + '">T1（20%出）</label><input id="e_t1" type="number" inputmode="decimal" step="0.01" value="' + t1.toFixed(2) + '" style="' + inpStyle + '"></div>' +
+        '<div><label style="' + lblStyle.replace('margin-top:10px;','') + '">T2（30%出）</label><input id="e_t2" type="number" inputmode="decimal" step="0.01" value="' + t2.toFixed(2) + '" style="' + inpStyle + '"></div>' +
+      '</div>' +
+      '<label style="' + lblStyle + '">T3（50%出）</label>' +
+      '<input id="e_t3" type="number" inputmode="decimal" step="0.01" value="' + t3.toFixed(2) + '" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">最新價（影響浮動損益顯示）</label>' +
+      '<input id="e_last" type="number" inputmode="decimal" step="0.01" value="' + lastP + '" style="' + inpStyle + '">' +
+      '<label style="' + lblStyle + '">備註</label>' +
+      '<input id="e_note" type="text" value="' + (h.note || '').replace(/"/g, '&quot;') + '" style="' + inpStyle + '">' +
+      '<button onclick="submitEdit(\'' + h.id + '\')" style="width:100%;margin-top:14px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">儲存</button>';
+    $('modalMask').classList.add('show');
+  };
+
+  window.recalcTargets = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) return;
+    var main = parseFloat($('e_main').value) || 0;
+    var t = calcTargets(h.entryPrice, main);
+    $('e_t1').value = t.t1.toFixed(2);
+    $('e_t2').value = t.t2.toFixed(2);
+    $('e_t3').value = t.t3.toFixed(2);
+    alert('已用' + t.mode + '重算 T1/T2/T3');
+  };
+
+  window.submitEdit = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+
+    var stop = parseFloat($('e_stop').value);
+    if (!isNaN(stop) && stop > 0) h.stopLoss = stop;
+
+    var main = parseFloat($('e_main').value);
+    if (!isNaN(main)) h.mainCost = main || null;
+
+    h.targets = h.targets || {};
+    var t1 = parseFloat($('e_t1').value);
+    var t2 = parseFloat($('e_t2').value);
+    var t3 = parseFloat($('e_t3').value);
+    if (!isNaN(t1)) h.targets.t1 = t1;
+    if (!isNaN(t2)) h.targets.t2 = t2;
+    if (!isNaN(t3)) h.targets.t3 = t3;
+
+    var lp = parseFloat($('e_last').value);
+    if (!isNaN(lp) && lp > 0) h.lastPrice = lp;
+
+    h.note = ($('e_note').value || '').trim();
+
+    saveData(); render(); closeModal();
+  };
+  // ===== 編輯持倉 Modal 結束 =====
+
+  // ===== 計畫單：執行進場 / 取消 =====
+  window.executePlan = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; break; }
+    }
+    if (!h) { alert('找不到持倉'); return; }
+    if (h.ordType !== 'plan') { alert('此筆已是已進場狀態'); return; }
+
+    // 詢問實際成交價（預設 = 計畫進場價）
+    var actualPrice = prompt('請輸入實際成交價（預設 ' + h.entryPrice + '）', h.entryPrice);
+    if (actualPrice === null) return;
+    actualPrice = parseFloat(actualPrice);
+    if (!actualPrice || actualPrice <= 0) { alert('價格無效'); return; }
+
+    var cost = actualPrice * h.shares;
+    if (cost > p.cash) { alert('現金不足，需 ' + fmt(cost) + '，剩 ' + fmt(p.cash)); return; }
+
+    // 如果實際成交價跟計畫不同，重算停損 / 目標
+    if (actualPrice !== h.entryPrice) {
+      var ratio = actualPrice / h.entryPrice;
+      h.stopLoss = h.stopLoss * ratio;
+      if (h.targets) {
+        h.targets.t1 = h.targets.t1 * ratio;
+        h.targets.t2 = h.targets.t2 * ratio;
+        h.targets.t3 = h.targets.t3 * ratio;
+      }
+      h.entryPrice = actualPrice;
+    }
+
+    h.ordType = 'executed';
+    h.entryDate = todayISO();
+    h.note = (h.note || '') + ' [計畫單於 ' + todayISO() + ' 執行]';
+    p.cash -= cost;
+
+    saveData(); render(); alert('已執行進場：' + h.ticker + ' ' + h.shares + '股 @ ' + fmt2(actualPrice));
+  };
+
+  window.cancelPlan = function(id) {
+    var p = state.pools[state.currentPool];
+    var h = null;
+    var idx = -1;
+    for (var i = 0; i < p.holdings.length; i++) {
+      if (p.holdings[i].id === id) { h = p.holdings[i]; idx = i; break; }
+    }
+    if (!h) return;
+    if (h.ordType !== 'plan') { alert('此筆不是計畫單'); return; }
+
+    var ok = confirm('確定取消計畫單 ' + h.ticker + '？\n（會從持倉移除，不影響現金）');
+    if (!ok) return;
+
+    p.holdings.splice(idx, 1);
+    saveData(); render();
+  };
+  // ===== 計畫單結束 =====
+
+  // ===== 快速更新最新價 =====
+  window.openQuickPriceUpdate = function() {
+    var lblStyle = 'display:block;font-size:13px;color:#6b5230;font-weight:600;margin-top:10px;';
+    var inpStyle = 'display:block;width:90%;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:6px;font-size:15px;';
+
+    var html = '<p style="font-size:13px;color:#6b5230;margin-bottom:10px;">輸入每檔持倉的最新收盤價（建議每天收盤後做一次）。空白欄位會跳過。</p>';
+
+    var poolKeys = ['old', 'new'];
+    var hasAny = false;
+    for (var pk = 0; pk < poolKeys.length; pk++) {
+      var pool = state.pools[poolKeys[pk]];
+      var poolColor = poolKeys[pk] === 'old' ? '#1f3d75' : '#1a6b2f';
+      var poolBg = poolKeys[pk] === 'old' ? '#eaf0f9' : '#e3f3e6';
+
+      var poolHoldings = [];
+      for (var i = 0; i < pool.holdings.length; i++) {
+        if (pool.holdings[i].ordType !== 'plan') poolHoldings.push(pool.holdings[i]);
+      }
+
+      if (poolHoldings.length === 0) continue;
+      hasAny = true;
+
+      html += '<div style="background:' + poolBg + ';border-radius:10px;padding:12px;margin-bottom:10px;">';
+      html += '<div style="font-size:14px;font-weight:700;color:' + poolColor + ';margin-bottom:8px;">' + pool.name + '</div>';
+      for (var j = 0; j < poolHoldings.length; j++) {
+        var h = poolHoldings[j];
+        var cur = h.lastPrice || h.entryPrice;
+        html += '<label style="' + lblStyle + '">' + h.ticker + '（成本 ' + fmt2(h.entryPrice) + '，目前 ' + fmt2(cur) + '）</label>';
+        html += '<input id="qp_' + h.id + '" type="number" inputmode="decimal" step="0.01" placeholder="' + cur + '" style="' + inpStyle + '">';
+      }
+      html += '</div>';
+    }
+
+    if (!hasAny) {
+      html = '<p style="color:#6b5230;text-align:center;padding:20px;">目前沒有實際持倉</p>';
+    } else {
+      html += '<button onclick="submitQuickPriceUpdate()" style="width:100%;margin-top:14px;background:#c89b3c;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;-webkit-appearance:none;cursor:pointer;">儲存最新價</button>';
+    }
+
+    $('modalTitle').textContent = '📈 快速更新最新價';
+    $('modalBody').innerHTML = html;
+    $('modalMask').classList.add('show');
+  };
+
+  window.submitQuickPriceUpdate = function() {
+    var poolKeys = ['old', 'new'];
+    var updated = 0;
+    for (var pk = 0; pk < poolKeys.length; pk++) {
+      var pool = state.pools[poolKeys[pk]];
+      for (var i = 0; i < pool.holdings.length; i++) {
+        var h = pool.holdings[i];
+        if (h.ordType === 'plan') continue;
+        var inp = $('qp_' + h.id);
+        if (inp && inp.value) {
+          var v = parseFloat(inp.value);
+          if (!isNaN(v) && v > 0) {
+            h.lastPrice = v;
+            updated++;
+          }
+        }
+      }
+    }
+    saveData(); render(); closeModal();
+    alert('已更新 ' + updated + ' 檔最新價');
+  };
+  // ===== 快速更新最新價結束 =====
+
+  // ===== 重置功能 =====
+  window.resetCurrentPool = function() {
+    var poolKey = state.currentPool;
+    var p = state.pools[poolKey];
+    var ok = confirm('確定要重設「' + p.name + '」？\n\n會清空：\n- 所有持倉（含計畫單）\n- 所有已出場紀錄\n- 現金回到起始 ' + fmt(p.startCash) + '\n- 已實現損益歸零\n\n此操作無法復原！');
+    if (!ok) return;
+
+    p.holdings = [];
+    p.closed = [];
+    p.cash = p.startCash;
+    p.realized = 0;
+
+    saveData(); render(); closeModal();
+    alert('已重設「' + p.name + '」');
+  };
+
+  window.resetAllData = function() {
+    var ok = confirm('! 完全重置所有資料！\n\n會清空：\n- 兩個池子的所有持倉\n- 兩個池子的所有已出場紀錄\n- 現金回到起始值\n- 已實現損益歸零\n\n設定（起始資金、期間）會保留。\n\n此操作無法復原！');
+    if (!ok) return;
+    var ok2 = confirm('再次確認：真的要重置所有資料？');
+    if (!ok2) return;
+
+    var poolKeys = ['old', 'new'];
+    for (var i = 0; i < poolKeys.length; i++) {
+      var p = state.pools[poolKeys[i]];
+      p.holdings = [];
+      p.closed = [];
+      p.cash = p.startCash;
+      p.realized = 0;
+    }
+
+    saveData(); render(); closeModal();
+    alert('已完全重置所有資料');
+  };
+  // ===== 重置功能結束 =====
+
+  cp('CP6: switchPool/Modal OK', true);
+
+  /* ===== run ===== */
+  cp('CP7: 執行 loadData + render...');
+  loadData();
+  // 啟動 tab class 同步
+  $('tabOld').classList.toggle('active', state.currentPool === 'old');
+  $('tabNew').classList.toggle('active', state.currentPool === 'new');
+  render();
+  cp('CP7: 完成', true);
+  cp('🎉 全部成功！請點 Tab、+ 按鈕測試');
+
+} catch (err) {
+  cp('💥 錯誤：' + err.message, false);
+  console.error(err);
+}
+</script>
+
+</body>
+</html>
