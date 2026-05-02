@@ -1,1 +1,386 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RRG 板塊輪動圖 v1.4</title>
+<style>
+:root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;padding:16px;-webkit-font-smoothing:antialiased;}
+header{padding:8px 0 16px 0;margin-bottom:16px;border-bottom:1px solid var(--line);}
+header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+header h1::before{content:"";width:6px;height:24px;background:var(--accent);border-radius:3px;}
+header .sub{color:var(--dim);font-size:0.8rem;margin-top:6px;margin-left:14px;}
+.controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:10px 16px;border-radius:10px;cursor:pointer;font-size:0.9rem;font-family:inherit;font-weight:500;-webkit-appearance:none;}
+button.primary{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:700;}
+.chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:16px;}
+#rrg-svg{width:100%;height:auto;display:block;}
+.quadrants-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:0.78rem;}
+.q-info{padding:10px 12px;border-radius:10px;border:1px solid;line-height:1.4;}
+.q-info strong{display:block;margin-bottom:2px;font-size:0.88rem;}
+.q-leading{color:var(--leading);border-color:rgba(0,212,168,0.25);background:rgba(0,212,168,0.05);}
+.q-weakening{color:var(--weakening);border-color:rgba(247,201,72,0.25);background:rgba(247,201,72,0.05);}
+.q-lagging{color:var(--lagging);border-color:rgba(239,71,111,0.25);background:rgba(239,71,111,0.05);}
+.q-improving{color:var(--improving);border-color:rgba(78,165,255,0.25);background:rgba(78,165,255,0.05);}
+.q-info .desc{color:var(--text);opacity:0.7;font-size:0.72rem;font-weight:400;}
+.status{text-align:center;padding:32px 16px;color:var(--dim);font-size:0.95rem;background:var(--card);border-radius:12px;border:1px solid var(--line);}
+.error{color:var(--lagging);background:rgba(239,71,111,0.08);padding:14px;border-radius:10px;border:1px solid rgba(239,71,111,0.25);margin:12px 0;font-size:0.85rem;line-height:1.5;text-align:left;}
+.sector-table{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.sector-row{display:grid;grid-template-columns:1fr 64px 64px 78px;padding:12px 14px;border-bottom:1px solid var(--line);font-size:0.85rem;align-items:center;gap:4px;}
+.sector-row:last-child{border-bottom:none;}
+.sector-row.header{background:#0d1220;color:var(--dim);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.6px;padding:10px 14px;}
+.sector-name{font-weight:600;font-size:0.92rem;}
+.sector-ticker{color:var(--dim);font-size:0.7rem;margin-left:6px;font-weight:400;}
+.sector-num{font-family:"SF Mono","Menlo",monospace;text-align:right;font-size:0.85rem;}
+.sector-tag{padding:4px 6px;border-radius:6px;font-size:0.7rem;font-weight:600;text-align:center;white-space:nowrap;}
+footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:24px 0 8px 0;margin-top:16px;}
+.timestamp{color:var(--dim);font-size:0.7rem;margin-top:8px;}
+#js-check{padding:8px 12px;background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.3);border-radius:8px;font-size:0.75rem;color:var(--leading);margin-bottom:12px;}
+#js-error{padding:12px;background:rgba(239,71,111,0.12);border:1px solid rgba(239,71,111,0.4);border-radius:8px;font-size:0.78rem;color:var(--lagging);margin-bottom:12px;display:none;font-family:monospace;word-break:break-all;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>RRG 板塊輪動圖</h1>
+    <div class="sub">12 板塊代表股 vs SPY · 日線 60 日 · v1.4 Yahoo</div>
+  </header>
+
+  <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
+  <div id="js-error"></div>
+
+  <div class="controls">
+    <button class="primary" id="btn-load">📡 載入 / 顯示</button>
+    <button id="btn-refresh">🔄 強制重抓</button>
+    <button id="btn-back">← 返回</button>
+  </div>
+
+  <div id="status" class="status">點擊「載入 / 顯示」開始</div>
+
+  <div class="chart-wrap" id="chart-wrap" style="display:none">
+    <svg id="rrg-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="timestamp" id="timestamp"></div>
+  </div>
+
+  <div class="quadrants-info" id="quadrants" style="display:none">
+    <div class="q-info q-improving"><strong>↗ 改善中</strong><div class="desc">弱勢但動能轉強，潛在輪動進場區</div></div>
+    <div class="q-info q-leading"><strong>★ 領先</strong><div class="desc">強勢且動能向上，主流板塊</div></div>
+    <div class="q-info q-lagging"><strong>↘ 落後</strong><div class="desc">弱勢且動能向下，避開區</div></div>
+    <div class="q-info q-weakening"><strong>⚠ 走弱</strong><div class="desc">強勢但動能轉弱，獲利了結警示</div></div>
+  </div>
+
+  <div class="sector-table" id="sector-table" style="display:none">
+    <div class="sector-row header">
+      <div>板塊 / 代表股</div>
+      <div style="text-align:right">RS</div>
+      <div style="text-align:right">動能</div>
+      <div style="text-align:center">象限</div>
+    </div>
+  </div>
+
+  <footer>RRG v1.4 · Yahoo Finance API · 不構成投資建議</footer>
+
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var errDiv = document.getElementById('js-error');
+  if (errDiv) {
+    errDiv.style.display = 'block';
+    errDiv.textContent = '❌ JS 錯誤 (line ' + line + '): ' + msg;
+  }
+  return false;
+};
+</script>
+
+<script>
+(function() {
+  'use strict';
+
+  var SECTORS = [
+    {name: 'AI巨頭', ticker: 'NVDA', color: '#76b900'},
+    {name: 'AI基礎設施', ticker: 'VRT', color: '#ff6b35'},
+    {name: '光通信', ticker: 'AAOI', color: '#00d4a8'},
+    {name: '電力散熱', ticker: 'ETN', color: '#ffd166'},
+    {name: '太空衛星', ticker: 'RKLB', color: '#4ea5ff'},
+    {name: '無人機國防', ticker: 'AVAV', color: '#a78bfa'},
+    {name: '量子運算', ticker: 'IONQ', color: '#06d4f0'},
+    {name: '儲存硬體', ticker: 'MU', color: '#ef476f'},
+    {name: '生技健康', ticker: 'HIMS', color: '#f97316'},
+    {name: '衛星通信', ticker: 'ASTS', color: '#22c55e'},
+    {name: '貴金屬礦業', ticker: 'MP', color: '#eab308'},
+    {name: '機器人', ticker: 'ISRG', color: '#ec4899'}
+  ];
+  var BENCHMARK = 'SPY';
+  var DAYS_NEEDED = 60;
+  var SMA_WINDOW = 10;
+  var ROC_WINDOW = 5;
+  var TRAIL_LENGTH = 8;
+  var CACHE_KEY = 'rrg_cache_v14';
+  var CACHE_TTL = 4 * 60 * 60 * 1000;
+
+  // CORS 代理列表 - 按可靠性排序
+  var PROXIES = [
+    'https://api.codetabs.com/v1/proxy/?quest=',
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?'
+  ];
+
+  function buildYahooURL(ticker) {
+    return 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?range=3mo&interval=1d';
+  }
+
+  function tryProxy(proxyIndex, ticker) {
+    if (proxyIndex >= PROXIES.length) {
+      return Promise.reject(new Error('所有 CORS 代理都失敗'));
+    }
+    var yahooUrl = buildYahooURL(ticker);
+    var proxiedUrl = PROXIES[proxyIndex] + encodeURIComponent(yahooUrl);
+    return fetch(proxiedUrl).then(function(r) {
+      if (!r.ok) throw new Error('proxy_' + proxyIndex + '_HTTP_' + r.status);
+      return r.json();
+    }).then(function(j) {
+      if (!j.chart || !j.chart.result || j.chart.result.length === 0) {
+        throw new Error('no_chart_data');
+      }
+      var result = j.chart.result[0];
+      if (!result.indicators || !result.indicators.quote || !result.indicators.quote[0].close) {
+        throw new Error('no_close_data');
+      }
+      var closes = result.indicators.quote[0].close;
+      var validCloses = [];
+      for (var i = 0; i < closes.length; i++) {
+        if (closes[i] !== null && !isNaN(closes[i])) validCloses.push(closes[i]);
+      }
+      if (validCloses.length < SMA_WINDOW + ROC_WINDOW + 5) {
+        throw new Error('insufficient_' + validCloses.length);
+      }
+      return validCloses.slice(-DAYS_NEEDED);
+    }).catch(function(e) {
+      // 失敗就嘗試下一個代理
+      return tryProxy(proxyIndex + 1, ticker);
+    });
+  }
+
+  function fetchPrice(ticker) {
+    return tryProxy(0, ticker);
+  }
+
+  function calculateRRG(sectorCloses, spyCloses) {
+    var N = Math.min(sectorCloses.length, spyCloses.length);
+    var rs = [];
+    for (var i = 0; i < N; i++) rs.push((sectorCloses[i] / spyCloses[i]) * 100);
+    var rsRatios = [];
+    for (var j = SMA_WINDOW - 1; j < N; j++) {
+      var sum = 0;
+      for (var k = j - SMA_WINDOW + 1; k <= j; k++) sum += rs[k];
+      var sma = sum / SMA_WINDOW;
+      rsRatios.push((rs[j] / sma) * 100);
+    }
+    var rsMoms = [];
+    for (var m = ROC_WINDOW; m < rsRatios.length; m++) {
+      rsMoms.push((rsRatios[m] / rsRatios[m - ROC_WINDOW]) * 100);
+    }
+    return { ratios: rsRatios.slice(ROC_WINDOW), moms: rsMoms };
+  }
+
+  function getQuadrant(ratio, mom) {
+    if (ratio >= 100 && mom >= 100) return { name: '領先', tag: '★', color: '#00d4a8' };
+    if (ratio >= 100 && mom < 100) return { name: '走弱', tag: '⚠', color: '#f7c948' };
+    if (ratio < 100 && mom < 100) return { name: '落後', tag: '↘', color: '#ef476f' };
+    return { name: '改善中', tag: '↗', color: '#4ea5ff' };
+  }
+
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var c = JSON.parse(raw);
+      if (Date.now() - c.timestamp > CACHE_TTL) return null;
+      return c;
+    } catch (e) { return null; }
+  }
+  function saveCache(data) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); } catch (e) {}
+  }
+
+  function setStatus(html) {
+    var el = document.getElementById('status');
+    if (el) { el.style.display = 'block'; el.innerHTML = html; }
+  }
+
+  function sleep(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  function loadData(forceRefresh) {
+    document.getElementById('chart-wrap').style.display = 'none';
+    document.getElementById('quadrants').style.display = 'none';
+    document.getElementById('sector-table').style.display = 'none';
+
+    var cached = forceRefresh ? null : loadCache();
+    if (cached) { renderAll(cached.data, cached.timestamp); return; }
+
+    setStatus('正在抓取 SPY 基準資料（透過 Yahoo Finance）...');
+
+    fetchPrice(BENCHMARK).then(function(spyCloses) {
+      var data = { sectors: [] };
+      function fetchNext(i) {
+        if (i >= SECTORS.length) {
+          saveCache(data);
+          renderAll(data, Date.now());
+          return;
+        }
+        var s = SECTORS[i];
+        setStatus('抓取 ' + s.name + ' (' + s.ticker + ')... ' + (i + 1) + '/' + SECTORS.length);
+        fetchPrice(s.ticker).then(function(closes) {
+          var N = Math.min(closes.length, spyCloses.length);
+          var rrg = calculateRRG(closes.slice(-N), spyCloses.slice(-N));
+          if (rrg.ratios.length === 0 || rrg.moms.length === 0) {
+            data.sectors.push({ name: s.name, ticker: s.ticker, color: s.color, error: 'insufficient' });
+          } else {
+            data.sectors.push({
+              name: s.name, ticker: s.ticker, color: s.color,
+              ratios: rrg.ratios, moms: rrg.moms,
+              current: { ratio: rrg.ratios[rrg.ratios.length - 1], mom: rrg.moms[rrg.moms.length - 1] }
+            });
+          }
+          sleep(300).then(function() { fetchNext(i + 1); });
+        }).catch(function(e) {
+          data.sectors.push({ name: s.name, ticker: s.ticker, color: s.color, error: e.message });
+          sleep(300).then(function() { fetchNext(i + 1); });
+        });
+      }
+      fetchNext(0);
+    }).catch(function(e) {
+      setStatus('<div class="error">❌ <strong>無法抓取 SPY 基準資料</strong><br><br>錯誤：' + e.message + '<br><br>所有 3 個 CORS 代理都失敗。可能原因：<br>1. 公共代理伺服器全部暫時失效<br>2. 網路連線問題<br>3. Yahoo Finance API 暫時無回應<br><br>💡 過幾分鐘再試，或換到其他網路</div>');
+    });
+  }
+
+  function renderAll(data, ts) {
+    renderChart(data);
+    renderTable(data);
+    document.getElementById('timestamp').textContent = '更新於 ' + new Date(ts).toLocaleString('zh-TW');
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('chart-wrap').style.display = 'block';
+    document.getElementById('quadrants').style.display = 'grid';
+    document.getElementById('sector-table').style.display = 'block';
+  }
+
+  function renderChart(data) {
+    var svg = document.getElementById('rrg-svg');
+    svg.innerHTML = '';
+    var W = 600, H = 600, P = 50;
+    var valid = [];
+    for (var i = 0; i < data.sectors.length; i++) {
+      if (!data.sectors[i].error && data.sectors[i].current) valid.push(data.sectors[i]);
+    }
+    if (valid.length === 0) {
+      svg.innerHTML = '<text x="300" y="300" fill="#6b7290" text-anchor="middle" font-size="14">無有效資料</text>';
+      return;
+    }
+
+    var allRatios = [], allMoms = [];
+    for (var v = 0; v < valid.length; v++) {
+      for (var r = 0; r < valid[v].ratios.length; r++) {
+        allRatios.push(valid[v].ratios[r]);
+        allMoms.push(valid[v].moms[r]);
+      }
+    }
+    var minR = Math.min.apply(null, allRatios), maxR = Math.max.apply(null, allRatios);
+    var minM = Math.min.apply(null, allMoms), maxM = Math.max.apply(null, allMoms);
+    minR = Math.min(minR, 99); maxR = Math.max(maxR, 101);
+    minM = Math.min(minM, 99); maxM = Math.max(maxM, 101);
+    var rPad = Math.max((maxR - minR) * 0.12, 0.5);
+    var mPad = Math.max((maxM - minM) * 0.12, 0.5);
+    var xMin = Math.min(minR - rPad, 99), xMax = Math.max(maxR + rPad, 101);
+    var yMin = Math.min(minM - mPad, 99), yMax = Math.max(maxM + mPad, 101);
+
+    function mapX(val) { return P + (val - xMin) / (xMax - xMin) * (W - 2 * P); }
+    function mapY(val) { return H - P - (val - yMin) / (yMax - yMin) * (H - 2 * P); }
+    var cx = mapX(100), cy = mapY(100);
+
+    var html = '';
+    html += '<rect x="' + cx + '" y="' + P + '" width="' + (W-P-cx) + '" height="' + (cy-P) + '" fill="#00d4a8" opacity="0.04"/>';
+    html += '<rect x="' + P + '" y="' + P + '" width="' + (cx-P) + '" height="' + (cy-P) + '" fill="#4ea5ff" opacity="0.04"/>';
+    html += '<rect x="' + cx + '" y="' + cy + '" width="' + (W-P-cx) + '" height="' + (H-P-cy) + '" fill="#f7c948" opacity="0.04"/>';
+    html += '<rect x="' + P + '" y="' + cy + '" width="' + (cx-P) + '" height="' + (H-P-cy) + '" fill="#ef476f" opacity="0.04"/>';
+    html += '<line x1="' + P + '" y1="' + cy + '" x2="' + (W-P) + '" y2="' + cy + '" stroke="#1f2942" stroke-dasharray="3,3"/>';
+    html += '<line x1="' + cx + '" y1="' + P + '" x2="' + cx + '" y2="' + (H-P) + '" stroke="#1f2942" stroke-dasharray="3,3"/>';
+    html += '<rect x="' + P + '" y="' + P + '" width="' + (W-2*P) + '" height="' + (H-2*P) + '" fill="none" stroke="#1f2942" stroke-width="1"/>';
+    html += '<text x="' + ((cx+W-P)/2) + '" y="' + (P+18) + '" fill="#00d4a8" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">★ 領先</text>';
+    html += '<text x="' + ((P+cx)/2) + '" y="' + (P+18) + '" fill="#4ea5ff" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">↗ 改善中</text>';
+    html += '<text x="' + ((cx+W-P)/2) + '" y="' + (H-P-8) + '" fill="#f7c948" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">⚠ 走弱</text>';
+    html += '<text x="' + ((P+cx)/2) + '" y="' + (H-P-8) + '" fill="#ef476f" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">↘ 落後</text>';
+
+    for (var k = 0; k < valid.length; k++) {
+      var s = valid[k];
+      var trailStart = Math.max(0, s.ratios.length - TRAIL_LENGTH);
+      var points = [];
+      for (var p = trailStart; p < s.ratios.length; p++) {
+        points.push({ x: mapX(s.ratios[p]), y: mapY(s.moms[p]) });
+      }
+      if (points.length < 2) continue;
+      var path = '';
+      for (var pp = 0; pp < points.length; pp++) {
+        path += (pp === 0 ? 'M' : 'L') + points[pp].x + ',' + points[pp].y;
+        if (pp < points.length - 1) path += ' ';
+      }
+      html += '<path d="' + path + '" stroke="' + s.color + '" stroke-width="1.5" fill="none" opacity="0.45"/>';
+      for (var pi = 0; pi < points.length; pi++) {
+        var pt = points[pi];
+        var isLast = pi === points.length - 1;
+        var op = 0.3 + (pi / Math.max(1, points.length - 1)) * 0.7;
+        var rad = isLast ? 6 : 2.5;
+        if (isLast) html += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="' + (rad+3) + '" fill="' + s.color + '" opacity="0.2"/>';
+        html += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="' + rad + '" fill="' + s.color + '" opacity="' + op + '"/>';
+      }
+      var last = points[points.length - 1];
+      var labelX = last.x + 9;
+      var labelY = last.y + 4;
+      var adjX = labelX > W - 50 ? last.x - 9 : labelX;
+      var anchor = labelX > W - 50 ? 'end' : 'start';
+      html += '<text x="' + adjX + '" y="' + labelY + '" fill="' + s.color + '" font-size="11" font-weight="700" text-anchor="' + anchor + '">' + s.ticker + '</text>';
+    }
+    svg.innerHTML = html;
+  }
+
+  function renderTable(data) {
+    var table = document.getElementById('sector-table');
+    while (table.children.length > 1) table.removeChild(table.lastChild);
+    var sorted = data.sectors.slice();
+    sorted.sort(function(a, b) {
+      if (a.error) return 1;
+      if (b.error) return -1;
+      return b.current.ratio - a.current.ratio;
+    });
+    for (var i = 0; i < sorted.length; i++) {
+      var s = sorted[i];
+      var row = document.createElement('div');
+      row.className = 'sector-row';
+      if (s.error) {
+        row.innerHTML = '<div><span class="sector-name">' + s.name + '</span><span class="sector-ticker">' + s.ticker + '</span></div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-tag" style="background:rgba(239,71,111,0.12);color:#ef476f">無資料</div>';
+      } else {
+        var q = getQuadrant(s.current.ratio, s.current.mom);
+        row.innerHTML = '<div><span class="sector-name">' + s.name + '</span><span class="sector-ticker">' + s.ticker + '</span></div><div class="sector-num" style="color:' + (s.current.ratio >= 100 ? '#00d4a8' : '#ef476f') + '">' + s.current.ratio.toFixed(1) + '</div><div class="sector-num" style="color:' + (s.current.mom >= 100 ? '#00d4a8' : '#ef476f') + '">' + s.current.mom.toFixed(1) + '</div><div class="sector-tag" style="background:' + q.color + '22;color:' + q.color + '">' + q.tag + ' ' + q.name + '</div>';
+      }
+      table.appendChild(row);
+    }
+  }
+
+  document.getElementById('js-check').textContent = '✅ JavaScript 已就緒 v1.4 (Yahoo Finance)';
+  document.getElementById('js-check').style.color = '#00d4a8';
+
+  document.getElementById('btn-load').addEventListener('click', function() { loadData(false); });
+  document.getElementById('btn-refresh').addEventListener('click', function() { loadData(true); });
+  document.getElementById('btn-back').addEventListener('click', function() { window.history.back(); });
+
+  if (loadCache()) loadData(false);
+})();
+</script>
+
+</body>
+</html>
