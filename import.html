@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>雷達清單匯入 v2.0</title>
+<style>
+:root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--green:#00d4a8;--yellow:#f7c948;--red:#ef476f;--blue:#4ea5ff;--accent:#ffd166;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;padding:16px;-webkit-font-smoothing:antialiased;}
+header{padding:8px 0 16px 0;margin-bottom:20px;border-bottom:1px solid var(--line);}
+h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+h1::before{content:"";width:6px;height:24px;background:var(--accent);border-radius:3px;}
+.sub{color:var(--dim);font-size:0.82rem;margin-top:6px;margin-left:14px;}
+.warn{background:rgba(247,201,72,0.1);border:1px solid rgba(247,201,72,0.3);color:var(--yellow);padding:14px;border-radius:10px;margin-bottom:18px;font-size:0.85rem;line-height:1.6;}
+.section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
+.section h2{font-size:1.05rem;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section h2 .step{background:var(--accent);color:#1a1a1a;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;}
+button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:12px 20px;border-radius:10px;cursor:pointer;font-size:0.95rem;font-family:inherit;font-weight:500;-webkit-appearance:none;display:inline-flex;align-items:center;gap:8px;margin:4px;}
+button.primary{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:700;}
+button.green{background:var(--green);color:#0a0e1a;border-color:var(--green);font-weight:700;}
+button.danger{background:var(--red);color:#fff;border-color:var(--red);font-weight:700;}
+button:disabled{opacity:0.4;cursor:not-allowed;}
+button:active:not(:disabled){transform:scale(0.97);}
+.code-display{background:#0d1220;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:"SF Mono","Menlo",monospace;font-size:0.78rem;color:var(--dim);max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;}
+.preview-box{background:#0d1220;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:0.85rem;line-height:1.7;}
+.sector-line{padding:6px 0;border-bottom:1px dashed rgba(107,114,144,0.2);}
+.sector-line:last-child{border-bottom:none;}
+.sector-name-pv{color:var(--accent);font-weight:700;margin-right:8px;}
+.sector-count{color:var(--dim);font-size:0.78rem;}
+.tickers{color:var(--text);font-size:0.82rem;font-family:"SF Mono","Menlo",monospace;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.success{background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.4);color:var(--green);padding:14px;border-radius:10px;margin-top:12px;font-size:0.85rem;line-height:1.6;display:none;}
+.error{background:rgba(239,71,111,0.1);border:1px solid rgba(239,71,111,0.4);color:var(--red);padding:14px;border-radius:10px;margin-top:12px;font-size:0.85rem;line-height:1.6;display:none;}
+.format-radio{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+.format-radio label{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:0.85rem;}
+.format-radio label:has(input:checked){border-color:var(--accent);background:rgba(255,209,102,0.08);}
+.format-radio input{margin:0;}
+.tip{font-size:0.78rem;color:var(--dim);margin-top:6px;font-style:italic;}
+footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:24px 0;}
+.divider{height:1px;background:var(--line);margin:14px 0;}
+</style>
+</head>
+<body>
+<header>
+  <h1>雷達清單匯入 v2.0</h1>
+  <div class="sub">把整理好的 86 檔清單寫入雷達 localStorage</div>
+</header>
+
+<div class="warn">
+  ⚠️ <strong>重要：請完整跑完 4 個步驟</strong><br>
+  不要直接跳到步驟 4，先做備份！localStorage 一旦被覆蓋無法復原。
+</div>
+
+<!-- 步驟 1：讀取現有資料 -->
+
+<div class="section">
+  <h2><span class="step">1</span>讀取雷達現有資料</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">先看看你雷達現在的清單長什麼樣（用什麼資料格式）</p>
+  <button class="primary" id="btn-read">📖 讀取現有 localStorage</button>
+  <div id="step1-result" style="margin-top:12px;display:none;">
+    <div class="divider"></div>
+    <p style="font-size:0.82rem;margin-bottom:8px;color:var(--dim);">偵測到的格式：<span id="format-detected" style="color:var(--accent);font-weight:700;"></span></p>
+    <div class="code-display" id="existing-data"></div>
+  </div>
+</div>
+
+<!-- 步驟 2：備份 -->
+
+<div class="section">
+  <h2><span class="step">2</span>下載備份</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">把現有資料下載成 JSON 檔，萬一出錯可以還原</p>
+  <button class="primary" id="btn-backup" disabled>💾 下載備份檔</button>
+  <p class="tip">會儲存為 <code>radar_backup_YYYYMMDD_HHmmss.json</code></p>
+</div>
+
+<!-- 步驟 3：預覽新清單 -->
+
+<div class="section">
+  <h2><span class="step">3</span>預覽新清單（v2.0）</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">確認新清單內容，沒問題再寫入</p>
+  <button class="primary" id="btn-preview">👀 顯示新清單</button>
+  <div id="preview-area" style="display:none;margin-top:14px;">
+    <div class="preview-box" id="preview-content"></div>
+  </div>
+</div>
+
+<!-- 步驟 4：寫入 -->
+
+<div class="section">
+  <h2><span class="step">4</span>寫入雷達</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">把新清單寫入 <code>biaoguo_sectors_v5</code></p>
+
+  <p style="font-size:0.82rem;margin:10px 0 6px 0;">選擇寫入格式：</p>
+  <div class="format-radio">
+    <label><input type="radio" name="fmt" value="auto" checked> 自動匹配（推薦）</label>
+    <label><input type="radio" name="fmt" value="array"> 強制陣列格式</label>
+    <label><input type="radio" name="fmt" value="object"> 強制物件格式</label>
+  </div>
+  <p class="tip">「自動匹配」會根據步驟 1 偵測到的格式寫入；如果雷達是空的，預設用陣列格式。</p>
+
+  <div class="divider"></div>
+
+<button class="green" id="btn-import" disabled>🚀 確認寫入</button>
+<button class="danger" id="btn-restore" style="display:none;">↩️ 從備份還原</button>
+
+  <div class="success" id="success-msg"></div>
+  <div class="error" id="error-msg"></div>
+</div>
+
+<footer>雷達匯入工具 v2.0 · 寫入前請務必備份 · 不構成投資建議</footer>
+
+<script>
+window.onerror = function(msg, src, line) {
+  var em = document.getElementById('error-msg');
+  em.style.display = 'block';
+  em.textContent = '❌ JS 錯誤 (line ' + line + '): ' + msg;
+};
+
+(function() {
+  'use strict';
+
+  var STORAGE_KEY = 'biaoguo_sectors_v5';
+  var BACKUP_HOLDER = null;  // 暫存備份用於還原
+  var DETECTED_FORMAT = 'unknown';
+
+  // 板塊顏色映射（沿用 RRG 配色，方便雷達辨識）
+  var SECTOR_COLORS = {
+    'AI巨頭': '#76b900',
+    'AI基礎設施': '#ff6b35',
+    '光通信': '#00d4a8',
+    '封測設備': '#06d4f0',
+    'AI電力散熱': '#ffd166',
+    '儲存硬體': '#ef476f',
+    '太空衛星': '#4ea5ff',
+    '無人機國防': '#a78bfa',
+    '量子運算': '#22c55e',
+    'AI生技': '#f97316',
+    '貴金屬礦業': '#eab308',
+    '自訂': '#ec4899'
+  };
+
+  // === 新清單 v2.0 ===
+  var WATCHLIST_V2 = [
+    { name: 'AI巨頭', stocks: ['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL'] },
+    { name: 'AI基礎設施', stocks: ['ANET','SMCI','DELL','ARM','LRCX','SNOW','TXN','NBIS','APP','NET'] },
+    { name: '光通信', stocks: ['AAOI','COHR','LITE','FN','CIEN','MTSI','VIAV','ALAB','CRDO','GLW','MRVL','AXTI'] },
+    { name: '封測設備', stocks: ['AMKR','TER','FORM','AEHR','ROG','VECO'] },
+    { name: 'AI電力散熱', stocks: ['ETN','VRT','VST','CEG','GNRC','BE','OKLO'] },
+    { name: '儲存硬體', stocks: ['MU','WDC','STX','SNDK','PSTG'] },
+    { name: '太空衛星', stocks: ['RKLB','LUNR','RDW','FLY','BKSY','PL','ASTS','IRDM','GSAT'] },
+    { name: '無人機國防', stocks: ['AVAV','KTOS','PLTR','RCAT','ONDS'] },
+    { name: '量子運算', stocks: ['IONQ','RGTI','QBTS','QUBT'] },
+    { name: 'AI生技', stocks: ['TEM','RXRX','SDGR','ABCL'] },
+    { name: '貴金屬礦業', stocks: ['MP','USAR','TMC','UUUU','NEM','AEM','WPM','AG','FCX'] },
+    { name: '自訂', stocks: ['HOOD','ACHR'] }
+  ];
+
+  // ----- 步驟 1：讀取現有資料 -----
+  document.getElementById('btn-read').addEventListener('click', function() {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    var resultDiv = document.getElementById('step1-result');
+    var dataDiv = document.getElementById('existing-data');
+    var fmtSpan = document.getElementById('format-detected');
+    
+    if (!raw) {
+      resultDiv.style.display = 'block';
+      fmtSpan.textContent = '空（尚無資料）';
+      dataDiv.textContent = '(雷達尚未儲存任何資料)';
+      DETECTED_FORMAT = 'empty';
+      document.getElementById('btn-backup').disabled = true;
+      document.getElementById('btn-import').disabled = false;
+      return;
+    }
+    
+    BACKUP_HOLDER = raw;
+    
+    try {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        DETECTED_FORMAT = 'array';
+        fmtSpan.textContent = '陣列格式（[{name, stocks}, ...]）';
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        DETECTED_FORMAT = 'object';
+        fmtSpan.textContent = '物件格式（{ "板塊": [...], ... }）';
+      } else {
+        DETECTED_FORMAT = 'unknown';
+        fmtSpan.textContent = '未知格式';
+      }
+      dataDiv.textContent = JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      DETECTED_FORMAT = 'unknown';
+      fmtSpan.textContent = '解析失敗（' + e.message + '）';
+      dataDiv.textContent = raw.substring(0, 1000);
+    }
+    
+    resultDiv.style.display = 'block';
+    document.getElementById('btn-backup').disabled = false;
+    document.getElementById('btn-import').disabled = false;
+  });
+
+  // ----- 步驟 2：下載備份 -----
+  document.getElementById('btn-backup').addEventListener('click', function() {
+    if (!BACKUP_HOLDER) {
+      alert('請先點步驟 1 讀取資料');
+      return;
+    }
+    var now = new Date();
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    var fname = 'radar_backup_' + now.getFullYear() +
+                pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+                pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) +
+                '.json';
+    var blob = new Blob([BACKUP_HOLDER], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    var sm = document.getElementById('success-msg');
+    sm.style.display = 'block';
+    sm.style.color = '#4ea5ff';
+    sm.style.borderColor = 'rgba(78,165,255,0.4)';
+    sm.style.background = 'rgba(78,165,255,0.1)';
+    sm.innerHTML = '✅ 備份已下載：<code>' + fname + '</code>';
+  });
+
+  // ----- 步驟 3：預覽新清單 -----
+  document.getElementById('btn-preview').addEventListener('click', function() {
+    var pa = document.getElementById('preview-area');
+    var pc = document.getElementById('preview-content');
+    var html = '';
+    var total = 0;
+    for (var i = 0; i < WATCHLIST_V2.length; i++) {
+      var s = WATCHLIST_V2[i];
+      total += s.stocks.length;
+      html += '<div class="sector-line">';
+      html += '<span class="sector-name-pv">' + s.name + '</span>';
+      html += '<span class="sector-count">(' + s.stocks.length + ' 檔)</span><br>';
+      html += '<span class="tickers">' + s.stocks.join('  ') + '</span>';
+      html += '</div>';
+    }
+    html += '<div class="sector-line" style="border-top:2px solid var(--accent);padding-top:10px;margin-top:10px;">';
+    html += '<strong style="color:var(--accent);">總計：' + total + ' 檔</strong> （12 個板塊）</div>';
+    pc.innerHTML = html;
+    pa.style.display = 'block';
+  });
+
+  // ----- 步驟 4：寫入 -----
+  document.getElementById('btn-import').addEventListener('click', function() {
+    if (!confirm('確定要把新清單寫入雷達嗎？\n\n（會覆蓋現有 ' + STORAGE_KEY + '，但你已下載備份可以還原）')) {
+      return;
+    }
+    
+    var fmtChoice = document.querySelector('input[name="fmt"]:checked').value;
+    var targetFormat = fmtChoice;
+    if (fmtChoice === 'auto') {
+      if (DETECTED_FORMAT === 'object') targetFormat = 'object';
+      else targetFormat = 'array';  // 預設陣列
+    }
+    
+    var dataToWrite;
+    if (targetFormat === 'object') {
+      dataToWrite = {};
+      for (var i = 0; i < WATCHLIST_V2.length; i++) {
+        dataToWrite[WATCHLIST_V2[i].name] = WATCHLIST_V2[i].stocks;
+      }
+    } else {
+      dataToWrite = WATCHLIST_V2.map(function(s) {
+        return {
+          name: s.name,
+          stocks: s.stocks,
+          color: SECTOR_COLORS[s.name] || '#6b7290'
+        };
+      });
+    }
+    
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToWrite));
+      var sm = document.getElementById('success-msg');
+      sm.style.display = 'block';
+      sm.style.color = '#00d4a8';
+      sm.style.borderColor = 'rgba(0,212,168,0.4)';
+      sm.style.background = 'rgba(0,212,168,0.1)';
+      sm.innerHTML = '✅ <strong>寫入成功！</strong><br>' +
+                     '寫入格式：' + (targetFormat === 'array' ? '陣列' : '物件') + '<br>' +
+                     '寫入板塊數：' + WATCHLIST_V2.length + '<br>' +
+                     '寫入股票數：' + WATCHLIST_V2.reduce(function(sum, s) { return sum + s.stocks.length; }, 0) + '<br><br>' +
+                     '👉 下一步：打開 <a href="radar.html" style="color:var(--green);text-decoration:underline;">radar.html</a> 確認新清單顯示正確<br>' +
+                     '⚠️ 如果雷達顯示異常，點下方「從備份還原」按鈕';
+      document.getElementById('btn-restore').style.display = BACKUP_HOLDER ? 'inline-flex' : 'none';
+    } catch (e) {
+      var em = document.getElementById('error-msg');
+      em.style.display = 'block';
+      em.textContent = '❌ 寫入失敗：' + e.message;
+    }
+  });
+
+  // ----- 還原 -----
+  document.getElementById('btn-restore').addEventListener('click', function() {
+    if (!BACKUP_HOLDER) {
+      alert('沒有備份資料可還原');
+      return;
+    }
+    if (!confirm('確定要從備份還原嗎？這會覆蓋目前的新清單。')) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, BACKUP_HOLDER);
+      var sm = document.getElementById('success-msg');
+      sm.style.display = 'block';
+      sm.style.color = '#f7c948';
+      sm.style.borderColor = 'rgba(247,201,72,0.4)';
+      sm.style.background = 'rgba(247,201,72,0.1)';
+      sm.innerHTML = '↩️ <strong>已從備份還原</strong><br>雷達已恢復到匯入前的狀態。';
+    } catch (e) {
+      alert('還原失敗：' + e.message);
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
