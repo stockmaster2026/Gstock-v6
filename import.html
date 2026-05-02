@@ -1,1 +1,314 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>雷達清單匯入 v2.1</title>
+<style>
+:root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--green:#00d4a8;--yellow:#f7c948;--red:#ef476f;--blue:#4ea5ff;--accent:#ffd166;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;padding:16px;-webkit-font-smoothing:antialiased;}
+header{padding:8px 0 16px 0;margin-bottom:20px;border-bottom:1px solid var(--line);}
+h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+h1::before{content:"";width:6px;height:24px;background:var(--accent);border-radius:3px;}
+.sub{color:var(--dim);font-size:0.82rem;margin-top:6px;margin-left:14px;}
+.warn{background:rgba(247,201,72,0.1);border:1px solid rgba(247,201,72,0.3);color:var(--yellow);padding:14px;border-radius:10px;margin-bottom:18px;font-size:0.85rem;line-height:1.6;}
+.warn-fix{background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.4);color:var(--green);padding:14px;border-radius:10px;margin-bottom:18px;font-size:0.85rem;line-height:1.6;}
+.section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
+.section h2{font-size:1.05rem;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section h2 .step{background:var(--accent);color:#1a1a1a;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;}
+button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:12px 20px;border-radius:10px;cursor:pointer;font-size:0.95rem;font-family:inherit;font-weight:500;-webkit-appearance:none;display:inline-flex;align-items:center;gap:8px;margin:4px;}
+button.primary{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:700;}
+button.green{background:var(--green);color:#0a0e1a;border-color:var(--green);font-weight:700;}
+button.danger{background:var(--red);color:#fff;border-color:var(--red);font-weight:700;}
+button:disabled{opacity:0.4;cursor:not-allowed;}
+button:active:not(:disabled){transform:scale(0.97);}
+.code-display{background:#0d1220;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:"SF Mono","Menlo",monospace;font-size:0.78rem;color:var(--dim);max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;}
+.preview-box{background:#0d1220;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:0.85rem;line-height:1.7;max-height:400px;overflow-y:auto;}
+.sector-line{padding:6px 0;border-bottom:1px dashed rgba(107,114,144,0.2);}
+.sector-line:last-child{border-bottom:none;}
+.sector-name-pv{color:var(--accent);font-weight:700;margin-right:8px;}
+.sector-icon{margin-right:6px;}
+.sector-count{color:var(--dim);font-size:0.78rem;}
+.tickers{color:var(--text);font-size:0.82rem;font-family:"SF Mono","Menlo",monospace;}
+.success{background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.4);color:var(--green);padding:14px;border-radius:10px;margin-top:12px;font-size:0.85rem;line-height:1.6;display:none;}
+.error{background:rgba(239,71,111,0.1);border:1px solid rgba(239,71,111,0.4);color:var(--red);padding:14px;border-radius:10px;margin-top:12px;font-size:0.85rem;line-height:1.6;display:none;}
+.tip{font-size:0.78rem;color:var(--dim);margin-top:6px;font-style:italic;}
+footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:24px 0;}
+.divider{height:1px;background:var(--line);margin:14px 0;}
+.schema-info{font-size:0.78rem;color:var(--blue);background:rgba(78,165,255,0.05);border:1px solid rgba(78,165,255,0.2);padding:10px;border-radius:8px;margin-top:10px;font-family:"SF Mono","Menlo",monospace;line-height:1.5;}
+</style>
+</head>
+<body>
+<header>
+  <h1>雷達清單匯入 v2.1</h1>
+  <div class="sub">使用雷達實際的 schema：id / icon / name / etf / tickers</div>
+</header>
+
+<div class="warn-fix">
+  ✅ <strong>v2.1 修正：</strong>偵測到雷達使用 <code>tickers</code> 欄位（不是 <code>stocks</code>），並包含 <code>id</code>、<code>icon</code>、<code>etf</code> 完整 schema。本版完整匹配。<br><br>
+  <strong>請先點「↩️ 從備份還原」恢復原狀，再執行新版匯入。</strong>
+</div>
+
+<!-- 步驟 1：讀取現有資料 -->
+
+<div class="section">
+  <h2><span class="step">1</span>讀取雷達現有資料</h2>
+  <button class="primary" id="btn-read">📖 讀取現有 localStorage</button>
+  <div id="step1-result" style="margin-top:12px;display:none;">
+    <div class="divider"></div>
+    <p style="font-size:0.82rem;margin-bottom:8px;color:var(--dim);">偵測到的格式：<span id="format-detected" style="color:var(--accent);font-weight:700;"></span></p>
+    <div class="code-display" id="existing-data"></div>
+  </div>
+</div>
+
+<!-- 步驟 2：備份 -->
+
+<div class="section">
+  <h2><span class="step">2</span>下載備份</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">把現有資料下載成 JSON 檔，萬一出錯可以還原</p>
+  <button class="primary" id="btn-backup" disabled>💾 下載備份檔</button>
+  <p class="tip">會儲存為 <code>radar_backup_YYYYMMDD_HHmmss.json</code></p>
+</div>
+
+<!-- 步驟 3：預覽新清單 -->
+
+<div class="section">
+  <h2><span class="step">3</span>預覽新清單（v2.1）</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">確認新清單內容、icon、ETF 對應，沒問題再寫入</p>
+  <button class="primary" id="btn-preview">👀 顯示新清單</button>
+  <div id="preview-area" style="display:none;margin-top:14px;">
+    <div class="preview-box" id="preview-content"></div>
+    <div class="schema-info" id="schema-preview"></div>
+  </div>
+</div>
+
+<!-- 步驟 4：寫入 -->
+
+<div class="section">
+  <h2><span class="step">4</span>寫入雷達</h2>
+  <p style="font-size:0.85rem;color:var(--dim);margin-bottom:10px;">把新清單寫入 <code>biaoguo_sectors_v5</code>（雷達 schema）</p>
+  <div class="divider"></div>
+  <button class="green" id="btn-import" disabled>🚀 確認寫入</button>
+  <button class="danger" id="btn-restore" style="display:none;">↩️ 從備份還原</button>
+  <button class="danger" id="btn-restore-from-file" style="display:inline-flex;">📂 從檔案還原</button>
+  <input type="file" id="file-input" accept=".json" style="display:none;">
+
+  <div class="success" id="success-msg"></div>
+  <div class="error" id="error-msg"></div>
+</div>
+
+<footer>雷達匯入工具 v2.1 · 完整 schema · 不構成投資建議</footer>
+
+<script>
+window.onerror = function(msg, src, line) {
+  var em = document.getElementById('error-msg');
+  em.style.display = 'block';
+  em.textContent = '❌ JS 錯誤 (line ' + line + '): ' + msg;
+};
+
+(function() {
+  'use strict';
+
+  var STORAGE_KEY = 'biaoguo_sectors_v5';
+  var BACKUP_HOLDER = null;
+
+  // === v2.1 完整 schema ===
+  // 對應 RRG 的板塊 ID 命名（英文）+ icon emoji + ETF 代表
+  var WATCHLIST_V2 = [
+    { id: 'ai_giants', icon: '🤖', name: 'AI巨頭', etf: 'QQQ',
+      tickers: ['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL'] },
+    { id: 'ai_infra', icon: '🏗️', name: 'AI基礎設施', etf: 'IGV',
+      tickers: ['ANET','SMCI','DELL','ARM','LRCX','SNOW','TXN','NBIS','APP','NET'] },
+    { id: 'optical', icon: '💡', name: '光通信', etf: 'PHO',
+      tickers: ['AAOI','COHR','LITE','FN','CIEN','MTSI','VIAV','ALAB','CRDO','GLW','MRVL','AXTI'] },
+    { id: 'packaging', icon: '🔧', name: '封測設備', etf: 'SOXX',
+      tickers: ['AMKR','TER','FORM','AEHR','ROG','VECO'] },
+    { id: 'ai_power', icon: '⚡', name: 'AI電力散熱', etf: 'XLU',
+      tickers: ['ETN','VRT','VST','CEG','GNRC','BE','OKLO'] },
+    { id: 'storage', icon: '💾', name: '儲存硬體', etf: 'SOXX',
+      tickers: ['MU','WDC','STX','SNDK','PSTG'] },
+    { id: 'space', icon: '🚀', name: '太空衛星', etf: 'UFO',
+      tickers: ['RKLB','LUNR','RDW','FLY','BKSY','PL','ASTS','IRDM','GSAT'] },
+    { id: 'defense', icon: '🛡️', name: '無人機國防', etf: 'ITA',
+      tickers: ['AVAV','KTOS','PLTR','RCAT','ONDS'] },
+    { id: 'quantum', icon: '⚛️', name: '量子運算', etf: 'QTUM',
+      tickers: ['IONQ','RGTI','QBTS','QUBT'] },
+    { id: 'ai_biotech', icon: '🧬', name: 'AI生技', etf: 'XBI',
+      tickers: ['TEM','RXRX','SDGR','ABCL'] },
+    { id: 'metals', icon: '💰', name: '貴金屬礦業', etf: 'GDX',
+      tickers: ['MP','USAR','TMC','UUUU','NEM','AEM','WPM','AG','FCX'] },
+    { id: 'custom', icon: '⭐', name: '自訂', etf: '',
+      tickers: ['HOOD','ACHR'] }
+  ];
+
+  // ----- 步驟 1：讀取 -----
+  document.getElementById('btn-read').addEventListener('click', function() {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    var resultDiv = document.getElementById('step1-result');
+    var dataDiv = document.getElementById('existing-data');
+    var fmtSpan = document.getElementById('format-detected');
+    
+    if (!raw) {
+      resultDiv.style.display = 'block';
+      fmtSpan.textContent = '空（尚無資料）';
+      dataDiv.textContent = '(雷達尚未儲存任何資料)';
+      document.getElementById('btn-backup').disabled = true;
+      document.getElementById('btn-import').disabled = false;
+      return;
+    }
+    
+    BACKUP_HOLDER = raw;
+    
+    try {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        var hasTickers = parsed.length > 0 && parsed[0].tickers !== undefined;
+        var hasStocks = parsed.length > 0 && parsed[0].stocks !== undefined;
+        if (hasTickers) fmtSpan.textContent = '陣列格式 + tickers schema (雷達原生格式)';
+        else if (hasStocks) fmtSpan.textContent = '陣列格式 + stocks schema (v2.0 舊格式，需修正)';
+        else fmtSpan.textContent = '陣列格式（未知欄位）';
+      } else {
+        fmtSpan.textContent = '物件格式';
+      }
+      dataDiv.textContent = JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      fmtSpan.textContent = '解析失敗（' + e.message + '）';
+      dataDiv.textContent = raw.substring(0, 1000);
+    }
+    
+    resultDiv.style.display = 'block';
+    document.getElementById('btn-backup').disabled = false;
+    document.getElementById('btn-import').disabled = false;
+    document.getElementById('btn-restore').style.display = BACKUP_HOLDER ? 'inline-flex' : 'none';
+  });
+
+  // ----- 步驟 2：備份 -----
+  document.getElementById('btn-backup').addEventListener('click', function() {
+    if (!BACKUP_HOLDER) { alert('請先點步驟 1 讀取資料'); return; }
+    var now = new Date();
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    var fname = 'radar_backup_' + now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + '.json';
+    var blob = new Blob([BACKUP_HOLDER], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    
+    var sm = document.getElementById('success-msg');
+    sm.style.display = 'block';
+    sm.style.color = '#4ea5ff';
+    sm.style.borderColor = 'rgba(78,165,255,0.4)';
+    sm.style.background = 'rgba(78,165,255,0.1)';
+    sm.innerHTML = '✅ 備份已下載：<code>' + fname + '</code>';
+  });
+
+  // ----- 步驟 3：預覽 -----
+  document.getElementById('btn-preview').addEventListener('click', function() {
+    var pa = document.getElementById('preview-area');
+    var pc = document.getElementById('preview-content');
+    var sp = document.getElementById('schema-preview');
+    var html = '';
+    var total = 0;
+    for (var i = 0; i < WATCHLIST_V2.length; i++) {
+      var s = WATCHLIST_V2[i];
+      total += s.tickers.length;
+      html += '<div class="sector-line">';
+      html += '<span class="sector-icon">' + s.icon + '</span>';
+      html += '<span class="sector-name-pv">' + s.name + '</span>';
+      html += '<span class="sector-count">(' + s.tickers.length + ' 檔';
+      if (s.etf) html += '，ETF: ' + s.etf;
+      html += ')</span><br>';
+      html += '<span class="tickers">' + s.tickers.join('  ') + '</span>';
+      html += '</div>';
+    }
+    html += '<div class="sector-line" style="border-top:2px solid var(--accent);padding-top:10px;margin-top:10px;">';
+    html += '<strong style="color:var(--accent);">總計：' + total + ' 檔</strong> （12 個板塊）</div>';
+    pc.innerHTML = html;
+    
+    sp.innerHTML = '🔧 schema 預覽（單一板塊）：<br>' +
+      '{ id: "ai_giants", icon: "🤖", name: "AI巨頭", etf: "QQQ", tickers: ["NVDA",...] }';
+    
+    pa.style.display = 'block';
+  });
+
+  // ----- 步驟 4：寫入 -----
+  document.getElementById('btn-import').addEventListener('click', function() {
+    if (!confirm('確定要把新清單寫入雷達嗎？\n\n（會覆蓋現有 ' + STORAGE_KEY + '）\n\n如果已備份，可隨時還原。')) return;
+    
+    try {
+      // 直接用陣列格式（雷達原生格式）
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(WATCHLIST_V2));
+      var sm = document.getElementById('success-msg');
+      sm.style.display = 'block';
+      sm.style.color = '#00d4a8';
+      sm.style.borderColor = 'rgba(0,212,168,0.4)';
+      sm.style.background = 'rgba(0,212,168,0.1)';
+      var totalStocks = 0;
+      for (var i = 0; i < WATCHLIST_V2.length; i++) totalStocks += WATCHLIST_V2[i].tickers.length;
+      sm.innerHTML = '✅ <strong>寫入成功（v2.1 schema）！</strong><br>' +
+                     '寫入板塊數：' + WATCHLIST_V2.length + '<br>' +
+                     '寫入股票數：' + totalStocks + '<br>' +
+                     'schema：id / icon / name / etf / tickers ✅<br><br>' +
+                     '👉 下一步：打開 <a href="radar.html" style="color:var(--green);text-decoration:underline;">radar.html</a> 確認顯示正常<br>' +
+                     '⚠️ 如果還是異常，點下方按鈕還原';
+      document.getElementById('btn-restore').style.display = BACKUP_HOLDER ? 'inline-flex' : 'none';
+    } catch (e) {
+      var em = document.getElementById('error-msg');
+      em.style.display = 'block';
+      em.textContent = '❌ 寫入失敗：' + e.message;
+    }
+  });
+
+  // ----- 還原（記憶體中）-----
+  document.getElementById('btn-restore').addEventListener('click', function() {
+    if (!BACKUP_HOLDER) { alert('沒有備份資料'); return; }
+    if (!confirm('確定要從備份還原嗎？')) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, BACKUP_HOLDER);
+      var sm = document.getElementById('success-msg');
+      sm.style.display = 'block';
+      sm.style.color = '#f7c948';
+      sm.style.borderColor = 'rgba(247,201,72,0.4)';
+      sm.style.background = 'rgba(247,201,72,0.1)';
+      sm.innerHTML = '↩️ <strong>已從記憶體備份還原</strong>';
+    } catch (e) { alert('還原失敗：' + e.message); }
+  });
+
+  // ----- 從檔案還原 -----
+  document.getElementById('btn-restore-from-file').addEventListener('click', function() {
+    document.getElementById('file-input').click();
+  });
+  document.getElementById('file-input').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('確定要用檔案 "' + file.name + '" 還原嗎？\n\n會覆蓋目前的清單。')) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var content = ev.target.result;
+        // 驗證是合法 JSON
+        JSON.parse(content);
+        localStorage.setItem(STORAGE_KEY, content);
+        var sm = document.getElementById('success-msg');
+        sm.style.display = 'block';
+        sm.style.color = '#f7c948';
+        sm.style.borderColor = 'rgba(247,201,72,0.4)';
+        sm.style.background = 'rgba(247,201,72,0.1)';
+        sm.innerHTML = '↩️ <strong>已從檔案還原：' + file.name + '</strong><br>請打開雷達確認';
+      } catch (err) {
+        alert('檔案格式錯誤或不是合法 JSON：' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+})();
+</script>
+
+</body>
+</html>
