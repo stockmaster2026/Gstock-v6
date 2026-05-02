@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RRG 板塊輪動圖 v1.0</title>
+<style>
+:root {
+  --bg: #0a0e1a;
+  --card: #131826;
+  --line: #1f2942;
+  --text: #e4e7f0;
+  --dim: #6b7290;
+  --leading: #00d4a8;
+  --weakening: #f7c948;
+  --lagging: #ef476f;
+  --improving: #4ea5ff;
+  --accent: #ffd166;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+header {
+  padding: 8px 0 16px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+header h1::before {
+  content: "";
+  width: 6px;
+  height: 24px;
+  background: var(--accent);
+  border-radius: 3px;
+}
+header .sub {
+  color: var(--dim);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  margin-left: 14px;
+}
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+}
+button:active { transform: scale(0.97); }
+button.primary {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.chart-wrap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+#rrg-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: manipulation;
+}
+.quadrants-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.78rem;
+}
+.q-info {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+  line-height: 1.4;
+}
+.q-info strong { display: block; margin-bottom: 2px; font-size: 0.88rem; }
+.q-leading { color: var(--leading); border-color: rgba(0,212,168,0.25); background: rgba(0,212,168,0.05); }
+.q-weakening { color: var(--weakening); border-color: rgba(247,201,72,0.25); background: rgba(247,201,72,0.05); }
+.q-lagging { color: var(--lagging); border-color: rgba(239,71,111,0.25); background: rgba(239,71,111,0.05); }
+.q-improving { color: var(--improving); border-color: rgba(78,165,255,0.25); background: rgba(78,165,255,0.05); }
+.q-info .desc { color: var(--text); opacity: 0.7; font-size: 0.72rem; font-weight: 400; }
+.status {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--dim);
+  font-size: 0.95rem;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error {
+  color: var(--lagging);
+  background: rgba(239,71,111,0.08);
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(239,71,111,0.25);
+  margin: 12px 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.sector-table {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.sector-row {
+  display: grid;
+  grid-template-columns: 1fr 64px 64px 78px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+  align-items: center;
+  gap: 4px;
+}
+.sector-row:last-child { border-bottom: none; }
+.sector-row.header {
+  background: #0d1220;
+  color: var(--dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 10px 14px;
+}
+.sector-name { font-weight: 600; font-size: 0.92rem; }
+.sector-ticker { color: var(--dim); font-size: 0.7rem; margin-left: 6px; font-weight: 400; }
+.sector-num { font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace; text-align: right; font-size: 0.85rem; }
+.sector-tag {
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+footer {
+  text-align: center;
+  color: var(--dim);
+  font-size: 0.7rem;
+  padding: 24px 0 8px 0;
+  margin-top: 16px;
+}
+.timestamp { color: var(--dim); font-size: 0.7rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>RRG 板塊輪動圖</h1>
+    <div class="sub">12 板塊代表股 vs SPY · 週線 14 期 · 每 4 小時更新</div>
+  </header>
+
+  <div class="controls">
+    <button class="primary" onclick="loadData(false)">📡 載入 / 顯示</button>
+    <button onclick="loadData(true)">🔄 強制重抓</button>
+    <button onclick="window.history.back()">← 返回</button>
+  </div>
+
+  <div id="status" class="status">點擊「載入 / 顯示」開始</div>
+
+  <div class="chart-wrap" id="chart-wrap" style="display:none">
+    <svg id="rrg-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="timestamp" id="timestamp"></div>
+  </div>
+
+  <div class="quadrants-info" id="quadrants" style="display:none">
+    <div class="q-info q-improving">
+      <strong>↗ 改善中</strong>
+      <div class="desc">弱勢但動能轉強，潛在輪動進場區</div>
+    </div>
+    <div class="q-info q-leading">
+      <strong>★ 領先</strong>
+      <div class="desc">強勢且動能向上，主流板塊</div>
+    </div>
+    <div class="q-info q-lagging">
+      <strong>↘ 落後</strong>
+      <div class="desc">弱勢且動能向下，避開區</div>
+    </div>
+    <div class="q-info q-weakening">
+      <strong>⚠ 走弱</strong>
+      <div class="desc">強勢但動能轉弱，獲利了結警示</div>
+    </div>
+  </div>
+
+  <div class="sector-table" id="sector-table" style="display:none">
+    <div class="sector-row header">
+      <div>板塊 / 代表股</div>
+      <div style="text-align:right">RS</div>
+      <div style="text-align:right">動能</div>
+      <div style="text-align:center">象限</div>
+    </div>
+  </div>
+
+  <footer>RRG v1.0 · Stooq 週線資料 · 不構成投資建議</footer>
+
+<script>
+const SECTORS = [
+  {name: 'AI巨頭', ticker: 'NVDA', color: '#76b900'},
+  {name: 'AI基礎設施', ticker: 'VRT', color: '#ff6b35'},
+  {name: '光通信', ticker: 'AAOI', color: '#00d4a8'},
+  {name: '電力散熱', ticker: 'ETN', color: '#ffd166'},
+  {name: '太空衛星', ticker: 'RKLB', color: '#4ea5ff'},
+  {name: '無人機國防', ticker: 'AVAV', color: '#a78bfa'},
+  {name: '量子運算', ticker: 'IONQ', color: '#06d4f0'},
+  {name: '儲存硬體', ticker: 'MU', color: '#ef476f'},
+  {name: '生技健康', ticker: 'HIMS', color: '#f97316'},
+  {name: '衛星通信', ticker: 'ASTS', color: '#22c55e'},
+  {name: '貴金屬礦業', ticker: 'MP', color: '#eab308'},
+  {name: '機器人', ticker: 'ISRG', color: '#ec4899'}
+];
+const BENCHMARK = 'SPY';
+const WEEKS = 18;
+const SMA_WINDOW = 10;
+const ROC_WINDOW = 4;
+const TRAIL_LENGTH = 5;
+const CACHE_KEY = 'rrg_cache_v1';
+const CACHE_TTL = 4 * 60 * 60 * 1000;
+
+const PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => url
+];
+
+async function fetchStooqWeekly(ticker) {
+  const url = `https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&i=w`;
+  let lastErr;
+  for (const proxy of PROXIES) {
+    try {
+      const r = await fetch(proxy(url), { cache: 'no-store' });
+      if (!r.ok) { lastErr = `HTTP ${r.status}`; continue; }
+      const text = await r.text();
+      if (!text || text.length < 50 || text.toLowerCase().includes('no data')) {
+        lastErr = 'empty data';
+        continue;
+      }
+      const lines = text.trim().split('\n').slice(1);
+      const data = lines.map(line => {
+        const parts = line.split(',');
+        return { date: parts[0], close: parseFloat(parts[4]) };
+      }).filter(d => !isNaN(d.close) && d.close > 0);
+      if (data.length < SMA_WINDOW + ROC_WINDOW) {
+        lastErr = `insufficient data (${data.length} weeks)`;
+        continue;
+      }
+      return data.slice(-WEEKS);
+    } catch (e) {
+      lastErr = e.message;
+    }
+  }
+  throw new Error(lastErr || 'unknown error');
+}
+
+function calculateRRG(sectorCloses, spyCloses) {
+  const N = Math.min(sectorCloses.length, spyCloses.length);
+  const rs = [];
+  for (let i = 0; i < N; i++) rs.push((sectorCloses[i] / spyCloses[i]) * 100);
+
+  const rsRatios = [];
+  for (let i = SMA_WINDOW - 1; i < N; i++) {
+    const slice = rs.slice(i - SMA_WINDOW + 1, i + 1);
+    const sma = slice.reduce((a, b) => a + b, 0) / SMA_WINDOW;
+    rsRatios.push((rs[i] / sma) * 100);
+  }
+  const rsMoms = [];
+  for (let i = ROC_WINDOW; i < rsRatios.length; i++) {
+    rsMoms.push((rsRatios[i] / rsRatios[i - ROC_WINDOW]) * 100);
+  }
+  return { ratios: rsRatios.slice(ROC_WINDOW), moms: rsMoms };
+}
+
+function getQuadrant(ratio, mom) {
+  if (ratio >= 100 && mom >= 100) return { name: '領先', tag: '★', color: '#00d4a8' };
+  if (ratio >= 100 && mom < 100) return { name: '走弱', tag: '⚠', color: '#f7c948' };
+  if (ratio < 100 && mom < 100) return { name: '落後', tag: '↘', color: '#ef476f' };
+  return { name: '改善中', tag: '↗', color: '#4ea5ff' };
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (Date.now() - c.timestamp > CACHE_TTL) return null;
+    return c;
+  } catch { return null; }
+}
+function saveCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data })); } catch {}
+}
+
+async function loadData(forceRefresh) {
+  const status = document.getElementById('status');
+  status.style.display = 'block';
+  document.getElementById('chart-wrap').style.display = 'none';
+  document.getElementById('quadrants').style.display = 'none';
+  document.getElementById('sector-table').style.display = 'none';
+
+  let cached = forceRefresh ? null : loadCache();
+  let data, ts;
+
+  if (cached) {
+    data = cached.data;
+    ts = cached.timestamp;
+  } else {
+    status.innerHTML = '<span class="spinner"></span>抓取 SPY 基準...';
+    let spyCloses;
+    try {
+      const spyData = await fetchStooqWeekly(BENCHMARK);
+      spyCloses = spyData.map(d => d.close);
+    } catch (e) {
+      status.innerHTML = `<div class="error">❌ 無法抓取 SPY 基準資料：${e.message}<br><br>可能原因：<br>1. CORS 代理伺服器暫時失效<br>2. 網路問題<br>3. Stooq 暫時無回應<br><br>稍後再試 🔄</div>`;
+      return;
+    }
+
+    data = { sectors: [] };
+    for (let i = 0; i < SECTORS.length; i++) {
+      const s = SECTORS[i];
+      status.innerHTML = `<span class="spinner"></span>抓取 ${s.name} (${s.ticker})... ${i+1}/${SECTORS.length}`;
+      try {
+        const sd = await fetchStooqWeekly(s.ticker);
+        const closes = sd.map(d => d.close);
+        const N = Math.min(closes.length, spyCloses.length);
+        const sectorAligned = closes.slice(-N);
+        const spyAligned = spyCloses.slice(-N);
+        const rrg = calculateRRG(sectorAligned, spyAligned);
+        if (rrg.ratios.length === 0 || rrg.moms.length === 0) {
+          data.sectors.push({ ...s, error: 'insufficient' });
+        } else {
+          data.sectors.push({
+            ...s,
+            ratios: rrg.ratios,
+            moms: rrg.moms,
+            current: {
+              ratio: rrg.ratios[rrg.ratios.length - 1],
+              mom: rrg.moms[rrg.moms.length - 1]
+            }
+          });
+        }
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) {
+        data.sectors.push({ ...s, error: e.message });
+      }
+    }
+    saveCache(data);
+    ts = Date.now();
+  }
+
+  renderChart(data);
+  renderTable(data);
+  document.getElementById('timestamp').textContent = `更新於 ${new Date(ts).toLocaleString('zh-TW')}`;
+  status.style.display = 'none';
+  document.getElementById('chart-wrap').style.display = 'block';
+  document.getElementById('quadrants').style.display = 'grid';
+  document.getElementById('sector-table').style.display = 'block';
+}
+
+function renderChart(data) {
+  const svg = document.getElementById('rrg-svg');
+  svg.innerHTML = '';
+  const W = 600, H = 600, P = 50;
+  const valid = data.sectors.filter(s => !s.error && s.current);
+  if (valid.length === 0) {
+    svg.innerHTML = '<text x="300" y="300" fill="#6b7290" text-anchor="middle" font-size="14">無有效資料</text>';
+    return;
+  }
+
+  const allRatios = valid.flatMap(s => s.ratios);
+  const allMoms = valid.flatMap(s => s.moms);
+  const minR = Math.min(...allRatios, 99);
+  const maxR = Math.max(...allRatios, 101);
+  const minM = Math.min(...allMoms, 99);
+  const maxM = Math.max(...allMoms, 101);
+  const rPad = Math.max((maxR - minR) * 0.12, 0.5);
+  const mPad = Math.max((maxM - minM) * 0.12, 0.5);
+  const xMin = Math.min(minR - rPad, 99);
+  const xMax = Math.max(maxR + rPad, 101);
+  const yMin = Math.min(minM - mPad, 99);
+  const yMax = Math.max(maxM + mPad, 101);
+  const x = v => P + (v - xMin) / (xMax - xMin) * (W - 2*P);
+  const y = v => H - P - (v - yMin) / (yMax - yMin) * (H - 2*P);
+  const cx = x(100), cy = y(100);
+
+  let html = '';
+  html += `<rect x="${cx}" y="${P}" width="${W-P-cx}" height="${cy-P}" fill="#00d4a8" opacity="0.04"/>`;
+  html += `<rect x="${P}" y="${P}" width="${cx-P}" height="${cy-P}" fill="#4ea5ff" opacity="0.04"/>`;
+  html += `<rect x="${cx}" y="${cy}" width="${W-P-cx}" height="${H-P-cy}" fill="#f7c948" opacity="0.04"/>`;
+  html += `<rect x="${P}" y="${cy}" width="${cx-P}" height="${H-P-cy}" fill="#ef476f" opacity="0.04"/>`;
+  html += `<line x1="${P}" y1="${cy}" x2="${W-P}" y2="${cy}" stroke="#1f2942" stroke-dasharray="3,3"/>`;
+  html += `<line x1="${cx}" y1="${P}" x2="${cx}" y2="${H-P}" stroke="#1f2942" stroke-dasharray="3,3"/>`;
+  html += `<rect x="${P}" y="${P}" width="${W-2*P}" height="${H-2*P}" fill="none" stroke="#1f2942" stroke-width="1"/>`;
+  html += `<text x="${(cx+W-P)/2}" y="${P+18}" fill="#00d4a8" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">★ 領先</text>`;
+  html += `<text x="${(P+cx)/2}" y="${P+18}" fill="#4ea5ff" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">↗ 改善中</text>`;
+  html += `<text x="${(cx+W-P)/2}" y="${H-P-8}" fill="#f7c948" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">⚠ 走弱</text>`;
+  html += `<text x="${(P+cx)/2}" y="${H-P-8}" fill="#ef476f" opacity="0.55" text-anchor="middle" font-size="12" font-weight="700">↘ 落後</text>`;
+  html += `<text x="${P-8}" y="${cy+4}" fill="#6b7290" text-anchor="end" font-size="9">100</text>`;
+  html += `<text x="${cx}" y="${H-P+18}" fill="#6b7290" text-anchor="middle" font-size="9">100</text>`;
+  html += `<text x="${W/2}" y="${H-12}" fill="#6b7290" text-anchor="middle" font-size="10">→ RS-Ratio (相對強度)</text>`;
+  html += `<text x="20" y="${H/2}" fill="#6b7290" text-anchor="middle" font-size="10" transform="rotate(-90 20 ${H/2})">→ RS-Momentum (動能)</text>`;
+
+  valid.forEach(s => {
+    const trailStart = Math.max(0, s.ratios.length - TRAIL_LENGTH);
+    const points = [];
+    for (let i = trailStart; i < s.ratios.length; i++) {
+      points.push({ x: x(s.ratios[i]), y: y(s.moms[i]) });
+    }
+    if (points.length < 2) return;
+    const path = points.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(' ');
+    html += `<path d="${path}" stroke="${s.color}" stroke-width="1.5" fill="none" opacity="0.45"/>`;
+    points.forEach((p, i) => {
+      const isLast = i === points.length - 1;
+      const opacity = 0.3 + (i / Math.max(1, points.length - 1)) * 0.7;
+      const r = isLast ? 6 : 2.5;
+      if (isLast) {
+        html += `<circle cx="${p.x}" cy="${p.y}" r="${r+3}" fill="${s.color}" opacity="0.2"/>`;
+      }
+      html += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${s.color}" opacity="${opacity}"/>`;
+    });
+    const last = points[points.length - 1];
+    const labelX = last.x + 9;
+    const labelY = last.y + 4;
+    const adjX = labelX > W - 50 ? last.x - 9 : labelX;
+    const anchor = labelX > W - 50 ? 'end' : 'start';
+    html += `<text x="${adjX}" y="${labelY}" fill="${s.color}" font-size="11" font-weight="700" text-anchor="${anchor}">${s.ticker}</text>`;
+  });
+  svg.innerHTML = html;
+}
+
+function renderTable(data) {
+  const table = document.getElementById('sector-table');
+  while (table.children.length > 1) table.removeChild(table.lastChild);
+  const sorted = [...data.sectors].sort((a, b) => {
+    if (a.error) return 1;
+    if (b.error) return -1;
+    return b.current.ratio - a.current.ratio;
+  });
+  sorted.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'sector-row';
+    if (s.error) {
+      row.innerHTML = `
+        <div><span class="sector-name">${s.name}</span><span class="sector-ticker">${s.ticker}</span></div>
+        <div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div>
+        <div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div>
+        <div class="sector-tag" style="background:rgba(239,71,111,0.12);color:#ef476f">無資料</div>
+      `;
+    } else {
+      const q = getQuadrant(s.current.ratio, s.current.mom);
+      row.innerHTML = `
+        <div><span class="sector-name">${s.name}</span><span class="sector-ticker">${s.ticker}</span></div>
+        <div class="sector-num" style="color:${s.current.ratio >= 100 ? '#00d4a8' : '#ef476f'}">${s.current.ratio.toFixed(1)}</div>
+        <div class="sector-num" style="color:${s.current.mom >= 100 ? '#00d4a8' : '#ef476f'}">${s.current.mom.toFixed(1)}</div>
+        <div class="sector-tag" style="background:${q.color}22;color:${q.color}">${q.tag} ${q.name}</div>
+      `;
+    }
+    table.appendChild(row);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (loadCache()) loadData(false);
+});
+</script>
+
+</body>
+</html>
