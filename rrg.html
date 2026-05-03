@@ -1,1 +1,873 @@
 
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RRG 板塊輪動圖 v2.0.2</title>
+<style>
+:root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;padding:14px;-webkit-font-smoothing:antialiased;}
+header{padding:8px 0 14px 0;margin-bottom:14px;border-bottom:1px solid var(--line);}
+header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+header h1::before{content:"";width:6px;height:24px;background:var(--accent);border-radius:3px;}
+header .sub{color:var(--dim);font-size:0.78rem;margin-top:6px;margin-left:14px;}
+
+.mode-tabs{display:flex;gap:8px;margin-bottom:18px;background:var(–card);padding:6px;border-radius:14px;border:2px solid var(–accent);box-shadow:0 2px 12px rgba(255,209,102,0.15);}
+.mode-tab{flex:1;background:transparent;color:var(–text);border:none;padding:14px 16px;border-radius:10px;cursor:pointer;font-size:1rem;font-family:inherit;font-weight:700;-webkit-appearance:none;text-align:center;transition:all 0.2s;letter-spacing:0.5px;}
+.mode-tab.active{background:var(–accent);color:#1a1a1a;box-shadow:0 2px 8px rgba(255,209,102,0.3);}
+.mode-tab:not(.active){color:var(–accent);}
+.mode-tab:active:not(.active){background:rgba(255,209,102,0.15);}
+
+.controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+button{background:var(–card);color:var(–text);border:1px solid var(–line);padding:10px 16px;border-radius:10px;cursor:pointer;font-size:0.9rem;font-family:inherit;font-weight:500;-webkit-appearance:none;}
+button.primary{background:var(–accent);color:#1a1a1a;border-color:var(–accent);font-weight:700;}
+button.primary:disabled{opacity:0.4;cursor:not-allowed;}
+button:active:not(:disabled){transform:scale(0.97);}
+
+.chart-wrap{background:var(–card);border:1px solid var(–line);border-radius:14px;padding:12px;margin-bottom:14px;}
+#rrg-svg{width:100%;height:auto;display:block;}
+
+.narrative{background:var(–card);border:1px solid var(–line);border-radius:14px;padding:16px;margin-bottom:14px;}
+.narrative h3{font-size:0.95rem;margin-bottom:12px;color:var(–accent);}
+.narr-section{margin-bottom:10px;padding:10px 12px;border-radius:10px;border-left:3px solid;font-size:0.85rem;line-height:1.5;}
+.narr-section:last-child{margin-bottom:0;}
+.narr-section .label{font-weight:700;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block;}
+.narr-leading{background:rgba(0,212,168,0.07);border-color:var(–leading);}
+.narr-leading .label{color:var(–leading);}
+.narr-improving{background:rgba(78,165,255,0.07);border-color:var(–improving);}
+.narr-improving .label{color:var(–improving);}
+.narr-weakening{background:rgba(247,201,72,0.07);border-color:var(–weakening);}
+.narr-weakening .label{color:var(–weakening);}
+.narr-lagging{background:rgba(239,71,111,0.07);border-color:var(–lagging);}
+.narr-lagging .label{color:var(–lagging);}
+.narr-empty{color:var(–dim);font-style:italic;font-size:0.78rem;}
+.narr-tip{color:var(–dim);font-size:0.76rem;margin-top:4px;display:block;}
+
+.status{text-align:center;padding:32px 16px;color:var(–dim);font-size:0.95rem;background:var(–card);border-radius:12px;border:1px solid var(–line);}
+.error{color:var(–lagging);background:rgba(239,71,111,0.08);padding:14px;border-radius:10px;border:1px solid rgba(239,71,111,0.25);margin:12px 0;font-size:0.85rem;line-height:1.5;text-align:left;}
+
+.sector-table{background:var(–card);border:1px solid var(–line);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.sector-row{display:grid;grid-template-columns:1fr 60px 60px 70px;padding:11px 12px;border-bottom:1px solid var(–line);font-size:0.84rem;align-items:center;gap:4px;}
+.sector-row:last-child{border-bottom:none;}
+.sector-row.header{background:#0d1220;color:var(–dim);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.6px;padding:10px 12px;}
+.sector-name{font-weight:600;font-size:0.9rem;}
+.sector-ticker{color:var(–dim);font-size:0.7rem;margin-left:6px;font-weight:400;}
+.sector-num{font-family:“SF Mono”,“Menlo”,monospace;text-align:right;font-size:0.84rem;}
+.sector-tag{padding:4px 6px;border-radius:6px;font-size:0.68rem;font-weight:600;text-align:center;white-space:nowrap;}
+
+.deepscan-panel{background:var(–card);border:1px solid var(–line);border-radius:14px;padding:14px;margin-bottom:14px;}
+.deepscan-panel h3{font-size:0.95rem;color:var(–accent);margin-bottom:10px;}
+.sector-checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+@media (min-width:600px){.sector-checks{grid-template-columns:1fr 1fr 1fr;}}
+.sector-check{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0d1220;border:1px solid var(–line);border-radius:10px;cursor:pointer;font-size:0.85rem;}
+.sector-check:has(input:checked){border-color:var(–accent);background:rgba(255,209,102,0.06);}
+.sector-check input{margin:0;flex-shrink:0;}
+.sector-check .name{flex:1;font-weight:600;}
+.sector-check .count{color:var(–dim);font-size:0.75rem;}
+.scan-info{font-size:0.82rem;color:var(–dim);margin-bottom:10px;padding:10px;background:#0d1220;border-radius:8px;line-height:1.5;}
+.scan-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+.timestamp{color:var(–dim);font-size:0.7rem;margin-top:8px;}
+footer{text-align:center;color:var(–dim);font-size:0.7rem;padding:20px 0;}
+
+#js-check{padding:7px 12px;background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.3);border-radius:8px;font-size:0.72rem;color:var(–leading);margin-bottom:10px;}
+#js-error{padding:12px;background:rgba(239,71,111,0.12);border:1px solid rgba(239,71,111,0.4);border-radius:8px;font-size:0.78rem;color:var(–lagging);margin-bottom:10px;display:none;font-family:monospace;word-break:break-all;}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding:8px;background:#0d1220;border-radius:8px;font-size:0.72rem;}
+.legend-item{display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:4px;}
+.legend-dot{width:8px;height:8px;border-radius:50%;}
+</style>
+
+</head>
+<body>
+
+<header>
+  <h1>RRG 板塊輪動圖</h1>
+  <div class="sub">v2.0.2 · 板塊總覽 + 個股深掃</div>
+</header>
+
+<div id="js-check">⏳ 等待 JavaScript 初始化...</div>
+<div id="js-error"></div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-mode="overview">📊 板塊總覽</button>
+  <button class="mode-tab" data-mode="deepscan">🔍 個股深掃</button>
+</div>
+
+<!-- Overview controls -->
+
+<div id="overview-controls" class="controls">
+  <button class="primary" id="btn-overview-load">📡 載入總覽</button>
+  <button id="btn-overview-refresh">🔄 強制重抓</button>
+  <button id="btn-back">← 返回</button>
+</div>
+
+<!-- Deepscan panel -->
+
+<div id="deepscan-controls" class="deepscan-panel" style="display:none;">
+  <h3>選擇要深掃的板塊</h3>
+  <div class="scan-info">
+    💡 適合在「板塊總覽」確認哪些熱了之後，深掃這些熱板塊找出板塊內最強個股<br>
+    每檔股票需 ~500ms（CORS 代理延遲）
+  </div>
+  <div class="sector-checks" id="sector-checks-container">
+    <!-- 動態生成 -->
+  </div>
+  <div class="scan-info" id="scan-estimate">勾選板塊後會顯示預估時間</div>
+  <div class="scan-actions">
+    <button class="primary" id="btn-deepscan-run">🚀 開始深掃</button>
+    <button id="btn-deepscan-clear">清除選擇</button>
+    <button id="btn-back2">← 返回</button>
+  </div>
+</div>
+
+<div id="status" class="status">點擊「載入總覽」開始</div>
+
+<div class="chart-wrap" id="chart-wrap" style="display:none;">
+  <svg id="rrg-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"></svg>
+  <div id="legend-box"></div>
+  <div class="timestamp" id="timestamp"></div>
+</div>
+
+<div class="narrative" id="narrative" style="display:none;">
+  <h3>💡 白話解讀</h3>
+  <div id="narr-content"></div>
+</div>
+
+<div class="sector-table" id="sector-table" style="display:none;">
+  <div class="sector-row header">
+    <div id="table-col1">板塊 / 代表股</div>
+    <div style="text-align:right">RS</div>
+    <div style="text-align:right">動能</div>
+    <div style="text-align:center">象限</div>
+  </div>
+</div>
+
+<footer>RRG v2.0.2 · Yahoo Finance API · 不構成投資建議</footer>
+
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var errDiv = document.getElementById('js-error');
+  if (errDiv) {
+    errDiv.style.display = 'block';
+    errDiv.textContent = '❌ JS 錯誤 (line ' + line + '): ' + msg;
+  }
+  return false;
+};
+</script>
+
+<script>
+(function() {
+  'use strict';
+
+  // === CONFIG ===
+  var BENCHMARK = 'SPY';
+  var DAYS_NEEDED = 60;
+  var SMA_WINDOW = 10;
+  var ROC_WINDOW = 5;
+  var CACHE_TTL = 4 * 60 * 60 * 1000;
+  var STORAGE_KEY_RADAR = 'biaoguo_sectors_v5';
+  var CACHE_KEY_OVERVIEW = 'rrg_overview_v20';
+  var CACHE_KEY_DEEP = 'rrg_deepscan_v20';
+
+  var PROXIES = [
+    'https://api.codetabs.com/v1/proxy/?quest=',
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?'
+  ];
+
+  // 板塊顏色
+  var SECTOR_COLORS = {
+    'AI巨頭': '#76b900',
+    'AI基礎設施': '#ff6b35',
+    '光通信': '#00d4a8',
+    '封測設備': '#06d4f0',
+    'AI電力散熱': '#ffd166',
+    '儲存硬體': '#ef476f',
+    '太空衛星': '#4ea5ff',
+    '無人機國防': '#a78bfa',
+    '量子運算': '#22c55e',
+    'AI生技': '#f97316',
+    '貴金屬礦業': '#eab308',
+    '自訂': '#ec4899'
+  };
+
+  // 內建 v2.0 清單（雷達沒資料時用）
+  var BUILTIN_WATCHLIST = [
+    { name: 'AI巨頭', stocks: ['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL'] },
+    { name: 'AI基礎設施', stocks: ['ANET','SMCI','DELL','ARM','LRCX','SNOW','TXN','NBIS','APP','NET'] },
+    { name: '光通信', stocks: ['AAOI','COHR','LITE','FN','CIEN','MTSI','VIAV','ALAB','CRDO','GLW','MRVL','AXTI'] },
+    { name: '封測設備', stocks: ['AMKR','TER','FORM','AEHR','ROG','VECO'] },
+    { name: 'AI電力散熱', stocks: ['ETN','VRT','VST','CEG','GNRC','BE','OKLO'] },
+    { name: '儲存硬體', stocks: ['MU','WDC','STX','SNDK','PSTG'] },
+    { name: '太空衛星', stocks: ['RKLB','LUNR','RDW','FLY','BKSY','PL','ASTS','IRDM','GSAT'] },
+    { name: '無人機國防', stocks: ['AVAV','KTOS','PLTR','RCAT','ONDS'] },
+    { name: '量子運算', stocks: ['IONQ','RGTI','QBTS','QUBT'] },
+    { name: 'AI生技', stocks: ['TEM','RXRX','SDGR','ABCL'] },
+    { name: '貴金屬礦業', stocks: ['MP','USAR','TMC','UUUU','NEM','AEM','WPM','AG','FCX'] },
+    { name: '自訂', stocks: ['HOOD','ACHR'] }
+  ];
+
+  // 12 板塊代表股（總覽用）
+  var OVERVIEW_REPRESENTATIVES = [
+    {name: 'AI巨頭', ticker: 'NVDA'},
+    {name: 'AI基礎設施', ticker: 'VRT'},
+    {name: '光通信', ticker: 'AAOI'},
+    {name: '封測設備', ticker: 'AMKR'},
+    {name: 'AI電力散熱', ticker: 'ETN'},
+    {name: '儲存硬體', ticker: 'MU'},
+    {name: '太空衛星', ticker: 'RKLB'},
+    {name: '無人機國防', ticker: 'AVAV'},
+    {name: '量子運算', ticker: 'IONQ'},
+    {name: 'AI生技', ticker: 'TEM'},
+    {name: '貴金屬礦業', ticker: 'MP'},
+    {name: '自訂', ticker: 'HOOD'}
+  ];
+
+  // === STATE ===
+  var currentMode = 'overview';
+  var availableSectors = [];
+
+  // === RADAR 整合 ===
+  function readRadarSectors() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY_RADAR);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // 雷達原生 schema: [{id, icon, name, etf, tickers}, ...]
+        // 也容錯舊格式: [{name, stocks}, ...]
+        var arr = [];
+        for (var i = 0; i < parsed.length; i++) {
+          var s = parsed[i];
+          if (!s || !s.name) continue;
+          var stocks = s.tickers || s.stocks;
+          if (Array.isArray(stocks) && stocks.length > 0) {
+            arr.push({ name: s.name, stocks: stocks });
+          }
+        }
+        return arr.length > 0 ? arr : null;
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        var arr2 = [];
+        for (var key in parsed) {
+          if (!parsed.hasOwnProperty(key)) continue;
+          var v = parsed[key];
+          if (Array.isArray(v) && v.length > 0) {
+            arr2.push({ name: key, stocks: v });
+          } else if (v && Array.isArray(v.tickers || v.stocks)) {
+            arr2.push({ name: key, stocks: v.tickers || v.stocks });
+          }
+        }
+        return arr2.length > 0 ? arr2 : null;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getSectorList() {
+    try {
+      var fromRadar = readRadarSectors();
+      if (fromRadar && Array.isArray(fromRadar) && fromRadar.length > 0) {
+        return fromRadar;
+      }
+    } catch (e) {
+      // 任何讀取錯誤 → 直接 fallback
+    }
+    return BUILTIN_WATCHLIST;
+  }
+
+  // === DATA FETCH ===
+  function buildYahooURL(ticker) {
+    return 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?range=3mo&interval=1d';
+  }
+
+  function tryProxy(proxyIndex, ticker) {
+    if (proxyIndex >= PROXIES.length) {
+      return Promise.reject(new Error('all_proxies_failed'));
+    }
+    var yahooUrl = buildYahooURL(ticker);
+    var proxiedUrl = PROXIES[proxyIndex] + encodeURIComponent(yahooUrl);
+    return fetch(proxiedUrl).then(function(r) {
+      if (!r.ok) throw new Error('HTTP_' + r.status);
+      return r.json();
+    }).then(function(j) {
+      if (!j.chart || !j.chart.result || j.chart.result.length === 0) throw new Error('no_chart');
+      var result = j.chart.result[0];
+      if (!result.indicators || !result.indicators.quote || !result.indicators.quote[0].close) throw new Error('no_close');
+      var closes = result.indicators.quote[0].close;
+      var validCloses = [];
+      for (var i = 0; i < closes.length; i++) {
+        if (closes[i] !== null && !isNaN(closes[i])) validCloses.push(closes[i]);
+      }
+      if (validCloses.length < SMA_WINDOW + ROC_WINDOW + 5) throw new Error('insufficient_' + validCloses.length);
+      return validCloses.slice(-DAYS_NEEDED);
+    }).catch(function(e) {
+      return tryProxy(proxyIndex + 1, ticker);
+    });
+  }
+
+  function fetchPrice(ticker) { return tryProxy(0, ticker); }
+
+  // === RRG 計算 ===
+  function calculateRRG(sectorCloses, spyCloses) {
+    var N = Math.min(sectorCloses.length, spyCloses.length);
+    var rs = [];
+    for (var i = 0; i < N; i++) rs.push((sectorCloses[i] / spyCloses[i]) * 100);
+    var rsRatios = [];
+    for (var j = SMA_WINDOW - 1; j < N; j++) {
+      var sum = 0;
+      for (var k = j - SMA_WINDOW + 1; k <= j; k++) sum += rs[k];
+      rsRatios.push((rs[j] / (sum / SMA_WINDOW)) * 100);
+    }
+    var rsMoms = [];
+    for (var m = ROC_WINDOW; m < rsRatios.length; m++) {
+      rsMoms.push((rsRatios[m] / rsRatios[m - ROC_WINDOW]) * 100);
+    }
+    return { ratios: rsRatios.slice(ROC_WINDOW), moms: rsMoms };
+  }
+
+  function getQuadrant(ratio, mom) {
+    if (ratio >= 100 && mom >= 100) return { name: '領先', tag: '★', color: '#00d4a8', key: 'leading' };
+    if (ratio >= 100 && mom < 100) return { name: '走弱', tag: '⚠', color: '#f7c948', key: 'weakening' };
+    if (ratio < 100 && mom < 100) return { name: '落後', tag: '↘', color: '#ef476f', key: 'lagging' };
+    return { name: '改善中', tag: '↗', color: '#4ea5ff', key: 'improving' };
+  }
+
+  function distFromCenter(ratio, mom) {
+    return Math.sqrt(Math.pow(ratio - 100, 2) + Math.pow(mom - 100, 2));
+  }
+
+  // === CACHE ===
+  function loadCache(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var c = JSON.parse(raw);
+      if (Date.now() - c.timestamp > CACHE_TTL) return null;
+      return c;
+    } catch (e) { return null; }
+  }
+  function saveCache(key, data) {
+    try { localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data: data })); } catch (e) {}
+  }
+
+  function setStatus(html) {
+    var el = document.getElementById('status');
+    if (el) { el.style.display = 'block'; el.innerHTML = html; }
+  }
+  function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+
+  function hideAllResults() {
+    document.getElementById('chart-wrap').style.display = 'none';
+    document.getElementById('narrative').style.display = 'none';
+    document.getElementById('sector-table').style.display = 'none';
+  }
+
+  // === MODE SWITCHING ===
+  function switchMode(mode) {
+    currentMode = mode;
+    var tabs = document.querySelectorAll('.mode-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('active', tabs[i].getAttribute('data-mode') === mode);
+    }
+    if (mode === 'overview') {
+      document.getElementById('overview-controls').style.display = 'flex';
+      document.getElementById('deepscan-controls').style.display = 'none';
+    } else {
+      document.getElementById('overview-controls').style.display = 'none';
+      document.getElementById('deepscan-controls').style.display = 'block';
+      buildSectorChecks();
+    }
+    hideAllResults();
+    setStatus(mode === 'overview' ? '點擊「載入總覽」開始' : '勾選板塊後點「開始深掃」');
+  }
+
+  // === DEEPSCAN UI ===
+  function buildSectorChecks() {
+    availableSectors = getSectorList();
+    var container = document.getElementById('sector-checks-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (!availableSectors || availableSectors.length === 0) {
+      container.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#ef476f;background:rgba(239,71,111,0.1);border-radius:10px;">❌ 找不到任何板塊資料<br><span style="font-size:0.78rem;color:#6b7290">請先到 import.html 寫入清單，或 reload 此頁</span></div>';
+      return;
+    }
+    
+    for (var i = 0; i < availableSectors.length; i++) {
+      var s = availableSectors[i];
+      if (!s || !s.name || !Array.isArray(s.stocks)) continue;
+      var label = document.createElement('label');
+      label.className = 'sector-check';
+      label.innerHTML = '<input type="checkbox" data-idx="' + i + '">' +
+                        '<span class="name" style="color:' + (SECTOR_COLORS[s.name] || '#e4e7f0') + '">' + (s.name) + '</span>' +
+                        '<span class="count">' + s.stocks.length + ' 檔</span>';
+      container.appendChild(label);
+    }
+    container.addEventListener('change', updateScanEstimate);
+    updateScanEstimate();
+  }
+
+  function getSelectedSectors() {
+    var checks = document.querySelectorAll('#sector-checks-container input:checked');
+    var selected = [];
+    for (var i = 0; i < checks.length; i++) {
+      var idx = parseInt(checks[i].getAttribute('data-idx'));
+      if (!isNaN(idx) && availableSectors[idx]) selected.push(availableSectors[idx]);
+    }
+    return selected;
+  }
+
+  function updateScanEstimate() {
+    var selected = getSelectedSectors();
+    var totalStocks = 1; // SPY
+    for (var i = 0; i < selected.length; i++) totalStocks += selected[i].stocks.length;
+    var estSec = Math.ceil(totalStocks * 0.5);
+    var info = document.getElementById('scan-estimate');
+    if (selected.length === 0) {
+      info.innerHTML = '勾選板塊後會顯示預估時間';
+    } else {
+      info.innerHTML = '已選 <strong>' + selected.length + ' 個板塊</strong>，共 <strong>' + (totalStocks - 1) + ' 檔股票</strong> + SPY 基準<br>預估時間：約 <strong>' + estSec + ' 秒</strong>';
+    }
+  }
+
+  // === LOAD DATA ===
+  function loadOverview(forceRefresh) {
+    hideAllResults();
+    var cached = forceRefresh ? null : loadCache(CACHE_KEY_OVERVIEW);
+    if (cached) { renderResults(cached.data, cached.timestamp, 'overview'); return; }
+
+    setStatus('正在抓取 SPY 基準資料...');
+    fetchPrice(BENCHMARK).then(function(spyCloses) {
+      var data = { mode: 'overview', sectors: [] };
+      function fetchNext(i) {
+        if (i >= OVERVIEW_REPRESENTATIVES.length) {
+          saveCache(CACHE_KEY_OVERVIEW, data);
+          renderResults(data, Date.now(), 'overview');
+          return;
+        }
+        var s = OVERVIEW_REPRESENTATIVES[i];
+        setStatus('抓取 ' + s.name + ' (' + s.ticker + ')... ' + (i + 1) + '/' + OVERVIEW_REPRESENTATIVES.length);
+        fetchPrice(s.ticker).then(function(closes) {
+          var N = Math.min(closes.length, spyCloses.length);
+          var rrg = calculateRRG(closes.slice(-N), spyCloses.slice(-N));
+          if (rrg.ratios.length === 0 || rrg.moms.length === 0) {
+            data.sectors.push({ name: s.name, ticker: s.ticker, color: SECTOR_COLORS[s.name] || '#888', error: 'insufficient' });
+          } else {
+            data.sectors.push({
+              name: s.name, ticker: s.ticker, color: SECTOR_COLORS[s.name] || '#888', sectorName: s.name,
+              ratios: rrg.ratios, moms: rrg.moms,
+              current: { ratio: rrg.ratios[rrg.ratios.length - 1], mom: rrg.moms[rrg.moms.length - 1] }
+            });
+          }
+          sleep(300).then(function() { fetchNext(i + 1); });
+        }).catch(function(e) {
+          data.sectors.push({ name: s.name, ticker: s.ticker, color: SECTOR_COLORS[s.name] || '#888', error: e.message });
+          sleep(300).then(function() { fetchNext(i + 1); });
+        });
+      }
+      fetchNext(0);
+    }).catch(function(e) {
+      setStatus('<div class="error">❌ 無法抓取 SPY：' + e.message + '<br>3 個 CORS 代理都失敗，過幾分鐘再試</div>');
+    });
+  }
+
+  function loadDeepscan() {
+    var selected = getSelectedSectors();
+    if (selected.length === 0) {
+      alert('請至少選擇一個板塊');
+      return;
+    }
+    hideAllResults();
+
+    // 組合所有要掃的股票
+    var allStocks = [];
+    for (var i = 0; i < selected.length; i++) {
+      var sec = selected[i];
+      for (var j = 0; j < sec.stocks.length; j++) {
+        allStocks.push({ ticker: sec.stocks[j], sectorName: sec.name, color: SECTOR_COLORS[sec.name] || '#888' });
+      }
+    }
+
+    // Cache key based on selection signature
+    var sig = selected.map(function(s) { return s.name; }).sort().join('|');
+    var cacheKey = CACHE_KEY_DEEP + '_' + sig;
+    var cached = loadCache(cacheKey);
+    if (cached) { renderResults(cached.data, cached.timestamp, 'deepscan'); return; }
+
+    setStatus('正在抓取 SPY 基準資料...');
+    fetchPrice(BENCHMARK).then(function(spyCloses) {
+      var data = { mode: 'deepscan', sectors: [], selectedSectorNames: selected.map(function(s) { return s.name; }) };
+      function fetchNext(i) {
+        if (i >= allStocks.length) {
+          saveCache(cacheKey, data);
+          renderResults(data, Date.now(), 'deepscan');
+          return;
+        }
+        var s = allStocks[i];
+        setStatus('深掃 ' + s.ticker + ' (' + s.sectorName + ')... ' + (i + 1) + '/' + allStocks.length);
+        fetchPrice(s.ticker).then(function(closes) {
+          var N = Math.min(closes.length, spyCloses.length);
+          var rrg = calculateRRG(closes.slice(-N), spyCloses.slice(-N));
+          if (rrg.ratios.length === 0 || rrg.moms.length === 0) {
+            data.sectors.push({ name: s.ticker, ticker: s.ticker, color: s.color, sectorName: s.sectorName, error: 'insufficient' });
+          } else {
+            data.sectors.push({
+              name: s.ticker, ticker: s.ticker, color: s.color, sectorName: s.sectorName,
+              ratios: rrg.ratios, moms: rrg.moms,
+              current: { ratio: rrg.ratios[rrg.ratios.length - 1], mom: rrg.moms[rrg.moms.length - 1] }
+            });
+          }
+          sleep(500).then(function() { fetchNext(i + 1); });
+        }).catch(function(e) {
+          data.sectors.push({ name: s.ticker, ticker: s.ticker, color: s.color, sectorName: s.sectorName, error: e.message });
+          sleep(500).then(function() { fetchNext(i + 1); });
+        });
+      }
+      fetchNext(0);
+    }).catch(function(e) {
+      setStatus('<div class="error">❌ 無法抓取 SPY：' + e.message + '</div>');
+    });
+  }
+
+  // === RENDER ===
+  function renderResults(data, ts, mode) {
+    renderChart(data, mode);
+    renderNarrative(data, mode);
+    renderTable(data, mode);
+    document.getElementById('timestamp').textContent = '更新於 ' + new Date(ts).toLocaleString('zh-TW');
+    document.getElementById('table-col1').textContent = mode === 'deepscan' ? '股票 / 板塊' : '板塊 / 代表股';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('chart-wrap').style.display = 'block';
+    document.getElementById('narrative').style.display = 'block';
+    document.getElementById('sector-table').style.display = 'block';
+  }
+
+  function placeLabels(items) {
+    items.sort(function(a, b) { return b.dist - a.dist; });
+    var placed = [];
+    var labelW = 50, labelH = 14;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var candidates = [
+        {dx:11,dy:4,a:'start'}, {dx:-11,dy:4,a:'end'},
+        {dx:11,dy:-9,a:'start'}, {dx:-11,dy:-9,a:'end'},
+        {dx:11,dy:15,a:'start'}, {dx:-11,dy:15,a:'end'},
+        {dx:0,dy:-12,a:'middle'}, {dx:0,dy:20,a:'middle'},
+        {dx:18,dy:-3,a:'start'}, {dx:-18,dy:-3,a:'end'},
+        {dx:14,dy:-15,a:'start'}, {dx:-14,dy:-15,a:'end'}
+      ];
+      var bestPos = candidates[0];
+      var bestScore = -Infinity;
+      for (var c = 0; c < candidates.length; c++) {
+        var lx = it.x + candidates[c].dx;
+        var ly = it.y + candidates[c].dy;
+        var conflict = 0;
+        for (var p = 0; p < placed.length; p++) {
+          var dx = Math.abs(lx - placed[p].lx);
+          var dy = Math.abs(ly - placed[p].ly);
+          if (dx < labelW && dy < labelH) conflict += (labelW - dx) * (labelH - dy);
+        }
+        var score = -conflict;
+        if (score > bestScore) {
+          bestScore = score;
+          bestPos = candidates[c];
+        }
+      }
+      it.labelX = it.x + bestPos.dx;
+      it.labelY = it.y + bestPos.dy;
+      it.anchor = bestPos.a;
+      placed.push({lx: it.labelX, ly: it.labelY});
+    }
+    return items;
+  }
+
+  function renderChart(data, mode) {
+    var svg = document.getElementById('rrg-svg');
+    svg.innerHTML = '';
+    var W = 600, H = 600, P = 55;
+    var valid = [];
+    for (var i = 0; i < data.sectors.length; i++) {
+      if (!data.sectors[i].error && data.sectors[i].current) valid.push(data.sectors[i]);
+    }
+    if (valid.length === 0) {
+      svg.innerHTML = '<text x="300" y="300" fill="#6b7290" text-anchor="middle" font-size="14">無有效資料</text>';
+      return;
+    }
+
+    // 根據股票數量調整 trail 長度（避免過於擁擠）
+    var trailLength = 8;
+    if (valid.length > 20) trailLength = 5;
+    if (valid.length > 35) trailLength = 3;
+
+    // 計算範圍
+    var allRatios = [], allMoms = [];
+    for (var v = 0; v < valid.length; v++) {
+      for (var r = 0; r < valid[v].ratios.length; r++) {
+        allRatios.push(valid[v].ratios[r]);
+        allMoms.push(valid[v].moms[r]);
+      }
+    }
+    var minR = Math.min.apply(null, allRatios), maxR = Math.max.apply(null, allRatios);
+    var minM = Math.min.apply(null, allMoms), maxM = Math.max.apply(null, allMoms);
+    var rPad = Math.max((maxR - minR) * 0.15, 0.5);
+    var mPad = Math.max((maxM - minM) * 0.15, 0.5);
+    var xMin = minR - rPad, xMax = maxR + rPad;
+    var yMin = minM - mPad, yMax = maxM + mPad;
+    if (xMin > 99) xMin = 99;
+    if (xMax < 101) xMax = 101;
+    if (yMin > 99) yMin = 99;
+    if (yMax < 101) yMax = 101;
+
+    function mapX(val) { return P + (val - xMin) / (xMax - xMin) * (W - 2 * P); }
+    function mapY(val) { return H - P - (val - yMin) / (yMax - yMin) * (H - 2 * P); }
+    var cx = mapX(100), cy = mapY(100);
+
+    var html = '';
+    // 象限背景
+    html += '<rect x="' + cx + '" y="' + P + '" width="' + (W-P-cx) + '" height="' + (cy-P) + '" fill="#00d4a8" opacity="0.05"/>';
+    html += '<rect x="' + P + '" y="' + P + '" width="' + (cx-P) + '" height="' + (cy-P) + '" fill="#4ea5ff" opacity="0.05"/>';
+    html += '<rect x="' + cx + '" y="' + cy + '" width="' + (W-P-cx) + '" height="' + (H-P-cy) + '" fill="#f7c948" opacity="0.05"/>';
+    html += '<rect x="' + P + '" y="' + cy + '" width="' + (cx-P) + '" height="' + (H-P-cy) + '" fill="#ef476f" opacity="0.05"/>';
+    // 100 軸線
+    html += '<line x1="' + P + '" y1="' + cy + '" x2="' + (W-P) + '" y2="' + cy + '" stroke="#3a4666" stroke-dasharray="4,3" stroke-width="1"/>';
+    html += '<line x1="' + cx + '" y1="' + P + '" x2="' + cx + '" y2="' + (H-P) + '" stroke="#3a4666" stroke-dasharray="4,3" stroke-width="1"/>';
+    // 邊框
+    html += '<rect x="' + P + '" y="' + P + '" width="' + (W-2*P) + '" height="' + (H-2*P) + '" fill="none" stroke="#1f2942" stroke-width="1"/>';
+    // 象限標籤
+    html += '<text x="' + (W-P-8) + '" y="' + (P+18) + '" fill="#00d4a8" opacity="0.7" text-anchor="end" font-size="13" font-weight="700">★ 領先</text>';
+    html += '<text x="' + (P+8) + '" y="' + (P+18) + '" fill="#4ea5ff" opacity="0.7" font-size="13" font-weight="700">↗ 改善中</text>';
+    html += '<text x="' + (W-P-8) + '" y="' + (H-P-8) + '" fill="#f7c948" opacity="0.7" text-anchor="end" font-size="13" font-weight="700">⚠ 走弱</text>';
+    html += '<text x="' + (P+8) + '" y="' + (H-P-8) + '" fill="#ef476f" opacity="0.7" font-size="13" font-weight="700">↘ 落後</text>';
+
+    // 計算離群度與標籤項目
+    var labelItems = [];
+    for (var k = 0; k < valid.length; k++) {
+      var s = valid[k];
+      var dist = distFromCenter(s.current.ratio, s.current.mom);
+      labelItems.push({
+        x: mapX(s.current.ratio),
+        y: mapY(s.current.mom),
+        ticker: s.ticker || s.name,
+        color: s.color,
+        dist: dist,
+        sector: s
+      });
+    }
+
+    var maxDist = 0;
+    for (var d = 0; d < labelItems.length; d++) {
+      if (labelItems[d].dist > maxDist) maxDist = labelItems[d].dist;
+    }
+    if (maxDist === 0) maxDist = 1;
+
+    placeLabels(labelItems);
+
+    // 畫軌跡
+    for (var k2 = 0; k2 < labelItems.length; k2++) {
+      var s2 = labelItems[k2].sector;
+      var trailStart = Math.max(0, s2.ratios.length - trailLength);
+      var points = [];
+      for (var pp = trailStart; pp < s2.ratios.length; pp++) {
+        points.push({ x: mapX(s2.ratios[pp]), y: mapY(s2.moms[pp]) });
+      }
+      if (points.length < 2) continue;
+      var path = '';
+      for (var ppp = 0; ppp < points.length; ppp++) {
+        path += (ppp === 0 ? 'M' : 'L') + points[ppp].x.toFixed(1) + ',' + points[ppp].y.toFixed(1);
+        if (ppp < points.length - 1) path += ' ';
+      }
+      var trailOpacity = mode === 'deepscan' ? 0.3 : 0.4;
+      html += '<path d="' + path + '" stroke="' + s2.color + '" stroke-width="1.2" fill="none" opacity="' + trailOpacity + '"/>';
+      for (var pi = 0; pi < points.length - 1; pi++) {
+        var op = 0.2 + (pi / Math.max(1, points.length - 1)) * 0.4;
+        var ptR = mode === 'deepscan' ? 1.5 : 2;
+        html += '<circle cx="' + points[pi].x.toFixed(1) + '" cy="' + points[pi].y.toFixed(1) + '" r="' + ptR + '" fill="' + s2.color + '" opacity="' + op.toFixed(2) + '"/>';
+      }
+    }
+
+    // 畫當前位置
+    for (var k3 = 0; k3 < labelItems.length; k3++) {
+      var it = labelItems[k3];
+      var importance = it.dist / maxDist;
+      var radius = (mode === 'deepscan' ? 3 : 4) + importance * (mode === 'deepscan' ? 4 : 6);
+      var glowR = radius + 4;
+      var glowOp = 0.15 + importance * 0.25;
+      html += '<circle cx="' + it.x.toFixed(1) + '" cy="' + it.y.toFixed(1) + '" r="' + glowR + '" fill="' + it.color + '" opacity="' + glowOp.toFixed(2) + '"/>';
+      html += '<circle cx="' + it.x.toFixed(1) + '" cy="' + it.y.toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + it.color + '" stroke="#0a0e1a" stroke-width="1.2"/>';
+    }
+
+    // 標籤（深掃模式只顯示前 N 名最重要的，避免太亂）
+    var labelLimit = mode === 'deepscan' ? Math.min(labelItems.length, Math.max(20, Math.ceil(labelItems.length * 0.6))) : labelItems.length;
+    for (var k4 = 0; k4 < labelLimit; k4++) {
+      var it2 = labelItems[k4];
+      var importance2 = it2.dist / maxDist;
+      var fontSize = (mode === 'deepscan' ? 9 : 10) + Math.round(importance2 * 3);
+      var weight = importance2 > 0.5 ? '800' : '600';
+      html += '<text x="' + it2.labelX.toFixed(1) + '" y="' + it2.labelY.toFixed(1) + '" fill="#0a0e1a" stroke="#0a0e1a" stroke-width="3" stroke-linejoin="round" font-size="' + fontSize + '" font-weight="' + weight + '" text-anchor="' + it2.anchor + '" opacity="0.9">' + it2.ticker + '</text>';
+      html += '<text x="' + it2.labelX.toFixed(1) + '" y="' + it2.labelY.toFixed(1) + '" fill="' + it2.color + '" font-size="' + fontSize + '" font-weight="' + weight + '" text-anchor="' + it2.anchor + '">' + it2.ticker + '</text>';
+    }
+
+    svg.innerHTML = html;
+
+    // 深掃模式顯示板塊圖例
+    var legendBox = document.getElementById('legend-box');
+    if (mode === 'deepscan' && data.selectedSectorNames) {
+      var legendHtml = '<div class="legend">';
+      for (var ls = 0; ls < data.selectedSectorNames.length; ls++) {
+        var sn = data.selectedSectorNames[ls];
+        var c = SECTOR_COLORS[sn] || '#888';
+        legendHtml += '<div class="legend-item"><span class="legend-dot" style="background:' + c + '"></span><span>' + sn + '</span></div>';
+      }
+      legendHtml += '</div>';
+      legendBox.innerHTML = legendHtml;
+    } else {
+      legendBox.innerHTML = '';
+    }
+  }
+
+  function renderNarrative(data, mode) {
+    var groups = { leading: [], improving: [], weakening: [], lagging: [] };
+    for (var i = 0; i < data.sectors.length; i++) {
+      var s = data.sectors[i];
+      if (s.error || !s.current) continue;
+      var q = getQuadrant(s.current.ratio, s.current.mom);
+      var dist = distFromCenter(s.current.ratio, s.current.mom);
+      groups[q.key].push({
+        name: s.name, ticker: s.ticker || s.name, sectorName: s.sectorName,
+        dist: dist, ratio: s.current.ratio, mom: s.current.mom
+      });
+    }
+    for (var key in groups) {
+      groups[key].sort(function(a, b) { return b.dist - a.dist; });
+    }
+
+    function fmtList(arr, max) {
+      if (arr.length === 0) return '<span class="narr-empty">無</span>';
+      var n = Math.min(max || 5, arr.length);
+      var html = '';
+      for (var i = 0; i < n; i++) {
+        if (mode === 'deepscan') {
+          html += '<strong>' + arr[i].ticker + '</strong>';
+          if (arr[i].sectorName) html += '<span style="color:var(--dim);font-size:0.75rem"> (' + arr[i].sectorName + ')</span>';
+        } else {
+          html += '<strong>' + arr[i].ticker + '</strong>';
+          if (arr[i].name && arr[i].name !== arr[i].ticker) html += '<span style="color:var(--dim);font-size:0.78rem">（' + arr[i].name + '）</span>';
+        }
+        if (i < n - 1) html += '、';
+      }
+      if (arr.length > n) html += '... 等 ' + arr.length + ' 檔';
+      return html;
+    }
+
+    var html = '';
+    
+    html += '<div class="narr-section narr-leading">';
+    html += '<span class="label">★ ' + (mode === 'deepscan' ? '主流個股（強勢加速）' : '主流板塊（強勢加速）') + '</span>';
+    if (groups.leading.length > 0) {
+      html += fmtList(groups.leading, 6);
+      html += '<span class="narr-tip">→ ' + (mode === 'deepscan' ? '板塊內最強，但不追高，等回測 5-10% 再進場' : '已持有續抱，不在這裡追進') + '</span>';
+    } else {
+      html += '<span class="narr-empty">' + (mode === 'deepscan' ? '所選板塊內沒有跑贏大盤的個股' : '目前沒有板塊明顯跑贏大盤') + '</span>';
+    }
+    html += '</div>';
+
+    html += '<div class="narr-section narr-improving">';
+    html += '<span class="label">↗ 起漲候選（弱但變強）</span>';
+    if (groups.improving.length > 0) {
+      html += fmtList(groups.improving, 6);
+      html += '<span class="narr-tip">→ 觀察清單，最佳進場區（剛從谷底爬上來）</span>';
+    } else {
+      html += '<span class="narr-empty">無</span>';
+    }
+    html += '</div>';
+
+    html += '<div class="narr-section narr-weakening">';
+    html += '<span class="label">⚠ 警戒（強但動能轉弱）</span>';
+    if (groups.weakening.length > 0) {
+      html += fmtList(groups.weakening, 6);
+      html += '<span class="narr-tip">→ 已持有考慮鎖利，不再加碼</span>';
+    } else {
+      html += '<span class="narr-empty">無</span>';
+    }
+    html += '</div>';
+
+    html += '<div class="narr-section narr-lagging">';
+    html += '<span class="label">↘ 避開（弱且持續走弱）</span>';
+    if (groups.lagging.length > 0) {
+      html += fmtList(groups.lagging, 6);
+      html += '<span class="narr-tip">→ 不接刀，等真正反轉訊號再說</span>';
+    } else {
+      html += '<span class="narr-empty">無</span>';
+    }
+    html += '</div>';
+
+    document.getElementById('narr-content').innerHTML = html;
+  }
+
+  function renderTable(data, mode) {
+    var table = document.getElementById('sector-table');
+    while (table.children.length > 1) table.removeChild(table.lastChild);
+    var sorted = data.sectors.slice();
+    sorted.sort(function(a, b) {
+      if (a.error) return 1;
+      if (b.error) return -1;
+      return b.current.ratio - a.current.ratio;
+    });
+    for (var i = 0; i < sorted.length; i++) {
+      var s = sorted[i];
+      var row = document.createElement('div');
+      row.className = 'sector-row';
+      var displayName = mode === 'deepscan' ? s.ticker : s.name;
+      var displaySub = mode === 'deepscan' ? (s.sectorName || '') : (s.ticker || '');
+      if (s.error) {
+        row.innerHTML = '<div><span class="sector-name" style="color:' + s.color + '">' + displayName + '</span><span class="sector-ticker">' + displaySub + '</span></div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-tag" style="background:rgba(239,71,111,0.12);color:#ef476f">無資料</div>';
+      } else {
+        var q = getQuadrant(s.current.ratio, s.current.mom);
+        row.innerHTML = '<div><span class="sector-name" style="color:' + s.color + '">' + displayName + '</span><span class="sector-ticker">' + displaySub + '</span></div><div class="sector-num" style="color:' + (s.current.ratio >= 100 ? '#00d4a8' : '#ef476f') + '">' + s.current.ratio.toFixed(1) + '</div><div class="sector-num" style="color:' + (s.current.mom >= 100 ? '#00d4a8' : '#ef476f') + '">' + s.current.mom.toFixed(1) + '</div><div class="sector-tag" style="background:' + q.color + '22;color:' + q.color + '">' + q.tag + ' ' + q.name + '</div>';
+      }
+      table.appendChild(row);
+    }
+  }
+
+  // === INIT ===
+  document.getElementById('js-check').textContent = '✅ JavaScript 已就緒 v2.0.2 (修正深掃 fallback bug)';
+  document.getElementById('js-check').style.color = '#00d4a8';
+
+  // Mode tabs
+  var tabs = document.querySelectorAll('.mode-tab');
+  for (var t = 0; t < tabs.length; t++) {
+    tabs[t].addEventListener('click', function() {
+      switchMode(this.getAttribute('data-mode'));
+    });
+  }
+
+  // Overview buttons
+  document.getElementById('btn-overview-load').addEventListener('click', function() { loadOverview(false); });
+  document.getElementById('btn-overview-refresh').addEventListener('click', function() { loadOverview(true); });
+  document.getElementById('btn-back').addEventListener('click', function() { window.history.back(); });
+
+  // Deepscan buttons
+  document.getElementById('btn-deepscan-run').addEventListener('click', loadDeepscan);
+  document.getElementById('btn-deepscan-clear').addEventListener('click', function() {
+    var checks = document.querySelectorAll('#sector-checks-container input');
+    for (var i = 0; i < checks.length; i++) checks[i].checked = false;
+    updateScanEstimate();
+  });
+  document.getElementById('btn-back2').addEventListener('click', function() { window.history.back(); });
+
+  // 啟動：自動載入 overview cache
+  if (loadCache(CACHE_KEY_OVERVIEW)) loadOverview(false);
+
+})();
+</script>
+
+</body>
+</html>
