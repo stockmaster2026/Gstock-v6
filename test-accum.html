@@ -1,3 +1,4 @@
+ 
 <!DOCTYPE html>
 
 <html lang="zh-TW">
@@ -8,7 +9,7 @@
   <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="決策樹">
+<meta name="apple-mobile-web-app-title" content="個股分析">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
 <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png">
@@ -619,7 +620,8 @@ h+=’</div></div></div>’;
 h+=’<div id="scanResult"></div>’;
 el.innerHTML=h;
 el.scrollIntoView({behavior:‘smooth’,block:‘start’});
-  async function runScan(sector){
+}
+async function runScan(sector){
 var el=document.getElementById(‘scanResult’);
 var stocks=SECTORS[sector]||[];
 if(!stocks.length){el.innerHTML=’<div class="err">此板塊無股票</div>’;return;}
@@ -879,24 +881,9 @@ el.scrollIntoView({behavior:‘smooth’,block:‘start’});
 generateAISummary(sorted);
 }
 
-async function generateAISummary(results){
+function generateAISummary(results){
 var el=document.getElementById(‘aiSummaryOut’);
 if(!el)return;
-try{
-var topStocks=results.slice(0,5).map(function(r){
-return r.sym+’(’+r.sector+’ 評分’+r.scanScore+’/10 ‘+getSignalDesc(r)+’)’;
-}).join(’、’);
-var weakStocks=results.filter(function(r){return r.scanScore<=3;}).map(function(r){return r.sym;}).join(’、’);
-var prompt=‘你是專業美股技術分析師，用繁體中文白話文100-150字給出今日掃描總結。今日股票評分高到低：’+topStocks+(weakStocks?’。訊號較弱：’+weakStocks:’’)+’. 請說明：1.最值得關注的股票 2.整體盤勢 3.操作建議。語氣直接實用。’;
-var resp=await fetch(‘https://api.anthropic.com/v1/messages’,{
-method:‘POST’,
-headers:{‘Content-Type’:‘application/json’},
-body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:300,messages:[{role:‘user’,content:prompt}]})
-});
-var data=await resp.json();
-var text=data.content&&data.content[0]?data.content[0].text:‘無法生成分析’;
-el.innerHTML=text;
-}catch(e){
 var top=results.slice(0,3);
 var txt=’’;
 if(top.length>0){
@@ -909,7 +896,6 @@ else if(goodCount>=3) txt+=’ 今日有多檔強勢股，可選最強的1-2檔�
 else txt+=’ 訊號尚未全面啟動，建議等待確認再進場。’;
 } else {txt=‘今日掃描結果整體偏弱，建議繼續觀望，等待更明確的訊號。’;}
 el.innerHTML=txt;
-}
 }
 
 function initAccumSectors(){
@@ -1284,8 +1270,7 @@ ma5up:ma5>ma5p,volShrink:av5<av20*0.75,macd:calcMACD(va),obvUp};
 // v2.0 新增：getBreakoutAdvice - 突破後白話文（用漲幅%，非天數）
 // O’Neil 法則：距 buy point 0-5% / 5-10% / 10-15% / 15%+
 // ═══════════════════════════════════════════════════════════
-}
-  function getBreakoutAdvice(trEnded, pA, bP, trTop, curPrice){
+function getBreakoutAdvice(trEnded, pA, bP, trTop, curPrice){
 if(!trEnded){
 // 還沒突破
 var distToTop = ((+trTop - +curPrice) / +curPrice * 100).toFixed(1);
