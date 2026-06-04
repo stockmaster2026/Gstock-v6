@@ -1822,54 +1822,8 @@ function detectAccum(va){
   else if(tr.trEnded)sm=3;
   else if(!tr.trEnded&&n>=5&&obvUp)sm=4;
   else if(!tr.trEnded&&n>=2)sm=2;
-  // ═══ 🆕 v12：頭部派發偵測（底部吸籌的鏡像）═══
-  // 只在「近期高檔區」掃描，偵測主力暗中出貨的訊號
+  // ═══ 🆕 v12：頭部派發偵測 — 變數宣告（實際計算移到 bigSells 品質判斷之後）═══
   var dn=0,distDates=[],dm=0,distCmf=null,isTopping=false,distReasons=[];
-  (function(){
-    var winN=Math.min(60,m);
-    var winSlice=va.slice(-winN);
-    var hi60=Math.max.apply(null,winSlice.map(function(x){return x.h;}));
-    var lo60=Math.min.apply(null,winSlice.map(function(x){return x.l;}));
-    if(hi60<=lo60)return;
-    var highZone=lo60+(hi60-lo60)*0.55; // 只有價格在區間上半部（高檔）才偵測派發
-    var startI=Math.max(10,m-40);
-    var c1=0,c2=0,c3=0,c4=0,c5=0;
-    for(var i=startI;i<m;i++){
-      var d=va[i];
-      if(d.c<highZone)continue; // 低檔不算派發
-      var s=0;
-      // 1. 價漲但 OBV 背離（暗中出貨）
-      if(i>=3&&d.c>va[i-3].c&&ob[i]<ob[i-3]){s++;c1++;}
-      // 2. 上影線長（高檔賣壓）
-      var body=Math.abs(d.c-d.o),uw=d.h-Math.max(d.c,d.o),rng=d.h-d.l;
-      if(rng>0&&uw>body*0.8&&(d.h-d.c)/rng>0.4){s++;c2++;}
-      // 3. 高量滯漲（高檔換手出貨）
-      if(d.v/avg60>1.2&&Math.abs(d.c-d.o)/d.o*100<2){s++;c3++;}
-      // 4. 高檔窄幅鈍化 + OBV 下滑
-      if(i>=10){
-        var p=va.slice(i-10,i),mx=Math.max.apply(null,p.map(function(x){return x.h;})),mn=Math.min.apply(null,p.map(function(x){return x.l;}));
-        if(mn>0&&(mx-mn)/mn*100<25&&ob[i]<ob[i-10]){s++;c4++;}
-      }
-      // 5. 逼近高點但 OBV 不創高（衝頂無力）
-      if(d.h>hi60*0.97&&i>=1&&ob[i]<=ob[i-1]){s++;c5++;}
-      if(s>=2){dn++;distDates.push(new Date(d.t*1000).toISOString().slice(0,10));}
-    }
-    // 近20天窗口 CMF（資金流方向）
-    var cs=Math.max(0,m-20),sumMFV=0,sumV=0;
-    for(var k=cs;k<m;k++){
-      var dd=va[k],r2=dd.h-dd.l;if(r2<=0)continue;
-      sumMFV+=(((dd.c-dd.l)-(dd.h-dd.c))/r2)*dd.v;sumV+=dd.v;
-    }
-    distCmf=sumV>0?+(sumMFV/sumV).toFixed(3):null;
-    // 派發分級 dm（0-6，鏡像 sm）
-    if(dn>=6)dm=6;else if(dn>=4)dm=5;else if(dn>=2)dm=3;else if(dn>=1)dm=2;
-    // 強過濾：只有「高檔 + 派發訊號足 + 資金流轉負」才算真派發（避免誤傷強勢股）
-    isTopping=(dn>=2&&distCmf!==null&&distCmf<0.05);
-    if(c1>0)distReasons.push('價漲量縮背離 '+c1+' 次');
-    if(c2>0)distReasons.push('高檔長上影 '+c2+' 次');
-    if(c3>0)distReasons.push('高量滯漲 '+c3+' 次');
-    if(c5>0)distReasons.push('衝頂無力 '+c5+' 次');
-  })();
   var ma5=va.slice(-5).reduce(function(s,d){return s+d.c;},0)/5;
   var ma5p=va.slice(-6,-1).reduce(function(s,d){return s+d.c;},0)/5;
   var av5=va.slice(-5).reduce(function(s,d){return s+d.v;},0)/5;
@@ -2007,7 +1961,63 @@ function detectAccum(va){
     }
   });
 
-  // ═══ 第一次成本（主力底部）：原邏輯，TR底+大單加權 ═══
+  // ═══ 🆕 v12：頭部派發偵測（底部吸籌的鏡像）— 在 bigSells 品質判斷後計算 ═══
+  // 只在「近期高檔區」偵測主力暗中出貨；結合 bar 掃描 + 真出貨大單 + 可疑高量
+  (function(){
+    var winN=Math.min(60,m);
+    var winSlice=va.slice(-winN);
+    var hi60=Math.max.apply(null,winSlice.map(function(x){return x.h;}));
+    var lo60=Math.min.apply(null,winSlice.map(function(x){return x.l;}));
+    if(hi60<=lo60)return;
+    var curC=va[m-1].c;
+    var inHighZone=curC>=lo60+(hi60-lo60)*0.5; // 現價在區間上半部（高檔）才偵測派發
+    var highZone=lo60+(hi60-lo60)*0.55;
+    var startI=Math.max(10,m-40);
+    var c1=0,c2=0,c3=0,c5=0;
+    for(var i=startI;i<m;i++){
+      var d=va[i];
+      if(d.c<highZone)continue;
+      var s=0;
+      if(i>=3&&d.c>va[i-3].c&&ob[i]<ob[i-3]){s++;c1++;}                                  // 價漲但OBV背離
+      var body=Math.abs(d.c-d.o),uw=d.h-Math.max(d.c,d.o),rng=d.h-d.l;
+      if(rng>0&&uw>body*0.8&&(d.h-d.c)/rng>0.4){s++;c2++;}                                 // 高檔長上影
+      if(d.v/avg60>1.2&&Math.abs(d.c-d.o)/d.o*100<2){s++;c3++;}                            // 高量滯漲
+      if(i>=10){var p=va.slice(i-10,i),mx=Math.max.apply(null,p.map(function(x){return x.h;})),mn=Math.min.apply(null,p.map(function(x){return x.l;}));if(mn>0&&(mx-mn)/mn*100<25&&ob[i]<ob[i-10])s++;}
+      if(d.h>hi60*0.97&&i>=1&&ob[i]<=ob[i-1]){s++;c5++;}                                   // 衝頂無力
+      if(s>=2){dn++;distDates.push(new Date(d.t*1000).toISOString().slice(0,10));}
+    }
+    // 近20天窗口 CMF
+    var cs=Math.max(0,m-20),sumMFV=0,sumV=0;
+    for(var k=cs;k<m;k++){var dd=va[k],r2=dd.h-dd.l;if(r2<=0)continue;sumMFV+=(((dd.c-dd.l)-(dd.h-dd.c))/r2)*dd.v;sumV+=dd.v;}
+    distCmf=sumV>0?+(sumMFV/sumV).toFixed(3):null;
+    // 近30天「真出貨」大單（後續未反彈）＋「可疑高量」次數 — 這是最可靠的派發證據
+    var now30=Date.now()/1000-30*86400;
+    var now15=Date.now()/1000-15*86400;
+    var badSells=bigSells.filter(function(b){return b.quality==='bad'&&new Date(b.date).getTime()/1000>now30;}).length;
+    var badHighVol=bigNeutrals.filter(function(b){return b.quality==='bad';}).length;
+    // 近15天主力買盤支撐（關鍵：底部主力在買 vs 高檔主力在賣的分水嶺）
+    var recentBuys15=bigBuys.filter(function(b){return new Date(b.date).getTime()/1000>now15;}).length;
+    var recentBadSells15=bigSells.filter(function(b){return b.quality==='bad'&&new Date(b.date).getTime()/1000>now15;}).length;
+    // 主力淨派發：近期有真出貨「且」近15天無大單買盤支撐
+    var netDistribution=(recentBadSells15>=1||badSells>=2)&&recentBuys15===0;
+    // 🛡️ 硬性保護：近15天主力積極買入（2次以上）→ 是建倉/吸籌，絕不標派發
+    var hasStrongBuySupport=recentBuys15>=2;
+    // 派發分級 dm
+    var evidence=dn+badSells*2+badHighVol;
+    if(evidence>=6)dm=6;else if(evidence>=4)dm=5;else if(evidence>=2)dm=3;else if(evidence>=1)dm=2;
+    // 健康強勢股（價漲+MA5向上+資金流強+無真出貨）→ 永不標派發
+    var healthyStrong=(ma5>ma5p)&&distCmf!==null&&distCmf>0.15&&badSells===0;
+    // 真派發條件：高檔 + 非健康強勢 + 主力沒在積極買 + （bar訊號足且資金流弱 ＯＲ 主力淨派發）
+    isTopping=inHighZone&&!healthyStrong&&!hasStrongBuySupport&&((dn>=2&&distCmf!==null&&distCmf<0.1)||netDistribution);
+    if(netDistribution&&recentBuys15===0)distReasons.push('主力近15天無買盤、卻有真出貨');
+    if(badSells>0)distReasons.push('近30天 '+badSells+' 次主力真出貨（賣後未反彈）');
+    if(badHighVol>0)distReasons.push('高量震盪資金流轉負 '+badHighVol+' 次');
+    if(c1>0)distReasons.push('價漲量縮背離 '+c1+' 次');
+    if(c2>0)distReasons.push('高檔長上影 '+c2+' 次');
+    if(c3>0)distReasons.push('高量滯漲 '+c3+' 次');
+    if(c5>0)distReasons.push('衝頂無力 '+c5+' 次');
+  })();
+
   var scP=tr.sc.l;
   var scD=tr.sc.date;
   var scMethod='tr';
