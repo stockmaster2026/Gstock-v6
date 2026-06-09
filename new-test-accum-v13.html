@@ -2025,8 +2025,32 @@ function detectAccum(va){
   var fromLow=low1y>0?+((cur-low1y)/low1y*100).toFixed(0):0;
   var ma200=va.length>=200?va.slice(-200).reduce(function(s,d){return s+d.c;},0)/200:va.reduce(function(s,d){return s+d.c;},0)/va.length;
   var ext200=ma200>0?+((cur-ma200)/ma200*100).toFixed(0):0;
+
+  // ===== 段落分析：用「回檔深度」切段，認出「現在是第幾段上漲」=====
+  // 不靠200MA（翻倍股的200MA落後會誤判），改用12%回檔當段落分界。已驗證：GLW切2段、健康股不誤切
+  var seg=(function(){
+    var pullPct=12;
+    var segs=[],gLow=0;
+    for(var k=0;k<va.length;k++) if(va[k].l<va[gLow].l) gLow=k;
+    var sStart=gLow,pIdx=gLow,pHigh=va[gLow].h;
+    for(var i=sStart+1;i<va.length;i++){
+      if(va[i].h>pHigh){pHigh=va[i].h;pIdx=i;}
+      if((pHigh-va[i].l)/pHigh*100>=pullPct){
+        segs.push({startIdx:sStart,startLow:va[sStart].l,peakHigh:pHigh});
+        var lIdx=i;
+        for(var j=i;j<Math.min(i+20,va.length);j++) if(va[j].l<va[lIdx].l) lIdx=j;
+        sStart=lIdx;pIdx=lIdx;pHigh=va[lIdx].h;i=lIdx;
+      }
+    }
+    segs.push({startIdx:sStart,startLow:va[sStart].l,peakHigh:pHigh});
+    var c=va[va.length-1].c,cs=segs[segs.length-1];
+    return {count:segs.length,curLow:+cs.startLow.toFixed(2),firstLow:+segs[0].startLow.toFixed(2),
+      isLate:segs.length>=2,fromCurLow:cs.startLow>0?+((c-cs.startLow)/cs.startLow*100).toFixed(0):0};
+  })();
+
+  // 綜合判定位置等級：段數 ≥2（末升段）或漲幅/乖離過大 → 高位
   var posLevel='mid';
-  if(fromLow>=80||ext200>=40) posLevel='high';
+  if(seg.isLate||fromLow>=80||ext200>=40) posLevel='high';
   else if(fromLow<=40) posLevel='low';
   var posBlocked=(posLevel==='high'); // 高位時否決「起漲」標籤
 
@@ -2064,7 +2088,7 @@ function detectAccum(va){
       };
     }
   }
-  return{fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
+  return{seg:seg,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
     cur:cur.toFixed(2),scP:scP.toFixed(2),scD:scD,scMethod:scMethod,
     trTop:tr.trTop.toFixed(2),trEnded:tr.trEnded,dA:dA,pA:pA,bP:bP.toFixed(2),breakoutVolRatio:breakoutVolRatio,breakoutDate:breakoutDate,
     dn:dn,distDates:distDates,dm:dm,distCmf:distCmf,isTopping:isTopping,distReasons:distReasons,
@@ -2354,7 +2378,11 @@ async function runAccum(){
     }
     h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a '+(a.trEnded?'ca-green':'ca-yellow')+'">'+(a.trEnded?'✅ 突破後第'+a.dA+'天 +'+a.pA+'%':'🔄 底部震盪中')+'</span></div>';
     if(a.posBlocked){
-      h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">高位末升段 · 非起漲區</span></div>';
+      var segTxt=a.seg&&a.seg.isLate?('第'+a.seg.count+'段上漲（末升段）'):'高位末升段';
+      h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">'+segTxt+' · 非起漲區</span></div>';
+      if(a.seg&&a.seg.isLate){
+        h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">真起漲在 $'+a.seg.firstLow+' 附近；現價是 $'+a.seg.curLow+' 起這段的延伸（本段已漲 +'+a.seg.fromCurLow+'%）</span><span class="core-a ca-gray"></span></div>';
+      }
       h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">（距1年低 +'+a.fromLow+'% · 乖離200MA +'+a.ext200+'%）</span><span class="core-a ca-gray" style="font-size:12px;">原訊號價 $'+a.trTop+'</span></div>';
     } else if(a.posLevel==='mid'){
       h+='<div class="core-row"><span class="core-q">🔵 起漲關鍵價（主升段）</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
