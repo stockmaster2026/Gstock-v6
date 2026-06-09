@@ -1828,38 +1828,49 @@ function findTR(va){
 // ═══════════════════════════════════════════════
 function findRealPivots(va, opt){
   opt=opt||{};
-  var volMin=opt.volMin||2.5, tightMax=opt.tightMax||20, dedupDays=opt.dedupDays||15, lateMult=opt.lateMult||2;
+  var volMin=opt.volMin||1.5, tightMax=opt.tightMax||20, dedupDays=opt.dedupDays||15;
+  var lateMult=opt.lateMult||2, lookbackDays=opt.lookbackDays||126, holdDays=opt.holdDays||10, holdMin=opt.holdMin||0.7;
   var m=va.length, raw=[];
-  for(var i=60;i<m;i++){
+  var startI=Math.max(60, m-lookbackDays); // 只看近6個月(126交易日)，前面留60天給「曾收縮」判斷
+  for(var i=startI;i<m;i++){
     var pw=va.slice(i-20,i);
     var prevHighClose=Math.max.apply(null,pw.map(function(d){return d.c;}));
     var av=pw.reduce(function(s,d){return s+d.v;},0)/20;
     var vr=av>0?va[i].v/av:0;
-    // ①收盤破20日高 ②量≥2.5x(大量才算真突破)
+    // ①收盤破20日高 ②量≥1.5x
     if(!(va[i].c>prevHighClose && vr>=volMin)) continue;
-    // ③突破前60天內曾出現過收縮(某20日窗振幅≤20%) — 用「曾收縮」而非「剛好在收縮」，
-    //   因高波動成長股(如RKLB)醞釀期長、突破前振幅常又放大，但醞釀中確實收縮過
+    // ③突破前60天內曾出現過收縮(某20日窗振幅≤20%)
     var everTight=false;
     for(var j=i-60;j<=i-5;j++){
       var w=va.slice(j-20,j); if(w.length<20)continue;
       var h=Math.max.apply(null,w.map(function(x){return x.h;})),l=Math.min.apply(null,w.map(function(x){return x.l;}));
       if(h>0&&(h-l)/h*100<=tightMax){everTight=true;break;}
     }
-    if(everTight){
-      raw.push({idx:i, date:new Date(va[i].t*1000).toISOString().slice(0,10),
-        price:+va[i].c.toFixed(2), pivotLevel:+prevHighClose.toFixed(2), vol:+vr.toFixed(1)});
-    }
+    if(!everTight) continue;
+    // ④突破後「站穩確認」：後holdDays天收盤守在突破點之上的比例
+    //   ≥holdMin=有效(站穩)；<holdMin=無效(沒守住，假突破如RKLB 3/17)；不足holdDays天=太新待確認
+    var held=0,tot=0;
+    for(var k=i+1;k<=Math.min(i+holdDays,m-1);k++){tot++;if(va[k].c>=prevHighClose)held++;}
+    var holdRatio=tot>0?held/tot:0;
+    var confirm = (tot<holdDays)?'pending':(holdRatio>=holdMin?'confirmed':'failed');
+    raw.push({idx:i, date:new Date(va[i].t*1000).toISOString().slice(0,10),
+      price:+va[i].c.toFixed(2), pivotLevel:+prevHighClose.toFixed(2), vol:+vr.toFixed(1),
+      confirm:confirm, holdPct:Math.round(holdRatio*100), daysAfter:tot});
   }
   var clean=[];
   raw.forEach(function(p){ if(clean.length===0||p.idx-clean[clean.length-1].idx>=dedupDays) clean.push(p); });
-  // ④分級：第一次真突破=起漲；≤2倍=主升；>2倍=末段(經2倍門檻在GLW/RKLB真實數據驗證)
-  if(clean.length){
-    var first=clean[0].pivotLevel;
+  // ⑤分級：以「第一個有效(confirmed)突破」當起漲基準；該點=起漲，其餘≤2倍=主升、>2倍=末段
+  var baseConfirmed=clean.filter(function(p){return p.confirm==='confirmed';});
+  if(baseConfirmed.length){
+    var launchPivot=baseConfirmed[0];
+    var first=launchPivot.pivotLevel;
     clean.forEach(function(p){
       var mult=first>0?p.pivotLevel/first:1;
       p.mult=+mult.toFixed(2);
-      p.stage = (p===clean[0])?'launch' : (mult<=lateMult?'main':'late');
+      p.stage = (p===launchPivot)?'launch' : (mult<=lateMult?'main':'late');
     });
+  } else {
+    clean.forEach(function(p){p.mult=1;p.stage='launch';});
   }
   return clean;
 }
@@ -2112,9 +2123,11 @@ function detectAccum(va){
 
   // ===== 真突破偵測（用真實數據驗證的正確邏輯）=====
   var realPivots=findRealPivots(va);
-  var lastRP=realPivots.length?realPivots[realPivots.length-1]:null;
+  // 主要顯示「最近一個 有效或待確認 的突破」(忽略已確認失敗的)；若全失敗則顯示最後一個
+  var validRPs=realPivots.filter(function(p){return p.confirm!=='failed';});
+  var lastRP=validRPs.length?validRPs[validRPs.length-1]:(realPivots.length?realPivots[realPivots.length-1]:null);
   var rpDaysSince=lastRP?(m-1-lastRP.idx):null;
-  var rpBuyZone=lastRP && rpDaysSince<=10 && cur>=lastRP.pivotLevel; // 突破≤10天且現價仍在突破點上 = 買進區
+  var rpBuyZone=lastRP && lastRP.confirm!=='failed' && rpDaysSince<=15 && cur>=lastRP.pivotLevel; // 突破≤15天·守在突破點上·未失敗 = 買進區
 
   // ===== base 有效性判斷（務實版，最有把握、不誤殺）=====
   // 取代「切段數」的不穩做法。原則：系統只把「明確能買」和「需人工確認」分開，
@@ -2494,21 +2507,37 @@ async function runAccum(){
     if(a.trEnded&&a.breakoutDate){
       h+='<div class="core-row"><span class="core-q">📅 突破日 / 突破價 <span style="font-size:10px;color:#bbb;">(舊演算法)</span></span><span class="core-a ca-gray">'+a.breakoutDate+' · $'+a.bP+'</span></div>';
     }
-    // 🆕 真突破點（新演算法，真實數據驗證）— 收斂後爆量突破整理區上緣 + 分級
-    if(a.lastRP){
-      var stg=a.lastRP.stage;
-      var stgTxt = stg==='launch'?'起漲段':stg==='main'?'主升段':'末段';
-      var stgColor = stg==='launch'?'#2ea86e':stg==='main'?'#c8952a':'#d94f4f';
-      var multTxt = a.lastRP.mult?'（第一次的'+a.lastRP.mult+'倍）':'';
-      if(a.rpBuyZone){
-        h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:'+stgColor+';font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'（'+a.rpDaysSince+'天前·量'+a.lastRP.vol+'x）</span></div>';
-        h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:'+stgColor+';font-weight:700;">'+(stg==='launch'?'✅ 起漲段突破 · 仍在買進區（最佳）':stg==='main'?'🟡 主升段突破 · 仍在買進區'+multTxt:'⚠️ 末段突破 · 位置偏末端、空間有限'+multTxt)+'</span><span class="core-a ca-gray"></span></div>';
-      } else {
-        h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:'+stgColor+';font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'（'+stgTxt+multTxt+'）</span></div>';
-        h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">距最近真突破已 '+a.rpDaysSince+' 天 → 現價 $'+a.cur+' 是其後延伸，非新買點'+(stg==='late'?'；且此突破已在末段，空間有限':'')+'</span><span class="core-a ca-gray"></span></div>';
+    // 🆕 真突破點（新演算法）— 近6個月完整突破清單 + 站穩確認 + 分級
+    if(a.realPivots && a.realPivots.length){
+      // 主狀態行：最近一個有效/待確認突破
+      if(a.lastRP){
+        var stg=a.lastRP.stage;
+        var stgTxt = stg==='launch'?'起漲段':stg==='main'?'主升段':'末段';
+        var stgColor = stg==='launch'?'#2ea86e':stg==='main'?'#c8952a':'#d94f4f';
+        var multTxt = (a.lastRP.mult&&a.lastRP.mult!==1)?'·'+a.lastRP.mult+'倍':'';
+        if(a.rpBuyZone){
+          var cf=a.lastRP.confirm;
+          var cfTxt = cf==='pending'?'剛突破·觀察中（站穩'+a.lastRP.holdPct+'%，未滿10天待確認）':'已站穩（守在突破點上'+a.lastRP.holdPct+'%）';
+          h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:'+stgColor+';font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'（'+a.rpDaysSince+'天前·量'+a.lastRP.vol+'x）</span></div>';
+          h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:'+stgColor+';font-weight:700;">'+(stg==='launch'?'✅ 起漲段':stg==='main'?'🟡 主升段'+multTxt:'⚠️ 末段'+multTxt+'·空間有限')+' · '+cfTxt+'</span><span class="core-a ca-gray"></span></div>';
+        } else {
+          h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:'+stgColor+';font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'（'+stgTxt+multTxt+'）</span></div>';
+          h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">距最近有效突破已 '+a.rpDaysSince+' 天 → 現價 $'+a.cur+' 是其後延伸，非新買點'+(stg==='late'?'；已在末段，空間有限':'')+'</span><span class="core-a ca-gray"></span></div>';
+        }
+      }
+      // 完整清單（近6個月所有突破，含失敗的，讓使用者肉眼對照）
+      if(a.realPivots.length>1){
+        var listHtml=a.realPivots.map(function(p){
+          var cfIcon = p.confirm==='confirmed'?'✅':p.confirm==='pending'?'🟡':'❌';
+          var cfWord = p.confirm==='confirmed'?'站穩':p.confirm==='pending'?'觀察中':'沒守住';
+          var sTxt = p.stage==='launch'?'起漲':p.stage==='main'?'主升':'末段';
+          var col = p.confirm==='failed'?'#bbb':(p.stage==='launch'?'#2ea86e':p.stage==='main'?'#c8952a':'#d94f4f');
+          return '<div style="font-size:11px;color:'+col+';padding:2px 0;">'+cfIcon+' '+p.date+' 突破$'+p.pivotLevel+' 量'+p.vol+'x · '+sTxt+' · '+cfWord+'（守'+p.holdPct+'%）</div>';
+        }).join('');
+        h+='<div class="core-row" style="display:block;"><div style="font-size:11px;color:#888;margin-bottom:4px;">📋 近6個月突破清單（站穩=有效買點，沒守住=假突破）</div>'+listHtml+'</div>';
       }
     } else {
-      h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a ca-gray">近期無符合條件的真突破（量≥2.5x+曾收斂後突破）</span></div>';
+      h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a ca-gray">近6個月無符合條件的真突破</span></div>';
     }
     h+='</div>';
     
