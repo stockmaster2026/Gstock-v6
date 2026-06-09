@@ -750,6 +750,18 @@ async function runSellAlert(mode){
 async function runPivotScan(type){
   var el=document.getElementById('pivotScanOut');
   el.style.display='block';
+  // ===== 暫時上鎖：突破偵測邏輯修正中 =====
+  // 原本的「即將突破/剛突破」會把『多頭發散途中的假突破點』當買點推薦（曾導致買在錯誤位置）。
+  // 在 base 有效性檢查驗證可靠前，先停用此功能，避免主動推薦錯誤買點。
+  el.innerHTML='<div class="card"><div style="padding:18px 16px;">'
+    +'<div style="font-size:14px;font-weight:700;color:#d94f4f;margin-bottom:8px;">🔧 此功能維修中，暫停使用</div>'
+    +'<div style="font-size:13px;color:#5a4010;line-height:1.8;">原本的突破偵測會把「均線多頭發散途中」的位置誤判為突破買點，造成追高後失敗。</div>'
+    +'<div style="font-size:13px;color:#5a4010;line-height:1.8;margin-top:6px;">新的 base 有效性判斷正在個股分析頁測試中，確認可靠後會重新開放此掃描。</div>'
+    +'<div style="font-size:12px;color:#3a7bd5;line-height:1.8;margin-top:8px;">👉 目前請改用「個股分析」逐檔查看，並用週線圖肉眼對照位置判定。</div>'
+    +'<button class="btn-sm" style="margin-top:10px;" onclick="document.getElementById(\'pivotScanOut\').style.display=\'none\'">收起</button>'
+    +'</div></div>';
+  return;
+  /* ===== 以下原邏輯暫時停用 =====
   var isApproach=(type==='approach');
   var title=isApproach?'🔜 即將突破（接近起漲關鍵價）':'🚀 剛突破（仍在買進區）';
   var titleColor=isApproach?'#3a7bd5':'#2ea86e';
@@ -823,6 +835,7 @@ async function runPivotScan(type){
   if(failed.length) h+='<div style="padding:10px 16px;background:#fff5f5;border-top:1px solid #f5eed8;font-size:11px;color:#d94f4f;">⚠️ '+failed.length+' 檔讀取失敗（限流）：'+failed.join('、')+'</div>';
   h+='</div>';
   el.innerHTML=h;
+  ===== 原邏輯停用結束 ===== */
 }
 
 // ══════════════════════════════════════════════════
@@ -2026,43 +2039,44 @@ function detectAccum(va){
   var ma200=va.length>=200?va.slice(-200).reduce(function(s,d){return s+d.c;},0)/200:va.reduce(function(s,d){return s+d.c;},0)/va.length;
   var ext200=ma200>0?+((cur-ma200)/ma200*100).toFixed(0):0;
 
-  // ===== 段落分析：用「收盤價回檔深度」切段，認出「現在是第幾段上漲」=====
-  // 不靠200MA（翻倍股的200MA落後會誤判）。抗雜訊設計：用收盤價(過濾日內插針)
-  // + 段內須漲≥25%才算一段(濾掉底部盤整假波動) + 回檔≥12%才算段落結束
-  // 已驗證(含雜訊資料)：GLW切2段、健康低位股不誤切
-  var seg=(function(){
-    var pullPct=12, minRise=25;
-    var closes=va.map(function(d){return d.c;});
-    var n=closes.length;
-    var segs=[],gLow=0;
-    for(var k=0;k<n;k++) if(closes[k]<closes[gLow]) gLow=k;
-    var sStart=gLow,pHigh=closes[gLow],pIdx=gLow;
-    for(var i=sStart+1;i<n;i++){
-      if(closes[i]>pHigh){pHigh=closes[i];pIdx=i;}
-      var drop=pHigh>0?(pHigh-closes[i])/pHigh*100:0;
-      var rise=closes[sStart]>0?(pHigh-closes[sStart])/closes[sStart]*100:0;
-      if(rise>=minRise && drop>=pullPct){
-        segs.push({startIdx:sStart,startLow:closes[sStart],peakHigh:pHigh});
-        var lIdx=i;
-        for(var j=i;j<Math.min(i+20,n);j++) if(closes[j]<closes[lIdx]) lIdx=j;
-        sStart=lIdx;pHigh=closes[lIdx];pIdx=lIdx;i=lIdx;
-      }
+  // ===== base 有效性判斷（務實版，最有把握、不誤殺）=====
+  // 取代「切段數」的不穩做法。原則：系統只把「明確能買」和「需人工確認」分開，
+  // 不假裝能分辨高位的真假突破（那是連專家都要靠經驗的事，交給使用者肉眼）。
+  //   valid : 低位 + 突破點前均線糾結(MA5/10/20收斂) → 明確有效買點
+  //   review: 高位 或 不夠糾結 → 需人工確認（開週線看，可能是健康二次base，也可能是末升段假突破）
+  //   none  : 尚未突破
+  // 已驗證：真低位突破=valid；GLW末升段=review(不再誤標有效)；健康二次base=review(不誤殺)
+  var baseJudge=(function(){
+    if(!tr.trEnded) return {grade:'none'};
+    var n=va.length;
+    var bIdx=Math.min(tr.trEnd+1,n-1); // 突破點
+    // 1) 糾結度：突破點前 MA5/10/20 的離散度（只用短中均線，避免慢均線污染趨勢股）
+    var ce=Math.max(0,bIdx-3),cs=Math.max(0,ce-22);
+    function maAt(idx,days){var s=Math.max(0,idx-days+1);var sl=va.slice(s,idx+1);return sl.reduce(function(a,d){return a+d.c;},0)/sl.length;}
+    var disp=[];
+    for(var i=cs;i<=ce;i++){
+      var mm=[maAt(i,5),maAt(i,10),maAt(i,20)];
+      var mean=(mm[0]+mm[1]+mm[2])/3;
+      var sd=Math.sqrt(((mm[0]-mean)*(mm[0]-mean)+(mm[1]-mean)*(mm[1]-mean)+(mm[2]-mean)*(mm[2]-mean))/3);
+      disp.push(mean>0?sd/mean*100:0);
     }
-    var lastRise=closes[sStart]>0?(pHigh-closes[sStart])/closes[sStart]*100:0;
-    if(lastRise>=minRise || segs.length===0) segs.push({startIdx:sStart,startLow:closes[sStart],peakHigh:pHigh});
-    var c=closes[n-1],cs=segs[segs.length-1];
-    // 保護：段數異常多(>5)代表雜訊過大或非典型走勢，標 noisy，不報具體段數避免誤導
-    var noisy=segs.length>5;
-    return {count:segs.length,curLow:+cs.startLow.toFixed(2),firstLow:+segs[0].startLow.toFixed(2),
-      isLate:segs.length>=2,noisy:noisy,
-      fromCurLow:cs.startLow>0?+((c-cs.startLow)/cs.startLow*100).toFixed(0):0};
+    var conv=disp.length?+(disp.reduce(function(a,b){return a+b;},0)/disp.length).toFixed(2):999;
+    var tight=conv<=3;
+    // 2) 位置：突破點離半年低點的漲幅（≤50% 才算低位 base）
+    var lb=Math.max(0,bIdx-126);
+    var minLow=Math.min.apply(null,va.slice(lb,bIdx+1).map(function(d){return d.l;}));
+    var basePrice=va[Math.max(0,bIdx-10)].c;
+    var rise=minLow>0?+((basePrice-minLow)/minLow*100).toFixed(0):0;
+    var lowPos=rise<=50;
+    var grade=(tight&&lowPos)?'valid':'review';
+    return {grade:grade,conv:conv,tight:tight,rise:rise,lowPos:lowPos};
   })();
 
-  // 綜合判定位置等級：段數 ≥2（末升段）或漲幅/乖離過大 → 高位
+  // 綜合位置等級（保留給其他顯示用）：base=review 或 漲幅/乖離大 → 高位
   var posLevel='mid';
-  if(seg.isLate||fromLow>=80||ext200>=40) posLevel='high';
+  if(baseJudge.grade==='review'||fromLow>=80||ext200>=40) posLevel='high';
   else if(fromLow<=40) posLevel='low';
-  var posBlocked=(posLevel==='high'); // 高位時否決「起漲」標籤
+  var posBlocked=(baseJudge.grade==='review'); // 非明確有效買點 → 否決「起漲」標籤
 
   var scP=tr.sc.l;
   var scD=tr.sc.date;
@@ -2098,7 +2112,7 @@ function detectAccum(va){
       };
     }
   }
-  return{seg:seg,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
+  return{baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
     cur:cur.toFixed(2),scP:scP.toFixed(2),scD:scD,scMethod:scMethod,
     trTop:tr.trTop.toFixed(2),trEnded:tr.trEnded,dA:dA,pA:pA,bP:bP.toFixed(2),breakoutVolRatio:breakoutVolRatio,breakoutDate:breakoutDate,
     dn:dn,distDates:distDates,dm:dm,distCmf:distCmf,isTopping:isTopping,distReasons:distReasons,
@@ -2387,19 +2401,14 @@ async function runAccum(){
       h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-gray">近30天無大單，無波段成本</span></div>';
     }
     h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a '+(a.trEnded?'ca-green':'ca-yellow')+'">'+(a.trEnded?'✅ 突破後第'+a.dA+'天 +'+a.pA+'%':'🔄 底部震盪中')+'</span></div>';
-    if(a.posBlocked){
-      var segTxt;
-      if(a.seg&&a.seg.noisy) segTxt='高位（走勢震盪較大）';
-      else if(a.seg&&a.seg.isLate) segTxt='第'+a.seg.count+'段上漲（末升段）';
-      else segTxt='高位末升段';
-      h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">'+segTxt+' · 非起漲區</span></div>';
-      if(a.seg&&a.seg.isLate&&!a.seg.noisy){
-        h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">真起漲在 $'+a.seg.firstLow+' 附近；現價是 $'+a.seg.curLow+' 起這段的延伸（本段已漲 +'+a.seg.fromCurLow+'%）</span><span class="core-a ca-gray"></span></div>';
-      }
+    var bj=a.baseJudge||{grade:'none'};
+    if(bj.grade==='review'){
+      h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">需人工確認 · 非明確買點</span></div>';
+      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">突破點位置偏高（離半年低 +'+bj.rise+'%）'+(bj.tight?'，雖有收斂':'，且整理不夠緊')+' → 可能是健康二次base，也可能是末升段假突破，請開週線肉眼確認</span><span class="core-a ca-gray"></span></div>';
       h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">（距1年低 +'+a.fromLow+'% · 乖離200MA +'+a.ext200+'%）</span><span class="core-a ca-gray" style="font-size:12px;">原訊號價 $'+a.trTop+'</span></div>';
-    } else if(a.posLevel==='mid'){
-      h+='<div class="core-row"><span class="core-q">🔵 起漲關鍵價（主升段）</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
-      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">主升段中段，持有續抱為主，非新進場（距1年低 +'+a.fromLow+'%）</span><span class="core-a ca-gray"></span></div>';
+    } else if(bj.grade==='valid'){
+      h+='<div class="core-row"><span class="core-q">🚀 起漲關鍵價</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
+      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#2ea86e;">✅ 低位糾結突破（離半年低 +'+bj.rise+'%、均線收斂），符合明確買點型態</span><span class="core-a ca-gray"></span></div>';
     } else {
       h+='<div class="core-row"><span class="core-q">🚀 起漲關鍵價</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
     }
