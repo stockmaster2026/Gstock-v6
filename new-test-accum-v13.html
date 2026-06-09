@@ -2491,12 +2491,13 @@ async function runAccum(){
     } else {
       h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-gray">近30天無大單，無波段成本</span></div>';
     }
-    h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a '+(a.trEnded?'ca-green':'ca-yellow')+'">'+(a.trEnded?'✅ 突破後第'+a.dA+'天 +'+a.pA+'%':'🔄 底部震盪中')+'</span></div>';
-    var bj=a.baseJudge||{grade:'none'};
-    if(bj.grade==='review'){
-      h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">需人工確認 · 非明確買點</span></div>';
-      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">突破點位置偏高（離半年低 +'+bj.rise+'%）'+(bj.tight?'，雖有收斂':'，且整理不夠緊')+' → 可能是健康二次base，也可能是末升段假突破，請開週線肉眼確認</span><span class="core-a ca-gray"></span></div>';
-      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">（距1年低 +'+a.fromLow+'% · 乖離200MA +'+a.ext200+'%）</span><span class="core-a ca-gray"></span></div>';
+    // 📍 目前階段：用新的真突破(lastRP)來算「突破後第幾天/漲幅」，與下方真突破清單一致
+    if(a.lastRP){
+      var rpDays=a.rpDaysSince;
+      var rpGain=a.lastRP.pivotLevel>0?+(((+a.cur)-a.lastRP.pivotLevel)/a.lastRP.pivotLevel*100).toFixed(0):0;
+      h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a ca-green">✅ 真突破後第'+rpDays+'天 '+(rpGain>=0?'+':'')+rpGain+'%</span></div>';
+    } else {
+      h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a ca-yellow">🔄 近6個月無真突破（底部震盪或不符型態）</span></div>';
     }
     // 🆕 真突破點（新演算法）— 近6個月完整突破清單 + 站穩確認 + 分級
     if(a.realPivots && a.realPivots.length){
@@ -2532,17 +2533,18 @@ async function runAccum(){
     }
     h+='</div>';
     
-    // 🆕 v2 新增：突破後動能判讀
-    var bp=getBreakoutPhase(a.dA,a.pA,a.ma5up,a.macd);
+    // 🆕 突破後動能判讀（改用新的真突破天數/漲幅，與真突破點一致）
+    var rpGainForPhase = a.lastRP ? (a.lastRP.pivotLevel>0?+(((+a.cur)-a.lastRP.pivotLevel)/a.lastRP.pivotLevel*100).toFixed(0):0) : 0;
+    var bp=a.lastRP ? getBreakoutPhase(a.rpDaysSince,rpGainForPhase,a.ma5up,a.macd) : null;
     if(bp){
       h+='<div style="padding:14px 16px;background:'+bp.bg+';border-top:1px solid #f0e8d0;border-bottom:1px solid #f0e8d0;">';
       h+='<div style="font-size:11px;color:'+bp.color+';font-weight:700;letter-spacing:1px;margin-bottom:6px;">📈 突破後動能判讀</div>';
       h+='<div style="font-size:14px;color:'+bp.color+';font-weight:700;margin-bottom:4px;">'+bp.phase+'</div>';
       h+='<div style="font-size:12px;color:#5a4010;line-height:1.6;margin-bottom:4px;">'+bp.desc+'</div>';
       h+='<div style="font-size:12px;color:#3a7bd5;font-weight:600;line-height:1.6;">💡 '+bp.advice+'</div>';
-      // 🆕 v6 新增：突破當天量能檢查（Minervini 標準：≥1.5x 才算真突破）
-      if(a.breakoutVolRatio!==null&&a.breakoutVolRatio!==undefined){
-        var bvr=a.breakoutVolRatio;
+      // 突破當天量能（用新真突破的量比）
+      if(a.lastRP && a.lastRP.vol!==null&&a.lastRP.vol!==undefined){
+        var bvr=a.lastRP.vol;
         var bvColor,bvTxt;
         if(bvr>=2){bvColor='#2ea86e';bvTxt='✅ 突破日爆量 '+bvr+'x（≥2x，強力真突破）';}
         else if(bvr>=1.5){bvColor='#2ea86e';bvTxt='✅ 突破日放量 '+bvr+'x（≥1.5x，量能合格）';}
@@ -2585,7 +2587,6 @@ async function runAccum(){
       var rpStg=a.lastRP.stage==='launch'?'起漲段':a.lastRP.stage==='main'?'主升段':'末段';
       h+='<div class="rw"><span class="lb">最近真突破</span><span class="vl">'+a.lastRP.date+' $'+a.lastRP.pivotLevel+' <span style="color:#ccc;font-size:11px;">'+rpStg+'</span></span></div>';
     }
-    h+='<div class="rw"><span class="lb">TR狀態</span><span class="vl">'+(a.trEnded?'突破後第'+a.dA+'天 +'+a.pA+'%':'底部震盪中')+'</span></div>';
     h+='<div class="rw"><span class="lb">MA5</span><span class="bg '+(a.ma5up?'gu':'gd')+'">'+(a.ma5up?'↑ 向上':'↓ 下彎')+'</span></div>';
     h+='<div class="rw"><span class="lb">MACD動能</span><span class="bg '+(macdOk?'gu':a.macd.histShrink?'gw':'gd')+'">'+(a.macd.aboveZero?(a.macd.histShrink?'零軸上柱縮':'強勢'):'零軸下走弱')+'</span></div>';
     h+='<div class="rw"><span class="lb">量能</span><span class="bg '+(a.volShrink?'gw':'gu')+'">'+(a.volShrink?'量縮（主力觀望）':'量能正常')+'</span></div>';
