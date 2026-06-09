@@ -750,20 +750,8 @@ async function runSellAlert(mode){
 async function runPivotScan(type){
   var el=document.getElementById('pivotScanOut');
   el.style.display='block';
-  // ===== 暫時上鎖：突破偵測邏輯修正中 =====
-  // 原本的「即將突破/剛突破」會把『多頭發散途中的假突破點』當買點推薦（曾導致買在錯誤位置）。
-  // 在 base 有效性檢查驗證可靠前，先停用此功能，避免主動推薦錯誤買點。
-  el.innerHTML='<div class="card"><div style="padding:18px 16px;">'
-    +'<div style="font-size:14px;font-weight:700;color:#d94f4f;margin-bottom:8px;">🔧 此功能維修中，暫停使用</div>'
-    +'<div style="font-size:13px;color:#5a4010;line-height:1.8;">原本的突破偵測會把「均線多頭發散途中」的位置誤判為突破買點，造成追高後失敗。</div>'
-    +'<div style="font-size:13px;color:#5a4010;line-height:1.8;margin-top:6px;">新的 base 有效性判斷正在個股分析頁測試中，確認可靠後會重新開放此掃描。</div>'
-    +'<div style="font-size:12px;color:#3a7bd5;line-height:1.8;margin-top:8px;">👉 目前請改用「個股分析」逐檔查看，並用週線圖肉眼對照位置判定。</div>'
-    +'<button class="btn-sm" style="margin-top:10px;" onclick="document.getElementById(\'pivotScanOut\').style.display=\'none\'">收起</button>'
-    +'</div></div>';
-  return;
-  /* ===== 以下原邏輯暫時停用 =====
   var isApproach=(type==='approach');
-  var title=isApproach?'🔜 即將突破（接近起漲關鍵價）':'🚀 剛突破（仍在買進區）';
+  var title=isApproach?'🔜 即將突破（接近整理區上緣）':'🚀 剛突破（仍在買進區）';
   var titleColor=isApproach?'#3a7bd5':'#2ea86e';
   el.innerHTML='<div class="loading"><span class="spin"></span>掃描 '+title+'，請稍候（約3分鐘）...</div>';
   var allSyms=[];
@@ -781,17 +769,29 @@ async function runPivotScan(type){
     if(va){
       try{
         var a=detectAccum(va);
-        var cur=+a.cur, pivot=+a.trTop;
+        var cur=+a.cur;
         if(isApproach){
-          // 還沒突破、現價在起漲關鍵價下方、距離 ≤15%
-          if(!a.trEnded && cur>0 && cur<pivot){
-            var distPct=+((pivot-cur)/cur*100).toFixed(1);
-            if(distPct<=15) results.push({sym:item.sym,sector:item.sector,cur:cur,pivot:pivot,distPct:distPct});
+          // 即將突破：用新邏輯——現價接近「近20日最高收盤」(整理區上緣)、還沒突破、且這20日曾收縮過
+          var m=va.length;
+          var pw=va.slice(m-20,m);
+          var prevHigh=Math.max.apply(null,pw.map(function(d){return d.c;}));
+          // 曾收縮(近60天內某20日窗振幅≤20%)
+          var everTight=false;
+          for(var j=m-60;j<=m-5;j++){var w=va.slice(j-20,j);if(w.length<20)continue;var hi=Math.max.apply(null,w.map(function(x){return x.h;})),lo=Math.min.apply(null,w.map(function(x){return x.l;}));if(hi>0&&(hi-lo)/hi*100<=20){everTight=true;break;}}
+          if(everTight && cur>0 && cur<prevHigh){
+            var distPct=+((prevHigh-cur)/cur*100).toFixed(1);
+            if(distPct<=8) results.push({sym:item.sym,sector:item.sector,cur:cur,pivot:prevHigh,distPct:distPct});
           }
         } else {
-          // 已突破、突破後 ≤10 天且漲幅 0~15%（仍在買進區）
-          if(a.trEnded && a.dA>=0 && a.dA<=10 && a.pA>=0 && a.pA<=15){
-            results.push({sym:item.sym,sector:item.sector,cur:cur,pivot:pivot,dA:a.dA,pA:a.pA,bvr:a.breakoutVolRatio});
+          // 剛突破：用新邏輯——近6個月最後一個真突破，未失敗、突破≤15天、現價仍在突破點上
+          var rp=a.realPivots||[];
+          var validRP=rp.filter(function(p){return p.confirm!=='failed';});
+          var last=validRP.length?validRP[validRP.length-1]:null;
+          if(last){
+            var dA=va.length-1-last.idx;
+            if(dA>=0 && dA<=15 && cur>=last.pivotLevel){
+              results.push({sym:item.sym,sector:item.sector,cur:cur,pivot:last.pivotLevel,dA:dA,vol:last.vol,stage:last.stage,confirm:last.confirm,holdPct:last.holdPct});
+            }
           }
         }
       }catch(e){ failed.push(item.sym); }
@@ -800,9 +800,8 @@ async function runPivotScan(type){
     }
     await new Promise(function(r){setTimeout(r,700);});
   }
-  // 排序：即將突破→距離由近到遠；剛突破→天數由新到舊、再漲幅由小到大
   if(isApproach) results.sort(function(a,b){return a.distPct-b.distPct;});
-  else results.sort(function(a,b){return a.dA-b.dA||a.pA-b.pA;});
+  else results.sort(function(a,b){return a.dA-b.dA;});
   results=results.slice(0,20);
   if(!results.length){
     var emptyH='<div class="card"><div style="padding:16px;text-align:center;color:#aaa;font-size:13px;">'+title+'：目前池子裡無符合的股票</div>';
@@ -821,21 +820,21 @@ async function runPivotScan(type){
     h+='<div><span style="font-family:monospace;font-weight:700;font-size:15px;color:#1a1a2e;">'+r.sym+'</span>';
     h+='<span style="font-size:11px;color:#888;margin-left:5px;">'+r.sector+'</span></div></div>';
     if(isApproach){
-      var dc=r.distPct<=3?'#d94f4f':r.distPct<=7?'#d97020':'#8a6e2f';
+      var dc=r.distPct<=3?'#d94f4f':r.distPct<=5?'#d97020':'#8a6e2f';
       h+='<div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:'+dc+';">還差 '+r.distPct+'%</div>';
-      h+='<div style="font-size:11px;color:#999;">現價$'+r.cur.toFixed(2)+' → 關鍵價$'+r.pivot.toFixed(2)+'</div></div>';
+      h+='<div style="font-size:11px;color:#999;">現價$'+r.cur.toFixed(2)+' → 整理上緣$'+r.pivot.toFixed(2)+'</div></div>';
     } else {
-      var bvrTxt='';
-      if(r.bvr!==null&&r.bvr!==undefined) bvrTxt=r.bvr>=1.5?' · 量'+r.bvr+'x✅':' · 量'+r.bvr+'x⚠️';
-      h+='<div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#2ea86e;">突破'+r.dA+'天 +'+r.pA+'%</div>';
-      h+='<div style="font-size:11px;color:#999;">關鍵價$'+r.pivot.toFixed(2)+bvrTxt+'</div></div>';
+      var stageTxt=r.stage==='launch'?'起漲段':r.stage==='main'?'主升段':'末段';
+      var stageCol=r.stage==='launch'?'#2ea86e':r.stage==='main'?'#c8952a':'#d94f4f';
+      var cfTxt=r.confirm==='pending'?'觀察中('+r.holdPct+'%)':'已站穩('+r.holdPct+'%)';
+      h+='<div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:'+stageCol+';">突破'+r.dA+'天 · '+stageTxt+'</div>';
+      h+='<div style="font-size:11px;color:#999;">$'+r.pivot.toFixed(2)+' · 量'+r.vol+'x · '+cfTxt+'</div></div>';
     }
     h+='</div>';
   });
   if(failed.length) h+='<div style="padding:10px 16px;background:#fff5f5;border-top:1px solid #f5eed8;font-size:11px;color:#d94f4f;">⚠️ '+failed.length+' 檔讀取失敗（限流）：'+failed.join('、')+'</div>';
   h+='</div>';
   el.innerHTML=h;
-  ===== 原邏輯停用結束 ===== */
 }
 
 // ══════════════════════════════════════════════════
@@ -2497,15 +2496,7 @@ async function runAccum(){
     if(bj.grade==='review'){
       h+='<div class="core-row"><span class="core-q">⚠️ 位置判定</span><span class="core-a" style="color:#d94f4f;font-weight:700;">需人工確認 · 非明確買點</span></div>';
       h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">突破點位置偏高（離半年低 +'+bj.rise+'%）'+(bj.tight?'，雖有收斂':'，且整理不夠緊')+' → 可能是健康二次base，也可能是末升段假突破，請開週線肉眼確認</span><span class="core-a ca-gray"></span></div>';
-      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">（距1年低 +'+a.fromLow+'% · 乖離200MA +'+a.ext200+'%）</span><span class="core-a ca-gray" style="font-size:12px;">原訊號價 $'+a.trTop+'</span></div>';
-    } else if(bj.grade==='valid'){
-      h+='<div class="core-row"><span class="core-q">🚀 起漲關鍵價</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
-      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#2ea86e;">✅ 低位糾結突破（離半年低 +'+bj.rise+'%、均線收斂），符合明確買點型態</span><span class="core-a ca-gray"></span></div>';
-    } else {
-      h+='<div class="core-row"><span class="core-q">🚀 起漲關鍵價</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
-    }
-    if(a.trEnded&&a.breakoutDate){
-      h+='<div class="core-row"><span class="core-q">📅 突破日 / 突破價 <span style="font-size:10px;color:#bbb;">(舊演算法)</span></span><span class="core-a ca-gray">'+a.breakoutDate+' · $'+a.bP+'</span></div>';
+      h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">（距1年低 +'+a.fromLow+'% · 乖離200MA +'+a.ext200+'%）</span><span class="core-a ca-gray"></span></div>';
     }
     // 🆕 真突破點（新演算法）— 近6個月完整突破清單 + 站穩確認 + 分級
     if(a.realPivots && a.realPivots.length){
@@ -2590,7 +2581,10 @@ async function runAccum(){
     h+='<div class="fold-body" id="fb-tech">';
     h+='<div class="rw"><span class="lb">第一次成本（主力底部）</span><span class="vl">$'+a.scP+' <span style="color:#ccc;font-size:11px;">'+a.scD+'</span></span></div>';
     if(a.wc2) h+='<div class="rw"><span class="lb">第二次成本（近30天波段）</span><span class="vl">$'+a.wc2.p+' <span style="color:#ccc;font-size:11px;">'+a.wc2.d+'</span></span></div>';
-    h+='<div class="rw"><span class="lb">起漲關鍵價</span><span class="vl">$'+a.trTop+'</span></div>';
+    if(a.lastRP){
+      var rpStg=a.lastRP.stage==='launch'?'起漲段':a.lastRP.stage==='main'?'主升段':'末段';
+      h+='<div class="rw"><span class="lb">最近真突破</span><span class="vl">'+a.lastRP.date+' $'+a.lastRP.pivotLevel+' <span style="color:#ccc;font-size:11px;">'+rpStg+'</span></span></div>';
+    }
     h+='<div class="rw"><span class="lb">TR狀態</span><span class="vl">'+(a.trEnded?'突破後第'+a.dA+'天 +'+a.pA+'%':'底部震盪中')+'</span></div>';
     h+='<div class="rw"><span class="lb">MA5</span><span class="bg '+(a.ma5up?'gu':'gd')+'">'+(a.ma5up?'↑ 向上':'↓ 下彎')+'</span></div>';
     h+='<div class="rw"><span class="lb">MACD動能</span><span class="bg '+(macdOk?'gu':a.macd.histShrink?'gw':'gd')+'">'+(a.macd.aboveZero?(a.macd.histShrink?'零軸上柱縮':'強勢'):'零軸下走弱')+'</span></div>';
