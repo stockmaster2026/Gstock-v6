@@ -1153,6 +1153,31 @@ function hideAccumOut(){
     }
   }
 }
+// ===== 導出K線數據（供反推/驗證演算法用）=====
+// 把當前分析股票的真實日K輸出成精簡CSV，顯示在可全選複製的文字框
+function exportKline(){
+  var va=window._lastVA, sym=window._lastSym||'STOCK';
+  if(!va||!va.length){ alert('請先分析一檔股票'); return; }
+  var lines=['date,open,high,low,close,volume'];
+  va.forEach(function(d){
+    var dt=new Date(d.t*1000).toISOString().slice(0,10);
+    lines.push(dt+','+(+d.o).toFixed(2)+','+(+d.h).toFixed(2)+','+(+d.l).toFixed(2)+','+(+d.c).toFixed(2)+','+d.v);
+  });
+  var csv=lines.join('\n');
+  var el=document.getElementById('accumOut');
+  var box=document.createElement('div');
+  box.className='card';
+  box.innerHTML='<div class="ch" style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:13px;font-weight:700;color:#3a7bd5;">📤 '+sym+' 日K數據（共'+va.length+'天）</span>'
+    +'<button class="btn-sm" onclick="this.closest(\'.card\').remove()">關閉</button></div>'
+    +'<div style="padding:12px 16px;">'
+    +'<div style="font-size:12px;color:#888;margin-bottom:8px;">👇 點框內 → 全選 → 複製，貼給 Claude</div>'
+    +'<textarea readonly onclick="this.select()" style="width:100%;height:200px;font-family:monospace;font-size:11px;border:1px solid #e0d5b8;border-radius:8px;padding:8px;background:#fffbec;color:#5a4010;-webkit-user-select:all;user-select:all;">'+csv+'</textarea>'
+    +'<button class="btn" style="margin-top:8px;width:100%;" onclick="(function(t){var ta=t.closest(\'div\').querySelector(\'textarea\');ta.select();try{document.execCommand(\'copy\');t.textContent=\'✅ 已複製\';}catch(e){t.textContent=\'請手動全選複製\';}})(this)">📋 一鍵複製</button>'
+    +'</div>';
+  el.insertBefore(box, el.firstChild);
+  box.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function quickAnalyzeAndHide(sym){
   hideScanPanel();
   quickAnalyze(sym);
@@ -2251,6 +2276,7 @@ async function runAccum(){
     if(yRaw.status!=='fulfilled')throw new Error('無法取得股價數據');
     var va=mkValid(yRaw.value);
     if(va.length<30)throw new Error('數據不足');
+    window._lastVA=va; window._lastSym=sym;  // 供「導出K線數據」用
     var a=detectAccum(va);
     var insData=(insRaw.status==='fulfilled'?insRaw.value:{})||{};
     var msprData=(msprRaw.status==='fulfilled'?msprRaw.value:{})||{};
@@ -2359,7 +2385,8 @@ async function runAccum(){
     var inWL=isInWatchlist(sym);
     var h='<div class="card">';
     h+='<div class="ch" style="display:flex;justify-content:space-between;align-items:center;"><div><span class="tk">'+sym+'</span><span class="px">$'+a.cur+'</span></div>';
-    h+='<button class="btn-sm" onclick="hideAccumOut()" style="font-size:12px;">✕ 收起</button></div>';
+    h+='<div style="display:flex;gap:6px;"><button class="btn-sm" onclick="exportKline()" style="font-size:12px;background:#e8f0fe;color:#3a7bd5;">📤 導出K線</button>';
+    h+='<button class="btn-sm" onclick="hideAccumOut()" style="font-size:12px;">✕ 收起</button></div></div>';
     h+='<div class="accum-hero">';
     h+='<div class="accum-score-row">';
     h+='<span class="accum-emoji">'+smStr+'</span>';
