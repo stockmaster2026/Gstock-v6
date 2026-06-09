@@ -1819,6 +1819,37 @@ function findTR(va){
 }
 
 // ═══════════════════════════════════════════════
+//   findRealPivots：真突破偵測（用真實GLW數據反推驗證）
+//   取代「找最高點」的錯誤思路。真突破 = 收斂整理後帶量突破整理區上緣
+//   三條件：①收盤破20日高(突破整理上緣) ②量≥2x(爆量) ③前20日振幅≤15%(收斂)
+//   再做同波段去重(距前一個<15天算同波段)
+//   已用真實GLW驗證：正確抓到 $56/$69/$110 三個真起漲，過濾掉 $208 假突破
+//   參數可調(volMin/rangeMax/dedupDays)，多檔校準後再定案，避免overfit
+// ═══════════════════════════════════════════════
+function findRealPivots(va, opt){
+  opt=opt||{};
+  var volMin=opt.volMin||2, rangeMax=opt.rangeMax||15, dedupDays=opt.dedupDays||15;
+  var m=va.length, raw=[];
+  for(var i=30;i<m;i++){
+    var pw=va.slice(i-20,i);
+    var prevHighClose=Math.max.apply(null,pw.map(function(d){return d.c;}));
+    var av=pw.reduce(function(s,d){return s+d.v;},0)/20;
+    var vr=av>0?va[i].v/av:0;
+    var hi=Math.max.apply(null,pw.map(function(d){return d.h;}));
+    var lo=Math.min.apply(null,pw.map(function(d){return d.l;}));
+    var rangePct=hi>0?(hi-lo)/hi*100:99;
+    if(va[i].c>prevHighClose && vr>=volMin && rangePct<=rangeMax){
+      raw.push({idx:i, date:new Date(va[i].t*1000).toISOString().slice(0,10),
+        price:+va[i].c.toFixed(2), pivotLevel:+prevHighClose.toFixed(2),
+        vol:+vr.toFixed(1), range:+rangePct.toFixed(0)});
+    }
+  }
+  var clean=[];
+  raw.forEach(function(p){ if(clean.length===0||p.idx-clean[clean.length-1].idx>=dedupDays) clean.push(p); });
+  return clean;
+}
+
+// ═══════════════════════════════════════════════
 //   detectAccum：v2 加入第二次成本（近30天波段成本）
 // ═══════════════════════════════════════════════
 function detectAccum(va){
@@ -2064,6 +2095,12 @@ function detectAccum(va){
   var ma200=va.length>=200?va.slice(-200).reduce(function(s,d){return s+d.c;},0)/200:va.reduce(function(s,d){return s+d.c;},0)/va.length;
   var ext200=ma200>0?+((cur-ma200)/ma200*100).toFixed(0):0;
 
+  // ===== 真突破偵測（用真實數據驗證的正確邏輯）=====
+  var realPivots=findRealPivots(va);
+  var lastRP=realPivots.length?realPivots[realPivots.length-1]:null;
+  var rpDaysSince=lastRP?(m-1-lastRP.idx):null;
+  var rpBuyZone=lastRP && rpDaysSince<=10 && cur>=lastRP.pivotLevel; // 突破≤10天且現價仍在突破點上 = 買進區
+
   // ===== base 有效性判斷（務實版，最有把握、不誤殺）=====
   // 取代「切段數」的不穩做法。原則：系統只把「明確能買」和「需人工確認」分開，
   // 不假裝能分辨高位的真假突破（那是連專家都要靠經驗的事，交給使用者肉眼）。
@@ -2137,7 +2174,7 @@ function detectAccum(va){
       };
     }
   }
-  return{baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
+  return{realPivots:realPivots,lastRP:lastRP,rpDaysSince:rpDaysSince,rpBuyZone:rpBuyZone,baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
     cur:cur.toFixed(2),scP:scP.toFixed(2),scD:scD,scMethod:scMethod,
     trTop:tr.trTop.toFixed(2),trEnded:tr.trEnded,dA:dA,pA:pA,bP:bP.toFixed(2),breakoutVolRatio:breakoutVolRatio,breakoutDate:breakoutDate,
     dn:dn,distDates:distDates,dm:dm,distCmf:distCmf,isTopping:isTopping,distReasons:distReasons,
@@ -2440,7 +2477,18 @@ async function runAccum(){
       h+='<div class="core-row"><span class="core-q">🚀 起漲關鍵價</span><span class="core-a ca-gray">$'+a.trTop+'</span></div>';
     }
     if(a.trEnded&&a.breakoutDate){
-      h+='<div class="core-row"><span class="core-q">📅 突破日 / 突破價</span><span class="core-a ca-gray">'+a.breakoutDate+' · $'+a.bP+'</span></div>';
+      h+='<div class="core-row"><span class="core-q">📅 突破日 / 突破價 <span style="font-size:10px;color:#bbb;">(舊演算法)</span></span><span class="core-a ca-gray">'+a.breakoutDate+' · $'+a.bP+'</span></div>';
+    }
+    // 🆕 真突破點（新演算法，真實數據驗證）— 收斂後爆量突破整理區上緣
+    if(a.lastRP){
+      if(a.rpBuyZone){
+        h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:#2ea86e;font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'（'+a.rpDaysSince+'天前·量'+a.lastRP.vol+'x）✅仍在買進區</span></div>';
+      } else {
+        h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a" style="color:#d94f4f;font-weight:700;">'+a.lastRP.date+' 突破$'+a.lastRP.pivotLevel+'</span></div>';
+        h+='<div class="core-row"><span class="core-q" style="font-size:11px;color:#999;">距最近真突破已 '+a.rpDaysSince+' 天 → 現價 $'+a.cur+' 是其後的延伸/末升段，非新買點（真突破要：收斂後爆量破整理上緣）</span><span class="core-a ca-gray"></span></div>';
+      }
+    } else {
+      h+='<div class="core-row"><span class="core-q">🎯 真突破點（新）</span><span class="core-a ca-gray">近期無符合條件的真突破（量≥2x+收斂後突破）</span></div>';
     }
     h+='</div>';
     
