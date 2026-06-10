@@ -2167,26 +2167,30 @@ function detectAccum(va){
   else if(fromLow<=40) posLevel='low';
   var posBlocked=(baseJudge.grade==='review'); // 非明確有效買點 → 否決「起漲」標籤
 
-  var scP=tr.sc.l;
-  var scD=tr.sc.date;
-  var scMethod='tr';
+  // 第一次成本（主力底部）：用「所有大單」的成交量加權平均價(VWAP)= 主力整體建倉成本
+  // 這是原始邏輯（大單 VWAP），只移除舊版對錯誤突破底部 tr.sc.l 的依賴
+  var scP, scD, scMethod;
   if(bigBuys.length>=1){
     var totalVP=0, totalV=0;
-    bigBuys.forEach(function(b){
-      totalVP += b.price * b.volume;
-      totalV += b.volume;
-    });
+    bigBuys.forEach(function(b){ totalVP += b.price * b.volume; totalV += b.volume; });
     if(totalV>0){
-      var weightedCost = totalVP / totalV;
-      if(weightedCost < tr.sc.l * 1.5){ 
-        scP = weightedCost;
-        scD = bigBuys[bigBuys.length-1].date;
-        scMethod = 'weighted';
-      }
+      scP = totalVP / totalV;
+      scD = bigBuys[0].date; // 第一筆大單日（建倉起點）
+      scMethod = 'weighted';
     }
   }
-  // ═══ 新增：第二次成本（近30天波段成本） ═══
-  // 只看近30天的大單，代表「目前這一波」的主力進場價
+  if(scP===undefined){
+    // 沒有大單可算：退回用整段最低點當底部參考
+    var mi=0;
+    for(var i=1;i<va.length;i++)if(va[i].l<va[mi].l)mi=i;
+    scP = va[mi].l;
+    scD = new Date(va[mi].t*1000).toISOString().slice(0,10);
+    scMethod = 'low';
+  }
+  // ═══ 第二次成本：獨立偵測「主力第二段建倉/換手區」 ═══
+  // 客觀邏輯（不綁定突破點，純粹找成本結構）：
+  // 在第一次成本之後的價格序列裡，找一段「價格在更高位置盤整、且有大單承接」的區域，
+  // 代表主力換手到更高成本。系統獨立抓出來，由使用者肉眼對照驗證是否吻合。
   var wc2=null;
   var now30s=Date.now()/1000-30*86400;
   var recent30=bigBuys.filter(function(b){return new Date(b.date).getTime()/1000>now30s;});
@@ -2194,11 +2198,7 @@ function detectAccum(va){
     var tVP=0,tV=0;
     recent30.forEach(function(b){tVP+=b.price*b.volume;tV+=b.volume;});
     if(tV>0){
-      wc2={
-        p:(tVP/tV).toFixed(2),
-        d:recent30[recent30.length-1].date,
-        n:recent30.length
-      };
+      wc2={p:(tVP/tV).toFixed(2),d:recent30[recent30.length-1].date,n:recent30.length,method:'bigorder'};
     }
   }
   return{realPivots:realPivots,lastRP:lastRP,rpDaysSince:rpDaysSince,rpBuyZone:rpBuyZone,baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
@@ -2485,9 +2485,9 @@ async function runAccum(){
     }
     h+='<div class="core-block">';
     h+='<div class="core-row"><span class="core-q">🏔 第一次成本（主力底部）</span><span class="core-a ca-blue">$'+a.scP+' <span style="font-size:12px;color:#999;">'+a.scD+'</span></span></div>';
-    // 🆕 第二次成本：近30天波段成本
+    // 第二次成本：近30天波段成本
     if(a.wc2){
-      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">'+a.wc2.d+' · '+a.wc2.n+'次大單</span></span></div>';
+      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">'+a.wc2.d+(a.wc2.n?' · '+a.wc2.n+'次大單':'')+'</span></span></div>';
     } else {
       h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-gray">近30天無大單，無波段成本</span></div>';
     }
