@@ -2167,20 +2167,16 @@ function detectAccum(va){
   else if(fromLow<=40) posLevel='low';
   var posBlocked=(baseJudge.grade==='review'); // 非明確有效買點 → 否決「起漲」標籤
 
-  // 第一次成本（主力底部）：用「所有大單」的成交量加權平均價(VWAP)= 主力整體建倉成本
-  // 這是原始邏輯（大單 VWAP），只移除舊版對錯誤突破底部 tr.sc.l 的依賴
+  // 第一次成本（主力底部）：直接用「真突破清單的第一個突破點價位」
+  // = 主力第一次帶量站上整理區的成本，與下方突破清單顯示的數字一致
   var scP, scD, scMethod;
-  if(bigBuys.length>=1){
-    var totalVP=0, totalV=0;
-    bigBuys.forEach(function(b){ totalVP += b.price * b.volume; totalV += b.volume; });
-    if(totalV>0){
-      scP = totalVP / totalV;
-      scD = bigBuys[0].date; // 第一筆大單日（建倉起點）
-      scMethod = 'weighted';
-    }
-  }
-  if(scP===undefined){
-    // 沒有大單可算：退回用整段最低點當底部參考
+  var firstRP = realPivots.length ? (realPivots.find(function(p){return p.stage==='launch';}) || realPivots[0]) : null;
+  if(firstRP){
+    scP = firstRP.pivotLevel;
+    scD = firstRP.date;
+    scMethod = 'pivot';
+  } else {
+    // 近6個月無真突破：退回用整段最低點當底部參考
     var mi=0;
     for(var i=1;i<va.length;i++)if(va[i].l<va[mi].l)mi=i;
     scP = va[mi].l;
