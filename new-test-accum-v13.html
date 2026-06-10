@@ -2183,18 +2183,18 @@ function detectAccum(va){
     scD = new Date(va[mi].t*1000).toISOString().slice(0,10);
     scMethod = 'low';
   }
-  // ═══ 第二次成本：獨立偵測「主力第二段建倉/換手區」 ═══
-  // 客觀邏輯（不綁定突破點，純粹找成本結構）：
-  // 在第一次成本之後的價格序列裡，找一段「價格在更高位置盤整、且有大單承接」的區域，
-  // 代表主力換手到更高成本。系統獨立抓出來，由使用者肉眼對照驗證是否吻合。
+  // ═══ 第二次成本：用「真突破清單的第二個突破點價位」═══
+  // 與第一次成本同邏輯：清單第一個=第一次成本(起漲建倉)、第二個=第二次成本(主升換手)
+  // 兩段成本一一對應清單的兩次突破，由使用者肉眼對照驗證
   var wc2=null;
-  var now30s=Date.now()/1000-30*86400;
-  var recent30=bigBuys.filter(function(b){return new Date(b.date).getTime()/1000>now30s;});
-  if(recent30.length>0){
-    var tVP=0,tV=0;
-    recent30.forEach(function(b){tVP+=b.price*b.volume;tV+=b.volume;});
-    if(tV>0){
-      wc2={p:(tVP/tV).toFixed(2),d:recent30[recent30.length-1].date,n:recent30.length,method:'bigorder'};
+  if(firstRP){
+    var secondRP=null;
+    for(var ri=0;ri<realPivots.length;ri++){
+      if(realPivots[ri].idx>firstRP.idx){ secondRP=realPivots[ri]; break; }
+    }
+    if(secondRP){
+      var stg2=secondRP.stage==='main'?'主升':secondRP.stage==='late'?'末段':'起漲';
+      wc2={p:secondRP.pivotLevel.toFixed(2),d:secondRP.date,method:'pivot2',stage:stg2};
     }
   }
   return{realPivots:realPivots,lastRP:lastRP,rpDaysSince:rpDaysSince,rpBuyZone:rpBuyZone,baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
@@ -2480,12 +2480,12 @@ async function runAccum(){
       h+='</div>';
     }
     h+='<div class="core-block">';
-    h+='<div class="core-row"><span class="core-q">🏔 第一次成本（主力底部）</span><span class="core-a ca-blue">$'+a.scP+' <span style="font-size:12px;color:#999;">'+a.scD+'</span></span></div>';
-    // 第二次成本：近30天波段成本
+    h+='<div class="core-row"><span class="core-q">🏔 第一次成本（主力底部 · 起漲）</span><span class="core-a ca-blue">$'+a.scP+' <span style="font-size:12px;color:#999;">'+a.scD+'</span></span></div>';
+    // 第二次成本：對應清單第二個突破（主升換手）
     if(a.wc2){
-      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">'+a.wc2.d+(a.wc2.n?' · '+a.wc2.n+'次大單':'')+'</span></span></div>';
+      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（'+(a.wc2.stage||'主升')+'換手）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">'+a.wc2.d+'</span></span></div>';
     } else {
-      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（近30天波段）</span><span class="core-a ca-gray">近30天無大單，無波段成本</span></div>';
+      h+='<div class="core-row"><span class="core-q">🌊 第二次成本</span><span class="core-a ca-gray">尚無第二次突破（單段行情）</span></div>';
     }
     // 📍 目前階段：用新的真突破(lastRP)來算「突破後第幾天/漲幅」，與下方真突破清單一致
     if(a.lastRP){
@@ -2578,7 +2578,7 @@ async function runAccum(){
     h+='<div class="fold-hdr" id="fh-tech"><span class="fold-title">📈 技術詳情</span><span class="fold-arrow" id="fa-tech">▼</span></div>';
     h+='<div class="fold-body" id="fb-tech">';
     h+='<div class="rw"><span class="lb">第一次成本（主力底部）</span><span class="vl">$'+a.scP+' <span style="color:#ccc;font-size:11px;">'+a.scD+'</span></span></div>';
-    if(a.wc2) h+='<div class="rw"><span class="lb">第二次成本（近30天波段）</span><span class="vl">$'+a.wc2.p+' <span style="color:#ccc;font-size:11px;">'+a.wc2.d+'</span></span></div>';
+    if(a.wc2) h+='<div class="rw"><span class="lb">第二次成本（'+(a.wc2.stage||'主升')+'）</span><span class="vl">$'+a.wc2.p+' <span style="color:#ccc;font-size:11px;">'+a.wc2.d+'</span></span></div>';
     if(a.lastRP){
       var rpStg=a.lastRP.stage==='launch'?'起漲段':a.lastRP.stage==='main'?'主升段':'末段';
       h+='<div class="rw"><span class="lb">最近真突破</span><span class="vl">'+a.lastRP.date+' $'+a.lastRP.pivotLevel+' <span style="color:#ccc;font-size:11px;">'+rpStg+'</span></span></div>';
