@@ -1876,14 +1876,16 @@ function findRealPivots(va, opt){
   // —— 週線分級：把日線聚合成週線，量突破前8週振幅；振幅小=緊密整理(起漲級)，大=已在上漲中(加碼)
   var weekly=aggWeekly(va);
   clean.forEach(function(p){
-    // 成本：突破前20根均價；成本日期=該建倉區間的中間日（代表主力建倉時間，非突破日）
+    // 成本：突破前20根均價；成本「期間」=該建倉區間的起訖日（範圍，非單一天，符合主力漸進建倉本質）
     var cs=Math.max(0,p.idx-20), zone=va.slice(cs,p.idx);
     if(zone.length>=3){
       var sum=0; zone.forEach(function(d){ sum+=(d.h+d.l+d.c)/3; });
       p.cost=+(sum/zone.length).toFixed(2);
-      var midD=zone[Math.floor(zone.length/2)];
-      p.costDate=new Date(midD.t*1000).toISOString().slice(0,10);
-    } else { p.cost=p.pivotLevel; p.costDate=p.date; }
+      var sD=new Date(zone[0].t*1000).toISOString().slice(5,10); // 起日 MM-DD
+      var eD=new Date(zone[zone.length-1].t*1000).toISOString().slice(5,10); // 迄日 MM-DD
+      p.costRange=sD+'~'+eD;
+      p.costDate=new Date(zone[Math.floor(zone.length/2)].t*1000).toISOString().slice(0,10);
+    } else { p.cost=p.pivotLevel; p.costRange=''; p.costDate=p.date; }
     // 週線確認：突破前8週振幅
     var bt=va[p.idx].t, wi=-1;
     for(var wj=0;wj<weekly.length;wj++){ if(weekly[wj].t>=bt){wi=wj;break;} }
@@ -2214,7 +2216,7 @@ function detectAccum(va){
   var firstRP = realPivots.length ? (realPivots.find(function(p){return p.stage==='launch';}) || realPivots[0]) : null;
   if(firstRP){
     scP = (firstRP.cost!==undefined?firstRP.cost:firstRP.pivotLevel);
-    scD = (firstRP.costDate||firstRP.date);
+    scD = (firstRP.costRange||firstRP.costDate||firstRP.date);
     scMethod = 'pivot';
   } else {
     // 近6個月無真突破：退回用整段最低點當底部參考
@@ -2235,7 +2237,7 @@ function detectAccum(va){
     }
     if(secondRP){
       var stg2=secondRP.stage==='main'?'主升':secondRP.stage==='late'?'末段':'起漲';
-      wc2={p:(secondRP.cost!==undefined?secondRP.cost:secondRP.pivotLevel).toFixed(2),d:(secondRP.costDate||secondRP.date),method:'pivot2',stage:stg2};
+      wc2={p:(secondRP.cost!==undefined?secondRP.cost:secondRP.pivotLevel).toFixed(2),d:(secondRP.costRange||secondRP.costDate||secondRP.date),method:'pivot2',stage:stg2};
     }
   }
   return{realPivots:realPivots,lastRP:lastRP,rpDaysSince:rpDaysSince,rpBuyZone:rpBuyZone,baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
@@ -2521,10 +2523,10 @@ async function runAccum(){
       h+='</div>';
     }
     h+='<div class="core-block">';
-    h+='<div class="core-row"><span class="core-q">🏔 第一次成本（主力底部 · 起漲）</span><span class="core-a ca-blue">$'+a.scP+' <span style="font-size:12px;color:#999;">'+a.scD+'</span></span></div>';
+    h+='<div class="core-row"><span class="core-q">🏔 第一次成本（主力底部 · 起漲）</span><span class="core-a ca-blue">$'+a.scP+' <span style="font-size:12px;color:#999;">建倉 '+a.scD+'</span></span></div>';
     // 第二次成本：對應清單第二個突破（主升換手）
     if(a.wc2){
-      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（'+(a.wc2.stage||'主升')+'換手）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">'+a.wc2.d+'</span></span></div>';
+      h+='<div class="core-row"><span class="core-q">🌊 第二次成本（'+(a.wc2.stage||'主升')+'換手）</span><span class="core-a ca-blue">$'+a.wc2.p+' <span style="font-size:12px;color:#999;">建倉 '+a.wc2.d+'</span></span></div>';
     } else {
       h+='<div class="core-row"><span class="core-q">🌊 第二次成本</span><span class="core-a ca-gray">尚無第二次突破（單段行情）</span></div>';
     }
