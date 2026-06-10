@@ -1871,7 +1871,46 @@ function findRealPivots(va, opt){
   } else {
     clean.forEach(function(p){p.mult=1;p.stage='launch';});
   }
+  // ⑥ 每個突破加上：成本(突破前20根均價) + 週線確認分級(參考 Stage Analysis 雙時間框架)
+  // —— 成本：主力在突破前那段整理區建倉，取前20根典型價(H+L+C)/3 均值，比突破價更貼近真實成本
+  // —— 週線分級：把日線聚合成週線，量突破前8週振幅；振幅小=緊密整理(起漲級)，大=已在上漲中(加碼)
+  var weekly=aggWeekly(va);
+  clean.forEach(function(p){
+    // 成本：突破前20根均價
+    var cs=Math.max(0,p.idx-20), zone=va.slice(cs,p.idx);
+    if(zone.length>=3){
+      var sum=0; zone.forEach(function(d){ sum+=(d.h+d.l+d.c)/3; });
+      p.cost=+(sum/zone.length).toFixed(2);
+    } else { p.cost=p.pivotLevel; }
+    // 週線確認：突破前8週振幅
+    var bt=va[p.idx].t, wi=-1;
+    for(var wj=0;wj<weekly.length;wj++){ if(weekly[wj].t>=bt){wi=wj;break;} }
+    if(wi<0)wi=weekly.length-1;
+    var ws=Math.max(0,wi-8), wzone=weekly.slice(ws,wi);
+    if(wzone.length>=3){
+      var whi=Math.max.apply(null,wzone.map(function(x){return x.h;}));
+      var wlo=Math.min.apply(null,wzone.map(function(x){return x.l;}));
+      var rng=wlo>0?(whi-wlo)/wlo*100:999;
+      p.weeklyRange=+rng.toFixed(0);
+      p.weeklyGrade = rng<=35?'tight' : (rng<=60?'ok' : (rng<=100?'wide':'fake'));
+    } else { p.weeklyRange=null; p.weeklyGrade='na'; }
+  });
   return clean;
+}
+
+// 日線聚合成週線（每週一根：開=週首,高=週最高,低=週最低,收=週末收,量=週總量）
+function aggWeekly(va){
+  var weeks=[],cur=null,curKey=-1;
+  va.forEach(function(d){
+    var dt=new Date(d.t*1000);
+    var onejan=new Date(dt.getFullYear(),0,1);
+    var wk=Math.ceil((((dt-onejan)/86400000)+onejan.getDay()+1)/7);
+    var key=dt.getFullYear()*100+wk;
+    if(key!==curKey){ if(cur)weeks.push(cur); cur={t:d.t,o:d.o,h:d.h,l:d.l,c:d.c,v:d.v}; curKey=key; }
+    else { cur.h=Math.max(cur.h,d.h); cur.l=Math.min(cur.l,d.l); cur.c=d.c; cur.v+=d.v; }
+  });
+  if(cur)weeks.push(cur);
+  return weeks;
 }
 
 // ═══════════════════════════════════════════════
@@ -2172,7 +2211,7 @@ function detectAccum(va){
   var scP, scD, scMethod;
   var firstRP = realPivots.length ? (realPivots.find(function(p){return p.stage==='launch';}) || realPivots[0]) : null;
   if(firstRP){
-    scP = firstRP.pivotLevel;
+    scP = (firstRP.cost!==undefined?firstRP.cost:firstRP.pivotLevel);
     scD = firstRP.date;
     scMethod = 'pivot';
   } else {
@@ -2194,7 +2233,7 @@ function detectAccum(va){
     }
     if(secondRP){
       var stg2=secondRP.stage==='main'?'主升':secondRP.stage==='late'?'末段':'起漲';
-      wc2={p:secondRP.pivotLevel.toFixed(2),d:secondRP.date,method:'pivot2',stage:stg2};
+      wc2={p:(secondRP.cost!==undefined?secondRP.cost:secondRP.pivotLevel).toFixed(2),d:secondRP.date,method:'pivot2',stage:stg2};
     }
   }
   return{realPivots:realPivots,lastRP:lastRP,rpDaysSince:rpDaysSince,rpBuyZone:rpBuyZone,baseJudge:baseJudge,fromLow:fromLow,ext200:ext200,posLevel:posLevel,posBlocked:posBlocked,tr:tr,sm:sm,n:n,signalDates:signalDates,bigBuys:bigBuys,bigSells:bigSells,bigNeutrals:bigNeutrals,wc2:wc2,
@@ -2520,7 +2559,13 @@ async function runAccum(){
           var cfWord = p.confirm==='confirmed'?'站穩':p.confirm==='pending'?'觀察中':'沒守住';
           var sTxt = p.stage==='launch'?'起漲':p.stage==='main'?'主升':'末段';
           var col = p.confirm==='failed'?'#bbb':(p.stage==='launch'?'#2ea86e':p.stage==='main'?'#c8952a':'#d94f4f');
-          return '<div style="font-size:11px;color:'+col+';padding:2px 0;">'+cfIcon+' '+p.date+' 突破$'+p.pivotLevel+' 量'+p.vol+'x · '+sTxt+' · '+cfWord+'（守'+p.holdPct+'%）</div>';
+          // 週線確認分級（參考 Stage Analysis 雙時間框架）
+          var wkTag='';
+          if(p.weeklyGrade==='tight') wkTag=' · <span style="color:#2ea86e;">週線緊密✅</span>';
+          else if(p.weeklyGrade==='ok') wkTag=' · <span style="color:#c8952a;">週線中等🟡</span>';
+          else if(p.weeklyGrade==='wide') wkTag=' · <span style="color:#d97020;">週線偏寬⚠️</span>';
+          else if(p.weeklyGrade==='fake') wkTag=' · <span style="color:#d94f4f;">假base❌</span>';
+          return '<div style="font-size:11px;color:'+col+';padding:2px 0;">'+cfIcon+' '+p.date+' 突破$'+p.pivotLevel+'（成本$'+(p.cost!==undefined?p.cost:p.pivotLevel)+'）量'+p.vol+'x · '+sTxt+' · '+cfWord+'（守'+p.holdPct+'%）'+wkTag+'</div>';
         }).join('');
         h+='<div class="core-row" style="display:block;"><div style="font-size:11px;color:#888;margin-bottom:4px;">📋 近6個月突破清單（站穩=有效買點，沒守住=假突破）</div>'+listHtml+'</div>';
       }
