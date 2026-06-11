@@ -2561,7 +2561,7 @@ async function runAccum(){
       var reachTxt = a.pivotCount>1 ? '（已走到第'+a.pivotCount+'棒·'+a.stageReachedTxt+'）' : '';
       var stageCls = a.stageReachedTxt==='末段'?'ca-red':a.stageReachedTxt==='主升段'?'ca-yellow':'ca-green';
       var stageIcon = a.stageReachedTxt==='末段'?'⚠️':a.stageReachedTxt==='主升段'?'🟡':'✅';
-      h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a '+stageCls+'">'+stageIcon+' 第一次突破後 '+(a.launchGain>=0?'+':'')+a.launchGain+'% · 距今 '+a.launchDays+' 天'+reachTxt+'</span></div>';
+      h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a '+stageCls+'">'+stageIcon+' 第一次突破（'+(a.launchRP?a.launchRP.date:'')+'）後 '+(a.launchGain>=0?'+':'')+a.launchGain+'% · 距今 '+a.launchDays+' 天'+reachTxt+'</span></div>';
     } else {
       h+='<div class="core-row"><span class="core-q">📍 目前階段</span><span class="core-a ca-yellow">🔄 近6個月無真突破（底部震盪或不符型態）</span></div>';
     }
