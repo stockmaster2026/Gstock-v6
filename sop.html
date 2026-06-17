@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>每日 SOP 決策樹 · Gstock-v6</title>
+<style>
+/* ============================================================
+   配色 TOKENS — 不合原配色就改這一段就好
+   ============================================================ */
+:root{
+  --bg:#0d1117;
+  --surface:#161b22;
+  --surface-2:#1c2330;
+  --line:#2d3540;
+  --text:#e6edf3;
+  --muted:#8b97a6;
+  --dim:#5b6675;
+
+  --dawn:#f0b429;   /* 盤前 */
+  --active:#2f81f7; /* 盤中 */
+  --hold:#a371f7;   /* 持有 */
+  --night:#6e7bff;  /* 盤後 */
+
+  --firewall:#ff5c5c; /* 防火牆閘門 — 招牌色 */
+  --go:#3fb950;       /* 綠燈 */
+  --warn:#d29922;     /* 黃燈 */
+  --stop:#f04747;     /* 紅燈 */
+
+  --r:14px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.65;}
+body{padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 40px);max-width:680px;margin:0 auto;}
+
+/* ---------- HEADER ---------- */
+header{padding:26px 0 10px;}
+header h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:.5px;}
+header .sub{color:var(--muted);font-size:.85rem;}
+.creed{margin:14px 0 4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--dawn);border-radius:10px;font-size:.86rem;color:var(--text);}
+.creed b{color:var(--dawn);}
+
+/* ---------- 大盤紅綠燈 控制台 ---------- */
+.regime{margin:18px 0 4px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);}
+.regime .lbl{font-size:.8rem;color:var(--muted);margin-bottom:10px;}
+.lights{display:flex;gap:8px;}
+.light{flex:1;padding:11px 6px;text-align:center;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--muted);font-size:.82rem;font-weight:600;cursor:pointer;transition:.18s;}
+.light.on[data-v="go"]{background:rgba(63,185,80,.16);border-color:var(--go);color:var(--go);}
+.light.on[data-v="warn"]{background:rgba(210,153,34,.16);border-color:var(--warn);color:var(--warn);}
+.light.on[data-v="stop"]{background:rgba(240,71,71,.16);border-color:var(--stop);color:var(--stop);}
+.regime .verdict{margin-top:12px;font-size:.85rem;font-weight:600;}
+.regime .verdict.go{color:var(--go);}
+.regime .verdict.warn{color:var(--warn);}
+.regime .verdict.stop{color:var(--stop);}
+
+/* ---------- PHASE 區段 ---------- */
+.phase{margin-top:26px;}
+.phase-tag{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;
+  letter-spacing:1.5px;padding:5px 12px;border-radius:999px;margin-bottom:6px;}
+.phase[data-p="pre"]   .phase-tag{color:var(--dawn);  background:rgba(240,180,41,.12);}
+.phase[data-p="in"]    .phase-tag{color:var(--active);background:rgba(47,129,247,.12);}
+.phase[data-p="hold"]  .phase-tag{color:var(--hold);  background:rgba(163,113,247,.12);}
+.phase[data-p="post"]  .phase-tag{color:var(--night); background:rgba(110,123,255,.14);}
+
+/* 盤中區被紅燈鎖住時 */
+.phase.locked{position:relative;}
+.phase.locked .node, .phase.locked .firewall{filter:grayscale(1) brightness(.5);pointer-events:none;}
+.lockmsg{display:none;margin:8px 0 2px;padding:12px 14px;border-radius:10px;
+  background:rgba(240,71,71,.1);border:1px dashed var(--stop);color:var(--stop);font-size:.84rem;font-weight:600;}
+.phase.locked .lockmsg{display:block;}
+
+/* ---------- NODE 卡片 ---------- */
+.node{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  margin:10px 0;overflow:hidden;border-left-width:3px;}
+.phase[data-p="pre"]  .node{border-left-color:var(--dawn);}
+.phase[data-p="in"]   .node{border-left-color:var(--active);}
+.phase[data-p="hold"] .node{border-left-color:var(--hold);}
+.phase[data-p="post"] .node{border-left-color:var(--night);}
+
+.node-head{display:flex;align-items:center;gap:12px;padding:15px 16px;cursor:pointer;}
+.node-no{font-size:.72rem;font-weight:700;color:var(--bg);background:var(--muted);
+  min-width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.phase[data-p="pre"]  .node-no{background:var(--dawn);}
+.phase[data-p="in"]   .node-no{background:var(--active);}
+.phase[data-p="hold"] .node-no{background:var(--hold);}
+.phase[data-p="post"] .node-no{background:var(--night);}
+.node-title{flex:1;font-weight:600;font-size:.98rem;}
+.node-title small{display:block;color:var(--muted);font-weight:400;font-size:.76rem;margin-top:2px;}
+.chev{color:var(--dim);font-size:.8rem;transition:transform .2s;}
+.node.open .chev{transform:rotate(90deg);}
+
+.node-body{max-height:0;overflow:hidden;transition:max-height .28s ease;}
+.node.open .node-body{max-height:1400px;}
+.node-inner{padding:2px 16px 16px;}
+.node-inner p{margin:8px 0;font-size:.88rem;color:var(--text);}
+.node-inner .io{font-size:.8rem;color:var(--muted);margin:4px 0 10px;}
+.node-inner .io b{color:var(--text);}
+
+/* 因子 / 尺 列表 */
+.rule{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:.85rem;}
+.rule:first-child{border-top:none;}
+.rule .k{min-width:80px;font-weight:600;color:var(--text);}
+.rule .v{flex:1;color:var(--muted);}
+.rule .v b{color:var(--text);}
+.num{color:var(--dawn);font-weight:700;}
+
+/* 模組跳轉 hub 按鈕 */
+.hub{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:9px 14px;
+  border-radius:9px;background:var(--surface-2);border:1px solid var(--line);
+  color:var(--text);font-size:.82rem;font-weight:600;text-decoration:none;}
+.hub:active{background:var(--line);}
+.hub .arr{color:var(--active);}
+
+/* ---------- 防火牆閘門 — 招牌 ---------- */
+.firewall{position:relative;margin:6px 0 6px 0;padding:13px 15px 13px 46px;
+  background:linear-gradient(90deg,rgba(255,92,92,.14),rgba(255,92,92,.05));
+  border:1px solid rgba(255,92,92,.5);border-radius:11px;}
+.firewall::before{content:"🚨";position:absolute;left:14px;top:13px;font-size:1rem;}
+.firewall .ftitle{font-size:.82rem;font-weight:700;color:var(--firewall);margin-bottom:3px;letter-spacing:.3px;}
+.firewall .fbody{font-size:.82rem;color:var(--text);}
+.firewall .fbody b{color:var(--firewall);}
+
+/* 連接線 */
+.link{height:18px;width:2px;background:var(--line);margin:0 auto;}
+
+/* footer */
+footer{margin-top:34px;padding:18px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);font-size:.85rem;color:var(--muted);text-align:center;}
+footer b{color:var(--text);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>每日 SOP 決策樹</h1>
+  <div class="sub">Minervini SEPA × O'Neil CANSLIM · Gstock-v6</div>
+  <div class="creed">
+    我的紀律不靠意志力,靠<b>「把判斷外包給一套我信得過的多因子系統,並把『繞過系統』這件事變得很難」</b>。
+    每道 🚨 不是要我更自律,是把繞過系統的成本拉高。
+  </div>
+</header>
+
+<!-- 大盤紅綠燈控制台 -->
+<div class="regime">
+  <div class="lbl">開盤前先設定 — 大盤紅綠燈(它決定今天「盤中新倉」這格開不開)</div>
+  <div class="lights" id="lights">
+    <div class="light" data-v="go">綠燈 · 有 FTD</div>
+    <div class="light on" data-v="warn">黃燈 · 待確認</div>
+    <div class="light" data-v="stop">紅燈 · 無 FTD</div>
+  </div>
+  <div class="verdict warn" id="verdict">黃燈:不開新倉,試單上限;已持有部位照 Node 4 管理。</div>
+</div>
+
+<!-- ============ 盤前 ============ -->
+<section class="phase" data-p="pre">
+  <span class="phase-tag">🌅 盤前 PRE-MARKET</span>
+
+  <div class="node open">
+    <div class="node-head"><span class="node-no">0</span>
+      <span class="node-title">大盤紅綠燈<small>它決定今天剩下所有格子</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <div class="io"><b>輸入:</b>QQQ Stage 紅綠燈 → Distribution Day 數 → <b>有沒有 FTD</b> → 領先股體溫</div>
+      <div class="io"><b>輸出:</b>今天的 exposure ceiling(0% / 試單 / 半倉 / 滿倉)</div>
+      <div class="firewall">
+        <div class="ftitle">防火牆 A — 便宜毒就掛在這格</div>
+        <div class="fbody">大跌紅燈日,System 1 會偷塞一句「便宜了」。規則寫死:<b>無 FTD → 今天「新倉」= 0,且在盤前冷狀態就做完決定</b>。今天根本沒有「開新倉」這個選項。</div>
+      </div>
+      <a class="hub" href="radar.html">開啟 radar.html <span class="arr">→</span></a>
+    </div></div>
+  </div>
+
+  <div class="link"></div>
+
+  <div class="node">
+    <div class="node-head"><span class="node-no">1</span>
+      <span class="node-title">更新 watchlist<small>產出「明天唯一能碰的名單」</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <p>Trend Template → CANSLIM 漏斗 → 龍頭/二線/投機分級。</p>
+      <p style="margin-bottom:4px;color:var(--muted);font-size:.82rem;">這一格的「位置」兩把尺(冷狀態篩選用):</p>
+      <div class="rule"><span class="k">地板</span><span class="v">離 <b>52 週低</b> 要 <span class="num">≥ +30%</span> — 太近代表還在底部盤、Stage 2 沒成立,不夠格</span></div>
+      <div class="rule"><span class="k">天花板</span><span class="v">離 <b>52 週高</b> 跌幅 <span class="num">≤ 25%</span> — 越近高點越強,落隊太多剔除</span></div>
+      <div class="firewall">
+        <div class="ftitle">防火牆 B — 在不在前一晚清單裡?</div>
+        <div class="fbody">盤中臨時冒出、不在名單上的標的<b>一律不碰</b>。選股永遠在冷狀態(盤後)做完,絕不盤中熱狀態起意。</div>
+      </div>
+      <a class="hub" href="stocks.html">開啟 stocks.html <span class="arr">→</span></a>
+    </div></div>
+  </div>
+</section>
+
+<!-- ============ 盤中 ============ -->
+<section class="phase" data-p="in" id="phase-in">
+  <span class="phase-tag">📈 盤中 IN-SESSION</span>
+  <div class="lockmsg">🔒 大盤紅燈 · 無 FTD —— 今天沒有「開新倉」這個選項,此區已鎖。已持有部位請直接看下方「持有」區。</div>
+
+  <div class="node">
+    <div class="node-head"><span class="node-no">2</span>
+      <span class="node-title">四因子進場檢核<small>加總缺一不可</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <div class="rule"><span class="k">因子 1 結構</span><span class="v">均線糾結 → 突破 → 震盪 → <b>均線多排 (MA fanning)</b></span></div>
+      <div class="rule"><span class="k">因子 2 大單</span><span class="v">突破點前後是否<b>密集、連續包圍</b>(ROG = 大單在錯位置)</span></div>
+      <div class="rule"><span class="k">因子 3 R/R</span><span class="v">算得出期望值且 ≥ 門檻(熟股 <b>1:2</b> / 生股 <b>1:3</b>)</span></div>
+      <div class="rule"><span class="k">因子 4 位置</span><span class="v">
+        追高:離 pivot <span class="num">≤ +5%</span>(破 → 因子3 跟著破)<br>
+        末段:price 別站 50MA 上方 <span class="num">+20~25%</span> 以外(這是 Stage 3 陷阱)<br>
+        出身:<b>Stage 2 低位多排 = 金;Stage 3 高位多排 = 陷阱</b></span></div>
+      <div class="firewall">
+        <div class="ftitle">防火牆 C — 急不急?在追價嗎?</div>
+        <div class="fbody">心裡浮出「<b>來不及</b>」= 紅燈。「來不及」其實就是價格已離 pivot 超過 5% 的體感。大波段在「均線多排確認之後」,不在突破第一天,從容進場來得及。</div>
+      </div>
+      <div class="firewall">
+        <div class="ftitle">防火牆 D — 覆蓋系統否決要湊滿兩個獨立證據</div>
+        <div class="fbody">不准用單一強訊號(尤其<b>大單</b>)推翻系統的 NO。要翻盤:留紀錄 + 兩個獨立證據。這是我真正的破口,不是衝動本身。</div>
+      </div>
+      <a class="hub" href="decision.html">開啟 decision.html <span class="arr">→</span></a>
+    </div></div>
+  </div>
+
+  <div class="link"></div>
+
+  <div class="node">
+    <div class="node-head"><span class="node-no">3</span>
+      <span class="node-title">部位計算<small>停損是進場「前」就決定的數字</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <p>先定停損價 → <b>1% account risk</b> 反推股數 → A/B/C 級調整 → 檢查 <b>Total Heat ≤ 8%</b>。</p>
+      <p style="color:var(--muted);font-size:.82rem;">停損價在進場前就寫死,不是進場後再想。</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ============ 持有 ============ -->
+<section class="phase" data-p="hold">
+  <span class="phase-tag">📦 持有 HOLDING</span>
+
+  <div class="node">
+    <div class="node-head"><span class="node-no">4</span>
+      <span class="node-title">出場管理<small>已持有的 runner 直接住這格 · 每天對照一次</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <p><b>進攻:</b>分批 T1 +20% / T2 +30% / T3 +50%,runner 留長。</p>
+      <p><b>防守:</b>硬停損(關鍵均線/價收盤破)、軟停損、時間停損、大盤停損。</p>
+      <p><b>加碼:</b>8-week hold rule 給強勢股時間;金字塔只加在獲利部位,<b>且新買點一樣要再過一次四因子</b>。</p>
+      <div class="firewall">
+        <div class="ftitle">防火牆 E — 「賺回來 / 扳回來」= 紅燈</div>
+        <div class="fbody">報復性交易的引信;虧損後當天強制冷卻、不開新倉。我的引信常是「<b>砍錯的懊惱</b>」而不只是賠錢。<br>大賺的 runner 變形版:小心「<b>獲利回吐恐慌</b>」——把出場交給均線那條線,不交給盤中的心跳。</div>
+      </div>
+      <a class="hub" href="test-accum.html">開啟 test-accum.html <span class="arr">→</span></a>
+    </div></div>
+  </div>
+</section>
+
+<!-- ============ 盤後 ============ -->
+<section class="phase" data-p="post">
+  <span class="phase-tag">🌙 盤後 POST-MARKET</span>
+
+  <div class="node">
+    <div class="node-head"><span class="node-no">5</span>
+      <span class="node-title">盤後覆盤 → 回到 Node 1<small>用決定品質評分,不是賺賠</small></span><span class="chev">▶</span></div>
+    <div class="node-body"><div class="node-inner">
+      <p>Process ≠ Outcome 四象限。<b>最毒的格子要特別標記:壞流程 + 好結果</b>(不能被結果獎勵到)。</p>
+      <p>檢查今天有沒有「覆蓋系統否決」事件,有沒有留下兩個獨立證據的紀錄。</p>
+      <p style="color:var(--muted);font-size:.82rem;">更新明天 watchlist → 循環回 Node 1。</p>
+      <a class="hub" href="diary.html">開啟 diary.html <span class="arr">→</span></a>
+    </div></div>
+  </div>
+</section>
+
+<footer>
+  對 runner,這套 SOP 八成的作用是<b>擋掉我想多做的事</b>——擋加碼、擋恐慌砍、擋手癢。<br>
+  衝動偵測不到沒關係,機器在我冷的時候就已經把門關上了。
+</footer>
+
+<script>
+// 卡片展開/收合
+document.querySelectorAll('.node-head').forEach(h=>{
+  h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+});
+
+// 大盤紅綠燈 → 鎖盤中區
+const lights=document.querySelectorAll('#lights .light');
+const verdict=document.getElementById('verdict');
+const phaseIn=document.getElementById('phase-in');
+const V={
+  go:{cls:'go',txt:'綠燈:可走盤中四因子,exposure 依 progressive 模型放行。'},
+  warn:{cls:'warn',txt:'黃燈:不開新倉,試單上限;已持有部位照 Node 4 管理。'},
+  stop:{cls:'stop',txt:'紅燈:今日無新倉。只剩「持有」區的出場管理可動。'}
+};
+lights.forEach(l=>{
+  l.addEventListener('click',()=>{
+    lights.forEach(x=>x.classList.remove('on'));
+    l.classList.add('on');
+    const v=l.dataset.v;
+    verdict.className='verdict '+V[v].cls;
+    verdict.textContent=V[v].txt;
+    phaseIn.classList.toggle('locked', v==='stop');
+  });
+});
+</script>
+</body>
+</html>
