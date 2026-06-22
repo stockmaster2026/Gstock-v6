@@ -113,6 +113,9 @@ input.addsym:focus{border-color:#c8a84b;}
   <button class="btn-sm" onclick="document.getElementById('impFile').click()" style="flex:1;padding:9px;">📥 匯入備份</button>
   <input type="file" id="impFile" accept=".json" style="display:none;" onchange="importHist(this)">
 </div>
+<div class="io-row">
+  <button class="btn-sm" onclick="resetToDefaultBaskets()" style="flex:1;padding:9px;background:#fff0e0;color:#d97020;">↻ 重置成預設賽道籃（不動歷史）</button>
+</div>
 
 <div id="out" style="margin-top:14px;"></div>
 
@@ -549,18 +552,24 @@ var TOP_TIER=5;          // 前段班 = 前 5 名
 var WIN=10;              // 持續性視窗（天）
 var currentBasket=null;  // 目前選的籃名
 
-// 預設籃 = V14「個股深度分析」現有板塊（一字對齊，之後可自由增刪改名）
+// 預設籃 = 按「技術賽道/解決方案」分類（會一起輪動的同類股放一起，排名才有意義）
+// 之後都可自由增刪改名。重複出現在多籃的龍頭股（AVGO/MRVL/NVDA）是刻意的，各籃各自比。
 var DEFAULT_BASKETS={
-  '光通訊':     ['COHR','LITE','AAOI','VECO','GLW','LWLG','LASR','IPGP','POET','TSEM','GFS','FN','AVGO','CRDO','ALAB','MKSI','CIEN','NOK','AXTI','AMKR','AEHR'],
-  '半導體AI':   ['NVDA','SMCI','DELL','ANET','MRVL','MU','AMD','TSM','ASML','VSH','ICHR','MTSI'],
-  'AI巨頭':     ['NVDA','META','GOOGL','MSFT','AMZN'],
-  '太空衛星':   ['LUNR','RKLB','PL','BKSY','ASTS','IRDM','GSAT','VSAT'],
-  '無人機國防': ['ONDS','KTOS','PLTR','ACHR','RCAT','UMAC'],
-  '量子運算':   ['IONQ','RGTI','QBTS','QUBT'],
-  'AI電力散熱': ['VST','CEG','ETN','GNRC','VRT'],
-  '儲存硬體':   ['WDC','NTAP','PURE','STX','PSTG'],
-  '生技健康':   ['TEM','HIMS','RXRX','NVAX','CRSP'],
-  '貴金屬礦業': ['GLD','SLV','NEM','AEM','WPM']
+  '光模組':       ['COHR','LITE','AAOI','AXTI','POET','FN'],                          // 用光纖傳輸的光模組（AAOI這條）
+  'AI連接晶片':   ['CRDO','ALAB','MRVL','AVGO','MTSI','SITM'],                        // 銅互連AEC + PCIe/retimer（CRDO/ALAB這條）
+  '光元件上游':   ['GLW','LWLG','IPGP','LASR','TSEM','MKSI','AEHR'],                  // 供料/製造給光模組（TSEM矽光子代工在這）
+  '交換器網通':   ['ANET','CIEN','NOK','CSCO'],                                       // 系統層網通設備
+  'AI算力GPU':    ['NVDA','AMD','AVGO','SMCI','DELL'],
+  '記憶體':       ['MU','WDC','STX','SNDK','NTAP'],
+  '半導體設備代工':['ASML','TSM','GFS','AMKR','KLAC','LRCX','AMAT','ICHR','VSH'],
+  'AI巨頭':       ['NVDA','META','GOOGL','MSFT','AMZN'],
+  '衛星通信':     ['ASTS','IRDM','GSAT','VSAT'],
+  '太空發射影像': ['RKLB','LUNR','PL','BKSY'],
+  '無人機國防':   ['ONDS','KTOS','PLTR','ACHR','RCAT','UMAC'],
+  '量子運算':     ['IONQ','RGTI','QBTS','QUBT'],
+  'AI電力散熱':   ['VST','CEG','ETN','GNRC','VRT'],
+  '生技健康':     ['TEM','HIMS','RXRX','NVAX','CRSP'],
+  '貴金屬礦業':   ['GLD','SLV','NEM','AEM','WPM']
 };
 
 function todayKey(){ return new Date().toISOString().slice(0,10); }
@@ -571,6 +580,16 @@ function getBaskets(){
   return JSON.parse(JSON.stringify(DEFAULT_BASKETS));
 }
 function saveBaskets(o){ try{localStorage.setItem(BKEY,JSON.stringify(o));}catch(e){} }
+
+// 重置成預設賽道籃：只覆寫「籃子清單」，完全不動各籃的持續性歷史（histKey 不碰）
+function resetToDefaultBaskets(){
+  if(!confirm('把籃子重置成預設的賽道分類（光模組／AI連接晶片／光元件上游…共15籃）？\n\n你現有的籃子清單會被換掉，但每籃的持續性歷史記錄不會刪除（之後叫回同名籃就接回來）。建議先「📤 匯出歷史備份」。'))return;
+  saveBaskets(JSON.parse(JSON.stringify(DEFAULT_BASKETS)));
+  currentBasket=null;
+  renderTabs();
+  switchBasket(currentBasket);
+  alert('✅ 已重置成 15 個預設賽道籃。歷史記錄沒動，重新打卡即可接續累積。');
+}
 
 // ── 每籃各自的持續性歷史（key 帶籃名）──
 function histKey(name){ return 'accumrank_hist_'+name; }
