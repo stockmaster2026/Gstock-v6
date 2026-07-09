@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage 2 回測引擎 v1.0</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1b222b; --line:#232a33;
+    --txt:#c9d1d9; --muted:#7d8794; --dim:#4c5561;
+    --green:#3fb950; --amber:#d29922; --blue:#58a6ff; --red:#f85149;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,system-ui,"PingFang TC","Noto Sans TC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--txt); font-family:var(--sans);
+    font-size:15px; line-height:1.5; padding:16px 14px 60px; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-family:var(--mono); font-size:17px; letter-spacing:.02em; margin:0 0 2px; font-weight:600}
+  h1 .v{color:var(--green)}
+  .sub{color:var(--muted); font-size:12.5px; font-family:var(--mono); margin-bottom:16px}
+  .sub b{color:var(--amber); font-weight:600}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px}
+  .panel .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end}
+  .fld{display:flex; flex-direction:column; gap:4px}
+  .fld label{font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:.04em}
+  input,select{
+    background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+    font-family:var(--mono); font-size:14px; padding:8px 9px; border-radius:7px; width:100%;
+  }
+  input:focus,select:focus{outline:2px solid var(--blue); outline-offset:-1px; border-color:transparent}
+  input[type=number]{width:74px}
+  #tk{width:96px; text-transform:uppercase; font-weight:600; color:var(--green)}
+  button{
+    background:var(--green); color:#04160a; border:none; font-family:var(--mono); font-weight:700;
+    font-size:14px; padding:9px 18px; border-radius:7px; cursor:pointer; letter-spacing:.03em;
+  }
+  button:active{transform:translateY(1px)}
+  button:disabled{background:var(--dim); color:var(--muted); cursor:default}
+
+  details{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px}
+  summary{font-family:var(--mono); font-size:11.5px; color:var(--muted); cursor:pointer; letter-spacing:.03em}
+  summary::-webkit-details-marker{color:var(--dim)}
+  .params{margin-top:10px}
+
+  #status{font-family:var(--mono); font-size:12px; color:var(--muted); min-height:16px; margin:2px 2px 12px; white-space:pre-wrap}
+  #status .ok{color:var(--green)} #status .err{color:var(--red)} #status .warn{color:var(--amber)}
+
+  /* episode card */
+  .ep{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:10px; padding:13px 14px; margin-bottom:12px}
+  .ep .hd{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:12px}
+  .ep .tag{font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:20px; letter-spacing:.04em}
+  .tag.para{background:rgba(248,81,73,.14); color:var(--red)}
+  .tag.slow{background:rgba(63,185,80,.14); color:var(--green)}
+  .tag.grey{background:rgba(125,135,148,.16); color:var(--muted)}
+  .ep .epn{font-family:var(--mono); font-size:12px; color:var(--muted)}
+
+  /* signal track */
+  .track{display:flex; align-items:stretch; gap:0; margin:4px 0 2px; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .stop{flex:1 1 0; min-width:118px; position:relative; padding:0 4px}
+  .stop .dot{width:9px; height:9px; border-radius:50%; margin-bottom:7px; position:relative; z-index:2}
+  .stop::after{content:""; position:absolute; top:4px; left:calc(50% + 6px); right:-4px; height:1px; background:var(--line); z-index:1}
+  .stop:last-child::after{display:none}
+  .stop.g .dot{background:var(--green); box-shadow:0 0 0 3px rgba(63,185,80,.16)}
+  .stop.a .dot{background:var(--amber); box-shadow:0 0 0 3px rgba(210,153,34,.16)}
+  .stop.b .dot{background:var(--blue); box-shadow:0 0 0 3px rgba(88,166,255,.16)}
+  .stop.r .dot{background:var(--red); box-shadow:0 0 0 3px rgba(248,81,73,.16)}
+  .stop.off .dot{background:var(--dim)}
+  .stop .k{font-family:var(--mono); font-size:10px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase}
+  .stop .d{font-family:var(--mono); font-size:15px; font-weight:600; margin-top:2px}
+  .stop.g .d{color:var(--green)} .stop.a .d{color:var(--amber)} .stop.b .d{color:var(--blue)} .stop.r .d{color:var(--red)}
+  .stop .m{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:1px}
+  .stop.off .d,.stop.off .k{color:var(--dim)}
+
+  .note{font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:11px; padding-top:9px; border-top:1px dashed var(--line); line-height:1.55}
+  .note b{color:var(--txt); font-weight:600}
+
+  /* golden card */
+  .gold{background:linear-gradient(180deg,rgba(210,153,34,.06),transparent); border:1px solid var(--line); border-radius:10px; padding:13px 14px; margin-bottom:12px}
+  .gold .gh{font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:.03em; margin-bottom:9px}
+  .gold table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px}
+  .gold td{padding:3px 6px 3px 0; color:var(--muted); vertical-align:top}
+  .gold td.v{color:var(--txt); text-align:left}
+  .cmp{font-size:10px; color:var(--dim); margin-top:9px; font-family:var(--mono); letter-spacing:.03em}
+
+  .empty{font-family:var(--mono); font-size:12.5px; color:var(--muted); padding:8px 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>STAGE&nbsp;2 回測引擎 <span class="v">v1.0</span></h1>
+  <div class="sub">三把尺子:<b>發動日</b> · <b>+30% 扳機</b> · <b>破 20MA 出場</b> — Minervini / Weinstein</div>
+
+  <div class="panel">
+    <div class="lbl">回測輸入</div>
+    <div class="row">
+      <div class="fld"><label>TICKER</label><input id="tk" value="GLW" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>&nbsp;</label><button id="run">跑回測</button></div>
+    </div>
+
+    <details class="params">
+      <summary>參數(預設已按規格書釘死,可微調)</summary>
+      <div class="row" style="margin-top:12px">
+        <div class="fld"><label>發動日模式 (Q1)</label>
+          <select id="mode">
+            <option value="MA_STACK">MA 多頭排列 (預設)</option>
+            <option value="WK30">30 週線突破</option>
+          </select>
+        </div>
+        <div class="fld"><label>FOLLOW-THROUGH K</label><input type="number" id="k" value="3" min="1" max="10"></div>
+        <div class="fld"><label>+30% 目標 %</label><input type="number" id="tgt" value="30" min="5" max="100"></div>
+        <div class="fld"><label>破 20MA 連續根</label><input type="number" id="brk" value="3" min="1" max="6"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="fld"><label>崩殺日 跌幅 ≤ %</label><input type="number" id="crD" value="-8" max="0"></div>
+        <div class="fld"><label>崩殺日 量 ≥ ×均量</label><input type="number" id="crV" value="2" step="0.1" min="1"></div>
+        <div class="fld"><label>抛物線: +30% 需 ≤ D</label><input type="number" id="fast" value="8" min="1"></div>
+        <div class="fld"><label>慢磨: +30% 需 ≥ D</label><input type="number" id="slow" value="12" min="1"></div>
+      </div>
+    </details>
+  </div>
+
+  <div id="status"></div>
+  <div id="out"></div>
+</div>
+
+<script>
+/* ============================================================
+   資料層 — 可整塊替換
+   若你其他工具的 corsproxy 寫法不同,只改這裡 PROXY / buildUrl 即可。
+   ============================================================ */
+const PROXY = (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+async function fetchDaily(ticker){
+  const yahoo = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    + encodeURIComponent(ticker) + "?range=2y&interval=1d&includePrePost=false";
+  const res = await fetch(PROXY(yahoo));
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  const r = j.chart && j.chart.result && j.chart.result[0];
+  if(!r) throw new Error("Yahoo 無資料 (ticker 錯誤?)");
+  const ts = r.timestamp || [];
+  const q = r.indicators.quote[0];
+  const bars = [];
+  for(let i=0;i<ts.length;i++){
+    const c=q.close[i], o=q.open[i], h=q.high[i], l=q.low[i], v=q.volume[i];
+    if(c==null||o==null||h==null||l==null) continue;          // 濾掉 null bar
+    bars.push({t:ts[i], date:fmtDate(ts[i]), o,h,l,c, v:(v==null?0:v)});
+  }
+  return bars;
+}
+function fmtDate(ts){
+  const d=new Date(ts*1000);
+  const mm=String(d.getUTCMonth()+1).padStart(2,"0"), dd=String(d.getUTCDate()).padStart(2,"0");
+  return (d.getUTCFullYear()+"").slice(2)+"/"+mm+"/"+dd;
+}
+
+/* ============================================================
+   指標
+   ============================================================ */
+function sma(arr, key, n){
+  const out=new Array(arr.length).fill(null); let sum=0;
+  for(let i=0;i<arr.length;i++){
+    sum+=arr[i][key];
+    if(i>=n) sum-=arr[i-n][key];
+    if(i>=n-1) out[i]=sum/n;
+  }
+  return out;
+}
+// slope: 現值 vs slopeN 根前,>= 視為上揚(WK30 允許走平, MA50 亦然)
+function rising(ma, i, slopeN){
+  if(i<slopeN || ma[i]==null || ma[i-slopeN]==null) return false;
+  return ma[i] >= ma[i-slopeN];
+}
+
+/* ============================================================
+   三把尺子
+   ============================================================ */
+function runBacktest(bars, cfg){
+  const n=bars.length;
+  const ma5=sma(bars,"c",5), ma10=sma(bars,"c",10), ma20=sma(bars,"c",20),
+        ma50=sma(bars,"c",50), ma150=sma(bars,"c",150);           // 30 週線 ≈ 150 日
+  const vol50=sma(bars,"v",50);
+
+  // 尺子 1: 發動日候選判定
+  function stackTrue(i){
+    if(ma5[i]==null||ma10[i]==null||ma20[i]==null||ma50[i]==null) return false;
+    return ma5[i]>ma10[i] && ma10[i]>ma20[i] && ma20[i]>ma50[i] && rising(ma50,i,5);
+  }
+  function gateStage2(i){                       // 背景閘門: 站上走平/上揚的 30 週線 = 排除 Stage 1 打底假發動
+    if(ma150[i]==null) return false;
+    return bars[i].c>=ma150[i] && rising(ma150,i,5);
+  }
+  function isIgnite(i){
+    if(i<1) return false;
+    if(cfg.mode==="WK30"){                       // 30 週線突破: 昨在線下、今站上、且線上揚
+      if(ma150[i]==null||ma150[i-1]==null) return false;
+      return bars[i-1].c<ma150[i-1] && bars[i].c>=ma150[i] && rising(ma150,i,5);
+    }
+    // MA_STACK: stack 首日成立 (昨非) + 背景閘門
+    return stackTrue(i) && !stackTrue(i-1) && gateStage2(i);
+  }
+  // follow-through 驗證: 錨不前移, 只做真偽篩選
+  function followThrough(i){
+    const end=Math.min(n-1, i+cfg.k);
+    let higher=false, brokeRun=0;
+    for(let j=i+1;j<=end;j++){
+      if(bars[j].c>bars[i].c) higher=true;
+      const ok = (cfg.mode==="WK30") ? (ma150[j]!=null && bars[j].c>=ma150[j]) : stackTrue(j);
+      brokeRun = ok ? 0 : brokeRun+1;
+      if(brokeRun>=2) return false;              // 連 2 天崩掉 = 閃爍, 作廢
+    }
+    return higher;                               // 窗內要有更高收盤
+  }
+
+  // 尺子 3: 破 20MA (連續 brk 根收盤 < MA20) + 抛物線崩殺例外
+  function crashDay(i, igIdx){
+    if(vol50[i]==null||vol50[i]===0) return false;
+    const chg = (bars[i].c/bars[i-1].c-1)*100;
+    const ext = (bars[igIdx] ? (bars[i].c/bars[igIdx].c-1)*100 : 0);
+    return chg<=cfg.crD && bars[i].v>=cfg.crV*vol50[i] && ext>=15;  // 需已延伸 >=15% 才算噴出後崩殺
+  }
+  // 回傳 {type:'brk20'|'para'|'none', idx}
+  function findExit(igIdx){
+    let run=0, crashes=0;
+    for(let i=igIdx+1;i<n;i++){
+      // 抛物線崩殺: 第 2 根巨量崩殺日即出
+      if(crashDay(i, igIdx)){
+        crashes++;
+        if(crashes>=2) return {type:"para", idx:i};
+      }
+      // 破 20MA
+      if(ma20[i]!=null && bars[i].c<ma20[i]) run++; else run=0;
+      if(run>=cfg.brk) return {type:"brk20", idx:i};
+    }
+    return {type:"none", idx:n-1};
+  }
+
+  // 掃描 episodes
+  const eps=[]; let i=151;                        // 等 MA150 暖機
+  while(i<n){
+    if(isIgnite(i) && followThrough(i)){
+      const igIdx=i, ig=bars[i];
+      // 尺子 2: +30% (收盤確認)
+      const tgtPx = ig.c*(1+cfg.tgt/100);
+      let t30=-1;
+      for(let j=igIdx;j<n;j++){ if(bars[j].c>=tgtPx){ t30=j; break; } }
+      // 出場
+      const exit=findExit(igIdx);
+      // 峰值 (episode 區間: 發動 -> 出場)
+      let pkI=igIdx;
+      for(let j=igIdx;j<=exit.idx;j++){ if(bars[j].h>bars[pkI].h) pkI=j; }
+      eps.push({igIdx, tgtPx, t30, exit, pkI, tgtPct:cfg.tgt});
+      i = exit.idx+1;                              // 從出場後續掃
+    } else i++;
+  }
+  return {bars, eps, ma20};
+}
+
+/* ============================================================
+   輸出
+   ============================================================ */
+function D(bars, from, to){ return to-from; }     // 交易日偏移, 發動日 = D0
+function pct(a,b){ return ((a/b-1)*100); }
+function s2(x){ return (x>=0?"+":"")+x.toFixed(2); }
+
+function render(res, cfg){
+  const out=document.getElementById("out");
+  if(res.eps.length===0){ out.innerHTML='<div class="empty">此區間無符合條件的 Stage 2 發動事件。</div>'; return; }
+  const b=res.bars;
+  let html="";
+  res.eps.forEach((e,idx)=>{
+    const ig=b[e.igIdx];
+    const t30 = e.t30>=0 ? b[e.t30] : null;
+    const d30 = e.t30>=0 ? D(b,e.igIdx,e.t30) : null;
+    const pk=b[e.pkI], dPk=D(b,e.igIdx,e.pkI), pkPct=pct(pk.h,ig.c);
+    const ex = e.exit.type!=="none" ? b[e.exit.idx] : null;
+    const dEx = ex ? D(b,e.igIdx,e.exit.idx) : null;
+
+    // 型態判定 (advisory)
+    let tag="grey", tagt="灰色 · 看型態", advice="到 +30% 落在灰色帶,靠肉眼判抛物線 vs 慢磨。";
+    if(d30!=null && d30<=cfg.fast){ tag="para"; tagt="抛物線傾向"; advice="+30% 機械落袋 1/3;盯崩殺日,見第 2 根巨量崩殺快閃另 2/3。"; }
+    else if(d30!=null && d30>=cfg.slow){ tag="slow"; tagt="慢磨階梯傾向"; advice="+30% 收 1/3,另 2/3 抱住,用 20/50MA 移動停利讓它跑。"; }
+
+    const exLabel = e.exit.type==="para" ? "崩殺快閃" : e.exit.type==="brk20" ? "破 20MA" : "進行中";
+    const exCls   = e.exit.type==="none" ? "off" : "r";
+
+    html += `<div class="ep" style="border-left-color:var(--${tag==='para'?'red':tag==='slow'?'green':'dim'})">
+      <div class="hd">
+        <span class="epn">EP ${idx+1} · ${ig.date} 發動</span>
+        <span class="tag ${tag}">${tagt}</span>
+      </div>
+      <div class="track">
+        <div class="stop g"><div class="dot"></div><div class="k">發動 D0</div><div class="d">${ig.date}</div><div class="m">收 ${ig.c.toFixed(2)}</div></div>
+        <div class="stop ${t30?'a':'off'}"><div class="dot"></div><div class="k">+${e.tgtPct}% 扳機</div>
+          <div class="d">${t30?t30.date:'未達'}</div><div class="m">${t30?('收 '+t30.c.toFixed(2)+' · D'+d30):('目標 '+e.tgtPx.toFixed(2))}</div></div>
+        <div class="stop b"><div class="dot"></div><div class="k">峰值</div><div class="d">${pk.date}</div><div class="m">高 ${pk.h.toFixed(2)} · ${s2(pkPct)}% · D${dPk}</div></div>
+        <div class="stop ${exCls}"><div class="dot"></div><div class="k">${exLabel}</div>
+          <div class="d">${ex?ex.date:'—'}</div><div class="m">${ex?('收 '+ex.c.toFixed(2)+' · D'+dEx):'尚未出場'}</div></div>
+      </div>
+      <div class="note"><b>操作:</b> ${advice}</div>
+    </div>`;
+  });
+  out.innerHTML=html + goldenCards(cfg);
+}
+
+// 兩張黃金卡 — 給你肉眼對照自動結果
+function goldenCards(cfg){
+  return `
+  <div class="gold">
+    <div class="gh">◆ 黃金卡對照 · GLW (抛物線)</div>
+    <table>
+      <tr><td>發動</td><td class="v">6/18 @ 194.92</td></tr>
+      <tr><td>+30% (253.40)</td><td class="v">6/29 收確認 = D7</td></tr>
+      <tr><td>峰值</td><td class="v">6/30 ~272 = D8 (+40%)</td></tr>
+      <tr><td>破 20MA 訊號</td><td class="v">7/7 = D12 (實際快閃 7/2 = D10)</td></tr>
+    </table>
+    <div class="cmp">自動結果的 EP 若對得上這四格 → 引擎過關。</div>
+  </div>
+  <div class="gold">
+    <div class="gh">◆ 黃金卡對照 · MU (慢磨)</div>
+    <table>
+      <tr><td>發動</td><td class="v">4/20 @ 496.64</td></tr>
+      <tr><td>+30% (645.63)</td><td class="v">5/6 收 666.49 = D13 (5/5 盤中戳 651 收 640 正確濾掉)</td></tr>
+      <tr><td>峰值</td><td class="v">6/25 @ 1254.81 ≈ D47 (+153%)</td></tr>
+      <tr><td>破 20MA 訊號</td><td class="v">7/6</td></tr>
+    </table>
+    <div class="cmp">跑 MU 時切這張卡對照。</div>
+  </div>`;
+}
+
+/* ============================================================
+   驅動
+   ============================================================ */
+const $=id=>document.getElementById(id);
+async function go(){
+  const tk=$("tk").value.trim().toUpperCase();
+  if(!tk){ return; }
+  const cfg={
+    mode:$("mode").value, k:+$("k").value, tgt:+$("tgt").value, brk:+$("brk").value,
+    crD:+$("crD").value, crV:+$("crV").value, fast:+$("fast").value, slow:+$("slow").value
+  };
+  const st=$("status"); const btn=$("run");
+  btn.disabled=true; st.innerHTML="抓 "+tk+" 日線資料中…";
+  $("out").innerHTML="";
+  try{
+    const bars=await fetchDaily(tk);
+    if(bars.length<160) throw new Error("資料不足 ("+bars.length+" 根),MA150 暖機需 >160 根");
+    st.innerHTML='<span class="ok">✓</span> '+tk+" · "+bars.length+" 根 · "+bars[0].date+" → "+bars[bars.length-1].date
+      +' · 模式 '+(cfg.mode==="WK30"?"30週線":"MA多排");
+    const res=runBacktest(bars,cfg);
+    render(res,cfg);
+    if(res.eps.length===0) st.innerHTML+=' <span class="warn">· 0 事件</span>';
+  }catch(err){
+    st.innerHTML='<span class="err">✗ '+err.message+'</span>\n若是 CORS/proxy 問題,把 script 最上面 PROXY 換成你慣用的寫法。';
+  }finally{ btn.disabled=false; }
+}
+$("run").addEventListener("click", go);
+$("tk").addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
+</script>
+</body>
+</html>
