@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage 2 回測引擎 v3.3</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1b222b; --line:#232a33;
+    --txt:#c9d1d9; --muted:#7d8794; --dim:#4c5561;
+    --green:#3fb950; --amber:#d29922; --blue:#58a6ff; --red:#f85149; --orange:#db8b3a;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,system-ui,"PingFang TC","Noto Sans TC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--txt); font-family:var(--sans); font-size:15px; line-height:1.5; padding:16px 14px 60px; -webkit-text-size-adjust:100%}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-family:var(--mono); font-size:17px; letter-spacing:.02em; margin:0 0 2px; font-weight:600}
+  h1 .v{color:var(--green)}
+  .sub{color:var(--muted); font-size:12.5px; font-family:var(--mono); margin-bottom:16px}
+  .sub b{color:var(--amber); font-weight:600}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px}
+  .panel .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end}
+  .fld{display:flex; flex-direction:column; gap:4px}
+  .fld label{font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:.04em}
+  input,select{background:var(--panel2); border:1px solid var(--line); color:var(--txt); font-family:var(--mono); font-size:14px; padding:8px 9px; border-radius:7px; width:100%}
+  input:focus,select:focus{outline:2px solid var(--blue); outline-offset:-1px; border-color:transparent}
+  input[type=number]{width:70px}
+  #tk{width:96px; text-transform:uppercase; font-weight:600; color:var(--green)}
+  button{background:var(--green); color:#04160a; border:none; font-family:var(--mono); font-weight:700; font-size:14px; padding:9px 18px; border-radius:7px; cursor:pointer; letter-spacing:.03em}
+  button:active{transform:translateY(1px)}
+  button:disabled{background:var(--dim); color:var(--muted)}
+  details{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px}
+  summary{font-family:var(--mono); font-size:11.5px; color:var(--muted); cursor:pointer; letter-spacing:.03em}
+  .grp{font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:.08em; text-transform:uppercase; margin:12px 0 2px}
+
+  #status{font-family:var(--mono); font-size:12px; color:var(--muted); min-height:16px; margin:2px 2px 12px; white-space:pre-wrap}
+  #status .ok{color:var(--green)} #status .err{color:var(--red)} #status .warn{color:var(--amber)}
+
+  /* Layer 1 大段 */
+  .seg{margin-bottom:22px}
+  .seghd{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:10px 13px; background:var(--panel2); border:1px solid var(--line); border-radius:9px 9px 0 0; border-bottom:none}
+  .seghd .st{font-family:var(--mono); font-size:13px; color:var(--blue); font-weight:600; letter-spacing:.02em}
+  .seghd .meta{font-family:var(--mono); font-size:11px; color:var(--muted)}
+  .seghd .meta b{color:var(--green); font-weight:600}
+  .legs{border:1px solid var(--line); border-top:none; border-radius:0 0 9px 9px; padding:10px 10px 4px; border-left:3px solid var(--blue)}
+
+  /* leg card */
+  .leg{background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:12px 13px; margin-bottom:10px}
+  .leg .hd{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:11px}
+  .leg .tag{font-family:var(--mono); font-size:10.5px; padding:2px 8px; border-radius:20px; letter-spacing:.03em; white-space:nowrap}
+  .tag.mon{background:rgba(63,185,80,.14); color:var(--green)}
+  .tag.clx{background:rgba(248,81,73,.14); color:var(--red)}
+  .tag.nor{background:rgba(125,135,148,.16); color:var(--muted)}
+  .tag.run{background:rgba(88,166,255,.14); color:var(--blue)}
+  .tag.grd{background:rgba(63,185,80,.10); color:var(--green)}
+  .leg .ln{font-family:var(--mono); font-size:12px; color:var(--muted)}
+
+  .track{display:flex; gap:0; margin:2px 0; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px}
+  .stop{flex:0 0 auto; width:19%; min-width:112px; position:relative; padding:0 4px}
+  .stop .dot{width:9px; height:9px; border-radius:50%; margin-bottom:7px; position:relative; z-index:2}
+  .stop::after{content:""; position:absolute; top:4px; left:calc(50% + 6px); right:-4px; height:1px; background:var(--line); z-index:1}
+  .stop:last-child::after{display:none}
+  .stop.g .dot{background:var(--green); box-shadow:0 0 0 3px rgba(63,185,80,.16)}
+  .stop.a .dot{background:var(--amber); box-shadow:0 0 0 3px rgba(210,153,34,.16)}
+  .stop.b .dot{background:var(--blue); box-shadow:0 0 0 3px rgba(88,166,255,.16)}
+  .stop.o .dot{background:var(--orange); box-shadow:0 0 0 3px rgba(219,139,58,.16)}
+  .stop.r .dot{background:var(--red); box-shadow:0 0 0 3px rgba(248,81,73,.16)}
+  .stop.off .dot{background:var(--dim)}
+  .stop .k{font-family:var(--mono); font-size:9.5px; letter-spacing:.04em; color:var(--muted); text-transform:uppercase}
+  .stop .d{font-family:var(--mono); font-size:14px; font-weight:600; margin-top:2px}
+  .stop.g .d{color:var(--green)} .stop.a .d{color:var(--amber)} .stop.b .d{color:var(--blue)}
+  .stop.o .d{color:var(--orange)} .stop.r .d{color:var(--red)}
+  .stop .m{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:1px}
+  .stop.off .d,.stop.off .k{color:var(--dim)}
+  .note{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); line-height:1.5}
+  .note b{color:var(--txt); font-weight:600}
+
+  .gold{background:linear-gradient(180deg,rgba(210,153,34,.06),transparent); border:1px solid var(--line); border-radius:10px; padding:13px 14px; margin:14px 0 12px}
+  .persona{background:linear-gradient(180deg,rgba(63,185,80,.08),transparent); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:10px; padding:14px 15px; margin:0 0 18px}
+  .persona .ph{font-family:var(--mono); font-size:13px; color:var(--green); font-weight:600; letter-spacing:.02em; margin-bottom:11px}
+  .persona .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 8px; margin-bottom:11px}
+  .persona .cell .cl{font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase}
+  .persona .cell .cv{font-family:var(--mono); font-size:17px; font-weight:600; margin-top:2px}
+  .persona .cell .cs{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:1px}
+  .persona .dist{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding-top:9px; border-top:1px dashed var(--line)}
+  .persona .verdict{font-family:var(--mono); font-size:12.5px; margin-top:9px; line-height:1.55}
+  .persona .verdict b{font-weight:600}
+  .persona .pbig{font-family:var(--mono); font-size:13px; line-height:1.55; padding-bottom:11px; margin-bottom:11px; border-bottom:1px dashed var(--line)}
+  .persona .prows{display:flex; flex-direction:column; gap:9px; margin-bottom:11px}
+  .persona .prow{font-family:var(--mono); font-size:12.5px; color:var(--txt); line-height:1.5}
+  .persona .prow .pn{font-weight:700; font-size:15px}
+  .persona .prow b{color:var(--txt); font-weight:600}
+  .gold .gh{font-family:var(--mono); font-size:12px; color:var(--amber); margin-bottom:9px}
+  .gold table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px}
+  .gold td{padding:3px 6px 3px 0; color:var(--muted); vertical-align:top}
+  .gold td.v{color:var(--txt)}
+  .cmp{font-size:10px; color:var(--dim); margin-top:9px; font-family:var(--mono)}
+  .empty{font-family:var(--mono); font-size:12.5px; color:var(--muted); padding:8px 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>STAGE&nbsp;2 回測引擎 <span class="v">v3.3</span></h1>
+  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b></div>
+
+  <div class="panel">
+    <div class="lbl">回測輸入</div>
+    <div class="row">
+      <div class="fld"><label>TICKER</label><input id="tk" value="GLW" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>&nbsp;</label><button id="run">跑回測</button></div>
+    </div>
+    <details>
+      <summary>參數(已按定案 spec 釘死,可微調)</summary>
+      <div class="grp">發動日 · 突破 + 點火</div>
+      <div class="row">
+        <div class="fld"><label>底部整理最少根</label><input type="number" id="minBase" value="5" min="1"></div>
+        <div class="fld"><label>突破量 ≥ ×均量</label><input type="number" id="volX" value="1.0" step="0.1" min="0"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>點火 單日漲≥%</label><input type="number" id="ignPct" value="7" min="1"></div>
+        <div class="fld"><label>點火 量≥×</label><input type="number" id="ignVol" value="1.5" step="0.1" min="0"></div>
+        <div class="fld"><label>點火 前段回看根</label><input type="number" id="ignBack" value="10" min="2"></div>
+      </div>
+      <div class="grp">Layer 1 大段(150日 / 30週）</div>
+      <div class="row">
+        <div class="fld"><label>連N根收盤破150→結束</label><input type="number" id="end150" value="2" min="1"></div>
+      </div>
+      <div class="grp">三段階梯</div>
+      <div class="row">
+        <div class="fld"><label>T1 +30% 目標%</label><input type="number" id="tgt" value="30" min="5"></div>
+        <div class="fld"><label>T2 連N根破20</label><input type="number" id="brk20" value="3" min="1"></div>
+        <div class="fld"><label>T3 連N根破50</label><input type="number" id="brk50" value="2" min="1"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>崩殺日 跌幅≤%</label><input type="number" id="crD" value="-8" max="0"></div>
+        <div class="fld"><label>崩殺日 量≥×</label><input type="number" id="crV" value="2" step="0.1" min="1"></div>
+      </div>
+      <div class="grp">型態判定 · 速度 × 位置</div>
+      <div class="row">
+        <div class="fld"><label>monster: 20%需≤D</label><input type="number" id="monD" value="15" min="1"></div>
+        <div class="fld"><label>末端腿: 大段內延伸≥%</label><input type="number" id="lateExt" value="100" min="0"></div>
+        <div class="fld"><label>climax: 峰值需≤D</label><input type="number" id="clxPeakD" value="12" min="1"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>climax: 延伸≥%</label><input type="number" id="clxExt" value="25" min="0"></div>
+        <div class="fld"><label>climax: 單日漲≥%</label><input type="number" id="clxDay" value="8" min="0"></div>
+        <div class="fld"><label>climax: 量≥×</label><input type="number" id="clxV" value="2" step="0.1" min="1"></div>
+      </div>
+      <div class="grp">慢磨贏家 credit(v3.3 新增)</div>
+      <div class="row">
+        <div class="fld"><label>慢磨腿 混合損益≥%</label><input type="number" id="grindPnl" value="20" min="0"></div>
+      </div>
+    </details>
+  </div>
+
+  <div id="status"></div>
+  <div id="out"></div>
+</div>
+
+<script>
+/* ============================================================
+   資料層 — 可整塊替換。corsproxy 寫法不同就只改這裡。
+   ============================================================ */
+const PROXY = (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+async function fetchDaily(ticker){
+  const yahoo = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    + encodeURIComponent(ticker) + "?range=2y&interval=1d&includePrePost=false";
+  const res = await fetch(PROXY(yahoo));
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  const r = j.chart && j.chart.result && j.chart.result[0];
+  if(!r) throw new Error("Yahoo 無資料 (ticker 錯誤?)");
+  const ts = r.timestamp || [], q = r.indicators.quote[0], bars=[];
+  for(let i=0;i<ts.length;i++){
+    const c=q.close[i],o=q.open[i],h=q.high[i],l=q.low[i],v=q.volume[i];
+    if(c==null||o==null||h==null||l==null) continue;
+    bars.push({t:ts[i], date:fmtDate(ts[i]), o,h,l,c, v:(v==null?0:v)});
+  }
+  return bars;
+}
+function fmtDate(ts){const d=new Date(ts*1000),mm=String(d.getUTCMonth()+1).padStart(2,"0"),dd=String(d.getUTCDate()).padStart(2,"0");return (d.getUTCFullYear()+"").slice(2)+"/"+mm+"/"+dd;}
+
+/* 指標 */
+function sma(arr,key,n){const out=new Array(arr.length).fill(null);let s=0;for(let i=0;i<arr.length;i++){s+=arr[i][key];if(i>=n)s-=arr[i-n][key];if(i>=n-1)out[i]=s/n;}return out;}
+function rising(ma,i,k){if(i<k||ma[i]==null||ma[i-k]==null)return false;return ma[i]>=ma[i-k];}
+
+/* ============================================================
+   引擎 — 兩層 + 三段階梯
+   ============================================================ */
+function runBacktest(bars,cfg){
+  const n=bars.length;
+  const ma20=sma(bars,"c",20), ma50=sma(bars,"c",50), ma150=sma(bars,"c",150), vol50=sma(bars,"v",50);
+
+  // ---- Layer 1: 大段切割 (站上揚150日 -> 連end150根收盤破150) ----
+  const segs=[];
+  let i=150, inSeg=false, segStart=-1, brkRun=0;
+  while(i<n){
+    const above = ma150[i]!=null && bars[i].c>=ma150[i] && rising(ma150,i,5);
+    if(!inSeg){
+      if(above){ inSeg=true; segStart=i; brkRun=0; }
+    } else {
+      if(ma150[i]!=null && bars[i].c<ma150[i]){ brkRun++; if(brkRun>=cfg.end150){ segs.push({s:segStart,e:i}); inSeg=false; } }
+      else brkRun=0;
+    }
+    i++;
+  }
+  if(inSeg) segs.push({s:segStart,e:n-1,live:true});
+
+  // ---- Layer 2: 每個大段內偵測「腿」----
+  // 兩種合法進場: (a) 點火 bar = 大陽線+帶量+前段下跌 (早進, pocket pivot)
+  //              (b) 突破 = 收盤創段內新高+整理夠久 (晚進, 確認)
+  // cooldown: 一條腿開火後 minBase 根內不再開, 避免點火與其後突破重覆算。
+  function detectLegs(seg){
+    const legs=[]; let hwm=-Infinity, sinceHigh=cfg.minBase, cd=0;
+    for(let k=seg.s;k<=seg.e;k++){
+      const chg   = k>0 ? (bars[k].c/bars[k-1].c-1)*100 : 0;
+      const back  = Math.max(seg.s, k-cfg.ignBack);
+      const priorDown = (k>seg.s) ? bars[k-1].c < bars[back].c : false;   // 前段是跌的
+      const ignVolOK  = !vol50[k] || bars[k].v>=cfg.ignVol*vol50[k];
+      const brkVolOK  = !vol50[k] || bars[k].v>=cfg.volX*vol50[k];
+      const ignite   = chg>=cfg.ignPct && ignVolOK && priorDown;          // 點火 bar
+      const breakout = bars[k].c>hwm && sinceHigh>=cfg.minBase && brkVolOK; // 新高突破
+      if(cd<=0 && (ignite || breakout)){ legs.push({ig:k, type:ignite?"ign":"brk"}); cd=cfg.minBase; }
+      else if(cd>0) cd--;
+      if(bars[k].c>hwm){ hwm=bars[k].c; sinceHigh=0; } else sinceHigh++;
+    }
+    return legs;
+  }
+
+  // ---- 三段階梯 (以某條腿的發動點進場) ----
+  // v2.1: 先定終棒 T3(連brk50破50=整個部位出清), T1/T2/峰值一律只在持有窗 [ig, term] 內找,
+  //        出場後發生的 +30% 不算(修掉腿會亂序、虧損腿被畫成贏家的問題)。
+  function ladder(ig, segEnd){
+    const g=bars[ig];
+    // T3 末1/3 = 連brk50根收盤破50MA → 終棒
+    let t3=-1, run50=0;
+    for(let k=ig+1;k<=segEnd;k++){
+      if(ma50[k]!=null && bars[k].c<ma50[k]) run50++; else run50=0;
+      if(run50>=cfg.brk50){ t3=k; break; }
+    }
+    const term = t3>=0 ? t3 : segEnd;                 // 持有窗結束 = 終棒(或段尾, runner進行中)
+    // T1 +30% (收盤確認), 只在持有窗內
+    const tgtPx=g.c*(1+cfg.tgt/100); let t1=-1;
+    for(let k=ig;k<=term;k++){ if(bars[k].c>=tgtPx){t1=k;break;} }
+    // T2 破20MA: 崩殺當根 或 連brk20根收盤破20, 只在持有窗內
+    let t2=-1, t2type="", run20=0;
+    for(let k=ig+1;k<=term;k++){
+      const chg=(bars[k].c/bars[k-1].c-1)*100, ext=(bars[k].c/g.c-1)*100;
+      const crash = vol50[k]!=null&&vol50[k]>0 && chg<=cfg.crD && bars[k].v>=cfg.crV*vol50[k] && ext>=15 && ma20[k]!=null && bars[k].c<ma20[k];
+      if(crash){ t2=k; t2type="崩殺"; break; }
+      if(ma20[k]!=null && bars[k].c<ma20[k]) run20++; else run20=0;
+      if(run20>=cfg.brk20){ t2=k; t2type="破20"; break; }
+    }
+    // 峰值 = 持有窗內最高 high; 腿實際淨賺 = 出場價 vs 進場
+    let pk=ig; for(let k=ig;k<=term;k++){ if(bars[k].h>bars[pk].h) pk=k; }
+    const fb = t3>=0 ? bars[t3].c : bars[term].c;     // fallback 出場價(終棒/現價)
+    const pA = t1>=0 ? bars[t1].c : fb;               // +30% 那 1/3
+    const pB = t2>=0 ? bars[t2].c : fb;               // 破20 那 1/3
+    const legPnl = ((pA+pB+fb)/3 / g.c - 1)*100;      // 三段平均出場的混合損益%
+    return {ig, tgtPx, t1, t2, t2type, t3, pk, term, legPnl, live:(t3<0)};
+  }
+
+  const out=[];
+  segs.forEach(seg=>{
+    const legDefs=detectLegs(seg);
+    const base=bars[seg.s].c;                                   // 大段起點價
+    const legs=legDefs.map(({ig,type})=>{
+      const L=ladder(ig, seg.e);
+      const g=bars[ig];
+      const posExt=(g.c/base-1)*100;                            // 發動時已在大段內延伸%
+      const late = posExt>=cfg.lateExt;                         // 末端腿?
+      // fast = 持有窗內觸及 +20%
+      let fast=false; const monEnd=Math.min(L.term, ig+cfg.monD);
+      for(let k=ig;k<=monEnd;k++){ if(bars[k].c>=g.c*1.20){fast=true;break;} }
+      // 垂直噴出 bar (原本的 climax 偵測)
+      let vbar=false; const exitEnd=L.term;
+      for(let k=ig+1;k<=exitEnd;k++){
+        const chg=(bars[k].c/bars[k-1].c-1)*100, ext=(bars[k].c/g.c-1)*100;
+        if(ext>=cfg.clxExt && chg>=cfg.clxDay && vol50[k]!=null&&vol50[k]>0 && bars[k].v>=cfg.clxV*vol50[k]){vbar=true;break;}
+      }
+      // 速度 × 位置 × 見頂速度:
+      //   climax = 延伸/垂直 + 快速見頂(氣竭)  → 快閃
+      //   monster = 起漲初期即爆(8週持有)      → 抱
+      //   runnerHold = 末端但拖很久才見頂=續勢  → 抱, 用50MA停利
+      const peakFast = (L.pk - ig) <= cfg.clxPeakD;             // 峰值多快出現
+      const climax = (vbar || late) && fast && peakFast;
+      const monster = fast && !late && !climax;
+      const runnerHold = late && fast && !peakFast;            // 末端 + 真的跑起來(觸及+20%) + 拖很久才見頂
+      // v3.3 慢磨贏家(grinder): 沒暴衝(非fast)但確實漲到+30%、慢慢見頂(非快速氣竭)、獲利出場
+      //   → 這種「慢慢磨、抱得住、賺很多」的腿也算「該抱」, 修掉慢波段股(MRVL/MU)被低估。
+      //   刻意排除: 已是 climax/monster/runner、快速見頂(peakFast=噴完快掉)、虧損出場的腿。
+      const won = (L.t1>=0) && !climax && !monster && !runnerHold;
+      const notFail = L.live || L.legPnl >= 0;
+      const grinder = won && !peakFast && notFail && (L.live || L.legPnl >= cfg.grindPnl);
+      return {...L, type, monster, climax, runnerHold, grinder, posExt, late};
+    });
+    out.push({seg, legs});
+  });
+  return {bars, ma150, segs:out};
+}
+
+/* ============================================================ 輸出 ============================================================ */
+function s2(x){return (x>=0?"+":"")+x.toFixed(2);}
+function pct(a,b){return (a/b-1)*100;}
+
+function render(res,cfg){
+  const out=document.getElementById("out"), b=res.bars;
+  if(res.segs.length===0){ out.innerHTML='<div class="empty">此區間無 Stage 2 大段(未曾站上上揚的150日)。</div>'+goldenCards(); return; }
+  let html="";
+  const JUNKBARS=15;   // 大段 < 約3週 且 0腿 且 虧 → 視為雜訊空段, 不顯示
+  const shown=res.segs.filter(S=>{
+    const span=S.seg.e-S.seg.s, gain=pct(b[S.seg.e].c,b[S.seg.s].c);
+    const junk = S.legs.length===0 && span<JUNKBARS && gain<0;
+    return !junk;
+  });
+  const hidden=res.segs.length-shown.length;
+  shown.forEach((S,si)=>{
+    const s=b[S.seg.s], e=b[S.seg.e];
+    const segGain=pct(e.c, s.c);
+    const endTxt = S.seg.live ? "進行中" : e.date+" 破150";
+    html+=`<div class="seg"><div class="seghd">
+      <span class="st">大段 ${si+1} · Stage 2</span>
+      <span class="meta">${s.date} → ${endTxt} · <b>${s2(segGain)}%</b> · ${S.legs.length} 腿</span>
+    </div><div class="legs">`;
+    if(S.legs.length===0) html+='<div class="empty" style="padding:6px 4px">段內未偵測到符合條件的腿。</div>';
+    S.legs.forEach((L,li)=>{
+      const g=b[L.ig];
+      const t1=L.t1>=0?b[L.t1]:null, d1=L.t1>=0?L.t1-L.ig:null;
+      const t2=L.t2>=0?b[L.t2]:null, d2=L.t2>=0?L.t2-L.ig:null;
+      const t3=L.t3>=0?b[L.t3]:null, d3=L.t3>=0?L.t3-L.ig:null;
+      const pk=b[L.pk], dPk=L.pk-L.ig, pkPct=pct(pk.h,g.c);
+      let tag="nor",tt="常規階梯",adv="+30% 收 1/3、破20MA 收 1/3、末 1/3 抱到連2根破50日。";
+      if(L.climax){tag="clx";tt="climax · 賣強勢";adv="末端 + 快速見頂(峰值 D"+dPk+")= 氣竭,末 1/3 改用 5MA 快閃、別抱。";}
+      else if(L.monster){tag="mon";tt="8週持有 · monster";adv="起漲初期即強(大段內僅+"+L.posExt.toFixed(0)+"%),末 1/3 抱到50日,別急砍。";}
+      else if(L.runnerHold){tag="run";tt="續勢 runner · 抱";adv="末端(大段內+"+L.posExt.toFixed(0)+"%)但拖到峰值 D"+dPk+"才見頂 = 還在跑、非氣竭,末 1/3 用 50MA 移動停利抱住,別當 climax 砍。";}
+      else if(L.grinder){tag="grd";tt="慢磨 grinder · 抱";adv="沒暴衝但穩穩漲到 +30%、拖到峰值 D"+dPk+"才見頂、獲利出場(混合 "+s2(L.legPnl)+"%)= 慢波段贏家,用 50MA 抱住讓它磨,別因為漲得慢就早砍。";}
+      const pnlCls = L.live ? 'b' : (L.legPnl>=0?'g':'r');
+      const pnlTxt = L.live ? 'runner中' : (L.t3>=0?'末棒出場 ':'')+s2(L.legPnl)+'%';
+      const enTxt = L.type==='ign'?'點火':'突破';
+      const enCol = L.type==='ign'?'green':'blue';
+      html+=`<div class="leg">
+        <div class="hd"><span class="ln"><span style="color:var(--${enCol});font-weight:600">${enTxt}</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--${pnlCls})">${pnlTxt}</span></span><span class="tag ${tag}">${tt}</span></div>
+        <div class="track">
+          <div class="stop g"><div class="dot"></div><div class="k">發動 D0</div><div class="d">${g.date}</div><div class="m">收 ${g.c.toFixed(2)}</div></div>
+          <div class="stop ${t1?'a':'off'}"><div class="dot"></div><div class="k">T1 +${cfg.tgt}%</div><div class="d">${t1?t1.date:'未達'}</div><div class="m">${t1?('收 '+t1.c.toFixed(2)+' · D'+d1):('目標 '+L.tgtPx.toFixed(2))}</div></div>
+          <div class="stop b"><div class="dot"></div><div class="k">峰值</div><div class="d">${pk.date}</div><div class="m">高 ${pk.h.toFixed(2)} · ${s2(pkPct)}% · D${dPk}</div></div>
+          <div class="stop ${t2?'o':'off'}"><div class="dot"></div><div class="k">T2 破20 · 1/3</div><div class="d">${t2?t2.date:'未破'}</div><div class="m">${t2?(L.t2type+' · 收 '+t2.c.toFixed(2)+' · D'+d2):'—'}</div></div>
+          <div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>
+        </div>
+        <div class="note"><b>操作:</b> ${adv}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  let _pc=''; try{ _pc=personaCard(res,cfg); }catch(e){ _pc='<div class="empty">股性卡計算略過('+e.message+');其餘結果如下。</div>'; }
+  const hideNote = hidden>0 ? '<div class="empty" style="padding:4px 2px 10px;color:var(--dim)">已隱藏 '+hidden+' 個雜訊空段(太短、0腿、下跌)。</div>' : '';
+  out.innerHTML=_pc+hideNote+html+goldenCards();
+}
+
+// 股性卡 — 聚合所有腿, 一眼看這檔的個性 + 適不適合 +30% 策略
+function personaCard(res,cfg){
+  const b=res.bars, tk=(document.getElementById("tk").value.trim().toUpperCase()||"");
+  const legs=[]; res.segs.forEach(S=>S.legs.forEach(L=>legs.push(L)));
+  const n=legs.length; if(n===0) return '';
+  const segN=Math.max(1, res.segs.filter(s=>s.legs.length>0).length);
+  const maxLegs=Math.max(...res.segs.map(s=>s.legs.length));
+  let reached=0,sumT1=0,cT1=0,sumPk=0,sumPkPct=0,maxPkPct=0,liveN=0,cClx=0,cMon=0,cRun=0,cGrind=0,cNor=0,cFail=0;
+  legs.forEach(L=>{
+    const g=b[L.ig], dPk=L.pk-L.ig, pkPct=pct(b[L.pk].h,g.c);
+    if(L.t1>=0){ reached++; sumT1+=(L.t1-L.ig); cT1++; }
+    sumPk+=dPk; sumPkPct+=pkPct; if(pkPct>maxPkPct)maxPkPct=pkPct;
+    if(L.live)liveN++;
+    if(!L.live && L.legPnl < -8) cFail++;               // 明顯虧損出場的腿 = 破碎訊號
+    if(L.climax)cClx++; else if(L.monster)cMon++; else if(L.runnerHold)cRun++; else if(L.grinder)cGrind++; else cNor++;
+  });
+  const cHold = cMon+cRun+cGrind;                        // 該抱腿 = monster + 續勢runner + 慢磨grinder
+  const succ=Math.round(reached/n*100);
+  const avgT1=cT1?Math.round(sumT1/cT1):null;
+  const avgPk=Math.round(sumPk/n), avgPkPct=sumPkPct/n;
+  const small=n<5;
+
+  // 底部分類行專用:互斥分桶(虧損優先)保證加總 = n, 不與 verdict 計數重複。
+  let dFail=0,dClx=0,dHold=0,dNor=0;
+  legs.forEach(L=>{
+    if(!L.live && L.legPnl < -8) dFail++;
+    else if(L.climax) dClx++;
+    else if(L.monster||L.runnerHold||L.grinder) dHold++;
+    else dNor++;
+  });
+
+  // ---- 白話版 ----
+  const wk = d => d==null ? '—' : '約'+Math.max(1,Math.round(d/5))+'週';
+  const lo=Math.floor(succ/10), hi=Math.ceil(succ/10), succN = lo===hi?(''+lo):(lo+'~'+hi);
+  const perSeg=(n/segN).toFixed(1);
+  // 股性白話(後面若判為不穩會被覆蓋)
+  let archePlain;
+  if(avgPk>=40) archePlain='慢慢磨、會跑很久的股(runner 型)——適合抱住,用移動停利讓它跑。';
+  else if(avgPk<=15) archePlain='衝很快、頂也來得快的抛物線股——漲到 +30% 要果斷落袋,別戀棧。';
+  else archePlain='節奏中庸,一波一波往上推,沒特別暴衝、也不算慢磨。';
+  // 判斷順序:乾淨大波段(可抱)> 大波段但破碎(不穩)> 高勝率快賣 > 一半一半 > 難做
+  let vcolor,vmark,vtxt;
+  const holdWorthy = cHold >= Math.max(2, Math.round(n*0.3)) && avgPkPct >= 40;
+  const holdRatio = Math.round(cHold/n*100);
+  const clean = cHold/n >= 0.55;                        // 該抱腿佔多數 = 乾淨;否則 = 破碎不穩
+  if(holdWorthy && clean){
+    vcolor='blue'; vmark='◆ 乾淨大波段 — 可抱';
+    vtxt='走大波段而且過程乾淨('+cHold+'/'+n+' 條該抱、僅 '+cFail+' 條虧損)。核心持有型,用 monster / 50MA 抱住,快賣會賣太早、錯過倍數。快賣成功率 '+succ+'% 供參考。';
+    archePlain='走大波段、過程乾淨連續,適合抱住讓它跑。';
+  } else if(holdWorthy){
+    vcolor='orange'; vmark='⚠ 會爆但不穩 — 難抱';
+    vtxt='偶爾噴大波段(最猛 +'+maxPkPct.toFixed(0)+'%),但過程破碎:'+n+' 條裡只 '+cHold+' 條該抱、'+cFail+' 條虧損出場、成功率 '+succ+'%。抱不住,別當核心股;要嘛不碰,要嘛只賭一爆、快進快出。';
+    archePlain='偶爾爆一根,但常快漲快跌、破線,抱不住——不是穩定持股。';
+  } else if(succ>=60){ vcolor='green'; vmark='✓ 適合你的做法'; vtxt='過去多數上漲都乾淨漲到 +30%,你「漲 3 成先賣 1/3」在這檔命中率高。'; }
+  else if(succ>=40){ vcolor='amber'; vmark='△ 一半一半,要挑時機'; vtxt='大約一半的上漲會到 +30%,策略能用,但進場要避開已經漲很久的末端(climax)。'; }
+  else { vcolor='red'; vmark='✗ 這檔較不適合'; vtxt='過去多數上漲到不了 +30% 就回落,「漲 3 成先賣」常常等不到,別硬套。'; }
+
+  return `<div class="persona">
+    <div class="ph">◆ ${tk} 股性卡 ${small?'<span style="color:var(--amber)">(資料少,參考用)</span>':''}</div>
+    <div class="pbig" style="color:var(--${vcolor})"><b>${vmark}</b><br><span style="color:var(--txt);font-weight:400">${vtxt}</span></div>
+    <div class="prows">
+      <div class="prow"><span class="pn" style="color:var(--${vcolor})">${succN}/10</span> 次上漲會漲到 <b>+30%</b> &nbsp;<span style="color:var(--muted)">(過去 ${reached}/${n} 次 · 成功率 ${succ}%)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--amber)">${wk(avgT1)}</span> 漲到 +30% &nbsp;<span style="color:var(--muted)">(平均 ${avgT1==null?'—':'D'+avgT1} 個交易日)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--blue)">${wk(avgPk)}</span> 後開始回落 &nbsp;<span style="color:var(--muted)">(平均漲 D${avgPk} 天見頂)</span></div>
+      <div class="prow"><span class="pn">${s2(avgPkPct)}%</span> 一波平均漲幅 &nbsp;<span style="color:var(--muted)">(最猛一次 <b style="color:var(--txt)">${s2(maxPkPct)}%</b>)</span></div>
+      <div class="prow"><span class="pn">${perSeg} 次</span> 一波大漲通常分幾次往上衝 &nbsp;<span style="color:var(--muted)">(最多一波衝了 ${maxLegs} 次)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${clean?'blue':'orange'})">${holdRatio}%</span> 穩定度(該抱腿佔比)&nbsp;<span style="color:var(--muted)">(${cHold} 條該抱 / ${cFail} 條虧損出場 · ${clean?'乾淨可抱':'破碎不穩'})</span></div>
+    </div>
+    <div class="dist">股性:<b style="color:var(--txt)">${archePlain}</b></div>
+    <div class="dist" style="border-top:none;padding-top:4px">這 ${n} 次上衝裡:<b style="color:var(--red)">${dClx}</b> 次末端噴出(該快閃)、<b style="color:var(--blue)">${dHold}</b> 次還在跑(該抱)、${dNor} 次普通、<b style="color:var(--orange)">${dFail}</b> 次虧損出場。</div>
+  </div>`;
+}
+
+function goldenCards(){
+  return `
+  <div class="gold"><div class="gh">◆ 黃金卡 · GLW(續勢腿 / 抛物線)</div>
+    <table>
+      <tr><td>發動</td><td class="v">6/18 @ 194.92</td></tr>
+      <tr><td>+30%(253.40)</td><td class="v">6/29 收確認 = D7</td></tr>
+      <tr><td>峰值</td><td class="v">6/30 ~272 = D8(+40%)</td></tr>
+      <tr><td>破20MA</td><td class="v">7/7 = D12(實際快閃 7/2 = D10)</td></tr>
+    </table><div class="cmp">6/18 該落在某大段內的一條「腿」;對這四格。</div></div>
+  <div class="gold"><div class="gh">◆ 黃金卡 · MU(起手突破 / 慢磨)</div>
+    <table>
+      <tr><td>發動</td><td class="v">4/20 @ 496.64</td></tr>
+      <tr><td>+30%(645.63)</td><td class="v">5/6 收 666.49 = D13</td></tr>
+      <tr><td>峰值</td><td class="v">6/25 @ 1254.81 ≈ D47(+153%)</td></tr>
+      <tr><td>破20MA</td><td class="v">7/6</td></tr>
+    </table><div class="cmp">跑 MU 時對這張。</div></div>`;
+}
+
+/* 驅動 */
+const $=id=>document.getElementById(id);
+async function go(){
+  const tk=$("tk").value.trim().toUpperCase(); if(!tk) return;
+  const cfg={
+    minBase:+$("minBase").value, volX:+$("volX").value, end150:+$("end150").value,
+    ignPct:+$("ignPct").value, ignVol:+$("ignVol").value, ignBack:+$("ignBack").value,
+    tgt:+$("tgt").value, brk20:+$("brk20").value, brk50:+$("brk50").value,
+    crD:+$("crD").value, crV:+$("crV").value,
+    monD:+$("monD").value, lateExt:+$("lateExt").value, clxPeakD:+$("clxPeakD").value, clxExt:+$("clxExt").value, clxDay:+$("clxDay").value, clxV:+$("clxV").value,
+    grindPnl:+$("grindPnl").value
+  };
+  const st=$("status"), btn=$("run"); btn.disabled=true; st.innerHTML="抓 "+tk+" 日線中…"; $("out").innerHTML="";
+  try{
+    const bars=await fetchDaily(tk);
+    if(bars.length<160) throw new Error("資料不足("+bars.length+"根),150日暖機需>160根");
+    const res=runBacktest(bars,cfg);
+    const legCount=res.segs.reduce((a,s)=>a+s.legs.length,0);
+    const realSeg=res.segs.filter(s=>s.legs.length>0).length;
+    st.innerHTML='<span class="ok">✓</span> '+tk+" · "+bars.length+"根 · "+bars[0].date+" → "+bars[bars.length-1].date+" · "+realSeg+" 段有腿 / "+legCount+" 腿";
+    render(res,cfg);
+  }catch(err){
+    st.innerHTML='<span class="err">✗ '+err.message+'</span>\n若 CORS/proxy 問題,改 script 最上面 PROXY。';
+  }finally{ btn.disabled=false; }
+}
+$("run").addEventListener("click",go);
+$("tk").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
+</script>
+</body>
+</html>
