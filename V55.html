@@ -594,6 +594,9 @@ function render(res,cfg){
       const t3=L.t3>=0?b[L.t3]:null, d3=L.t3>=0?L.t3-L.ig:null;
       const pk=b[L.pk], dPk=L.pk-L.ig, pkPct=pct(pk.h,g.c);
       let tag="nor",tt="常規階梯",adv="+30% 收 1/3、破20MA 收 1/3、末 1/3 抱到連2根破50日。";
+      if(L.sl>=0){ tag="clx"; tt="⛔ 停損出場"; adv="進場後跌破停損("+L.stopPct.toFixed(1)+"% = 1×ADR)→ 全部出清。這是<b>正常成本</b>, 不是失敗 —— Qullamaggie 七成的交易長這樣。"; }
+      else if(L.be>=0){ tag="nor"; tt="成本價出場"; adv="+30% 收掉 1/3 後停損上移到成本價, 之後跌回成本 → 剩餘 2/3 平出。留下 T1 那 1/3 的獲利。"; }
+      else
       if(L.climax){tag="clx";tt="climax · 賣強勢";adv="末端 + 快速見頂(峰值 D"+dPk+")= 氣竭,末 1/3 改用 5MA 快閃、別抱。";}
       else if(L.monster){tag="mon";tt="8週持有 · monster";adv="起漲初期即強(大段內僅+"+L.posExt.toFixed(0)+"%),末 1/3 抱到50日,別急砍。";}
       else if(L.runnerHold){tag="run";tt="續勢 runner · 抱";adv="末端(大段內+"+L.posExt.toFixed(0)+"%)但拖到峰值 D"+dPk+"才見頂 = 還在跑、非氣竭,末 1/3 用 50MA 移動停利抱住,別當 climax 砍。";}
@@ -609,7 +612,9 @@ function render(res,cfg){
           <div class="stop ${t1?'a':'off'}"><div class="dot"></div><div class="k">T1 +${cfg.tgt}%</div><div class="d">${t1?t1.date:'未達'}</div><div class="m">${t1?('收 '+t1.c.toFixed(2)+' · D'+d1):('目標 '+L.tgtPx.toFixed(2))}</div></div>
           <div class="stop b"><div class="dot"></div><div class="k">峰值</div><div class="d">${pk.date}</div><div class="m">高 ${pk.h.toFixed(2)} · ${s2(pkPct)}% · D${dPk}</div></div>
           <div class="stop ${t2?'o':'off'}"><div class="dot"></div><div class="k">T2 破20 · 1/3</div><div class="d">${t2?t2.date:'未破'}</div><div class="m">${t2?(L.t2type+' · 收 '+t2.c.toFixed(2)+' · D'+d2):'—'}</div></div>
-          <div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>
+          ${(L.sl>=0||L.be>=0) ? (()=>{const x=b[L.sl>=0?L.sl:L.be], dx=(L.sl>=0?L.sl:L.be)-L.ig;
+             return '<div class="stop r"><div class="dot"></div><div class="k">'+(L.sl>=0?'⛔ 停損':'成本價停損')+'</div><div class="d">'+x.date+'</div><div class="m">收 '+x.c.toFixed(2)+' · D'+dx+' · 全出</div></div>';})()
+           : `<div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>`}
         </div>
         <div class="note"><b>操作:</b> ${adv}</div>
       </div>`;
@@ -903,8 +908,6 @@ function personaCard(res,cfg){
   //   V52 bug: CIEN 上方判詞說「核心持有型, 用 monster/50MA 抱住」, 下方股性行卻說
   //   「能做, 但不是核心倉等級」—— 兩個函式各判各的。上方看崩壞率+該抱腿, 下方看平均漲幅。
   //   V53: 全卡片共用同一個 coreWorthy, 只算一次。
-  const coreWorthy = !badOdds && (wlRatio!=null && wlRatio >= 3)
-                     && (cHold/n >= 0.50) && (expect!=null && expect >= 20);
   const highHold = cHold/n >= 0.55;
   const midHold  = cHold/n >= 0.45;                       // V49: 45~55% 的中間帶
   // ===== V55: 閘門換人 =====
@@ -922,6 +925,9 @@ function personaCard(res,cfg){
   const nearBig = !holdWorthy && cHold >= Math.max(2, Math.round(n*0.3))
                   && avgPkPct >= cfg.softBig && avgPkPct < cfg.bigLeg;
   const rrTxt = wlRatio==null ? '—' : (wlRatio===Infinity ? '∞(沒有虧損腿)' : wlRatio.toFixed(1)+':1');
+  // V55: 核心倉資格 — 賺賠比 ≥3:1 + 期望值 ≥+20% + 該抱腿 ≥50%
+  const coreWorthy = !badOdds && (wlRatio!=null && wlRatio >= 3)
+                     && (cHold/n >= 0.50) && (expect!=null && expect >= 20);
   if(lowVol){
     // (A) Qullamaggie 第一關: ADR% < 5% → 波動不足, 一天跑不動, swing 賺不到。非本策略標的。
     vcolor='muted'; vmark='— 波動不足 · 非本策略標的';
