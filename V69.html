@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage 2 回測引擎 V69</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1b222b; --line:#232a33;
+    --txt:#c9d1d9; --muted:#7d8794; --dim:#4c5561;
+    --green:#3fb950; --amber:#d29922; --blue:#58a6ff; --red:#f85149; --orange:#db8b3a;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,system-ui,"PingFang TC","Noto Sans TC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--txt); font-family:var(--sans); font-size:15px; line-height:1.5; padding:16px 14px 60px; -webkit-text-size-adjust:100%}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-family:var(--mono); font-size:17px; letter-spacing:.02em; margin:0 0 2px; font-weight:600}
+  h1 .v{color:var(--green)}
+  .sub{color:var(--muted); font-size:12.5px; font-family:var(--mono); margin-bottom:16px}
+  .sub b{color:var(--amber); font-weight:600}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px}
+  .panel .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end}
+  .fld{display:flex; flex-direction:column; gap:4px}
+  .fld label{font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:.04em}
+  input,select{background:var(--panel2); border:1px solid var(--line); color:var(--txt); font-family:var(--mono); font-size:14px; padding:8px 9px; border-radius:7px; width:100%}
+  input:focus,select:focus{outline:2px solid var(--blue); outline-offset:-1px; border-color:transparent}
+  input[type=number]{width:70px}
+  #tk{width:96px; text-transform:uppercase; font-weight:600; color:var(--green)}
+  button{background:var(--green); color:#04160a; border:none; font-family:var(--mono); font-weight:700; font-size:14px; padding:9px 18px; border-radius:7px; cursor:pointer; letter-spacing:.03em}
+  button:active{transform:translateY(1px)}
+  button:disabled{background:var(--dim); color:var(--muted)}
+  details{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px}
+  summary{font-family:var(--mono); font-size:11.5px; color:var(--muted); cursor:pointer; letter-spacing:.03em}
+  .grp{font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:.08em; text-transform:uppercase; margin:12px 0 2px}
+
+  #status{font-family:var(--mono); font-size:12px; color:var(--muted); min-height:16px; margin:2px 2px 12px; white-space:pre-wrap}
+  #status .ok{color:var(--green)} #status .err{color:var(--red)} #status .warn{color:var(--amber)}
+
+  /* Layer 1 大段 */
+  .seg{margin-bottom:22px}
+  .seghd{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:10px 13px; background:var(--panel2); border:1px solid var(--line); border-radius:9px 9px 0 0; border-bottom:none}
+  .seghd .st{font-family:var(--mono); font-size:13px; color:var(--blue); font-weight:600; letter-spacing:.02em}
+  .seghd .meta{font-family:var(--mono); font-size:11px; color:var(--muted)}
+  .seghd .meta b{color:var(--green); font-weight:600}
+  .legs{border:1px solid var(--line); border-top:none; border-radius:0 0 9px 9px; padding:10px 10px 4px; border-left:3px solid var(--blue)}
+
+  /* leg card */
+  .leg{background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:12px 13px; margin-bottom:10px}
+  .leg .hd{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:11px}
+  .leg .tag{font-family:var(--mono); font-size:10.5px; padding:2px 8px; border-radius:20px; letter-spacing:.03em; white-space:nowrap}
+  .tag.mon{background:rgba(63,185,80,.14); color:var(--green)}
+  .tag.clx{background:rgba(248,81,73,.14); color:var(--red)}
+  .tag.nor{background:rgba(125,135,148,.16); color:var(--muted)}
+  .tag.run{background:rgba(88,166,255,.14); color:var(--blue)}
+  .tag.grd{background:rgba(63,185,80,.10); color:var(--green)}
+  .leg .ln{font-family:var(--mono); font-size:12px; color:var(--muted)}
+
+  .track{display:flex; gap:0; margin:2px 0; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px}
+  .stop{flex:0 0 auto; width:19%; min-width:112px; position:relative; padding:0 4px}
+  .stop .dot{width:9px; height:9px; border-radius:50%; margin-bottom:7px; position:relative; z-index:2}
+  .stop::after{content:""; position:absolute; top:4px; left:calc(50% + 6px); right:-4px; height:1px; background:var(--line); z-index:1}
+  .stop:last-child::after{display:none}
+  .stop.g .dot{background:var(--green); box-shadow:0 0 0 3px rgba(63,185,80,.16)}
+  .stop.a .dot{background:var(--amber); box-shadow:0 0 0 3px rgba(210,153,34,.16)}
+  .stop.b .dot{background:var(--blue); box-shadow:0 0 0 3px rgba(88,166,255,.16)}
+  .stop.o .dot{background:var(--orange); box-shadow:0 0 0 3px rgba(219,139,58,.16)}
+  .stop.r .dot{background:var(--red); box-shadow:0 0 0 3px rgba(248,81,73,.16)}
+  .stop.off .dot{background:var(--dim)}
+  .stop.g .d{color:var(--green)} .stop.a .d{color:var(--amber)} .stop.b .d{color:var(--blue)}
+  .stop.o .d{color:var(--orange)} .stop.r .d{color:var(--red)}
+  .stop .k{font-family:var(--mono); font-size:9.5px; letter-spacing:.04em; color:var(--muted); text-transform:uppercase}
+  .stop .d{font-family:var(--mono); font-size:14px; font-weight:600; margin-top:2px}
+  .stop .m{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:1px}
+  .stop.off .d,.stop.off .k{color:var(--dim)}
+  .note{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); line-height:1.5}
+  .note b{color:var(--txt); font-weight:600}
+
+  .gold{background:linear-gradient(180deg,rgba(210,153,34,.06),transparent); border:1px solid var(--line); border-radius:10px; padding:13px 14px; margin:14px 0 12px}
+  .persona{background:linear-gradient(180deg,rgba(63,185,80,.08),transparent); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:10px; padding:14px 15px; margin:0 0 18px}
+  .persona .ph{font-family:var(--mono); font-size:13px; color:var(--green); font-weight:600; letter-spacing:.02em; margin-bottom:11px}
+  .persona .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 8px; margin-bottom:11px}
+  .persona .cell .cl{font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase}
+  .persona .cell .cv{font-family:var(--mono); font-size:17px; font-weight:600; margin-top:2px}
+  .persona .cell .cs{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:1px}
+  .persona .dist{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding-top:9px; border-top:1px dashed var(--line)}
+  .persona .verdict{font-family:var(--mono); font-size:12.5px; margin-top:9px; line-height:1.55}
+  .persona .verdict b{font-weight:600}
+  .persona .pbig{font-family:var(--mono); font-size:13px; line-height:1.55; padding-bottom:11px; margin-bottom:11px; border-bottom:1px dashed var(--line)}
+  .persona .prows{display:flex; flex-direction:column; gap:9px; margin-bottom:11px}
+  .persona .prow{font-family:var(--mono); font-size:12.5px; color:var(--txt); line-height:1.5}
+  .persona .prow .pn{font-weight:700; font-size:15px}
+  .persona .prow b{color:var(--txt); font-weight:600}
+  .gold .gh{font-family:var(--mono); font-size:12px; color:var(--amber); margin-bottom:9px}
+  .gold table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px}
+  .gold td{padding:3px 6px 3px 0; color:var(--muted); vertical-align:top}
+  .gold td.v{color:var(--txt)}
+  .cmp{font-size:10px; color:var(--dim); margin-top:9px; font-family:var(--mono)}
+  .empty{font-family:var(--mono); font-size:12.5px; color:var(--muted); padding:8px 2px}
+
+  /* ===== V53 ===== */
+  .evbox{border:1px solid var(--line); border-radius:9px; padding:12px 13px; margin:0 0 12px}
+  .evbox.g{background:rgba(63,185,80,.08); border-left:3px solid var(--green)}
+  .evbox.a{background:rgba(210,153,34,.08); border-left:3px solid var(--amber)}
+  .evbox.r{background:rgba(248,81,73,.09); border-left:3px solid var(--red)}
+  .evbox .evl{font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .evbox .evv{font-family:var(--mono); font-size:30px; font-weight:700; line-height:1.15; margin:2px 0 3px}
+  .evbox .evs{font-family:var(--mono); font-size:12.5px; line-height:1.5}
+  .evbox .evf{font-family:var(--mono); font-size:10.5px; color:var(--dim); margin-top:7px; padding-top:6px; border-top:1px dashed var(--line)}
+
+  .keys{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 14px}
+  .key{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:9px 10px}
+  .key .kl{font-family:var(--mono); font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+  .key .kv{font-family:var(--mono); font-size:19px; font-weight:700; margin-top:2px}
+  .key .ks{font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:1px; line-height:1.35}
+
+  .rawhd{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--dim); text-transform:uppercase;
+         border-top:1px solid var(--line); padding-top:10px; margin-top:4px; margin-bottom:9px}
+  .raw .prow{color:var(--muted)}
+  .dead{opacity:.42; filter:grayscale(1)}
+  .deadwarn{font-family:var(--mono); font-size:11.5px; color:var(--red); background:rgba(248,81,73,.08);
+            border:1px solid rgba(248,81,73,.28); border-radius:7px; padding:8px 10px; margin-bottom:8px; line-height:1.5}
+  .softnote{color:var(--dim); font-size:10.5px}
+
+  /* V65 全部合計 */
+  .pool{border:2px solid var(--green); border-radius:10px; padding:14px 16px; margin-top:14px;
+        background:rgba(63,185,80,.07)}
+  .pool.bad{border-color:var(--red); background:rgba(248,81,73,.07)}
+  .pool.warnp{border-color:var(--amber); background:rgba(210,153,34,.07)}
+  .pool .pl{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .pool .pv{font-family:var(--mono); font-size:30px; font-weight:700; margin:3px 0 4px}
+  .pool .pg{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:10px 0 0}
+  .pool .pc{font-family:var(--mono)}
+  .pool .pc .k{font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .pool .pc .v{font-size:17px; font-weight:700; margin-top:2px}
+  .pool .note{font-family:var(--mono); font-size:11px; line-height:1.6; color:var(--muted);
+              margin-top:11px; padding-top:9px; border-top:1px dashed var(--line)}
+
+  /* V61 收合區 */
+  details.raw2{border:1px solid var(--line); border-radius:9px; margin-top:6px; background:rgba(255,255,255,.012)}
+  details.raw2 summary{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding:10px 13px;
+                       cursor:pointer; list-style:none; user-select:none}
+  details.raw2 summary::-webkit-details-marker{display:none}
+  details.raw2 summary:before{content:'▶ '; color:var(--dim)}
+  details.raw2[open] summary:before{content:'▼ '}
+  details.raw2 .inner{padding:0 13px 12px}
+
+  /* V59 兩道關卡 */
+  .gates{border:1px solid var(--line); border-radius:10px; overflow:hidden; margin:0 0 14px}
+  .gate{display:flex; align-items:flex-start; gap:11px; padding:11px 13px; border-bottom:1px solid var(--line)}
+  .gate:last-child{border-bottom:none}
+  .gate.g{background:rgba(63,185,80,.09); border-left:4px solid var(--green)}
+  .gate.a{background:rgba(210,153,34,.09); border-left:4px solid var(--amber)}
+  .gate.r{background:rgba(248,81,73,.09); border-left:4px solid var(--red)}
+  .gate.x{background:rgba(255,255,255,.03); border-left:4px solid var(--muted)}
+  .gate .bulb{font-size:22px; line-height:1.15}
+  .gate .gk{font-family:var(--mono); font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
+  .gate .gv{font-family:var(--mono); font-size:15px; font-weight:700; margin-top:1px}
+  .gate .gs{font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.55}
+  .nextstep{font-family:var(--mono); font-size:12px; padding:11px 13px; line-height:1.6;
+            background:var(--panel2); border-top:1px solid var(--line)}
+  .nextstep b{color:var(--txt)}
+
+  /* V58 紅綠燈 */
+  .light{display:flex; align-items:center; gap:12px; border-radius:10px; padding:12px 14px; margin:0 0 12px; border:1px solid var(--line)}
+  .light.g{background:rgba(63,185,80,.10); border-left:4px solid var(--green)}
+  .light.a{background:rgba(210,153,34,.10); border-left:4px solid var(--amber)}
+  .light.r{background:rgba(248,81,73,.10); border-left:4px solid var(--red)}
+  .light .bulb{font-size:30px; line-height:1}
+  .light .lt{font-family:var(--mono)}
+  .light .lt b{font-size:16px; letter-spacing:.02em}
+  .light .lt .sub{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.5}
+  .light .lt .scope{font-size:10.5px; color:var(--dim); margin-top:5px; padding-top:5px; border-top:1px dashed var(--line)}
+  .dotL{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle}
+
+  /* 總表 */
+  .tbl{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px}
+  .tbl th{text-align:left; color:var(--muted); font-weight:500; font-size:10px; letter-spacing:.05em; text-transform:uppercase;
+          padding:0 8px 7px 0; border-bottom:1px solid var(--line); white-space:nowrap}
+  .tbl td{padding:7px 8px 7px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  .tbl td.tk{font-weight:700; color:var(--txt); white-space:nowrap}
+  .tbl td.num{font-weight:700; white-space:nowrap}
+  .tbl td.say{color:var(--muted); font-size:11px; line-height:1.4}
+  .tbl tr:last-child td{border-bottom:none}
+  /* V69: 分色分區 + 可展開列 */
+  .grphead{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:8px 10px; margin:14px 0 2px; background:var(--panel2); border-radius:7px}
+  .grphead:first-child{margin-top:2px}
+  .grptitle{font-family:var(--mono); font-size:12.5px; font-weight:700; letter-spacing:.02em}
+  .grpn{font-family:var(--mono); font-size:11px; color:var(--muted); font-weight:600}
+  .grpdesc{font-size:10.5px; color:var(--dim); flex:1 1 100%; line-height:1.4; margin-top:1px}
+  .trow{cursor:pointer; transition:background .1s}
+  .trow:hover{background:var(--panel2)}
+  .trow:active{background:var(--line)}
+  .trow .caret{display:inline-block; transition:transform .12s}
+  .detbox{background:var(--panel2); border-radius:8px; padding:10px 12px; margin:2px 0 6px; font-family:var(--sans); line-height:1.55}
+  .detline{font-size:13px; margin-bottom:6px}
+  .detgrid{display:flex; flex-wrap:wrap; gap:6px 16px; font-family:var(--mono); font-size:12px; color:var(--muted); margin-bottom:6px}
+  .detsay{font-size:12px; color:var(--muted); margin-bottom:2px}
+  .detwarn{font-size:11.5px; color:var(--orange); margin-top:4px}
+  .detfoot{font-size:10.5px; color:var(--dim); margin-top:6px; font-family:var(--mono)}
+  .tbtn{background:var(--panel2); color:var(--muted); border:1px solid var(--line); font-size:11px; padding:5px 11px; font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>STAGE&nbsp;2 回測引擎 <span class="v">V69</span></h1>
+  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b> · <b>崩壞率閘</b> · <b>50MA尾端切割</b> · <b>最近N段</b> · <b>大段=週線30週線判定</b> · <b>腿切割=base深度≥12%</b> · <b>O'Neil加權動能</b> · <b>ADR門檻(Qullamaggie)</b> · <b>V49:震盪度ADR正規化</b> · <b>V49:轉弱門檻=-12%(回檔≠失效)</b> · <b>V49:死亡判準=週線破30週線</b> · <b>V49:股性=速度×幅度</b> · <b>V50:Stage分五期</b> · <b>V50:Stage1修復vsStage4下跌</b> · <b>V50:最終峰值分佈+中位數</b> · <b style="color:#ff6b6b">V51:腿峰值不再共用段尾(地基修正)</b> · <b>V51:Stage4改用-12%</b> · <b>V51:動能熄火≠Stage4</b> · <b>V51:末期只看離30週線</b> · <b>V52:崩壞率獨立閘門</b> · <b style="color:#ff6b6b">V53:期望值(EV)=實際結算損益</b> · <b style="color:#ff6b6b">V53:崩壞不過關→機率區失效</b> · <b style="color:#ff6b6b">V53:平均/最猛降級為淡色</b> · <b style="color:#ff6b6b">V53:核心倉單一判準</b> · <b>V53:累積總表</b> · <b style="color:#ff6b6b">V54:EV改用中位損益(平均會被右尾騙)</b> · <b style="color:#ff6b6b">V54:勝率(賺錢的腿/已結算)</b> · <b>V54:勝率</b> · <b style="color:#ff6b6b">V55:加入停損(1×ADR,夾5~10%)</b> · <b style="color:#ff6b6b">V55:T1後停損移成本價</b> · <b style="color:#ff6b6b">V55:期望值=Minervini公式(平均)</b> · <b style="color:#ff6b6b">V55:閘門改為賺賠比≥2:1(崩壞率不再否決)</b> · <b>V55:單腿依賴警告</b> · <b style="color:#ff6b6b">V56:修 badOdds 初始化順序(股性卡曾整張掛掉)</b> · <b>V56:停損腿階梯圖</b> · <b style="color:#ff6b6b">V57:判詞改由期望值驅動(不再與EV打架)</b> · <b style="color:#ff6b6b">V57:打平線=1/(1+賺賠比)</b> · <b>V57:單腿依賴不給綠燈</b> · <b style="color:#ff6b6b">V58:紅綠燈(只答「值不值得投入」,不答「現在能不能買」)</b> · <b>V58:總表燈號欄</b> · <b style="color:#ff6b6b">V59:兩道關卡(先體質→後時機),階段拉到最上面</b> · <b>V59:下一步指示</b> · <b style="color:#ff6b6b">V60:修 LAST_SUM 讀燈號時的 TDZ(總表曾整個消失)</b> · <b>V60:總表判詞改抓降級後的</b> · <b style="color:#ff6b6b">V61:術語後面加白話括號</b> · <b style="color:#ff6b6b">V61:部位上限給具體數字</b> · <b style="color:#ff6b6b">V61:原始數據收合</b> · <b>V61:砍掉重複判詞</b> · <b style="color:#ff6b6b">V62:Stage 2 補上 10週線(Weinstein 原版:價格&gt;10W&gt;30W)</b> · <b style="color:#ff6b6b">V62:補上 Stage 3 頭部(引擎原本沒有)</b> · <b>V62:符號後面直接寫字</b> · <b style="color:#ff6b6b">V63:10週線條件從「段偵測」拿掉(V62改過頭,把好好的大段砍碎)</b> · <b style="color:#ff6b6b">V63:10週線只用在「現在的Stage」</b> · <b style="color:#ff6b6b">V63:⚠靠運氣否決◆核心倉</b> · <b>V63:賺賠比∞不給綠燈</b> · <b style="color:#ff6b6b">V64:已結算&lt;3條腿→灰燈「資料不足」(不給紅燈)</b> · <b>V64:顯示還在跑的腿</b> · <b style="color:#ff6b6b">V65:總表底部「全部合計」(跨股票池加總,樣本才夠)</b> · <b style="color:#ff6b6b">V65:單檔燈號降級為「假設」,標出樣本數</b> · <b style="color:#ff6b6b">V65:⚪門檻 3→5</b> · <b style="color:#ff6b6b">V66:持倉鎖(一次只能一個倉,前一筆沒出清的腿不算樣本)</b> · <b style="color:#ff6b6b">V66:修掉「同一段行情被重複計數」的期望值虛胖</b> · <b style="color:#ff6b6b">V67:持倉鎖改「收掉2/3就放行」(修掉V66把停損腿藏起來、打擊率虛高)</b> · <b style="color:#ff6b6b">V68:全部合計加「中位數EV / 拿掉前5%最賺 / 獲利集中度」(拆穿右尾:平均是不是被少數monster拉高)</b> · <b style="color:#ff6b6b">V69:總表分色分區(兩關綠/等時機/黎明藍/觀察白/龜速灰/紅)+白燈拆三色+每列可點開看摘要(省事版不重抓)</b>
+
+  <div class="panel">
+    <div class="lbl">回測輸入</div>
+    <div class="row">
+      <div class="fld"><label>TICKER</label><input id="tk" value="GLW" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>&nbsp;</label><button id="run">跑回測</button></div>
+    </div>
+    <details>
+      <summary>參數(已按定案 spec 釘死,可微調)</summary>
+      <div class="grp">發動日 · 突破 + 點火</div>
+      <div class="row">
+        <div class="fld"><label>底部整理最少根</label><input type="number" id="minBase" value="5" min="1"></div>
+        <div class="fld"><label>突破量 ≥ ×均量</label><input type="number" id="volX" value="1.0" step="0.1" min="0"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>點火 單日漲≥%</label><input type="number" id="ignPct" value="7" min="1"></div>
+        <div class="fld"><label>點火 量≥×</label><input type="number" id="ignVol" value="1.5" step="0.1" min="0"></div>
+        <div class="fld"><label>點火 前段回看根</label><input type="number" id="ignBack" value="10" min="2"></div>
+      </div>
+      <div class="grp">Layer 1 大段(150日 / 30週）</div>
+      <div class="row">
+        <div class="fld"><label>連N根收盤破150→結束</label><input type="number" id="end150" value="2" min="1"></div>
+        <div class="fld"><label>破50且下彎連N根→結束</label><input type="number" id="end50" value="2" min="1"></div>
+        <div class="fld"><label>50MA下彎回看根</label><input type="number" id="ma50Look" value="3" min="1"></div>
+      </div>
+      <div class="grp">三段階梯</div>
+      <div class="row">
+        <div class="fld"><label>T1 +30% 目標%</label><input type="number" id="tgt" value="30" min="5"></div>
+        <div class="fld"><label>T2 連N根破20</label><input type="number" id="brk20" value="3" min="1"></div>
+        <div class="fld"><label>T3 連N根破50</label><input type="number" id="brk50" value="2" min="1"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>崩殺日 跌幅≤%</label><input type="number" id="crD" value="-8" max="0"></div>
+        <div class="fld"><label>崩殺日 量≥×</label><input type="number" id="crV" value="2" step="0.1" min="1"></div>
+      </div>
+      <div class="grp">型態判定 · 速度 × 位置</div>
+      <div class="row">
+        <div class="fld"><label>monster: 20%需≤D</label><input type="number" id="monD" value="15" min="1"></div>
+        <div class="fld"><label>末端腿: 大段內延伸≥%</label><input type="number" id="lateExt" value="100" min="0"></div>
+        <div class="fld"><label>climax: 峰值需≤D</label><input type="number" id="clxPeakD" value="12" min="1"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="fld"><label>climax: 延伸≥%</label><input type="number" id="clxExt" value="25" min="0"></div>
+        <div class="fld"><label>climax: 單日漲≥%</label><input type="number" id="clxDay" value="8" min="0"></div>
+        <div class="fld"><label>climax: 量≥×</label><input type="number" id="clxV" value="2" step="0.1" min="1"></div>
+      </div>
+      <div class="grp">乾淨判定 · 慢磨 / 崩壞率閘</div>
+      <div class="row">
+        <div class="fld"><label>慢磨腿 混合損益≥%</label><input type="number" id="grindPnl" value="20" min="0"></div>
+        <div class="fld"><label>乾淨門檻 崩壞率≤%</label><input type="number" id="maxFailRate" value="20" min="0" max="100"></div>
+      </div>
+      <div class="grp">停損 · Minervini / Qullamaggie</div>
+      <div class="row">
+        <div class="fld"><label>停損 = N×ADR</label><input type="number" id="stopK" value="1" step="0.5" min="0.5"></div>
+        <div class="fld"><label>停損下限%</label><input type="number" id="stopMin" value="5" step="0.5" min="1"></div>
+        <div class="fld"><label>停損上限%(Minervini≤10)</label><input type="number" id="stopMax" value="10" step="0.5" min="1"></div>
+        <div class="fld"><label>最低賺賠比(Minervini≥2)</label><input type="number" id="minRR" value="2" step="0.5" min="1"></div>
+      </div>
+      <div class="grp">腿切割 · base深度(champion標準)</div>
+      <div class="row">
+        <div class="fld"><label>回檔切腿 最小base深%</label><input type="number" id="minBasePct" value="12" step="1" min="3"></div>
+        <div class="fld"><label>ATR 週期(備用)</label><input type="number" id="atrLen" value="14" min="2"></div>
+      </div>
+      <div class="grp">champion 判準 · ADR門檻 + 洗盤倍數</div>
+      <div class="row">
+        <div class="fld"><label>合格機會:N週內達標</label><input type="number" id="oppWk" value="4" min="1" max="12"></div>
+        <div class="fld"><label>ADR%最低(Qulla≥5)</label><input type="number" id="minAdr" value="5" step="0.5" min="0"></div>
+      </div>
+      <div class="grp">V49 · 轉弱判定(回檔 ≠ 失效)</div>
+      <div class="row">
+        <div class="fld"><label>深度回檔門檻 近一季≤%</label><input type="number" id="weakPct" value="-12" step="1"></div>
+        <div class="fld"><label>震盪度ADR基準(正規化)</label><input type="number" id="refAdr" value="7" step="0.5" min="1"></div>
+      </div>
+      <div class="grp">V50 · Stage 2 分期(Minervini:離 30 週線多遠)</div>
+      <div class="row">
+        <div class="fld"><label>中期起點 離30週線&gt;%</label><input type="number" id="midExtW30" value="30" step="5" min="5"></div>
+        <div class="fld"><label>末期起點 離30週線&gt;%</label><input type="number" id="lateExtW30" value="70" step="5" min="10"></div>
+        <div class="fld"><label>末期 離52週低點&gt;%</label><input type="number" id="lateExtLo52" value="300" step="25" min="50"></div>
+      </div>
+      <div class="grp">V50 · 大波段門檻(硬線改軟線)</div>
+      <div class="row">
+        <div class="fld"><label>大波段 平均漲幅≥%</label><input type="number" id="bigLeg" value="40" step="1" min="10"></div>
+        <div class="fld"><label>可抱下限 平均漲幅≥%</label><input type="number" id="softBig" value="30" step="1" min="5"></div>
+      </div>
+      <div class="grp">三檔梯度目標(取代死守+30%)</div>
+      <div class="row">
+        <div class="fld"><label>目標A %</label><input type="number" id="tgtA" value="20" min="5"></div>
+        <div class="fld"><label>目標B %</label><input type="number" id="tgtB" value="25" min="5"></div>
+        <div class="fld"><label>目標C %</label><input type="number" id="tgtC" value="30" min="5"></div>
+        <div class="fld"><label>震盪上限(穿20MA/100天)</label><input type="number" id="maxChop" value="12" step="1" min="1"></div>
+      </div>
+      <div class="grp">分析範圍(以「段」為單位)</div>
+      <div class="row">
+        <div class="fld"><label>股性只算最近N個大段</label><input type="number" id="recentSegs" value="3" min="1"></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel" id="tblPanel" style="display:none">
+    <div class="lbl" style="display:flex;justify-content:space-between;align-items:center">
+      <span>累積總表 · 體質 → 時機 → 期望值</span>
+      <button class="tbtn" id="clrTbl">清空</button>
+    </div>
+    <div id="tblBody"></div>
+    <div id="poolBody"></div>
+    <div class="cmp" style="margin-top:9px">總表不放「機率」——機率脫離賠率就沒有意義。跑過的股票自動累積在這裡(存本機瀏覽器)。</div>
+  </div>
+
+  <div id="status"></div>
+  <div id="out"></div>
+</div>
+
+<script>
+/* ============================================================
+   資料層 — 可整塊替換。corsproxy 寫法不同就只改這裡。
+   ============================================================ */
+const PROXY = (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+async function fetchDaily(ticker){
+  const yahoo = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    + encodeURIComponent(ticker) + "?range=2y&interval=1d&includePrePost=false";
+  const res = await fetch(PROXY(yahoo));
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  const r = j.chart && j.chart.result && j.chart.result[0];
+  if(!r) throw new Error("Yahoo 無資料 (ticker 錯誤?)");
+  const ts = r.timestamp || [], q = r.indicators.quote[0], bars=[];
+  for(let i=0;i<ts.length;i++){
+    const c=q.close[i],o=q.open[i],h=q.high[i],l=q.low[i],v=q.volume[i];
+    if(c==null||o==null||h==null||l==null) continue;
+    bars.push({t:ts[i], date:fmtDate(ts[i]), o,h,l,c, v:(v==null?0:v)});
+  }
+  return bars;
+}
+function fmtDate(ts){const d=new Date(ts*1000),mm=String(d.getUTCMonth()+1).padStart(2,"0"),dd=String(d.getUTCDate()).padStart(2,"0");return (d.getUTCFullYear()+"").slice(2)+"/"+mm+"/"+dd;}
+
+/* 指標 */
+function sma(arr,key,n){const out=new Array(arr.length).fill(null);let s=0;for(let i=0;i<arr.length;i++){s+=arr[i][key];if(i>=n)s-=arr[i-n][key];if(i>=n-1)out[i]=s/n;}return out;}
+function rising(ma,i,k){if(i<k||ma[i]==null||ma[i-k]==null)return false;return ma[i]>=ma[i-k];}
+// ATR — 平均真實區間(價格單位)。用來把「回檔多深才算一腿結束」按每檔自己的波動normalize。
+// ADR% — Qullamaggie 標準算法: 20日平均的 (High/Low), 轉成百分比。
+//   ADR% = 100 × ( mean(High_i / Low_i) − 1 )
+//   champion 用途: (1) 篩選門檻 ADR% ≥ 5% 才值得 swing(低於此波動不足、賺不到)
+//                 (2) 停損上限 = 1×ADR (停損絕不能寬於 1 倍 ADR)
+function adrPct(bars, n, endIdx){
+  const e = (endIdx==null? bars.length-1 : endIdx);
+  const s = Math.max(0, e-n+1);
+  let sum=0, c=0;
+  for(let i=s;i<=e;i++){
+    if(bars[i].l>0){ sum += bars[i].h/bars[i].l; c++; }
+  }
+  if(!c) return null;
+  return (sum/c - 1)*100;
+}
+function atrArr(bars,n){
+  const tr=new Array(bars.length).fill(null);
+  for(let i=0;i<bars.length;i++){
+    if(i===0){ tr[i]=bars[i].h-bars[i].l; continue; }
+    const h=bars[i].h,l=bars[i].l,pc=bars[i-1].c;
+    tr[i]=Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc));
+  }
+  const out=new Array(bars.length).fill(null); let s=0;
+  for(let i=0;i<bars.length;i++){ s+=tr[i]; if(i>=n)s-=tr[i-n]; if(i>=n-1)out[i]=s/n; }
+  return out;
+}
+
+/* ============================================================
+   引擎 — 兩層 + 三段階梯
+   ============================================================ */
+function runBacktest(bars,cfg){
+  const n=bars.length;
+  const ma20=sma(bars,"c",20), ma50=sma(bars,"c",50), ma150=sma(bars,"c",150), vol50=sma(bars,"v",50);
+  const atr=atrArr(bars,cfg.atrLen);
+
+  // ---- Layer 1: 大段切割 (V48 · 改用週線判斷, champion 用週線數 base/判 Stage) ----
+  // 問題(ONDS): 日線上「上沖下洗、跨很久」的一整個大波段, 用日線 150MA 判會被中間的
+  //   短暫破線切成好幾段(ONDS 週線明明是1段, 日線卻算出2段+一堆腿, 平均漲幅灌水)。
+  // champion 正統: 用「週線」判 Stage/數 base(大架構), 進出場才看日線(細節)。
+  // 做法: 先把日線聚合成週線 → 用 30週線(≈150日線)判 Stage 2 的起訖 → 週線把日線的
+  //   震盪自然撫平 → 再把「週線段」映射回日線 index, 交給 Layer 2 在日線上切腿(不變)。
+  //   SNDK/MU/GLW 這種本來就乾淨的, 週線看段數跟原本一樣; ONDS 這種才會從2段收斂成1段。
+  const segs=[];
+  const w30daily=new Array(n).fill(null);   // V50: 週線30MA(映射到日線)
+  const w10daily=new Array(n).fill(null);   // V62: 週線10MA
+  const w30slp =new Array(n).fill(null);   // V62: 30週線斜率%(近4週)
+  const w10slp =new Array(n).fill(null);   // V62: 10週線斜率%(近2週)
+  {
+    // 1) 日線 → 週線聚合(同一 ISO 週的日K併成一根週K, 收盤取該週最後一個日收盤)
+    const wk=[];                                  // 每根週K: {c, i0, i1} = 週收盤 / 該週首末日線index
+    let curKey=null;
+    for(let d=0; d<n; d++){
+      const key=Math.floor((bars[d].t/86400)/7);  // 週序號
+      if(key!==curKey){ wk.push({c:bars[d].c, i0:d, i1:d}); curKey=key; }
+      else { const w=wk[wk.length-1]; w.c=bars[d].c; w.i1=d; }
+    }
+    const W=wk.length;
+    // 2) 週線均線: 30週(≈150日) 大架構、10週(≈50日) 中架構
+    const wclose=wk.map(x=>x.c);
+    const wma=(arr,p)=>{const o=new Array(arr.length).fill(null);let s=0;for(let k=0;k<arr.length;k++){s+=arr[k];if(k>=p)s-=arr[k-p];if(k>=p-1)o[k]=s/p;}return o;};
+    const w30=wma(wclose,30), w10=wma(wclose,10);
+    const wRising=(m,k,back)=> k>=back && m[k]!=null && m[k-back]!=null && m[k]>=m[k-back];
+    // 3) 在「週線」上判 Stage 2 起訖(週線把日線震盪撫平)
+    let inSeg=false, wStart=-1, brkW=0, weakW=0;
+    const END30W=2, END10W=2, W10LOOK=3;
+    for(let k=30; k<W; k++){
+      // ===== V62 地基修正: Weinstein 原版的 Stage 2 定義 =====
+      //   V61 以前: above = 週收盤 >= 30週線 && 30週線上升。
+      //   Bug: 30 週線是嚴重落後的指標 —— 頭部形成後它還會繼續上升好幾個月
+      //        (「The 30-week MA is still rising for a few months after the top,
+      //          because the slope of a moving average lags the underlying price by weeks.」)
+      //        所以 LITE 26/07/08 週線跌破、大段收掉, 股價彈回線上一天, 引擎就宣告
+      //        「新的 Stage 2, 進 Stage 2 已 1 天, 可進可抱」。GLW/COHR/MU/AAOI/NBIS/BE 全中。
+      //   V62: 補回 Weinstein 原版的另一半 —— 【10 週線必須在 30 週線上方, 且 10 週線本身在上升】。
+      //        頭部形成時 10 週線會先下彎、跌破 30 週線 —— 這條就能擋掉全部誤判。
+      // ===== V63: 把 10 週線條件從這裡【拿掉】=====
+      //   V62 在段偵測加了「10週線>30週線 且 10週線上升」→ 改過頭了。
+      //   健康的 Stage 2, 每次中途整理時 10 週線本來就會走平或微微下彎 —— 那是正常呼吸, 不是頭部。
+      //   結果好好的大段被砍成好幾截: DELL 漲 4 倍賺賠比只剩 0.1:1、ARM 週線完全沒有 Stage 2、
+      //   TSM/KLIC/LRCX 只剩 1~2 條腿 → 沒有虧損腿 → 賺賠比 ∞、打擊率 100% → 假的核心倉。
+      //   Weinstein 從來沒要求 10 週線每週都要上升。
+      //   V63: 段偵測(算體質)回到原本的定義; 10 週線只用在「現在是不是 Stage 3 頭部」的判斷。
+      const above = w30[k]!=null && wclose[k]>=w30[k] && wRising(w30,k,3);
+      if(!inSeg){
+        if(above){ inSeg=true; wStart=k; brkW=0; weakW=0; }
+      } else {
+        let ended=false;
+        if(w30[k]!=null && wclose[k]<w30[k]){ brkW++; if(brkW>=END30W){ segs.push({s:wk[wStart].i0, e:wk[k].i1}); inSeg=false; ended=true; } }
+        else brkW=0;
+        if(!ended){
+          const w10Down = w10[k]!=null && w10[k-W10LOOK]!=null && w10[k]<w10[k-W10LOOK];
+          const below10 = w10[k]!=null && wclose[k]<w10[k];
+          if(below10 && w10Down){ weakW++; if(weakW>=END10W){ segs.push({s:wk[wStart].i0, e:wk[k].i1}); inSeg=false; ended=true; } }
+          else weakW=0;
+        }
+      }
+    }
+    if(inSeg) segs.push({s:wk[wStart].i0, e:n-1, live:true});
+    // V50: 把週線 30MA 映射回日線 index, 供股性卡判 Stage 2 早/中/末期(Minervini: 離 30 週線多遠)
+    for(let k=0;k<W;k++){ if(w30[k]!=null) for(let d=wk[k].i0; d<=wk[k].i1; d++) w30daily[d]=w30[k]; }
+    for(let k=0;k<W;k++){
+      if(w10[k]!=null) for(let d=wk[k].i0; d<=wk[k].i1; d++) w10daily[d]=w10[k];
+      if(w30[k]!=null && k>=4 && w30[k-4]!=null && w30[k-4]>0)
+        for(let d=wk[k].i0; d<=wk[k].i1; d++) w30slp[d]=(w30[k]-w30[k-4])/w30[k-4]*100;
+      if(w10[k]!=null && k>=2 && w10[k-2]!=null && w10[k-2]>0)
+        for(let d=wk[k].i0; d<=wk[k].i1; d++) w10slp[d]=(w10[k]-w10[k-2])/w10[k-2]*100;
+    }
+  }
+
+
+  // ---- Layer 2: 每個大段內偵測「腿」----
+  // 兩種合法進場: (a) 點火 bar = 大陽線+帶量+前段下跌 (早進, pocket pivot)
+  //              (b) 突破 = 收盤創段內新高+整理夠久 (晚進, 確認)
+  // V48: 一趟 ≠ 一定一條腿。腿的邊界改用「波動normalize的回檔」來切, 不再單靠守50MA。
+  //   舊 v3.8 的問題: 開腿後只有「連brk50根破50MA」才允許開下一條腿。守著50MA一路爬的超強股
+  //   (SNDK/LITE/COHR/TSM)整趟50MA一次都沒破 → 被壓成 1 腿, 單腿永遠到不了+30%, 樣本失效(bug #4)。
+  //   反過來 v3.7 之前又曾把小回檔剁成一堆腿(bug #2 碎腿)。兩個都是「切割用固定線」的老毛病。
+  //   專業做法(ZigZag / O'Neil base counting, 波動normalize): 一腿結束 = 從腿高點回檔 ≥ atrK×ATR
+  //   形成一個 base, 之後又「創這條腿的新高」突破該 base = 開新腿。用每檔自己的 ATR 當尺:
+  //     · 完全沒回檔的龜速股(貼50MA爬) → 回檔永遠 < atrK×ATR → 不誤切, 維持整趟(TSM 不再碎)。
+  //     · 守50MA但中間有明顯整理的超強股 → base 被 ATR 認出 → 正確分腿(SNDK/LITE 不再壓成1腿)。
+  //   50MA 破線仍保留為「整趟結束」的總閘(跌破50MA連brk50根 → 收手, 等重新起腿)。
+  function detectLegs(seg){
+    const legs=[]; let hwm=-Infinity, sinceHigh=cfg.minBase, holding=false, run50=0;
+    let legHigh=-Infinity, pulledBack=false;   // 當前腿的高點 + 是否已出現 atrK×ATR 級回檔(base)
+    for(let k=seg.s;k<=seg.e;k++){
+      // 持有中: 收盤跌破 50MA 連 brk50 根 → 整趟結束, 才允許重新起腿
+      if(holding){
+        if(ma50[k]!=null && bars[k].c<ma50[k]) run50++; else run50=0;
+        if(run50>=cfg.brk50){ holding=false; run50=0; pulledBack=false; legHigh=-Infinity; }
+      }
+      // === base 深度切腿(V48 · Minervini/O'Neil base counting 標準)===
+      // champion 標準: 兩腿之間要隔一個「真正的 base」, 而 base 深度經驗值是 10–40%(SEPA 10–35%)。
+      //   → 一腿結束 = 從腿高點回檔 ≥ minBasePct%(預設12, 取區間保守低標)形成 base, 之後又創腿新高 = 新腿。
+      //   用固定深度% 不是「固定門檻」的錯: base 深度本就是 champion 對所有股票用同一個 10–40% 標準
+      //   (與 +30% 目標該用 ADR 標準化是兩回事——目標隨波動變, base 深度有穩定經驗值)。
+      //   低波龜速股(TSM)的小回檔 < 12% → 不算 base → 不誤切(修掉碎腿);
+      //   飆股(SNDK/LITE)的 base 都 >20% → 遠超門檻 → 照常正確分腿(維持◆)。
+      if(holding && legHigh>-Infinity){
+        const depthPct = (legHigh - bars[k].c)/legHigh*100;       // 從腿高點回檔的深度%
+        if(depthPct >= cfg.minBasePct) pulledBack=true;           // 夠深 = base 成形
+        const brkVolOK = !vol50[k] || bars[k].v>=cfg.volX*vol50[k];
+        if(pulledBack && bars[k].c>legHigh && brkVolOK){          // 突破前一個 base 的高點 = 新腿
+          legs.push({ig:k, type:"brk"});
+          legHigh=bars[k].c; pulledBack=false; run50=0;
+          if(bars[k].c>hwm){ hwm=bars[k].c; sinceHigh=0; } else sinceHigh++;
+          continue;
+        }
+      }
+      // === 空手時的進場(段內第一條腿, 或50MA破掉後重新起腿)===
+      const chg   = k>0 ? (bars[k].c/bars[k-1].c-1)*100 : 0;
+      const back  = Math.max(seg.s, k-cfg.ignBack);
+      const priorDown = (k>seg.s) ? bars[k-1].c < bars[back].c : false;   // 前段是跌的
+      const ignVolOK  = !vol50[k] || bars[k].v>=cfg.ignVol*vol50[k];
+      const brkVolOK  = !vol50[k] || bars[k].v>=cfg.volX*vol50[k];
+      const ignite   = chg>=cfg.ignPct && ignVolOK && priorDown;          // 點火 bar
+      const breakout = bars[k].c>hwm && sinceHigh>=cfg.minBase && brkVolOK; // 新高突破
+      if(!holding && (ignite || breakout)){
+        legs.push({ig:k, type:ignite?"ign":"brk"});
+        holding=true; run50=0; legHigh=bars[k].c; pulledBack=false;
+      }
+      // 更新當前腿高點 + 段內 hwm
+      if(holding && bars[k].c>legHigh) legHigh=bars[k].c;
+      if(bars[k].c>hwm){ hwm=bars[k].c; sinceHigh=0; } else sinceHigh++;
+    }
+    return legs;
+  }
+
+  // ---- 三段階梯 (以某條腿的發動點進場) ----
+  // v2.1: 先定終棒 T3(連brk50破50=整個部位出清), T1/T2/峰值一律只在持有窗 [ig, term] 內找,
+  //        出場後發生的 +30% 不算(修掉腿會亂序、虧損腿被畫成贏家的問題)。
+  //
+  // ===== V55 地基修正: 加入「停損」 =====
+  //   V54 以前 ladder() 完全沒有停損 —— 只有 +30%收1/3 / 破20MA收1/3 / 連2根破50MA收末1/3。
+  //   一條虧損的腿會一路虧到破 50MA 才認賠, 虧 20~30% 都有可能。
+  //   但 champion 的整套數學(Minervini 期望值公式、Qullamaggie 25~30% 勝率也能大賺)
+  //   建立在「虧損砍在 7~8% / 不超過 1×ATR」這個前提上。沒有停損, 期望值算出來就是廢的。
+  //   V55: 停損 = 1×ADR, 夾在 5~10% 之間(Minervini 上限 10%)。
+  //        +30% 收掉 1/3 之後, 停損上移到成本價(Minervini: 部分獲利了結後移到 breakeven)。
+  //   出場優先序(逐日): 停損 > T1目標 > T2破20MA > T3破50MA。
+  function ladder(ig, segEnd){
+    const g=bars[ig];
+    const adr0 = adrPct(bars, 20, ig);
+    const stopPct = Math.min(cfg.stopMax, Math.max(cfg.stopMin, (adr0==null?cfg.stopMax:adr0)*cfg.stopK));
+    const stopPx0 = g.c*(1 - stopPct/100);
+    const tgtPx   = g.c*(1 + cfg.tgt/100);
+    const tiers=[cfg.tgtA, cfg.tgtB, cfg.tgtC];
+
+    let t1=-1, t2=-1, t3=-1, t2type="", sl=-1, be=-1;
+    let run20=0, run50=0;
+    let stopPx=stopPx0;      // 目前的停損價(T1 後上移到成本)
+    let remain=1;            // 剩餘部位
+    let proceeds=0;          // 已出場部位的加權價
+    let term=segEnd, done=false;
+
+    for(let k=ig+1;k<=segEnd;k++){
+      const c=bars[k].c;
+      // (1) 停損最優先 —— 初始停損(全出) 或 成本價停損(剩餘全出)
+      if(c < stopPx){
+        if(t1<0) sl=k; else be=k;
+        proceeds += remain*c; remain=0; term=k; done=true; break;
+      }
+      // (2) T1 +30% → 收 1/3, 停損上移成本價
+      if(t1<0 && c>=tgtPx){
+        t1=k; const q=Math.min(remain,1/3); proceeds += q*c; remain-=q;
+        stopPx = g.c;                                   // breakeven stop
+      }
+      // (3) T2 破20MA(崩殺當根 或 連brk20根) → 收 1/3
+      if(t2<0){
+        const chg=(c/bars[k-1].c-1)*100, ext=(c/g.c-1)*100;
+        const crash = vol50[k]!=null&&vol50[k]>0 && chg<=cfg.crD && bars[k].v>=cfg.crV*vol50[k] && ext>=15 && ma20[k]!=null && c<ma20[k];
+        if(ma20[k]!=null && c<ma20[k]) run20++; else run20=0;
+        if(crash || run20>=cfg.brk20){
+          t2=k; t2type = crash?"崩殺":"破20";
+          const q=Math.min(remain,1/3); proceeds += q*c; remain-=q;
+          if(remain<=1e-9){ term=k; done=true; break; }
+        }
+      }
+      // (4) T3 連brk50根破50MA → 末 1/3 出清
+      if(ma50[k]!=null && c<ma50[k]) run50++; else run50=0;
+      if(run50>=cfg.brk50){
+        t3=k; proceeds += remain*c; remain=0; term=k; done=true; break;
+      }
+    }
+    if(remain>1e-9){ proceeds += remain*bars[term].c; }   // runner 進行中 → 以段尾/現價計
+    const legPnl = (proceeds/g.c - 1)*100;               // 這條腿照規則做完的實際損益%
+    const live = !done;                                   // 還沒出清 = 進行中
+
+    let pk=ig; for(let k=ig;k<=term;k++){ if(bars[k].h>bars[pk].h) pk=k; }
+    const tHit=tiers.map(pc=>{
+      const px=g.c*(1+pc/100);
+      for(let k=ig;k<=term;k++){ if(bars[k].c>=px) return k; }
+      return -1;
+    });
+    return {ig, tgtPx, t1, t2, t2type, t3, sl, be, pk, term, legPnl, stopPct, live, tHit};
+  }
+
+  const out=[];
+  // v3.7: 移除「近一年 252 根」視窗 —— 它會把慢磨大型股(TSM/DELL)一個 6~12 個月的長波段從中間腰斬,
+  //   每條腿只擷取到半條, 平均漲幅顯示成 +9% 這種荒謬值。專業做法(Weinstein): Stage 2 本就該持有 6~12 個月,
+  //   用「天數」切視窗跟方法論矛盾。改為: 每個大段完整走完(不截斷), 舊爛段靠「50MA下彎結束」自然被切開,
+  //   股性卡只統計「最近 recentSegs 個完整大段」(見 personaCard), 以段為單位淘汰舊故事、又不腰斬當前長波段。
+  segs.forEach(seg=>{
+    const legDefs=detectLegs(seg);
+    const base=bars[seg.s].c;                                   // 大段起點價
+    const legs=legDefs.map(({ig,type}, li)=>{
+      const L=ladder(ig, seg.e);
+      const g=bars[ig];
+      // ===== V51 地基修正: 「這條腿走到哪」必須只看這條腿自己的窗口 =====
+      //   V50 bug: ladder() 的 term = t3(連破50MA) 或 段尾。但 AXTI/LITE/SNDK/COHR 這種
+      //   整段沒破過 50MA 的超強股 → 每條腿的 t3 = -1 → term 一律 = 段尾 →
+      //   **一段裡 11 條腿共用同一個最高點**。第 1 條腿(最底部進的)算出 +4976%,
+      //   第 11 條腿拿同一個峰值算 → avgPkPct = +1163%(AXTI)、+376%(LITE)。全是灌水。
+      //   而且它專門汙染最強、最乾淨的股票 —— 正是你最在意的那一類。
+      //   V51: 交易模擬(T1/T2/T3/legPnl/該抱判定)維持原樣不動 —— 那是「照規則抱到出場」,
+      //   本來就該開到段尾。但「股性統計」(這條腿跑多遠、幾天見頂)必須在腿自己的窗口內算:
+      //   窗口 = [ig, 下一條腿點火前一根],最後一條腿 = [ig, term]。這正是 O'Neil base counting
+      //   的語意:一條腿跑到它自己的頂,然後打 base,下一條腿才開始。
+      const nextIg = (li+1 < legDefs.length) ? legDefs[li+1].ig : -1;
+      const legEnd = (nextIg > ig) ? Math.min(nextIg-1, L.term) : L.term;
+      let legPk=ig; for(let k=ig;k<=legEnd;k++){ if(bars[k].h>bars[legPk].h) legPk=k; }
+      const legPkPct = (bars[legPk].h/g.c - 1)*100;             // 這條腿自己走到多高
+      const legPkDays = legPk - ig;                             // 這條腿自己幾天見頂
+      const posExt=(g.c/base-1)*100;                            // 發動時已在大段內延伸%
+      const late = posExt>=cfg.lateExt;                         // 末端腿?
+      // fast = 持有窗內觸及 +20%
+      let fast=false; const monEnd=Math.min(L.term, ig+cfg.monD);
+      for(let k=ig;k<=monEnd;k++){ if(bars[k].c>=g.c*1.20){fast=true;break;} }
+      // 垂直噴出 bar (原本的 climax 偵測)
+      let vbar=false; const exitEnd=L.term;
+      for(let k=ig+1;k<=exitEnd;k++){
+        const chg=(bars[k].c/bars[k-1].c-1)*100, ext=(bars[k].c/g.c-1)*100;
+        if(ext>=cfg.clxExt && chg>=cfg.clxDay && vol50[k]!=null&&vol50[k]>0 && bars[k].v>=cfg.clxV*vol50[k]){vbar=true;break;}
+      }
+      // 速度 × 位置 × 見頂速度:
+      //   climax = 延伸/垂直 + 快速見頂(氣竭)  → 快閃
+      //   monster = 起漲初期即爆(8週持有)      → 抱
+      //   runnerHold = 末端但拖很久才見頂=續勢  → 抱, 用50MA停利
+      const peakFast = legPkDays <= cfg.clxPeakD;               // V51: 用這條腿自己的見頂天數
+      const climax = (vbar || late) && fast && peakFast;
+      const monster = fast && !late && !climax;
+      const runnerHold = late && fast && !peakFast;            // 末端 + 真的跑起來(觸及+20%) + 拖很久才見頂
+      // v3.3 慢磨贏家(grinder): 沒暴衝(非fast)但確實漲到+30%、慢慢見頂(非快速氣竭)、獲利出場
+      //   → 這種「慢慢磨、抱得住、賺很多」的腿也算「該抱」, 修掉慢波段股(MRVL/MU)被低估。
+      //   刻意排除: 已是 climax/monster/runner、快速見頂(peakFast=噴完快掉)、虧損出場的腿。
+      const won = (L.t1>=0) && !climax && !monster && !runnerHold;
+      const notFail = L.live || L.legPnl >= 0;
+      const grinder = won && !peakFast && notFail && (L.live || L.legPnl >= cfg.grindPnl);
+      // ===== V48: 洗盤深度(Qullamaggie 停損規則的反推)=====
+      // Qullamaggie 硬規則: 停損絕不能寬於 1×ADR。
+      //   → 反過來問: 這條腿「從進場到見頂」的途中, 最深回檔了多少?
+      //   若正常回檔遠超過 1×ADR, 任何遵守該規則的人都會被洗出場——不論它最後漲多少。
+      //   這就是「會飆但賺不到」的數學解釋(AAOI型)。
+      // 只算「進場 → 峰值」這段(上漲途中的洗盤), 不含見頂後的下跌。
+      let maxDD=0, runHigh=g.c;
+      for(let k=ig;k<=legPk;k++){                              // V51: 只到這條腿自己的頂
+        if(bars[k].h>runHigh) runHigh=bars[k].h;
+        if(runHigh>0){
+          const dd=(runHigh-bars[k].l)/runHigh*100;         // 從波段高點的回檔%
+          if(dd>maxDD) maxDD=dd;
+        }
+      }
+      const adrAt = adrPct(bars, 20, ig) || null;            // 進場當時的 ADR%
+      const ddInAdr = (adrAt && adrAt>0) ? maxDD/adrAt : null; // 回檔 = 幾倍 ADR
+      return {...L, type, monster, climax, runnerHold, grinder, posExt, late, maxDD, adrAt, ddInAdr, legPk, legPkPct, legPkDays};
+    });
+    // ===== V67 地基修正: 持倉鎖「收掉 2/3 就放行」(Jasmine 真實操作)=====
+    //   V66 的鎖: 前一筆【完全出清】(term = 末 1/3 破 50MA)之前, 所有腿都 blocked。
+    //   V66 的災難(問題 3): monster 那條末 1/3 會抱超久(LITE 抱到 D265)。這段超長的持有期
+    //     內, 引擎切出來的腿【大多是停損腿】(價格在高檔震盪、破線)—— 結果:
+    //       · 賺的 monster 腿被保留(它是第一條, 沒被鎖)
+    //       · 賠的停損腿全被「還在抱 monster」擋掉 → 從樣本消失
+    //     → 打擊率系統性偏高(LITE 100%、COHR 100%、TSEM 100%、MU 100%), 賺賠比虛高,
+    //       總池 EV 被灌水。鎖從「修掉重複計數」變成「藏起虧損樣本」—— 換個方向的偏差。
+    //   V67 修正(依 Jasmine 定案): 放行點 = 前一筆【收掉 2/3】的那一刻, 不是完全出清。
+    //     Jasmine 真實操作: +30% 收 1/3、破 20MA 再收 1/3 → 手上只剩末 1/3 在跑,
+    //     大部分資金已回籠 → 這時候同一檔的下一個訊號【可以開新倉】。
+    //     放行點 releaseIdx:
+    //       · 有破 20MA(t2>=0) → t2(收掉第二個 1/3 的那根)
+    //       · +30% 收了但沒破 20MA 就一路抱到底 → 用 term(那筆的最終出清)
+    //       · 連 +30% 都沒到就停損出場 → sl 那根就是它的 term, 用 term
+    //     效果: monster 收掉 2/3 之後, 底下的停損腿【回到樣本】→ 打擊率會降、EV 會降,
+    //           但那才是真的。這才是 Jasmine 一次一個倉、滾動操作的真實樣貌。
+    let _release = -1;
+    legs.forEach(L=>{
+      if(L.ig > _release){
+        L.blocked = false;
+        // 這筆交易「收掉 2/3」的時點: 有破20MA用t2, 否則用term(抱到底/停損出場)
+        L._releaseAt = (L.t2>=0) ? L.t2 : L.term;
+        _release = L._releaseAt;
+      } else {
+        L.blocked = true;
+      }
+    });
+    out.push({seg, legs});
+  });
+  return {bars, ma150, segs:out, w30daily, w10daily, w30slp, w10slp};
+}
+
+/* ============================================================ 輸出 ============================================================ */
+function s2(x){return (x>=0?"+":"")+x.toFixed(2);}
+function pct(a,b){return (a/b-1)*100;}
+
+function render(res,cfg){
+  const out=document.getElementById("out"), b=res.bars;
+  if(res.segs.length===0){ out.innerHTML='<div class="empty">此區間無 Stage 2 大段(未曾站上上揚的150日)。</div>'+goldenCards(); return; }
+  let html="";
+  const JUNKBARS=15;   // 大段 < 約3週 且 0腿 且 虧 → 視為雜訊空段, 不顯示
+  const shown=res.segs.filter(S=>{
+    const span=S.seg.e-S.seg.s, gain=pct(b[S.seg.e].c,b[S.seg.s].c);
+    const junk = S.legs.length===0 && span<JUNKBARS && gain<0;
+    return !junk;
+  });
+  const hidden=res.segs.length-shown.length;
+  shown.forEach((S,si)=>{
+    const s=b[S.seg.s], e=b[S.seg.e];
+    const segGain=pct(e.c, s.c);
+    const endTxt = S.seg.live ? "進行中" : e.date+" 破150";
+    html+=`<div class="seg"><div class="seghd">
+      <span class="st">大段 ${si+1} · Stage 2</span>
+      <span class="meta">${s.date} → ${endTxt} · <b>${s2(segGain)}%</b> · ${S.legs.length} 腿</span>
+    </div><div class="legs">`;
+    if(S.legs.length===0) html+='<div class="empty" style="padding:6px 4px">段內未偵測到符合條件的腿。</div>';
+    S.legs.forEach((L,li)=>{
+      const g=b[L.ig];
+      // ===== V66: 持倉鎖擋掉的腿 —— 顯示但不計入統計 =====
+      if(L.blocked){
+        html+=`<div class="leg" style="opacity:.4">
+          <div class="hd"><span class="ln"><span style="color:var(--dim);font-weight:600">加碼點</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--dim)">資金佔用中 · 不計入統計</span></span><span class="tag nor" style="opacity:.6">🔒 持倉鎖</span></div>
+          <div class="note"><b>為什麼不算:</b> 這條腿發動的時候, <b>前一筆交易還沒收掉 2/3</b>(還沒 +30% 收 1/3 + 破 20MA 收 1/3)—— 你的錢還壓在上面, 現實中<b>不會同時再開一個倉</b>。它是既有部位的<b>加碼點</b>, 不是一次新的獨立進場。<br><b style="color:var(--orange)">V65 以前把它當成獨立樣本 → 同一段行情被算好幾次 → 期望值 / 打擊率 / 賺賠比全部虛胖。V67 起, 前一筆收掉 2/3 就放行下一筆(含停損腿), 樣本才誠實。</b></div>
+        </div>`;
+        return;
+      }
+      const t1=L.t1>=0?b[L.t1]:null, d1=L.t1>=0?L.t1-L.ig:null;
+      const t2=L.t2>=0?b[L.t2]:null, d2=L.t2>=0?L.t2-L.ig:null;
+      const t3=L.t3>=0?b[L.t3]:null, d3=L.t3>=0?L.t3-L.ig:null;
+      const pk=b[L.pk], dPk=L.pk-L.ig, pkPct=pct(pk.h,g.c);
+      let tag="nor",tt="常規階梯",adv="+30% 收 1/3、破20MA 收 1/3、末 1/3 抱到連2根破50日。";
+      if(L.sl>=0){ tag="clx"; tt="⛔ 停損出場"; adv="進場後跌破停損("+L.stopPct.toFixed(1)+"% = 1×ADR)→ 全部出清。這是<b>正常成本</b>, 不是失敗 —— Qullamaggie 七成的交易長這樣。"; }
+      else if(L.be>=0){ tag="nor"; tt="成本價出場"; adv="+30% 收掉 1/3 後停損上移到成本價, 之後跌回成本 → 剩餘 2/3 平出。留下 T1 那 1/3 的獲利。"; }
+      else
+      if(L.climax){tag="clx";tt="climax · 賣強勢";adv="末端 + 快速見頂(峰值 D"+dPk+")= 氣竭,末 1/3 改用 5MA 快閃、別抱。";}
+      else if(L.monster){tag="mon";tt="8週持有 · monster";adv="起漲初期即強(大段內僅+"+L.posExt.toFixed(0)+"%),末 1/3 抱到50日,別急砍。";}
+      else if(L.runnerHold){tag="run";tt="續勢 runner · 抱";adv="末端(大段內+"+L.posExt.toFixed(0)+"%)但拖到峰值 D"+dPk+"才見頂 = 還在跑、非氣竭,末 1/3 用 50MA 移動停利抱住,別當 climax 砍。";}
+      else if(L.grinder){tag="grd";tt="慢磨 grinder · 抱";adv="沒暴衝但穩穩漲到 +30%、拖到峰值 D"+dPk+"才見頂、獲利出場(混合 "+s2(L.legPnl)+"%)= 慢波段贏家,用 50MA 抱住讓它磨,別因為漲得慢就早砍。";}
+      const pnlCls = L.live ? 'b' : (L.legPnl>=0?'g':'r');
+      const pnlTxt = L.live ? 'runner中' : (L.sl>=0?'⛔停損出場 ':(L.be>=0?'成本價出場 ':(L.t3>=0?'末棒出場 ':'')))+s2(L.legPnl)+'%';
+      const enTxt = L.type==='ign'?'點火':'突破';
+      const enCol = L.type==='ign'?'green':'blue';
+      html+=`<div class="leg">
+        <div class="hd"><span class="ln"><span style="color:var(--${enCol});font-weight:600">${enTxt}</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--${pnlCls})">${pnlTxt}</span></span><span class="tag ${tag}">${tt}</span></div>
+        <div class="track">
+          <div class="stop g"><div class="dot"></div><div class="k">發動 D0</div><div class="d">${g.date}</div><div class="m">收 ${g.c.toFixed(2)}</div></div>
+          <div class="stop ${t1?'a':'off'}"><div class="dot"></div><div class="k">T1 +${cfg.tgt}%</div><div class="d">${t1?t1.date:'未達'}</div><div class="m">${t1?('收 '+t1.c.toFixed(2)+' · D'+d1):('目標 '+L.tgtPx.toFixed(2))}</div></div>
+          <div class="stop b"><div class="dot"></div><div class="k">峰值</div><div class="d">${pk.date}</div><div class="m">高 ${pk.h.toFixed(2)} · ${s2(pkPct)}% · D${dPk}</div></div>
+          <div class="stop ${t2?'o':'off'}"><div class="dot"></div><div class="k">T2 破20 · 1/3</div><div class="d">${t2?t2.date:'未破'}</div><div class="m">${t2?(L.t2type+' · 收 '+t2.c.toFixed(2)+' · D'+d2):'—'}</div></div>
+          ${(L.sl>=0||L.be>=0) ? (()=>{const x=b[L.sl>=0?L.sl:L.be], dx=(L.sl>=0?L.sl:L.be)-L.ig;
+             return '<div class="stop r"><div class="dot"></div><div class="k">'+(L.sl>=0?'⛔ 停損':'成本價停損')+'</div><div class="d">'+x.date+'</div><div class="m">收 '+x.c.toFixed(2)+' · D'+dx+' · 全出</div></div>';})()
+           : `<div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>`}
+        </div>
+        <div class="note"><b>操作:</b> ${adv}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  let _pc=''; try{ _pc=personaCard(res,cfg); }catch(e){ _pc='<div class="empty">股性卡計算略過('+e.message+');其餘結果如下。</div>'; }
+  const hideNote = hidden>0 ? '<div class="empty" style="padding:4px 2px 10px;color:var(--dim)">已隱藏 '+hidden+' 個雜訊空段(太短、0腿、下跌)。</div>' : '';
+  out.innerHTML=_pc+hideNote+html+goldenCards();
+}
+
+// 股性卡 — 聚合所有腿, 一眼看這檔的個性 + 適不適合 +30% 策略
+function personaCard(res,cfg){
+  const b=res.bars, tk=(document.getElementById("tk").value.trim().toUpperCase()||"");
+  // v3.7: 以「段」為單位取最近 recentSegs 個「有腿的」大段來算股性(不是最近N天)。
+  //   → 淘汰很久以前的舊故事, 但當前還沒走完的長波段(TSM/DELL)完整保留、不腰斬。
+  const segsWithLegs = res.segs.filter(S=>S.legs.length>0);
+  const recentN = Math.max(1, cfg.recentSegs||3);
+  const usedSegs = segsWithLegs.slice(-recentN);                // 取最後(最近) N 段
+  const droppedSegs = segsWithLegs.length - usedSegs.length;    // 幾段舊的沒被算進來
+  // ===== V66: 只有「持倉鎖」放行的腿才算一次真實進場 =====
+  //   blocked = 前一筆交易還沒出清, 資金被佔用 → 現實中買不到 → 不能算樣本。
+  const legs=[]; usedSegs.forEach(S=>S.legs.forEach(L=>{ if(!L.blocked) legs.push(L); }));
+  const nBlocked = usedSegs.reduce((a,S)=>a+S.legs.filter(L=>L.blocked).length, 0);
+  const n=legs.length; if(n===0) return '<div class="persona"><div class="ph">◆ '+tk+' 股性卡</div><div class="empty" style="padding:10px">持倉鎖(V66)過濾後<b>沒有任何一次可執行的獨立進場</b> —— 這段行情裡, 你的資金從頭到尾都壓在第一筆交易上。無法給出統計。</div></div>';
+  const segN=Math.max(1, usedSegs.length);
+  const maxLegs=Math.max(...usedSegs.map(s=>s.legs.length));
+  // V48 三檔梯度統計: 各目標的達成次數與平均天數
+  const tierPc=[cfg.tgtA,cfg.tgtB,cfg.tgtC];
+  const tierHit=[0,0,0], tierDay=[0,0,0], tierCnt=[0,0,0];
+  legs.forEach(L=>{
+    if(!L.tHit) return;
+    for(let i=0;i<3;i++){
+      if(L.tHit[i]>=0){ tierHit[i]++; tierDay[i]+=(L.tHit[i]-L.ig); tierCnt[i]++; }
+    }
+  });
+  let reached=0,sumT1=0,cT1=0,sumPk=0,sumPkPct=0,maxPkPct=0,liveN=0,cClx=0,cMon=0,cRun=0,cGrind=0,cNor=0,cFail=0;
+  legs.forEach(L=>{
+    // V51: 股性統計一律改用「這條腿自己的窗口」(legPk), 不再共用段尾峰值
+    const g=b[L.ig], dPk=(L.legPkDays!=null?L.legPkDays:(L.pk-L.ig)), pkPct=(L.legPkPct!=null?L.legPkPct:pct(b[L.pk].h,g.c));
+    if(L.t1>=0){ reached++; sumT1+=(L.t1-L.ig); cT1++; }
+    sumPk+=dPk; sumPkPct+=pkPct; if(pkPct>maxPkPct)maxPkPct=pkPct;
+    if(L.live)liveN++;
+    if(!L.live && L.sl>=0) cFail++;                     // V55: 被『初始停損』掃出場的腿(不是抱到破50MA才虧)
+    if(L.climax)cClx++; else if(L.monster)cMon++; else if(L.runnerHold)cRun++; else if(L.grinder)cGrind++; else cNor++;
+  });
+  const cHold = cMon+cRun+cGrind;                        // 該抱腿 = monster + 續勢runner + 慢磨grinder
+  const succ=Math.round(reached/n*100);
+  const avgT1=cT1?Math.round(sumT1/cT1):null;
+  const avgPk=Math.round(sumPk/n), avgPkPct=sumPkPct/n;
+  const small=n<5;
+
+  // ===== V53: 期望值 EV =====
+  //   舊想法是用「中位數 x 存活率 - 假設停損 x 崩壞率」推估。但引擎本來就有 L.legPnl ——
+  //   那是照 Jasmine 的階梯規則(+30%收1/3、破20MA收1/3、末1/3抱到連2根破50MA)實際結算的損益。
+  //   不需要任何假設: EV = 已結算腿的 legPnl 平均值 = 「這套做法在這檔股票上, 每進場一次平均賺賠多少」。
+  //   evMed = 中位損益(不被右尾拉高), evWin = 賺錢腿佔比。
+  // ===== V55: 期望值 = Minervini 公式 =====
+  //   期望值 = 打擊率 × 平均獲利 − 敗率 × 平均虧損   (= 已結算腿 legPnl 的算術平均)
+  //   V54 誤把「平均被右尾拉高」當成 bug, 改用中位數 —— 那是錯的。
+  //   Qullamaggie 勝率只有 25~30%, Minervini 說「要把失敗建進去」。
+  //   右尾不是騙局, 右尾就是這門生意本身。前提是: 虧損必須被停損蓋住(V55 已加)。
+  //   真正的否決線是 Minervini 的最低標準: 賺賠比 ≥ 2:1。
+  const settled = legs.filter(L=>!L.live);
+  const pnlList = settled.map(L=>L.legPnl).sort((a,b)=>a-b);
+  const nSet = pnlList.length;
+  const winsArr = settled.filter(L=>L.legPnl>0).map(L=>L.legPnl);
+  const lossArr = settled.filter(L=>L.legPnl<=0).map(L=>Math.abs(L.legPnl));
+  const evWinN = winsArr.length;
+  const batAvg = nSet ? evWinN/nSet : 0;                                  // 打擊率
+  const avgWin  = winsArr.length ? winsArr.reduce((a,b)=>a+b,0)/winsArr.length : null;
+  const avgLoss = lossArr.length ? lossArr.reduce((a,b)=>a+b,0)/lossArr.length : null;
+  // V63: 沒有虧損腿 → 賺賠比是 ∞。這【不是】完美, 是【樣本不夠】——
+  //   台積電怎麼可能一次都沒賠過? 只是腿太少剛好都是賺的。∞ 不能給綠燈。
+  const wlRatio = (avgWin!=null && avgLoss!=null && avgLoss>0) ? avgWin/avgLoss
+                : (avgWin!=null && (avgLoss==null||avgLoss===0) ? Infinity : null);
+  const noLoss  = (wlRatio === Infinity);
+  const expect  = nSet ? pnlList.reduce((a,b)=>a+b,0)/nSet : null;        // = 期望值
+  const evAvg = expect;
+  const evMed = nSet ? (nSet%2 ? pnlList[(nSet-1)/2] : (pnlList[nSet/2-1]+pnlList[nSet/2])/2) : null;
+  const evThin = nSet < 5;
+  // ===== V64: 還在跑的腿(runner)不能隱形 =====
+  //   V63 以前: 期望值只算「已結算」的腿。DELL 有一條 +191.50% 的腿還在跑, 完全沒被算進去 →
+  //   系統拿它兩年前失敗的 2 次, 判定一檔正在大賺的股票是「不要買, 換個時間點也不會變好」。
+  //   兩個資料點證明不了任何事。V64: 資料不足就說資料不足, 不要裝作有結論。
+  const liveLegs = legs.filter(L=>L.live);
+  const livePnl  = liveLegs.map(L=>L.legPnl);
+  const nAll     = nSet + liveLegs.length;
+  const allPnl   = pnlList.concat(livePnl);
+  const expectIf = allPnl.length ? allPnl.reduce((a,b)=>a+b,0)/allPnl.length : null;  // 若現在全部出場
+  // V65: 門檻 3 → 5。
+  //   查到的專業標準: 統計推論最低 30 次, 理想 100+。而且 2024 年一份跑了 220 億次迴歸的模擬指出:
+  //   「資料高度偏斜時, 所需樣本數會【大幅提高】; 極端偏斜下, 即使 10,000 也無法保證收斂。」
+  //   Jasmine 的報酬分布正是極端右偏(少數 monster 撐起全部)—— 她需要的樣本【遠超過 30】, 不是更少。
+  //   單一股票兩年內只跑得出 2~14 條腿, 【永遠】達不到統計顯著。
+  //   → 單檔的燈號只是【假設】(篩選用), 真正的結論在總表底部的「全部合計」。
+  const tooThin  = nSet < 5;
+  // 單腿依賴: 拿掉最好的那條腿, 期望值還是正的嗎?
+  const pnlNoBest = pnlList.slice(0, Math.max(0, nSet-1));
+  const expectNoBest = pnlNoBest.length ? pnlNoBest.reduce((a,b)=>a+b,0)/pnlNoBest.length : null;
+  const oneLegDep = (expect!=null && expect>0 && expectNoBest!=null && expectNoBest<=0);
+  // 腿是否共用同一個出場點(同一段行情被算了 N 次)
+  const exitSet = new Set(settled.map(L=>L.term));
+  const sharedExit = (nSet>=3 && exitSet.size <= Math.max(1, Math.floor(nSet/3)));
+
+  // 底部分類行專用:互斥分桶(虧損優先)保證加總 = n, 不與 verdict 計數重複。
+  let dFail=0,dClx=0,dHold=0,dNor=0;
+  legs.forEach(L=>{
+    if(!L.live && L.sl>=0) dFail++;
+    else if(L.climax) dClx++;
+    else if(L.monster||L.runnerHold||L.grinder) dHold++;
+    else dNor++;
+  });
+
+  // ---- 白話版 ----
+  const wk = d => d==null ? '—' : '約'+Math.max(1,Math.round(d/5))+'週';
+  const lo=Math.floor(succ/10), hi=Math.ceil(succ/10), succN = lo===hi?(''+lo):(lo+'~'+hi);
+  const perSeg=(n/segN).toFixed(1);
+  // ===== V49 修正 (D): 股性句改成「速度 × 幅度」二維 =====
+  //   V48 bug: 只看 avgPk(見頂天數), 而且中間桶 15~40 天寬到吃掉幾乎所有股票 →
+  //   AEHR(37)/RKLB(24)/MU(34)/GLW(28)/ARM(22)/NOK(30) 六檔印出一模一樣的
+  //   「節奏中庸,沒特別暴衝」。更糟的是: 用「天數」的指標, 寫成「幅度」的話術 ——
+  //   ARM 平均一波 +65%、最猛 +192%、12 天到 +30%, 被講成「沒特別暴衝」。
+  //   V49: 速度(avgPk 天)× 幅度(avgPkPct %)交叉, 而且把實際數字寫進句子裡, 不可能再撞句。
+  const _spd = avgPk<=20 ? 'F' : (avgPk<=40 ? 'M' : 'S');       // Fast / Mid / Slow
+  const _mag = avgPkPct>=60 ? 'B' : (avgPkPct>=30 ? 'M' : 'S'); // Big / Mid / Small
+  const _num = '(平均 '+avgPk+' 天走 '+s2(avgPkPct)+'%、最猛 '+s2(maxPkPct)+'%)';
+  const ARCHE = {
+    FB:'又快又猛的爆發型'+_num+'——進場必須卡在點火當下, 晚 2 天就變追高。',
+    FM:'節奏快、幅度中等'+_num+'——快進快出型, 到目標價就走, 別想著抱長。',
+    FS:'衝很快、頂也來得快的抛物線'+_num+'——到 +30% 要果斷落袋, 別戀棧。',
+    MB:'標準飆股節奏'+_num+'——可以抱, 用 20MA 移動停利讓它跑完。',
+    MM:'節奏中庸, 一波一波往上推'+_num+'。',
+    MS:'節奏中庸但波段偏小'+_num+'——賺不到大錢。',
+    SB:'慢慢磨、但走得很遠的 runner'+_num+'——要有耐心, 用 50MA 抱住, 別被中途震出來。',
+    SM:'慢磨型'+_num+'——資金效率低, 同樣的時間別的股能跑兩趟。',
+    SS:'又慢又小'+_num+'——本策略最不該碰的類型, 資金會被卡死。'
+  };
+  const archeLine = ARCHE[_spd+_mag] || '節奏中庸'+_num+'。';
+  let archePlain = archeLine;
+  // 判斷順序:乾淨大波段(可抱)> 大波段但破碎(不穩)> 高勝率快賣 > 一半一半 > 難做
+  let vcolor,vmark,vtxt;
+  // ===== V48: 合格機會頻率 + 近期性(取代失敗的「時間佔比」)=====
+  // 為何改: 「Stage2 時間佔比」量不出問題(ONDS 51% vs SNDK 56%, 分不開)。
+  //   真正該問的(Jasmine 定義): 這檔在「日線」上, 能不能在 2~4 週內漲到 +30%? 而且一年要有「好幾次」,
+  //   不是跨兩個年度才那麼一次。ONDS 週線看是一大段(2025噴完), 但 2026 整年橫盤亂洗、毫無漲幅——
+  //   引擎把兩年混在一起平均, 2025 的戰功掩蓋了 2026 的失效, 才會贏過 GLW/MRVL 這些真正好操作的股。
+  // 做法: 合格機會 = 一條腿在 ≤ oppWk 週(交易日)內漲到 +30%。按「近一年 / 前一年」分開統計。
+  //   近一年 0 次合格機會 = 這檔現在已經失效 → 不論歷史多輝煌, 都不准掛 ◆。
+  // ===== V48: O'Neil / IBD 的「時間權重」=====
+  // 原文公式(William O'Neil + Co / IBD RS Rating):
+  //   最近一季給 40% 權重, 前面三季各給 20%。
+  //   強度 = 0.4×ROC(63) + 0.2×ROC(126) + 0.2×ROC(189) + 0.2×ROC(252)
+  // 為何要這個: 去年的熱門股今年可能慘不忍睹(七巨頭/Tempus/ONDS), 但引擎把兩年平均, 舊戰功
+  //   會掩蓋現況。O'Neil 讓「最近一季」的份量是其他任一季的兩倍 → 今年的慘況壓得住去年的輝煌。
+  const rocN = (k) => {                                  // 近 k 個交易日的漲幅%
+    const i0 = b.length-1-k;
+    if(i0 < 0 || !b[i0] || b[i0].c<=0) return null;
+    return (b[b.length-1].c / b[i0].c - 1)*100;
+  };
+  const r63=rocN(63), r126=rocN(126), r189=rocN(189), r252=rocN(252);
+  let rsScore=null;
+  if(r63!=null && r126!=null && r189!=null && r252!=null){
+    rsScore = 0.4*r63 + 0.2*r126 + 0.2*r189 + 0.2*r252;   // O'Neil 加權動能
+  } else if(r63!=null && r126!=null){
+    rsScore = (0.4*r63 + 0.2*r126) / 0.6;                 // 資料不足時按可得季數normalize
+  }
+  // 修正: O'Neil 原始 RS 要跟全市場比、換算百分位(1-99)才有意義。我們只跑單一檔股票, 沒有全市場
+  //   可比 → 「總分是正是負」無意義(SNDK +1244 vs GLW +105 之間無可比性)。
+  //   真正跨股票可比、且直接反映「現在」的, 是「最近一季漲跌」(r63)——這正是 O'Neil 給 40% 權重的那一段。
+  //   ONDS 近一季 -20.57%(在跌), 但 2025 三季漲太猛把總分拉成 +35.70 → 用總分會漏抓。改看 r63。
+  // ===== V49 修正: 「回檔」不等於「失效」 =====
+  //   V48 bug: weakNow = (r63 < 0) → 跌 0.1% 就算轉弱。但引擎自己切腿用的是 Minervini/O'Neil
+  //   的「≥12% 回檔才算一條腿結束」。同一份研究, 兩個地方用兩套門檻 → LITE 只回 -10.3%
+  //   (連一次合格回檔都還沒完成), 卻被打成「別碰」。
+  //   V49: 深度回檔門檻改用 cfg.weakPct(-12%), 與切腿門檻同源。
+  const softPull = (r63!=null && r63 < 0 && r63 > cfg.weakPct);  // 正常回檔(< 12%)= 整理中, 不是轉弱
+  const weakNow  = (r63!=null && r63 <= cfg.weakPct);            // 深度回檔(≥12%)= 真的轉弱
+
+  // 機會統計也按 O'Neil 權重分季(近一季權重 ×2, 其餘 ×1)
+  // V66: 「合格機會」= 你【真的能吃到】的機會。資金佔用中的腿不算機會。
+  const allLegs=[]; res.segs.forEach(S=>S.legs.forEach(L=>{ if(!L.blocked) allLegs.push(L); }));
+  const oppBars = cfg.oppWk*5;
+  const N=b.length;
+  let oppQ1=0, oppQ2to4=0, oppOld=0;
+  allLegs.forEach(L=>{
+    const qualified = L.t1>=0 && (L.t1-L.ig)<=oppBars;
+    if(!qualified) return;
+    const age = N-1-L.ig;                                 // 距今幾根
+    if(age<=63) oppQ1++;                                  // 最近一季(權重最重)
+    else if(age<=252) oppQ2to4++;                         // 一年內其餘三季
+    else oppOld++;                                        // 一年以上 = 舊帳
+  });
+  const oppRecent = oppQ1+oppQ2to4;                       // 近一年合計(相容舊顯示)
+  const oppPrior  = oppOld;
+  // ===== V50: Stage 分期(取代 V49 的二元「仍在/已跌出」)=====
+  //   問題: V49 只有兩檔, 「仍在 Stage 2」四個綠字會讓人以為可以買 —— 但它可能是噴了 800%
+  //   的末期。champion 從來不把 Stage 2 當成一個狀態, 而是三個: 初期(可進可抱) /
+  //   中期(只買回檔) / 末期(只出不進)。另外「跌出 Stage 2」也要分兩種:
+  //   Stage 1 修復(近一季在漲, 只是還沒站回 30 週線 → 進觀察名單)
+  //   vs Stage 4 下跌(近一季在跌 → 刪掉)。RKLB / AEHR 都是前者, V49 把它們一起殺了。
+  const lastSeg   = res.segs.length ? res.segs[res.segs.length-1] : null;
+  const inStage2  = !!(lastSeg && lastSeg.seg && lastSeg.seg.live && lastSeg.seg.e >= b.length-3);
+  const px        = b[b.length-1].c;
+  const w30now    = res.w30daily ? res.w30daily[b.length-1] : null;
+  // 離 30 週線多遠(Minervini: Stage 2 走得越遠, 風險報酬越差)
+  const extW30    = (w30now && w30now>0) ? (px-w30now)/w30now*100 : null;
+  // 進入 Stage 2 已經多久(交易日)
+  const s2Age     = inStage2 ? (b.length-1 - lastSeg.seg.s) : null;
+  // 離 52 週低點多遠(Minervini Trend Template: >100% 開始要小心, >300% 是末期)
+  const lo52 = (()=>{ let m=Infinity; for(let k=Math.max(0,b.length-252);k<b.length;k++) if(b[k].l<m)m=b[k].l; return m===Infinity?null:m; })();
+  const extLo52   = (lo52 && lo52>0) ? (px-lo52)/lo52*100 : null;
+
+  // ===== V62: 補上 Stage 3(頭部)—— 引擎原本只有 Stage 1/2/4, 完全沒有頭部這一段 =====
+  //   Weinstein: Stage 3 = 長期上漲後, 30 週線【走平】, 價格在均線上下來回churn, 10 週線下彎跌破 30 週線。
+  //   引擎原本把這種狀況硬塞進「Stage 2 初期」→ 那正是「偽裝成突破的 Stage 3 買點」, 也是
+  //   stage analysis 最大的虧損來源。
+  const w10now  = res.w10daily ? res.w10daily[b.length-1] : null;
+  const w30slpN = res.w30slp   ? res.w30slp[b.length-1]   : null;   // 30週線斜率%(近4週)
+  const w10slpN = res.w10slp   ? res.w10slp[b.length-1]   : null;   // 10週線斜率%(近2週)
+  const w30Flat   = (w30slpN!=null && Math.abs(w30slpN) < 2);       // 走平 = 4週內動 <2%
+  const w30Down   = (w30slpN!=null && w30slpN <= -2);
+  const w10BelowW30 = (w10now!=null && w30now!=null && w10now < w30now);
+  const w10Down     = (w10slpN!=null && w10slpN < 0);
+  const hadRun      = (extLo52!=null && extLo52 > 50);              // 之前確實漲過一波(不是剛從底部爬)
+  // 頭部: 漲過一波 + 10週線下彎並跌破30週線(或30週線已走平/下彎)
+  const isStage3 = hadRun && w10BelowW30 && w10Down && !w30Down;
+
+  let phase, phaseTxt, phaseColor;
+  const belowW30 = (w30now!=null && px < w30now);
+  if(isStage3){
+    phase='S3'; phaseColor='red';
+    phaseTxt='Stage 3 頭部 — 只出不進';
+  } else if(!inStage2){
+    // ===== V51 Bug 2 修正 =====
+    //   V50 用 (weakNow || r63 < 0) 判 Stage 4 —— 我把 V48 那個「跌 0.1% 就算轉弱」的 bug 又寫回去了。
+    //   AXTI(-9.36%)、AAOI(-10.04%) 的欄位寫「整理,不是失效」, 判詞卻是「Stage 4 刪掉」——同卡打臉。
+    //   V51: Stage 4 = 深度回檔(≤ weakPct, 預設 -12%), 與切腿/轉弱門檻同源。
+    // ===== V51 Bug 3 修正 =====
+    //   Layer 1 收段有兩條規則: (a) 週線收破 30 週線 (b) 10 週線走弱。
+    //   V50 不管哪條收的, 判詞一律說「週線已收破 30 週線」→ AAOI 明明 +9% 站在線上, 卻被這樣寫。
+    //   V51: 先看價格到底在不在 30 週線上面, 再決定講什麼。
+    if(!belowW30){
+      phase='S2X'; phaseColor='amber';
+      phaseTxt='Stage 2 動能熄火 — 等重新點火';
+    } else if(weakNow){
+      phase='S4'; phaseColor='red';
+      phaseTxt='Stage 4 下跌 — 刪掉';
+    } else {
+      phase='S1'; phaseColor='amber';
+      phaseTxt='Stage 1 修復中 — 進觀察名單,還不能買';
+    }
+  } else if(extW30!=null && extW30 > cfg.lateExtW30){
+    // ===== V51 Bug 4 修正 =====
+    //   V50 的末期 = (離30週線 > 70%) OR (離52週低點 > 300%)。實測 16 檔:
+    //   「離30週線 > 70%」一次都沒觸發(最高 MU 65%); 所有被判末期的全靠 52 週低點那條 —— 而
+    //   BE 離 30 週線只有 +21%(標準初期)也被打成「只出不進」。這條線是壞的, 不是需要微調。
+    //   V51: 拆掉 52 週低點的 OR(降級為顯示數字)。末期只看「離 30 週線」這個結構性、
+    //   自帶正規化的指標。同時把 base 數(這段跑到第幾條腿)做成顯示欄位 ——
+    //   O'Neil/Minervini 真正數末期的方式就是 base count, 下一輪有真數據再決定門檻。
+    phase='S2C'; phaseColor='red';
+    phaseTxt='Stage 2 末期 — 只出不進';
+  } else if(extW30!=null && extW30 > cfg.midExtW30){
+    phase='S2B'; phaseColor='amber';
+    phaseTxt='Stage 2 中期 — 只買回檔,不追突破';
+  } else {
+    phase='S2A'; phaseColor='green';
+    phaseTxt='Stage 2 初期 — 可進、可抱';
+  }
+  // V51: base 數 = 目前這個(活著的)大段裡已經跑了幾條腿。O'Neil: 第4個 base 以上 = 末期。
+  const baseCount = (inStage2 && lastSeg) ? lastSeg.legs.length : null;
+  const deadNow   = (phase==='S4' || phase==='S1' || phase==='S2X' || phase==='S3');
+  const lateNow   = (phase==='S2C');
+  // ===== V48: champion 的兩道判準(Qullamaggie + Minervini)=====
+  // (A) ADR% 門檻: Qullamaggie 篩股第一關 = ADR% ≥ 5%。低於此 = 波動不足, 一天跑不動,
+  //     swing 賺不到錢(TSM/GOOG 這型)。這不是「壞股」, 是「非本策略標的」。
+  //     ★ 注意: 高 ADR 不是缺點! Qullamaggie 要的就是高 ADR(能跑)。別誤殺飆股。
+  // (B) 洗盤倍數: Qullamaggie 硬規則「停損 ≤ 1×ADR」。若這檔上漲途中的正常回檔遠超 1×ADR,
+  //     任何守規矩的人都會被洗出場 → 就算它最後漲 +500%, 你也賺不到(AAOI 型)。
+  //     Minervini 同一件事的另一面: 「鬆散的價格行為」直接淘汰。
+  const adrNow = adrPct(b, 20);                          // 目前 ADR%
+  const lowVol = (adrNow!=null && adrNow < cfg.minAdr);  // 波動不足 = 非本策略標的
+  // 震盪度 = Stage 2 期間, 收盤「穿越 20MA」的次數 (每100個交易日)
+  //   Qullamaggie 原話: 好的整理是「貼著 10/20 MA 有秩序地盤整」(surfing the MA)。
+  //   乾淨趨勢股 → 一路貼在 20MA 上方, 很少穿越;
+  //   鬆散洗盤股(AAOI型) → 反覆穿上穿下 → 你的停損一次次被掃掉 → 會飆但賺不到。
+  const ma20b = sma(b,"c",20);
+  let cross=0, s2d=0, prevAbove=null;
+  res.segs.forEach(S=>{
+    for(let k=S.seg.s;k<=S.seg.e;k++){
+      if(ma20b[k]==null) continue;
+      s2d++;
+      const above = b[k].c >= ma20b[k];
+      if(prevAbove!==null && above!==prevAbove) cross++;
+      prevAbove = above;
+    }
+    prevAbove=null;                                       // 段與段之間不連續
+  });
+  const chop = s2d>0 ? (cross/s2d*100) : null;            // 每100天穿越幾次
+  // ===== V49 修正 (A): 震盪度必須用 ADR 正規化 =====
+  //   V48 bug: 用固定門檻(12次)砍所有股票。但 ADR 10.67% 的股票(AEHR)一天就晃 10%,
+  //   碰到 20MA 是常態噪音; ADR 5% 的股票穿 13 次才叫亂。固定門檻 = 系統性誤殺高 ADR 飆股
+  //   —— 正是 Qullamaggie 要的那種。程式碼上面自己寫著「★高 ADR 不是缺點, 別誤殺飆股」,
+  //   結果閘門就在做這件事。
+  //   V49: 門檻隨 ADR 放大 → chopLimit = maxChop × (ADR / refAdr)
+  const chopLimit = (adrNow!=null && adrNow>0) ? cfg.maxChop * (adrNow/cfg.refAdr) : cfg.maxChop;
+  const chopHot   = (chop!=null && chop >= chopLimit);    // 相對它自己的波動, 算不算亂
+  // ===== V49 修正 (B): 「被洗出場」要有實際證據, 不能只看穿線次數 =====
+  //   V48 bug: AEHR 判詞說「你的停損會被一次次掃掉」, 但同一張卡上 cFail = 0(0 條虧損出場)。
+  //   引擎自己的結算說沒人被掃出去, 判詞卻說一直被掃 —— 代理指標推翻了實際結果。
+  //   V49: chop 只是「嫌疑」, cFail > 0 才是「證據」。沒有證據就不定罪。
+  const whipsaw = chopHot && cFail > 0;
+
+  const totalBars = b.length;
+  let s2days = 0; res.segs.forEach(S=>{ s2days += (S.seg.e - S.seg.s + 1); });
+  const s2Pct = totalBars ? Math.round(s2days/totalBars*100) : 0;
+
+  // ===== V50: 每條腿的「最終峰值」分佈 =====
+  //   為什麼不加 40%/50% 梯度: 梯度算的是「這條腿最高點有沒有摸到 +X%」。一條走到 +65% 的腿
+  //   在 20/25/30 三格全部命中 → 機率當然一樣(MU 50/50/50、COHR 60/60/60、ARM 50/50/50)。
+  //   梯度平坦不是股性, 是統計方式的必然結果。加更多檔只會看到更長的平台, 不會更誠實。
+  //   真正該看的是: 這些腿「最後各自走到哪就結束了」。中位數才是你該抱到的位置, 右尾是賭。
+  const pkList = legs.map(L=>(L.legPkPct!=null?L.legPkPct:pct(b[L.pk].h, b[L.ig].c))).sort((x,y)=>y-x);
+  const medPk  = pkList.length ? (pkList.length%2 ? pkList[(pkList.length-1)/2]
+                 : (pkList[pkList.length/2-1]+pkList[pkList.length/2])/2) : null;
+  const pkStr  = pkList.map(v=> (v>=0?'+':'')+v.toFixed(0)+'%').join('、');
+
+  const holdWorthy = cHold >= Math.max(2, Math.round(n*0.3)) && avgPkPct >= cfg.bigLeg;
+  const holdRatio = Math.round(cHold/n*100);
+  const failRate = cFail/n;
+  // ===== V53: 「核心倉等級」單一判準 =====
+  //   V52 bug: CIEN 上方判詞說「核心持有型, 用 monster/50MA 抱住」, 下方股性行卻說
+  //   「能做, 但不是核心倉等級」—— 兩個函式各判各的。上方看崩壞率+該抱腿, 下方看平均漲幅。
+  //   V53: 全卡片共用同一個 coreWorthy, 只算一次。
+  const highHold = cHold/n >= 0.55;
+  const midHold  = cHold/n >= 0.45;                       // V49: 45~55% 的中間帶
+  // ===== V55: 閘門換人 =====
+  //   V52~V54 用「崩壞率 > 20%」當否決權 —— 但 champion 的勝率本來就只有 25~50%,
+  //   停損被掃是常態, 不是罪。Minervini 的最低標準是【賺賠比 ≥ 2:1】+【期望值 > 0】。
+  const badOdds = (expect==null) || (expect<=0) || (wlRatio!=null && wlRatio < cfg.minRR);
+  const clean = highHold && !badOdds;
+  // ===== V49 修正 (C): 補上 clean 與 unstable 之間的縫 =====
+  //   V48 bug: clean 要該抱比 ≥55%, unstable 要崩壞率 >20%。ARM 該抱比 50%、崩壞率 17%
+  //   —— 兩邊都不符合, 三個 holdWorthy 分支一個都接不到, 直接掉到最底層的 succ 分支,
+  //   被講成「一半一半,要挑時機」。但它平均一波 +65%、最猛 +192%、12 天到 +30%。
+  const semiClean = !clean && midHold && !badOdds;
+  const unstable = badOdds;                              // V55: 「賠率不站在你這邊」取代「崩壞率過高」
+  // V50: 波段 30~40%(未達 bigLeg 硬線)但腿夠多 → 不該直接掉到 succ 分支
+  const nearBig = !holdWorthy && cHold >= Math.max(2, Math.round(n*0.3))
+                  && avgPkPct >= cfg.softBig && avgPkPct < cfg.bigLeg;
+  const rrTxt = wlRatio==null ? '—' : (wlRatio===Infinity ? '∞(沒賠過)' : wlRatio.toFixed(1)+':1');
+  // V57: 打平線 = 要贏幾成才不虧 = 平均賠 /(平均賺 + 平均賠) = 1/(1+賺賠比)
+  const beWinRate = (avgWin!=null && avgLoss!=null && (avgWin+avgLoss)>0) ? avgLoss/(avgWin+avgLoss) : null;
+  const beMargin  = (beWinRate!=null) ? (batAvg - beWinRate)*100 : null;   // 實際打擊率 高出打平線幾個百分點
+  // V55: 核心倉資格 — 賺賠比 ≥3:1 + 期望值 ≥+20% + 該抱腿 ≥50%
+  // V63: ⚠靠運氣 / 樣本不足 / 沒賠過 → 一律不給核心倉。核心倉至少要 5 條已結算的腿。
+  const coreWorthy = !badOdds
+                     && !oneLegDep && !sharedExit && !noLoss && nSet >= 5
+                     && (wlRatio!=null && wlRatio!==Infinity && wlRatio >= 3)
+                     && (cHold/n >= 0.50) && (expect!=null && expect >= 20);
+  if(lowVol){
+    // (A) Qullamaggie 第一關: ADR% < 5% → 波動不足, 一天跑不動, swing 賺不到。非本策略標的。
+    vcolor='muted'; vmark='— 波動不足 · 非本策略標的';
+    vtxt='這檔的 ADR% 只有 <b>'+adrNow.toFixed(2)+'%</b>(Qullamaggie 篩股門檻是 ≥'+cfg.minAdr+'%)——<b>一天跑不動</b>, 你的「4週漲30%」策略在它身上等不到。它不是壞股, 是<b>不適合這套飆股策略</b>(七巨頭/TSM/GOOG 這型)。要做請換方法(長線投資), 別套本系統。';
+    archePlain='波動天生太小, 跑不出swing需要的幅度——非本策略標的。';
+  } else if(phase==='S3'){
+    vcolor='red'; vmark='✗ Stage 3 頭部 — 只出不進';
+    vtxt='<b>10 週線已經下彎、跌破 30 週線</b>, 但 30 週線還沒轉下 —— 這是<b>頭部正在形成</b>。'
+       + '<b>30 週線在頭部之後還會繼續上升好幾個月</b>(均線的斜率落後價格好幾週), 所以圖看起來還是多頭的, 但那是假的。'
+       + '<b>做法: 有持股 → 出。空手 → 不要進。</b>等它跌完、重新打底、10 週線重新站上 30 週線再說。';
+    archePlain='頭部形成中——10週線已跌破30週線, 30週線還在上升是落後假象。';
+  } else if(phase==='S2X'){
+    vcolor='amber'; vmark='◇ Stage 2 動能熄火 — 等重新點火';
+    // V52: 體質好壞要看實際崩壞率, 不能一律說「體質還在」。AAOI 崩壞率 43%、該抱 1/14, 卻被寫成「體質還在」。
+    vtxt='它<b>還站在 30 週線上方(+'+(extW30==null?'—':extW30.toFixed(0))+'%)</b>, 不是 Stage 4 崩跌 —— 但<b>週線 10 週線已經走弱、大段收掉了</b>, 動能熄火。'
+       + (unstable
+          ? '而且<b style="color:var(--orange)">它的體質本來就不好: 崩壞率 '+Math.round(failRate*100)+'%('+cFail+'/'+n+' 條虧損出場)、只有 '+cHold+'/'+n+' 條走出續勢、中位數僅 '+(medPk==null?'—':s2(medPk)+'%')+'</b>。<b>做法: 不是等它, 是先別碰。</b>就算它重新點火, 這種崩壞率也只能小部位、快進快出。'
+          : '歷史體質是好的(該抱 '+cHold+'/'+n+'、崩壞率 '+Math.round(failRate*100)+'%、平均 '+s2(avgPkPct)+'%), 只是現在沒火。<b>做法: 留在觀察名單, 等它重新打出 base 並點火。現在進場沒有 setup。</b>');
+    archePlain=archeLine;
+  } else if(phase==='S4'){
+    vcolor='amber'; vmark='◇ Stage 4 下跌 — 刪掉';
+    vtxt='歷史數字可能漂亮(該抱 '+cHold+'/'+n+'、平均 '+s2(avgPkPct)+'%),<b>但那是舊帳</b>。它<b>週線已收破 30 週線, 而且近一季 '+s2(r63)+'% 還在跌</b>——Weinstein 定義的 Stage 4 下跌期。不是等它, 是刪掉它, 等哪天它重新打完底再說。';
+    archePlain='已進入 Stage 4 下跌——歷史績效不代表現在。';
+  } else if(phase==='S1'){
+    vcolor='amber'; vmark='◇ Stage 1 修復中 — 進觀察名單,還不能買';
+    vtxt='它<b>週線還在 30 週線下方</b>(不能買),<b>但近一季 '+s2(r63)+' % 已經在漲</b>——這是 Stage 1 打底 / 修復, 不是 Stage 4 崩跌。'
+       + (unstable
+          ? '<b style="color:var(--orange)">但它的體質不好: 崩壞率 '+Math.round(failRate*100)+'%('+cFail+'/'+n+' 條虧損出場)、只有 '+cHold+'/'+n+' 條走出續勢</b>——就算它站回 30 週線, 也不該給核心倉位。'
+          : '歷史體質是好的(該抱 '+cHold+'/'+n+'、崩壞率 '+Math.round(failRate*100)+'%、平均 '+s2(avgPkPct)+'%)。')
+       + '<b>做法: 丟進 radar 觀察名單, 兩個條件同時成立才進場 —— (1) 週線站回 30 週線 (2) 日線點火。</b>現在買是搶反彈, 不是你的系統。';
+    archePlain=archeLine;
+  } else if(unstable){
+    // ===== V52 核心修正: 崩壞率是「安全閘門」, 不能掛在「波段夠不夠大」底下 =====
+    //   V51 bug: unstable 這條分支寫成 (holdWorthy && unstable)。而 holdWorthy 需要
+    //     (a) avgPkPct >= bigLeg(40%)  且  (b) cHold >= max(2, 30%*n)
+    //   → 只要「波段不夠大」或「該抱腿不夠多」, 崩壞率再高都不會被檢查到, 直接掉到最底層的
+    //     succ 分支拿到綠燈/溫和判詞。實測災情:
+    //       BE   崩壞率 60%(5條裡3條虧損出場) → 只拿到「△ 一半一半,要挑時機」
+    //       COHR 崩壞率 40%(2/5)             → 竟然拿到「✓ 適合你的做法」綠燈
+    //       OUST 崩壞率 30%、NBIS 27%         → 全部只有溫和判詞
+    //   而「該抱腿少 + 崩壞率高」恰恰是最該警告的組合 —— 舊版反而對它最沉默。
+    //   V52: 崩壞率 > maxFailRate 直接獨立成閘, 排在所有「可抱」分支之前。
+    //   不管波段大小、不管該抱幾條, 先亮警告。
+    vcolor='orange'; vmark='⚠ 賠率不站在你這邊 — 別做';
+    const negEV = (expect!=null && expect<=0);
+    vtxt = (negEV
+        ? '<b>期望值 '+(expect==null?'—':s2(expect)+'%')+' —— 負的。</b>過去 '+nSet+' 次進場, 照你的規則(停損 1×ADR、+30% 收 1/3 並把停損移到成本、破 20MA 收 1/3、末 1/3 抱到破 50MA)做完, <b>平均每次是賠錢的</b>。'
+        : '<b>賺賠比只有 '+rrTxt+'</b> —— 沒到 Minervini 的最低標準 '+cfg.minRR+':1。')
+      + '打擊率 '+Math.round(batAvg*100)+'%('+evWinN+'/'+nSet+')、平均賺 '+(avgWin==null?'—':s2(avgWin)+'%')+'、平均賠 '+(avgLoss==null?'—':'-'+avgLoss.toFixed(2)+'%')+'。'
+      + '<b>低打擊率本身不是問題</b>(Qullamaggie 只有 25~30%)—— <b>問題是贏的時候賺得不夠多, 補不回輸的時候賠的。</b>'
+      + '<b>結論: 這檔不該進你的池子。</b>';
+    archePlain='賠率不站在你這邊——贏的時候賺不夠, 補不回輸的。';
+  } else if(lateNow && holdWorthy){
+    vcolor='amber'; vmark='◇ Stage 2 末期 — 只出不進';
+    vtxt='它<b>還在 Stage 2, 但已經走太遠了</b>: 離 30 週線 <b>+'+(extW30==null?'—':extW30.toFixed(0))+'%</b>'+(extLo52!=null?'、離 52 週低點 <b>+'+extLo52.toFixed(0)+'%</b>':'')+'。champion 的風報比在這個位置已經翻轉——上檔剩下的空間, 配不上你要承受的回檔。<b>有持股: 續抱、拉高停利。空手: 不要進。</b>等它整理出新的 base 再看。';
+    archePlain=archeLine;
+  } else if(holdWorthy && clean && whipsaw){
+    // (B) 會飆, 但上漲途中的回檔遠超 1×ADR → 守規矩的停損一定被洗掉 → 賺不到
+    vcolor='orange'; vmark='⚠ 會飆但洗得兇 — 抱不住';
+    vtxt='確實會噴(平均 '+s2(avgPkPct)+'%、最猛 +'+maxPkPct.toFixed(0)+'%),<b>但過程鬆散: 每100天穿越 20MA '+chop.toFixed(1)+' 次, 已超過它自己的 ADR 正規化門檻 '+chopLimit.toFixed(1)+'</b>(ADR '+adrNow.toFixed(1)+'%)。<b>而且不是只有嫌疑——實際結算有 '+cFail+' 條腿虧損出場</b>(崩壞率 '+Math.round(failRate*100)+'%)。champion 要的是「貼著 20MA 有秩序盤整」, 這檔卻上下亂穿, 停損真的會被掃掉。要做只能大幅縮小部位、快進快出, 別當核心股。';
+    archePlain='會飆, 但上漲過程洗得兇——停損守不住, 賺不到它的漲幅。';
+  } else if(holdWorthy && clean){
+    vcolor='blue'; vmark='◆ 乾淨大波段 — 可抱';
+    const nowTxt = softPull
+      ? '目前近一季 <b>'+s2(r63)+'%</b> 在回檔, <b>但沒破 '+cfg.weakPct+'% 的深度門檻、週線仍站在 30 週線上</b>——這是<b>回檔整理(定錨)</b>, 不是失效。近一季 '+oppQ1+' 次點火是正常的(打底期本來就不點火), 等它點火。'
+      : '且最近一季 <b>'+s2(r63)+'%</b> 仍在漲、近一季有 <b>'+oppQ1+' 次</b>合格機會(現在仍有效)。';
+    vtxt='走大波段而且過程乾淨('+cHold+'/'+n+' 條該抱、崩壞率 '+Math.round(failRate*100)+'%、'+cFail+' 條虧損出場)。'+nowTxt
+       + (coreWorthy ? ' <b>核心持有型, 用 monster / 50MA 抱住。</b>' : ' 但<b>不到核心倉等級</b>(見下方核心倉資格), 部位別給滿。');
+    archePlain=archeLine;
+  } else if(holdWorthy && semiClean){
+    // V49 新增: 該抱比 45~55% + 崩壞率可控 → 會走大波段, 但不是每條腿都值得抱
+    vcolor='blue'; vmark='◆ 會走大波段 — 可抱,但要挑腿';
+    vtxt='波段夠大(平均 '+s2(avgPkPct)+'%、最猛 +'+maxPkPct.toFixed(0)+'%),崩壞率只有 '+Math.round(failRate*100)+'%('+cFail+' 條虧損出場)——<b>不是不穩, 是不是每條腿都會跑</b>('+cHold+'/'+n+' 條該抱)。做法: 進場照樣停損 1×ADR, 但<b>只有走出續勢的腿才加碼抱住</b>, 沒走出來的就在目標價落袋, 別每條都當 monster 抱。';
+    archePlain=archeLine;
+  } else if(nearBig && failRate <= cfg.maxFailRate){
+    // V50 新增: 波段 30~40% (沒到 bigLeg 硬線) 但過程乾淨 → 不該掉到「一半一半」的斷崖。
+    //   GLW 平均 37.34%, 只差 2.66 個百分點就被踢出 holdWorthy → V49 判「一半一半」。
+    vcolor='blue'; vmark='◆ 乾淨,但波段偏小 — 可抱,別當核心倉';
+    vtxt='過程乾淨('+cHold+'/'+n+' 條該抱、崩壞率 '+Math.round(failRate*100)+'%、'+cFail+' 條虧損出場),<b>但一波平均只有 '+s2(avgPkPct)+'%</b>(沒到 '+cfg.bigLeg+'% 的大波段門檻)。<b>它不會傷你, 但也養不肥你。</b>做法: 可以做、可以抱, 但部位別給到核心倉等級, 目標價設在中位數 '+(medPk==null?'—':s2(medPk)+'%')+' 附近就走, 別期待它跑出 monster。';
+    archePlain=archeLine;
+  // V52: 舊的 (holdWorthy && unstable) 分支已刪除 —— 崩壞率現在由上面的獨立閘門接手。
+  // ===== V57: fallback 分支改由「期望值」驅動 =====
+  //   V56 bug: 這三個分支是期望值出現之前的遺物, 用「漲到+30%的機率(succ)」在判 →
+  //   LITE 期望值 +93.64%、賺賠比 11.1:1, 卻因為 succ=56% 被判「△ 一半一半,要挑時機」;
+  //   GLW 期望值 +5.01% 過關, 卻被判「✗ 這檔較不適合」。判詞跟 EV 當場打架。
+  //   V57: 能走到這裡的都已經通過 badOdds 閘門(期望值>0 且賺賠比≥2:1)。
+  } else if(expect!=null && expect>=20){
+    vcolor='green'; vmark='✓ 賠率站在你這邊';
+    vtxt='<b>期望值 '+s2(expect)+'%、賺賠比 '+rrTxt+'</b>。打擊率 '+Math.round(batAvg*100)+'% —— <b>只要贏過 '+(beWinRate==null?'—':Math.round(beWinRate*100)+'%')+' 就不虧('+(beMargin==null?'—':'高出 '+beMargin.toFixed(0)+' 個百分點')+')。</b>你「漲 3 成先賣 1/3」的做法在這檔行得通。';
+  } else {
+    vcolor='amber'; vmark='△ 賠率過關,但不肥';
+    vtxt='<b>期望值只有 '+s2(expect)+'%</b>(賺賠比 '+rrTxt+' 有過 '+cfg.minRR+':1)。<b>能做, 但賺的錢配不上你要盯它的資金跟心力。</b>優先做期望值更高的。';
+  }
+
+  // ===== V53: EV 分級 =====
+  // ===== V53.1 修正: EV 頭條改用「中位損益」, 不是平均 =====
+  //   V53 bug: BE 的 5 條腿裡 3 條虧損、中位損益 -12.66%, 但因為一條腿走了 +236%,
+  //   平均被拉到 +31.39% → 綠燈。整張卡都在警告「別被右尾騙」, EV 自己卻被右尾騙。
+  //   樣本只有 5~8 條腿時, 平均值毫無抵抗力。中位數才是「你每次進場實際會遇到的典型結果」。
+  const rrOK = (wlRatio!=null && wlRatio >= cfg.minRR);
+  let evCls, evSay;
+  if(expect==null){ evCls='a'; evSay='沒有已結算的腿, 算不出期望值。'; }
+  else if(expect<=0){ evCls='r'; evSay='<b>期望值是負的 — 長期做這檔就是在虧錢。</b>不管單次看起來多誘人, 重複做就是慢性失血。'; }
+  else if(!rrOK){ evCls='a'; evSay='<b>期望值是正的, 但賺賠比只有 '+rrTxt+'</b>, 沒到 Minervini 最低標準 '+cfg.minRR+':1。<b>賺得到, 但邊際太薄</b> —— 一次滑價、一次紀律鬆掉就吃光了。'; }
+  else if(expect>=20){ evCls='g'; evSay='<b>賠率站在你這邊。</b>賺賠比 '+rrTxt+', 每進場一次平均賺 '+s2(expect)+'%。'; }
+  else { evCls='g'; evSay='<b>賠率站在你這邊, 但不肥。</b>賺賠比 '+rrTxt+' 過關, 期望值 '+s2(expect)+'% —— 可以做, 部位別給滿。'; }
+  const evColV = expect==null?'var(--muted)':(expect<=0?'var(--red)':(rrOK?'var(--green)':'var(--amber)'));
+
+  // V53: 崩壞率不過關 → 機率區失效 (機率是「假設你活到那時候」才成立的條件數)
+  const probDead = unstable;
+  const survive = 1 - failRate;
+
+  // V53: 核心倉資格 (單一判準, 全卡共用)
+  const coreLine = coreWorthy
+    ? '<b style="color:var(--green)">◆ 核心倉資格: 符合 —— 這檔可以買到 20~25% 的資金</b> · 賺賠比 '+rrTxt+'(要 ≥3:1)、期望值 '+s2(expect)+'%(要 ≥+20%)、該抱腿 '+holdRatio+'%(要 ≥50%) 三項全過。'
+    : '<b style="color:var(--muted)">❌ 核心倉資格: 不符</b> — '
+      + [ badOdds ? '賠率不過關' : null,
+          (nSet<5) ? '只跑過 '+nSet+' 次(核心倉至少要 5 次)' : null,
+          noLoss ? '一次都沒賠過 → 賺賠比 ∞(樣本不夠, 不是完美)' : null,
+          oneLegDep ? '期望值靠 1 條腿撐著' : null,
+          sharedExit ? '樣本不獨立(同一段行情算了好幾次)' : null,
+          (wlRatio!=null && wlRatio!==Infinity && wlRatio<3) ? '賺賠比 '+rrTxt+'(要 ≥3:1)' : null,
+          (expect==null||expect<20) ? '期望值 '+(expect==null?'—':s2(expect)+'%')+'(要 ≥+20%)' : null,
+          (cHold/n<0.50) ? '該抱腿 '+holdRatio+'%(要 ≥50%)' : null
+        ].filter(Boolean).join('、') + '。可以做, 但部位不能給到核心倉等級。';
+
+  // V57: 期望值靠單一右尾撐著 → 不給綠燈, 最多橘燈
+  if(oneLegDep && vcolor==='green'){ vcolor='amber'; vmark = vmark.replace('✓','△') + '(靠單腿撐)'; }
+
+  // ===== V58: 紅綠燈 =====
+  //   只回答一件事:「這檔值不值得放進池子」(體質)。
+  //   它【不】回答「現在能不能買」(時機) —— 那是 Stage / setup 的事, 屬於 decision.html。
+  //   把兩件事混在一起, 看到綠燈就會想買, 那正是這整套系統要擋的錯誤。
+  // V61: 白話化 —— 術語保留(那是跟外界溝通的共同語言), 後面用括號補一句人話。
+  const bestPnl = nSet ? pnlList[nSet-1] : null;              // 最好的那條腿賺多少
+  const sayBat  = nSet ? '('+nSet+' 次裡賺 '+evWinN+' 次)' : '';
+  const sayRR   = (avgWin!=null && avgLoss!=null)
+                ? '(賺的時候賺 '+avgWin.toFixed(0)+'%, 賠的時候只賠 '+avgLoss.toFixed(0)+'%)' : '';
+  const sayBE   = (beWinRate!=null)
+                ? '(10 次裡賺 '+Math.max(1,Math.round(beWinRate*10))+' 次就不虧)' : '';
+  const sayEV   = (expect!=null) ? '(每次進場平均'+(expect>=0?'賺 ':'賠 ')+Math.abs(expect).toFixed(0)+'%)' : '';
+
+  const doubts = [];
+  if(oneLegDep)  doubts.push('<b>過去 '+nSet+' 次進場, 只有 1 次真的賺到錢'+(bestPnl==null?'':'(+'+bestPnl.toFixed(0)+'%)')
+                            +'。把那次拿掉, 這檔是賠錢的('+s2(expectNoBest)+'%)</b> —— 它的獲利紀錄是運氣, 不是實力');
+  if(evThin)     doubts.push('<b>只跑過 '+nSet+' 次</b>, 樣本太少, 數字還不能信');
+  if(noLoss)     doubts.push('<b>'+nSet+' 次全部都賺(一次都沒賠過)</b> —— 賺賠比算出來是 ∞。'
+                            +'這不是完美, 是<b>樣本太少</b>: 沒遇過壞情況, 不代表不會遇到');
+  if(sharedExit) doubts.push('<b>這幾次進場其實是同一段行情</b>, 不算 '+nSet+' 次獨立驗證');
+
+  let lgC, lgB, lgT, lgS, posMax;
+  if(tooThin){
+    // V64: 只有 0~2 條已結算的腿 → 沒有資格說「這檔不要買, 換個時間點也不會變好」。
+    lgC='x'; lgB='⚪'; lgT='資料不足, 無法判斷'; posMax='先不要買';
+    lgS = '<b>過去兩年只有 '+nSet+' 條已結算的腿</b> —— 兩三個資料點證明不了任何事, '
+        + '<b>不管算出來是正是負, 都不能當結論</b>。'
+        + (liveLegs.length
+            ? '<br>⏳ <b>另有 '+liveLegs.length+' 條腿還在跑, 目前 '+livePnl.map(v=>s2(v)+'%').join('、')+'</b> —— 它還沒出場, 所以沒算進期望值。'
+              + '<b style="color:var(--green)">如果現在全部出場, 期望值會是 '+s2(expectIf)+'%。</b>'
+            : '')
+        + '<br>做法: <b>放進觀察名單, 等它多跑幾次再說</b>。要買的話自己看線, 這張卡幫不了你。';
+  } else if(badOdds){
+    lgC='r'; lgB='🔴'; lgT='不要買'; posMax='0%';
+    lgS = (expect!=null && expect<=0)
+        ? '<b>期望值 '+s2(expect)+'%</b> '+sayEV+' —— 是負的。照你的規則重複做這檔, 長期在虧錢。'
+        : '<b>賺賠比只有 '+rrTxt+'</b> '+sayRR+' —— 沒到 Minervini 最低 '+cfg.minRR+':1。<b>贏的時候賺不夠, 補不回輸的時候賠的。</b>'
+          + (expect!=null && expect>0 ? ' (期望值 '+s2(expect)+'% 雖然是正的, 但邊際太薄, 一次滑價就吃光。)' : '');
+  } else if(doubts.length){
+    lgC='a'; lgB='🟡'; lgT='可以買, 但只能買一點點'; posMax='最多 5%';
+    lgS = '⚠️ ' + doubts.join('; ') + '。';
+  } else if(expect>=20){
+    lgC='g'; lgB='🟢'; lgT= coreWorthy ? '可以買, 而且可以買大的' : '可以買'; posMax = coreWorthy ? '最多 20~25%' : '最多 10~15%';
+    lgS = '<b>期望值 '+s2(expect)+'%</b> '+sayEV+' · <b>賺賠比 '+rrTxt+'</b> '+sayRR+'<br>'
+        + '<b>打擊率 '+Math.round(batAvg*100)+'%</b> '+sayBat+', 打平線只要 '+(beWinRate==null?'—':Math.round(beWinRate*100)+'%')+' '+sayBE+'。'
+        + (coreWorthy?' <b style="color:var(--green)">這是你池子裡最好的等級。</b>':'');
+  } else {
+    lgC='a'; lgB='🟡'; lgT='可以買, 但只能買一點點'; posMax='最多 5%';
+    lgS = '<b>期望值只有 '+s2(expect)+'%</b> '+sayEV+' —— 賺得到, 但<b>賺的錢配不上你要盯它的資金跟心力</b>。優先做期望值更高的。';
+  }
+
+  LIGHT = lgC;   // 給總表用
+
+  // ===== V59: 第二關 = 時機(Stage) =====
+  //   體質(第一關)問「這檔值不值得放進池子」—— 那是統計, 很少變。
+  //   時機(第二關)問「現在是不是進場的時候」—— 那是狀態, 每天在變。
+  //   兩件事必須分開看, 而且順序不能反: 體質不過關, 時機再好也不做。
+  const tC = (phaseColor==='green') ? 'g' : (phaseColor==='red' ? 'r' : 'a');
+  const tBulb = {g:'🟢', a:'🟡', r:'🔴'}[tC];
+  const tSub = {
+    S3 :'<b>10 週線已下彎、跌破 30 週線</b> —— 頭部形成中。30 週線還在上升是<b>落後假象</b>(均線斜率落後價格好幾週)。<b>有持股就出, 空手不要進。</b>',
+    S2A:'剛進 Stage 2, 30 週線上方 '+(extW30==null?'—':extW30.toFixed(0))+'% —— 空間還在, 突破可以追。',
+    S2B:'Stage 2 中期, 已離 30 週線 '+(extW30==null?'—':extW30.toFixed(0))+'% —— <b>只買回檔, 不追突破</b>。',
+    S2C:'Stage 2 末期, 離 30 週線 '+(extW30==null?'—':extW30.toFixed(0))+'% —— <b>已經漲太遠, 只出不進</b>。',
+    S2X:'還在 30 週線上方, 但週線動能熄火、大段收掉了 —— <b>等它重新打 base 並點火, 現在沒 setup</b>。',
+    S1 :'Stage 1 修復中 —— <b>底部還沒完成, 進觀察名單, 還不能買</b>。',
+    S4 :'Stage 4 下跌, 已跌破 30 週線 —— <b>不管體質多好, 現在都不能碰</b>。'
+  }[phase] || '';
+
+  // 下一步
+  const waitTxt = (phase==='S3')  ? '<b>它正在做頭, 現在絕對不能買</b> —— 等它跌完、重新打底'
+                : (phase==='S2B') ? '<b>等它跌回 20MA 或 50MA 才能買</b>, 現在追高會被套'
+                : (phase==='S2X') ? '<b>等它重新打底、再點火一次才能買</b>, 現在沒 setup'
+                : (phase==='S1')  ? '<b>底部還沒打完, 現在不能買</b>'
+                : '<b>等 setup 出現才能買</b>';
+  let nextStep;
+  if(lgC==='x'){
+    nextStep = '⚪ <b>這張卡現在幫不了你。</b>只有 '+nSet+' 條已結算的腿, 樣本太少, <b>算出來的期望值不管是正是負都不算數</b>。'
+             + (liveLegs.length ? '(而且還有 '+liveLegs.length+' 條腿在跑, 沒算進去。)' : '')
+             + '<br>放進觀察名單, 等它多跑幾次。<b>真的想做 → 自己看線 + 開 decision.html, 不要靠這張卡。</b>';
+  } else if(lgC==='r'){
+    nextStep = '❌ <b>不要買。這檔不進你的池子。</b>不管它現在 Stage 幾、線型多漂亮 —— 它的體質就是這樣, 換個時間點也不會變好。連 decision.html 都不用開。';
+  } else if(tC==='r'){
+    nextStep = '⏸ <b>現在不要買。</b>這檔的體質可以, 但它現在漲太遠(或已經跌破)了。<b>放進觀察名單, 等 Stage 轉好。</b>';
+  } else if(lgC==='g' && tC==='g'){
+    nextStep = '✅ <b>可以買。</b>買多少: <b style="color:var(--green)">'+posMax+'</b> 的資金。停損設在進場價下方 <b>'+(legs.length?legs[legs.length-1].stopPct.toFixed(1):'5~10')+'%</b>(1×ADR)。<br>下一步 → 開 <b>decision.html</b> 算 R/R 跟實際張數。';
+  } else if(lgC==='g'){
+    nextStep = '⚠️ <b>這檔值得買, 但不是現在。</b>' + waitTxt + '。到那時候可以買 <b style="color:var(--green)">'+posMax+'</b>。';
+  } else if(tC==='g'){
+    nextStep = '⚠️ <b>現在可以買, 但只能買一點點 —— 最多 '+posMax.replace('最多 ','')+' 的資金。</b>它的獲利紀錄撐不起一個大部位。';
+  } else {
+    nextStep = '⏸ <b>可以買, 但要等, 而且只能買一點點。</b>' + waitTxt + ', 而且到時候最多也只能買 <b>'+posMax.replace('最多 ','')+'</b>。<b>優先做兩關都綠的。</b>';
+  }
+
+  // V59 FIX: 摘要必須在燈號算完之後才能組(V58/V59 的 bug: LAST_SUM 讀 lgC 時 lgC 還沒宣告 → TDZ,
+  //   整張股性卡跟總表一起掛掉)。而且 vmark 會被「靠單腿撐」降級, 也必須降級後才抓。
+  // V69: 白燈(資料不足)再細分成三種, 給總表分色用。用現成的 lowVol / liveLegs 判定, 不新增計算。
+  //   xkind: 'slow'=龜速不適合(ADR<門檻) · 'dawn'=剛起漲成形中(有腿在跑) · 'new'=純觀察(單純資料少)
+  let xkind = null;
+  if(lgC==='x'){
+    if(lowVol) xkind='slow';
+    else if(liveLegs.length>0) xkind='dawn';
+    else xkind='new';
+  }
+  LAST_SUM = { tk:tk, light:lgC, tlight:tC, phase:phaseTxt, ev:expect, rrTxt:rrTxt, rrOK:rrOK,
+               nLive:liveLegs.length, pnls:pnlList.slice(),   // V65: 每條已結算腿的損益, 給「全部合計」用
+               win:evWinN, nWin:nSet, fail:Math.round(failRate*100), med:medPk,
+               mark:vmark, arche:archePlain, n:n, nSet:nSet, core:coreWorthy,
+               xkind:xkind, adr:(adrNow==null?null:+adrNow.toFixed(1)), posMax:posMax, lgT:lgT,
+               thin:(small||evThin), warn:(oneLegDep||evThin||sharedExit), ts:Date.now() };
+
+  return `<div class="persona">
+    <div class="ph">◆ ${tk} 股性卡 ${small?'<span style="color:var(--amber)">(資料少,參考用)</span>':''}<span style="color:var(--dim);font-weight:400;font-size:11px"> · 近 ${usedSegs.length} 個大段${droppedSegs>0?'(另隱藏 '+droppedSegs+' 個更早的)':''}</span></div>
+
+    <div class="gates">
+      <div class="gate ${lgC}">
+        <div class="bulb">${lgB}</div>
+        <div style="flex:1">
+          <div class="gk">第一關 · 體質 —— 這檔股票本身值不值得買 <span style="color:var(--orange);text-transform:none">(這是【假設】, 不是結論)</span></div>
+          <div class="gv" style="color:var(--${lgC==='g'?'green':(lgC==='a'?'amber':(lgC==='x'?'muted':'red'))})">${lgT}<span style="font-size:12px;font-weight:400;color:var(--muted)"> · 部位上限 ${posMax}${(tC==='r'||tC==='a')&&lgC!=='r'&&lgC!=='x'?'(等它進 Stage 2 之後)':''}</span></div>
+          <div class="gs">${lgS}</div>
+          <div class="gs" style="color:var(--dim);margin-top:5px;padding-top:5px;border-top:1px dashed var(--line)">
+            樣本 <b style="color:var(--${nSet>=10?'txt':'orange'})">${nSet} 次</b>${liveLegs.length?'(另 '+liveLegs.length+' 條在跑)':''} —— 統計顯著要 <b>30 次以上</b>, 而且你的報酬是<b>極端右偏</b>(少數 monster 撐起全部), 需要的樣本<b>還要更多</b>。
+            <b style="color:var(--orange)">單檔永遠達不到。真正算數的是總表底部的「全部合計」。</b>
+            ${nBlocked?'<br><b style="color:var(--blue)">🔒 持倉鎖(V67)擋掉 '+nBlocked+' 條腿</b> —— 它們發動時前一筆交易還沒收掉 2/3, 資金被佔用, 現實中買不到。<b>V65 以前這 '+nBlocked+' 條會被當成獨立樣本, 讓期望值虛胖。</b>':''}
+          </div>
+        </div>
+      </div>
+      <div class="gate ${tC}">
+        <div class="bulb">${tBulb}</div>
+        <div style="flex:1">
+          <div class="gk">第二關 · 時機 —— 現在是不是買它的時候</div>
+          <div class="gv" style="color:var(--${phaseColor})">${phaseTxt}</div>
+          <div class="gs">${tSub}</div>
+        </div>
+      </div>
+      <div class="nextstep">${nextStep}</div>
+    </div>
+
+
+    <div class="evbox ${evCls}">
+      <div class="evl">期望值 —— 每進場一次, 平均賺賠多少</div>
+      <div class="evv" style="color:${evColV}">${expect==null?'—':s2(expect)+'%'}</div>
+      <div class="evs" style="color:var(--txt)">${evSay}${evThin?' <span style="color:var(--amber)">(只跑過 '+nSet+' 次, 樣本太少)</span>':''}</div>
+      <div class="evf" style="color:var(--txt);font-size:12px">
+        <b>${Math.round(batAvg*100)}%</b> × <b style="color:var(--green)">${avgWin==null?'—':s2(avgWin)+'%'}</b>
+        &nbsp;−&nbsp; <b>${Math.round((1-batAvg)*100)}%</b> × <b style="color:var(--red)">${avgLoss==null?'—':avgLoss.toFixed(2)+'%'}</b>
+        &nbsp;=&nbsp; <b style="color:${evColV}">${expect==null?'—':s2(expect)+'%'}</b>
+        <br><span style="color:var(--dim)">賺錢的比例 × 賺的時候賺多少 &nbsp;−&nbsp; 賠錢的比例 × 賠的時候賠多少</span>
+      </div>
+      ${liveLegs.length ? '<div class="evf" style="color:var(--blue);border-top-color:rgba(88,166,255,.35)">⏳ <b>另有 '+liveLegs.length+' 條腿還在跑</b>('+livePnl.map(v=>s2(v)+'%').join('、')+') —— <b>還沒出場, 所以沒算進上面的期望值</b>。<br>如果現在全部出場, 期望值會是 <b style="color:var(--'+(expectIf>0?'green':'red')+')">'+s2(expectIf)+'%</b>('+nAll+' 次平均)。</div>' : ''}
+      ${oneLegDep ? '<div class="evf" style="color:var(--orange);border-top-color:rgba(219,139,58,.4)">⚠ <b>這個數字靠運氣撐著。</b>過去 '+nSet+' 次進場, <b>只有 1 次真的賺到大錢(+'+(bestPnl==null?'—':bestPnl.toFixed(0))+'%)</b>。把那一次拿掉重算, 期望值變成 <b>'+s2(expectNoBest)+'%</b> —— 賠錢的。<br>你買它的時候, 買到的是「未來的某一次」。而根據紀錄, <b>你大概率買到的是那些小賠的</b>。</div>' : ''}
+      ${sharedExit ? '<div class="evf" style="color:var(--orange);border-top-color:rgba(219,139,58,.4)">⚠ <b>這 '+nSet+' 次其實是同一段行情。</b>它們的出場點只有 '+exitSet.size+' 個 —— 等於同一件事被算了好幾次, 不是 '+nSet+' 次獨立驗證。</div>' : ''}
+      <div class="evf" style="border-top:none;padding-top:2px">算法: 每條腿照你的規則模擬 —— <b>停損 1×ADR(夾 ${cfg.stopMin}~${cfg.stopMax}%)</b>、+30% 收 1/3 <b>並把停損移到成本價</b>、破 20MA 收 1/3、末 1/3 抱到連${cfg.brk50}根破 50MA。取算術平均 = Minervini 期望值。中位損益 ${evMed==null?'—':s2(evMed)+'%'}。</div>
+    </div>
+
+    <div class="keys">
+      <div class="key" style="grid-column:1/-1">
+        <div class="kl">賺賠比(唯一否決線)</div>
+        <div class="kv" style="color:var(--${rrOK?'green':'orange'});font-size:26px">${rrTxt}</div>
+        <div class="ks" style="font-size:11px;line-height:1.6">
+          平均賺 <b style="color:var(--green)">${avgWin==null?'—':s2(avgWin)+'%'}</b> ÷ 平均賠 <b style="color:var(--red)">${avgLoss==null?'—':avgLoss.toFixed(2)+'%'}</b> = <b>${rrTxt}</b>
+          <span style="color:var(--dim)">${sayRR}</span>
+          <div style="border-top:1px dashed var(--line);margin-top:6px;padding-top:6px">
+            <span style="color:var(--muted)">打平線</span> <b style="color:var(--txt);font-size:14px">${beWinRate==null?'—':Math.round(beWinRate*100)+'%'}</b>
+            <span style="color:var(--dim)">${sayBE}</span><br>
+            <span style="color:var(--muted)">實際打擊率</span> <b style="color:var(--${(beMargin!=null&&beMargin>0)?'green':'red'});font-size:14px">${Math.round(batAvg*100)}%</b>
+            <span style="color:var(--dim)">${sayBat}</span>
+            <b style="color:var(--${(beMargin!=null&&beMargin>0)?'green':'red'})">${beMargin==null?'':(beMargin>0?'✓ 夠了':'✗ 不夠, 這檔在虧錢')}</b>
+          </div>
+          <div style="color:var(--dim);margin-top:4px">${rrOK?'✓ 過 Minervini 最低 '+cfg.minRR+':1':'⚠ 沒到 Minervini 最低 '+cfg.minRR+':1 → 否決'}</div>
+        </div>
+      </div>
+      <div class="key">
+        <div class="kl">中位數(該抱到哪)</div>
+        <div class="kv" style="color:var(--blue)">${medPk==null?'—':s2(medPk)+'%'}</div>
+        <div class="ks">目標價設這裡<br>更高就是在賭右尾</div>
+      </div>
+      <div class="key">
+        <div class="kl">停損出場率(參考)</div>
+        <div class="kv" style="color:var(--muted)">${Math.round(failRate*100)}%</div>
+        <div class="ks">${cFail}/${n} 被停損掃掉<br>不是罪 · 看賺賠比</div>
+      </div>
+    </div>
+
+    <div class="dist" style="border-top:none;padding-top:0;margin-bottom:12px;font-size:12px;line-height:1.5">${coreLine}</div>
+
+    <details class="raw2">
+      <summary>原始數據(機率、ADR、震盪度、腿的清單…)—— 平常不用看, 想查再點開</summary>
+      <div class="inner">
+    <div class="prows raw">
+      ${probDead ? '<div class="deadwarn">⚠ <b>以下機率不適用</b> —— 這檔的賠率不過關(期望值 '+(expect==null?'—':s2(expect)+'%')+'、賺賠比 '+rrTxt+')。下面的數字是「假設你沒被掃出場」才成立的, 不能當進場理由。</div>' : ''}
+      <div class="prow ${probDead?'dead':''}" style="line-height:2.0">
+        <b style="color:var(--txt)">這檔漲得到哪?</b> <span style="color:var(--muted);font-size:11px">(該在哪出場 · 天數為交易日,已扣除週末假日)</span><br>
+        ${tierPc.map((pc,i)=>{
+          const hit=tierHit[i], rate=n?Math.round(hit/n*100):0;
+          const dAvg=tierCnt[i]?Math.round(tierDay[i]/tierCnt[i]):null;
+          const col = probDead ? 'muted' : (rate>=60?'green' : rate>=40?'amber' : 'red');
+          const realRate = Math.round(rate*survive);
+          return '<span style="color:var(--txt);font-weight:600">漲到 +'+pc+'%</span> → '
+               + '<b style="color:var(--'+col+');font-size:18px">'+rate+'%</b> <span style="color:var(--muted)">機率</span>'
+               + (probDead ? ' <span style="color:var(--red);font-size:11px">(扣掉崩壞後實際只剩 '+realRate+'%)</span>' : '')
+               + (dAvg==null ? ' &nbsp;<span style="color:var(--red)">· 到不了</span>'
+                             : ' &nbsp;<span style="color:var(--muted)">· 約需 <b style="color:var(--txt)">'+dAvg+' 天</b></span>')
+               + ' <span style="color:var(--dim);font-size:10.5px">(過去 '+n+' 次中 '+hit+' 次)</span>';
+        }).join('<br>')}
+      </div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${avgPk} 天</span> 後見頂開始回落 &nbsp;<span class="softnote">(平均漲 ${avgPk} 個交易日)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${s2(avgPkPct)}%</span> 一波平均漲幅 &nbsp;<span class="softnote">(被右尾拉高, 看中位數 ${medPk==null?'—':s2(medPk)+'%'} 才準)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${s2(maxPkPct)}%</span> 最猛一次 &nbsp;<span class="softnote">(1/${n} 條 · 右尾, 不要拿來當目標)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${perSeg} 次</span> 一波大漲通常分幾次往上衝 &nbsp;<span class="softnote">(最多一波衝了 ${maxLegs} 次)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${whipsaw?'orange':'blue'})">${chop==null?'—':chop.toFixed(1)+' 次'}</span> <b>震盪度</b>(每100天穿越20MA · 門檻已按ADR正規化 = ${chopLimit.toFixed(1)})&nbsp;<span style="color:var(--muted)">(${chop==null?'—':(whipsaw?'⚠ 亂穿且真的被掃過 '+cFail+' 次':(chopHot?'穿得多,但 0 條被掃出場 → 是它的正常呼吸':'貼著20MA走,乾淨'))})</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${lowVol?'red':'green'})">${adrNow==null?'—':adrNow.toFixed(2)+'%'}</span> <b>ADR%</b>(日均振幅 · Qullamaggie門檻≥${cfg.minAdr}%)&nbsp;<span style="color:var(--muted)">(${lowVol?'⚠ 波動不足,跑不動':'波動足夠,能跑'})</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${weakNow?'red':(softPull?'amber':'green')})">${r63==null?'—':s2(r63)}%</span> <b>近一季漲跌</b>(O'Neil 給4成權重)&nbsp;<span style="color:var(--muted)">(${weakNow?'⚠ 深度回檔 ≤'+cfg.weakPct+'%,轉弱':(softPull?'回檔中,但未破 '+cfg.weakPct+'% → 整理,不是失效':'近一季在漲')})</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${oppQ1===0?(deadNow?'red':'muted'):'blue'})">${oppQ1} 次</span> <b>近一季合格機會</b>(${cfg.oppWk}週內漲30%)&nbsp;<span style="color:var(--muted)">(前三季 ${oppQ2to4} 次 · 一年以上 ${oppOld} 次${oppQ1===0&&!deadNow?' · 打底期不點火是正常的,等它點火':''})</span></div>
+      <div class="prow" style="border-top:1px dashed var(--line);padding-top:8px"><span class="pn" style="color:var(--${phaseColor})">${phaseTxt}</span></div>
+      <div class="prow"><span class="pn" style="color:var(--${(w10now!=null&&w30now!=null&&w10now>w30now)?'green':'red'})">${(w10now!=null&&w30now!=null)?(w10now>w30now?'10週線 > 30週線 ✓':'10週線 < 30週線 ✗'):'—'}</span> Weinstein Stage 2 核心條件&nbsp;<span style="color:var(--muted)">(10週線斜率 ${w10slpN==null?'—':(w10slpN>=0?'+':'')+w10slpN.toFixed(1)+'%'} · 30週線斜率 ${w30slpN==null?'—':(w30slpN>=0?'+':'')+w30slpN.toFixed(1)+'%'} · <b>10週線跌破30週線 = 頭部形成</b>)</span></div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${extW30==null?'—':(extW30>=0?'+':'')+extW30.toFixed(0)+'%'}</span> 離 30 週線&nbsp;<span style="color:var(--muted)">(Minervini · 初期&lt;${cfg.midExtW30}% / 中期 ${cfg.midExtW30}~${cfg.lateExtW30}% / 末期 &gt;${cfg.lateExtW30}%${s2Age==null?'':' · 進 Stage 2 已 '+s2Age+' 天'})</span></div>
+      <div class="prow"><span class="pn" style="color:var(--muted)">${baseCount==null?'—':(baseCount===0?'新大段,尚未起腿':'第 '+baseCount+' 條')}</span> 這段已跑幾條腿(參考)&nbsp;<span style="color:var(--muted)">(注意: 這裡的「腿」= ≥${cfg.minBasePct}% 回檔切出來的, 不等於 O'Neil 週線級的 base, 不能拿來判末期${extLo52==null?'':' · 離52週低點 +'+extLo52.toFixed(0)+'%'})</span></div>
+    </div>
+    <div class="dist" style="border-top:1px dashed var(--line);padding-top:8px">
+      <b style="color:var(--txt)">這 ${n} 條腿最後各自走到哪</b> <span style="color:var(--muted);font-size:10.5px">(中位數才是你該抱到的位置,右尾是賭)</span><br>
+      <span style="color:var(--muted);font-size:11.5px">${pkStr}</span><br>
+      <span class="pn" style="color:var(--blue)">${medPk==null?'—':s2(medPk)+'%'}</span> <b>中位數</b> <span style="color:var(--muted)">— 一半的腿走不過這個數字。目標價設在這附近, 想抱更高就是在賭右尾。</span>
+    </div>
+    <div class="dist">股性:<b style="color:var(--txt)">${archePlain}</b></div>
+    <div class="dist" style="border-top:none;padding-top:4px">這 ${n} 次上衝裡:<b style="color:var(--red)">${dClx}</b> 次末端噴出(該快閃)、<b style="color:var(--blue)">${dHold}</b> 次還在跑(該抱)、${dNor} 次普通、<b style="color:var(--orange)">${dFail}</b> 次虧損出場。</div>
+      </div>
+    </details>
+  </div>`;
+}
+
+/* ===== V53: 累積總表 =====
+   每跑一檔就存進 localStorage, 按期望值排序。刻意不放「機率」——
+   機率脫離崩壞率就沒有意義, 單獨列出來就是在製造誤判。 */
+let LAST_SUM = null;
+let LIGHT = null;
+const TBL_KEY = 'gstock_v65_table';
+
+function tblLoad(){
+  try{ return JSON.parse(localStorage.getItem(TBL_KEY)) || []; }catch(e){ return []; }
+}
+function tblSave(rows){
+  try{ localStorage.setItem(TBL_KEY, JSON.stringify(rows)); }catch(e){}
+}
+// V69: 點列展開/收合摘要(省事版, 不重抓 Yahoo, 展示已存結果)
+function tblToggle(tk){
+  const el = document.getElementById('det_'+tk);
+  if(!el) return;
+  el.style.display = (el.style.display==='none' || !el.style.display) ? 'table-row' : 'none';
+}
+window.tblToggle = tblToggle;
+
+function tblPut(sum){
+  if(!sum || !sum.tk) return;
+  let rows = tblLoad().filter(r=>r.tk !== sum.tk);   // 同一檔重跑 → 覆蓋
+  rows.push(sum);
+  tblSave(rows);
+  tblRender();
+}
+function tblRender(){
+  const rows = tblLoad();
+  const panel = document.getElementById('tblPanel');
+  const body  = document.getElementById('tblBody');
+  if(!rows.length){ panel.style.display='none'; return; }
+  panel.style.display='block';
+
+  const LC = {g:'var(--green)', a:'var(--amber)', r:'var(--red)', x:'var(--muted)'};
+  const BULB = {g:'🟢', a:'🟡', r:'🔴', x:'⚪'};
+  // V69: 白燈三種各自的圖示 + 顏色
+  const XBULB = {slow:'⚫', dawn:'🔵', new:'⚪'};
+  const XCOL  = {slow:'var(--dim)', dawn:'var(--blue)', new:'var(--muted)'};
+  function bulbOf(r){ return r.light==='x' ? (XBULB[r.xkind]||'⚪') : (BULB[r.light]||''); }
+  function colOf(r){ return r.light==='x' ? (XCOL[r.xkind]||'var(--muted)') : (LC[r.light]||'var(--txt)'); }
+
+  // ===== V69: 分色分區 =====
+  //   Jasmine 要的是「按燈號分組, 綠的排一起、紅的排一起, 一眼掃完 50 檔」。
+  //   分組鍵 grp: 每一檔歸到一個區塊。順序 = 你下單時的重要性。
+  function grpOf(r){
+    if(r.light==='g' && r.tlight==='g') return 'gg';   // 兩關都綠 = 現在能買(最重要)
+    if(r.light==='g')                   return 'g';    // 體質綠, 時機未到 = 好股等時機
+    if(r.light==='a')                   return 'a';    // 黃 = 買一點
+    if(r.light==='x' && r.xkind==='dawn') return 'dawn'; // 剛起漲成形中 = 盯著
+    if(r.light==='x' && r.xkind==='new')  return 'new';  // 純觀察
+    if(r.light==='x' && r.xkind==='slow') return 'slow'; // 龜速不適合
+    return 'r';                                        // 紅 = 不碰
+  }
+  const GRP = [
+    {k:'gg',   title:'🟢🟢 兩關都綠 · 現在能買',        color:'var(--green)', desc:'體質好 + 時機對。要下單先從這裡挑, 再開 decision.html 算張數。'},
+    {k:'g',    title:'🟢 體質綠 · 等時機',              color:'var(--green)', desc:'好股, 但現在時機還沒到(中期/熄火/末期)。放觀察, 等時機轉綠。'},
+    {k:'a',    title:'🟡 黃燈 · 只能買一點',            color:'var(--amber)', desc:'可以做, 但部位壓小(最多 5%)。'},
+    {k:'dawn', title:'🔵 黎明 · 剛起漲, 成形中',        color:'var(--blue)',  desc:'方向對了, 但資料還沒到(有腿還在跑)。盯著它, 別急著追。'},
+    {k:'new',  title:'⚪ 觀察 · 剛建檔, 資料還少',       color:'var(--muted)', desc:'還沒跑出足夠的腿, 什麼都還不知道。再跑幾段再說。'},
+    {k:'slow', title:'⚫ 龜速 · 波動太小, 不適合',       color:'var(--dim)',   desc:'ADR 太低, 一天跑不動, 你這套飆股打法在它身上等不到。別浪費時間。'},
+    {k:'r',    title:'🔴 紅燈 · 這類不碰',              color:'var(--red)',   desc:'期望值負 or 賺賠比不夠。長期做這些在虧錢。'},
+  ];
+  // 分組
+  const buckets = {}; GRP.forEach(g=>buckets[g.k]=[]);
+  rows.forEach(r=>{ const k=grpOf(r); (buckets[k]||buckets['r']).push(r); });
+  // 群內按期望值排序
+  Object.values(buckets).forEach(arr=>arr.sort((a,b)=>(b.ev==null?-999:b.ev)-(a.ev==null?-999:a.ev)));
+
+  function rowHtml(r, idx){
+    const col = colOf(r);
+    const bat = r.nWin ? Math.round(r.win/r.nWin*100)+'%' : '—';
+    const evTxt = (r.ev==null?'—':s2(r.ev)+'%')
+        + (r.light==='x'?'<span style="color:var(--dim);font-weight:400;font-size:10px"> 不算數</span>':'')
+        + (r.nLive?'<span style="color:var(--blue);font-weight:400;font-size:10px"> +'+r.nLive+'條在跑</span>':'');
+    // 省事版點開: 展示已存摘要 + 判詞, 不重抓
+    const detail =
+      '<tr class="det" id="det_'+r.tk+'" style="display:none"><td colspan="7">'
+      + '<div class="detbox">'
+        + '<div class="detline"><b style="color:'+col+'">'+(r.lgT||'')+'</b>'
+          + (r.posMax?' · 部位上限 <b>'+r.posMax+'</b>':'')+'</div>'
+        + '<div class="detgrid">'
+          + '<span>期望值 <b style="color:'+col+'">'+(r.ev==null?'—':s2(r.ev)+'%')+'</b></span>'
+          + '<span>賺賠比 <b style="color:var(--'+(r.rrOK?'green':'orange')+')">'+(r.rrTxt||'—')+'</b></span>'
+          + '<span>打擊率 <b>'+bat+'</b> <span style="color:var(--dim)">('+(r.nWin||0)+' 次裡賺 '+(r.win||0)+')</span></span>'
+          + (r.adr!=null?'<span>ADR <b>'+r.adr+'%</b></span>':'')
+          + (r.fail!=null?'<span>崩壞率 <b style="color:var(--'+(r.fail>40?'red':'muted')+')">'+r.fail+'%</b></span>':'')
+          + (r.med!=null?'<span>中位腿 <b>'+s2(r.med)+'%</b></span>':'')
+        + '</div>'
+        + '<div class="detsay">時機: <b style="color:'+(LC[r.tlight]||'var(--muted)')+'">'+(r.phase||'—')+'</b>'
+          + (r.arche?' · 股性: '+r.arche:'')+'</div>'
+        + (r.warn?'<div class="detwarn">⚠ 靠運氣 — 期望值來自單獨一次或樣本太少('+(r.nSet||0)+' 次), 數字不可信。</div>':'')
+        + (r.nLive?'<div class="detwarn" style="color:var(--blue)">⏳ 另有 '+r.nLive+' 條腿還在跑, 沒算進期望值。</div>':'')
+        + '<div class="detfoot">想看完整的腿/階梯圖 → 上面 input 重打一次 '+r.tk+'(幾秒)。</div>'
+      + '</div></td></tr>';
+    return '<tr class="trow" onclick="tblToggle(\''+r.tk+'\')">'
+        + '<td style="text-align:center">'+bulbOf(r)+'</td>'
+        + '<td style="text-align:center">'+(BULB[r.tlight]||'')+'</td>'
+        + '<td class="tk" style="color:'+col+'">'+r.tk
+          + (r.core?' <span style="color:var(--green);font-size:10px;font-weight:600">◆核心倉</span>':'')
+          + (r.warn?' <span style="color:var(--orange);font-size:10px;font-weight:600">⚠靠運氣</span>':'')
+          + ' <span class="caret" style="color:var(--dim);font-size:9px">▸</span>'
+          + '</td>'
+        + '<td class="num" style="color:'+(r.light==='x'?'var(--muted)':col)+'">'+evTxt+'</td>'
+        + '<td class="num" style="color:var(--'+(r.rrOK?'green':'orange')+')">'+(r.rrTxt||'—')+'</td>'
+        + '<td class="num" style="color:var(--muted)">'+bat+'</td>'
+        + '<td class="say" style="color:'+(LC[r.tlight]||'var(--muted)')+'">'+(r.phase||'—')+'</td>'
+        + '</tr>' + detail;
+  }
+
+  let html='';
+  GRP.forEach(g=>{
+    const arr = buckets[g.k]; if(!arr.length) return;
+    html += '<div class="grphead" style="border-left:3px solid '+g.color+'">'
+          + '<span class="grptitle" style="color:'+g.color+'">'+g.title+'</span>'
+          + '<span class="grpn">'+arr.length+' 檔</span>'
+          + '<span class="grpdesc">'+g.desc+'</span></div>'
+          + '<table class="tbl"><tbody>'
+          + arr.map((r,i)=>rowHtml(r,i)).join('')
+          + '</tbody></table>';
+  });
+
+  body.innerHTML = html
+    + '<div class="cmp" style="margin-top:10px;color:var(--dim);line-height:1.7">'
+    + '<b>體質</b>(這檔的個性, 很少變): 🟢 可以買 · 🟡 買一點 · 🔴 不要買 · 🔵 剛起漲成形中 · ⚪ 剛建檔資料少 · ⚫ 龜速不適合'
+    + '<br><b>時機</b>(現在的位置, 每天在變): 🟢 Stage 2 初期 · 🟡 中期/熄火/修復 · 🔴 頭部/末期/Stage 4'
+    + '<br><span style="color:var(--green)">◆核心倉</span> = 可買 20~25% · <span style="color:var(--orange)">⚠靠運氣</span> = 樣本太少, 數字不可信 · <b style="color:var(--blue)">點任一列</b>可展開摘要'
+    + '<br><b style="color:var(--orange)">體質紅燈 → 不管時機多好都不做。兩關都綠 → 才開 decision.html。</b>'
+    + '<br><b style="color:var(--orange)">⚠ 單檔燈號是【假設】不是【結論】—— 真正的結論看下面的「全部合計」。</b></div>';
+
+  // ===== V65: 全部合計 =====
+  //   期望值是【系統】的屬性, 不是【單一股票】的屬性。
+  //   Minervini / Qullamaggie 的期望值是算他們【所有交易】的 —— 跨幾百檔股票、幾百次進場。
+  //   單檔 5~14 條腿永遠不夠。把整個股票池的腿加總起來, 樣本才會過 30。
+  //   這一列回答的才是真正的問題:「我這套階梯規則, 在我的股票池上到底賺不賺錢?」
+  const all = [];
+  rows.forEach(r=>{ if(Array.isArray(r.pnls)) r.pnls.forEach(v=>all.push(v)); });
+  const pb = document.getElementById('poolBody');
+  if(!all.length){ pb.innerHTML=''; return; }
+
+  const N   = all.length;
+  const W   = all.filter(v=>v>0);
+  const L   = all.filter(v=>v<=0).map(v=>Math.abs(v));
+  const bat = W.length/N;
+  const aW  = W.length ? W.reduce((a,b)=>a+b,0)/W.length : 0;
+  const aL  = L.length ? L.reduce((a,b)=>a+b,0)/L.length : 0;
+  const rr  = aL>0 ? aW/aL : null;
+  const EV  = all.reduce((a,b)=>a+b,0)/N;
+  const beW = (aW+aL)>0 ? aL/(aW+aL) : null;
+  const enough = N >= 30;
+
+  // ===== V68: 中位數 + 右尾壓力測試 =====
+  //   為什麼加: 平均 EV 會被少數 monster(LITE +460%、AXTI +226%…)嚴重拉高。
+  //   Jasmine 的報酬是【極端右偏】—— 平均 +24% 可能來自 4~5 條 monster, 其餘接近 0 甚至負。
+  //   三個新指標拆穿右尾:
+  //   (1) 中位數 EV: 一半的交易走不過這個數字。這才是「典型一次進場」的樣子。
+  //       若平均 >> 中位數 → 你的錢全靠運氣抽中 monster, 不是穩定的邊際優勢。
+  //   (2) 拿掉前 5% 最賺的腿, 平均剩多少: 直接量「monster 依賴度」。
+  //       若拿掉幾條就從正變負 → 這套系統【沒有 monster 就不賺錢】。
+  //   (3) 前 10% 的腿貢獻了幾成總獲利: 集中度。健康的系統不會過度集中在少數幾筆。
+  const sorted = all.slice().sort((a,b)=>a-b);
+  const median = sorted.length%2 ? sorted[(sorted.length-1)/2]
+                 : (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;
+  // 拿掉前 5%(至少 1 條)最賺的腿後的平均
+  const cut = Math.max(1, Math.round(N*0.05));
+  const trimmed = sorted.slice(0, N-cut);                 // 去掉最右邊 cut 條
+  const evTrim = trimmed.length ? trimmed.reduce((a,b)=>a+b,0)/trimmed.length : null;
+  // 前 10% 的腿貢獻了幾成「總正報酬」
+  const totalWin = W.reduce((a,b)=>a+b,0);
+  const topN = Math.max(1, Math.round(N*0.10));
+  const topLegs = sorted.slice(-topN);                    // 最賺的 10%
+  const topSum = topLegs.reduce((a,b)=>a+(b>0?b:0),0);
+  const topShare = totalWin>0 ? topSum/totalWin*100 : null;
+  const rightSkew = (EV>0 && median!=null && median < EV*0.5);  // 平均是中位數的兩倍以上 = 嚴重右偏
+  const monsterDep = (EV>0 && evTrim!=null && evTrim<=0);       // 拿掉前5%就翻負 = monster 依賴
+
+  const cls = EV<=0 ? 'bad' : (monsterDep ? 'warnp' : (enough ? '' : 'warnp'));
+
+  pb.innerHTML =
+    '<div class="pool '+cls+'">'
+    + '<div class="pl">📊 全部合計 — 你這套做法, 在你的股票池上到底賺不賺錢</div>'
+    + '<div class="pv" style="color:var(--'+(EV>0?'green':'red')+')">'+s2(EV)+'%</div>'
+    + '<div style="font-family:var(--mono);font-size:12.5px;color:var(--txt)">'
+      + '<b>'+rows.length+' 檔股票 · '+N+' 次進場</b> —— '
+      + (EV>0
+          ? '照你的規則(停損 1×ADR、+30% 收 1/3、破 20MA 收 1/3、末 1/3 抱到破 50MA)做完, <b style="color:var(--green)">每進場一次平均賺 '+s2(EV)+'%</b>。'
+          : '照你的規則做完, <b style="color:var(--red)">每進場一次平均賠 '+Math.abs(EV).toFixed(2)+'%</b> —— 這套做法在你的池子上是虧錢的。')
+    + '</div>'
+    + '<div class="pg">'
+      + '<div class="pc"><div class="k">打擊率</div><div class="v" style="color:var(--txt)">'+Math.round(bat*100)+'%</div><div class="k" style="text-transform:none">'+N+' 次裡賺 '+W.length+' 次</div></div>'
+      + '<div class="pc"><div class="k">賺賠比</div><div class="v" style="color:var(--'+(rr!=null&&rr>=2?'green':'orange')+')">'+(rr==null?'—':rr.toFixed(1)+':1')+'</div><div class="k" style="text-transform:none">賺 '+aW.toFixed(0)+'% / 賠 '+aL.toFixed(0)+'%</div></div>'
+      + '<div class="pc"><div class="k">打平線</div><div class="v" style="color:var(--txt)">'+(beW==null?'—':Math.round(beW*100)+'%')+'</div><div class="k" style="text-transform:none">'+(beW!=null&&bat>beW?'✓ 實際 '+Math.round(bat*100)+'%, 夠了':'✗ 實際 '+Math.round(bat*100)+'%, 不夠')+'</div></div>'
+    + '</div>'
+    // ===== V68: 右尾拆穿區 =====
+    + '<div class="pg" style="margin-top:8px">'
+      + '<div class="pc" style="border-color:var(--'+(rightSkew?'orange':'line')+')"><div class="k">中位數 EV</div>'
+        + '<div class="v" style="color:var(--'+(median>0?(rightSkew?'amber':'green'):'red')+')">'+s2(median)+'%</div>'
+        + '<div class="k" style="text-transform:none">一半的交易走不過這個</div></div>'
+      + '<div class="pc" style="border-color:var(--'+(monsterDep?'red':'line')+')"><div class="k">拿掉前 5% 最賺</div>'
+        + '<div class="v" style="color:var(--'+(evTrim!=null&&evTrim>0?'green':'red')+')">'+(evTrim==null?'—':s2(evTrim)+'%')+'</div>'
+        + '<div class="k" style="text-transform:none">去掉 '+cut+' 條 monster 後的平均</div></div>'
+      + '<div class="pc"><div class="k">獲利集中度</div>'
+        + '<div class="v" style="color:var(--'+(topShare!=null&&topShare>=70?'orange':'txt')+')">'+(topShare==null?'—':Math.round(topShare)+'%')+'</div>'
+        + '<div class="k" style="text-transform:none">最賺的 10% 貢獻了全部獲利的</div></div>'
+    + '</div>'
+    // 右尾判詞
+    + (rightSkew || monsterDep
+        ? '<div class="note" style="border-left:3px solid var(--orange);padding-left:10px;margin-top:8px">'
+          + '<b style="color:var(--orange)">⚠ 右尾警告:</b> '
+          + (monsterDep
+              ? '<b style="color:var(--red)">拿掉最賺的 '+cut+' 條腿, 這套系統就從 +'+EV.toFixed(0)+'% 翻成 '+s2(evTrim)+'%(虧錢)。</b>你的正報酬<b>幾乎全部來自那幾條 monster</b>。問題是: <b>你事前不知道哪幾檔會變 monster</b> —— 如果沒抽中, 你的實際績效接近打平甚至虧損。'
+              : '平均 <b>+'+EV.toFixed(0)+'%</b> 但中位數只有 <b>'+s2(median)+'%</b> —— 兩者差很多, 代表<b>典型的一次進場其實只賺一點點</b>, 平均是被少數 monster 拉高的。')
+          + '<br><b>怎麼用這個數字:</b> 下單時腦子裡放<b>中位數('+s2(median)+'%)</b>, 不是平均。把每一次進場都當成「大概賺 '+s2(median)+'%」來規劃部位跟停利, 抽中 monster 是<b>意外的驚喜, 不是預期</b>。'
+          + '</div>'
+        : '<div class="note" style="border-left:3px solid var(--green);padding-left:10px;margin-top:8px"><b style="color:var(--green)">✓ 平均('+s2(EV)+'%)與中位數('+s2(median)+'%)接近</b> —— 報酬分佈還算健康, 不是全靠少數 monster 撐的。</div>')
+    + '<div class="note">'
+      + (enough
+          ? '<b style="color:var(--green)">✅ 樣本 '+N+' 次 ≥ 30 —— 這個數字【算數】。</b>單檔那些燈號只是假設; <b>這一列才是結論。</b>'
+          : '<b style="color:var(--amber)">⚠ 樣本只有 '+N+' 次, 還不到 30 —— 多跑幾檔股票再看。</b>')
+      + '<br><b style="color:var(--orange)">⚠ 但這些不是 '+N+' 個獨立事件。</b>你的池子集中在光通訊/半導體, 它們在同一段行情裡一起漲跌 —— '
+      + '<b>這只證明「你的做法在 2024~2026 的 AI/半導體多頭裡有效」, 不能證明在別的環境有效。</b>'
+      + '<br>要讓這個數字更硬: 補<b>不同板塊</b>(生技/金融/能源/消費)、補<b>你當初想買但後來爛掉的股票</b>(現在的池子有倖存者偏差)、補<b>不同時期的主角</b>。' 
+      + '<br><b style="color:var(--blue)">🔒 V67 持倉鎖已生效:</b> 這 '+N+' 次進場都是<b>互不重疊</b>的獨立交易(前一筆收掉2/3後才算下一筆)。V65 以前同一段行情會被重複計數, 期望值嚴重虛胖 —— <b>如果你看到這個數字比 V65/V66 小, 那是對的, V67 才是真的(停損腿不再被藏起來)。</b>'
+    + '</div>'
+    + '</div>';
+}
+
+function goldenCards(){
+  return `
+  <div class="gold"><div class="gh">◆ 黃金卡 · GLW(續勢腿 / 抛物線)</div>
+    <table>
+      <tr><td>發動</td><td class="v">6/18 @ 194.92</td></tr>
+      <tr><td>+30%(253.40)</td><td class="v">6/29 收確認 = D7</td></tr>
+      <tr><td>峰值</td><td class="v">6/30 ~272 = D8(+40%)</td></tr>
+      <tr><td>破20MA</td><td class="v">7/7 = D12(實際快閃 7/2 = D10)</td></tr>
+    </table><div class="cmp">6/18 該落在某大段內的一條「腿」;對這四格。</div></div>
+  <div class="gold"><div class="gh">◆ 黃金卡 · MU(起手突破 / 慢磨)</div>
+    <table>
+      <tr><td>發動</td><td class="v">4/20 @ 496.64</td></tr>
+      <tr><td>+30%(645.63)</td><td class="v">5/6 收 666.49 = D13</td></tr>
+      <tr><td>峰值</td><td class="v">6/25 @ 1254.81 ≈ D47(+153%)</td></tr>
+      <tr><td>破20MA</td><td class="v">7/6</td></tr>
+    </table><div class="cmp">跑 MU 時對這張。</div></div>`;
+}
+
+/* 驅動 */
+const $=id=>document.getElementById(id);
+async function go(){
+  const tk=$("tk").value.trim().toUpperCase(); if(!tk) return;
+  const cfg={
+    minBase:+$("minBase").value, volX:+$("volX").value, end150:+$("end150").value,
+    ignPct:+$("ignPct").value, ignVol:+$("ignVol").value, ignBack:+$("ignBack").value,
+    tgt:+$("tgt").value, brk20:+$("brk20").value, brk50:+$("brk50").value,
+    end50:+$("end50").value, ma50Look:+$("ma50Look").value,
+    crD:+$("crD").value, crV:+$("crV").value,
+    monD:+$("monD").value, lateExt:+$("lateExt").value, clxPeakD:+$("clxPeakD").value, clxExt:+$("clxExt").value, clxDay:+$("clxDay").value, clxV:+$("clxV").value,
+    grindPnl:+$("grindPnl").value, maxFailRate:+$("maxFailRate").value/100, recentSegs:+$("recentSegs").value,
+    stopK:+$("stopK").value, stopMin:+$("stopMin").value, stopMax:+$("stopMax").value, minRR:+$("minRR").value,
+    atrLen:+$("atrLen").value, minBasePct:+$("minBasePct").value,
+    oppWk:+$("oppWk").value, minAdr:+$("minAdr").value, maxChop:+$("maxChop").value,
+    weakPct:+$("weakPct").value, refAdr:+$("refAdr").value,
+    midExtW30:+$("midExtW30").value, lateExtW30:+$("lateExtW30").value, lateExtLo52:+$("lateExtLo52").value,
+    bigLeg:+$("bigLeg").value, softBig:+$("softBig").value,
+    tgtA:+$("tgtA").value, tgtB:+$("tgtB").value, tgtC:+$("tgtC").value
+  };
+  const st=$("status"), btn=$("run"); btn.disabled=true; st.innerHTML="抓 "+tk+" 日線中…"; $("out").innerHTML="";
+  try{
+    const bars=await fetchDaily(tk);
+    if(bars.length<160) throw new Error("資料不足("+bars.length+"根),150日暖機需>160根");
+    const res=runBacktest(bars,cfg);
+    const legCount=res.segs.reduce((a,s)=>a+s.legs.length,0);
+    const realSeg=res.segs.filter(s=>s.legs.length>0).length;
+    st.innerHTML='<span class="ok">✓</span> '+tk+" · "+bars.length+"根 · "+bars[0].date+" → "+bars[bars.length-1].date+" · "+realSeg+" 段有腿 / "+legCount+" 腿";
+    LAST_SUM = null; LIGHT = null;
+    render(res,cfg);
+    if(LAST_SUM) tblPut(LAST_SUM);
+  }catch(err){
+    st.innerHTML='<span class="err">✗ '+err.message+'</span>\n若 CORS/proxy 問題,改 script 最上面 PROXY。';
+  }finally{ btn.disabled=false; }
+}
+$("run").addEventListener("click",go);
+$("tk").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
+$("clrTbl").addEventListener("click",()=>{
+  if(confirm('清空累積總表?(不影響回測結果)')){ tblSave([]); tblRender(); }
+});
+tblRender();
+</script>
+</body>
+</html>
