@@ -25,6 +25,10 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0}
+  details.leg>summary.legsum{list-style:none;cursor:pointer;padding:2px 0}
+  details.leg>summary.legsum::-webkit-details-marker{display:none}
+  details.leg>summary.legsum::before{content:"▸";color:#8b949e;margin-right:6px;font-size:12px}
+  details.leg[open]>summary.legsum::before{content:"▾"}
   .infobar{background:linear-gradient(180deg,#161b22,#11151b);border:1px solid #30363d;border-radius:10px;
     padding:10px 12px;margin:10px 0 14px}
   .infobar .ib1{font-size:15px;font-weight:700;color:#e6edf3;margin-bottom:5px}
@@ -257,8 +261,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>股票<span class="v">DNA</span> <span style="font-size:11px;color:var(--dim);font-weight:400">Stage 2 回測引擎 · V75</span></h1>
-  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b> · <b>崩壞率閘</b> · <b>50MA尾端切割</b> · <b>最近N段</b> · <b>大段=週線30週線判定</b> · <b>腿切割=base深度≥12%</b> · <b>O'Neil加權動能</b> · <b>ADR門檻(Qullamaggie)</b> · <b>V49:震盪度ADR正規化</b> · <b>V49:轉弱門檻=-12%(回檔≠失效)</b> · <b>V49:死亡判準=週線破30週線</b> · <b>V49:股性=速度×幅度</b> · <b>V50:Stage分五期</b> · <b>V50:Stage1修復vsStage4下跌</b> · <b>V50:最終峰值分佈+中位數</b> · <b style="color:#ff6b6b">V51:腿峰值不再共用段尾(地基修正)</b> · <b>V51:Stage4改用-12%</b> · <b>V51:動能熄火≠Stage4</b> · <b>V51:末期只看離30週線</b> · <b>V52:崩壞率獨立閘門</b> · <b style="color:#ff6b6b">V53:期望值(EV)=實際結算損益</b> · <b style="color:#ff6b6b">V53:崩壞不過關→機率區失效</b> · <b style="color:#ff6b6b">V53:平均/最猛降級為淡色</b> · <b style="color:#ff6b6b">V53:核心倉單一判準</b> · <b>V53:累積總表</b> · <b style="color:#ff6b6b">V54:EV改用中位損益(平均會被右尾騙)</b> · <b style="color:#ff6b6b">V54:勝率(賺錢的腿/已結算)</b> · <b>V54:勝率</b> · <b style="color:#ff6b6b">V55:加入停損(1×ADR,夾5~10%)</b> · <b style="color:#ff6b6b">V55:T1後停損移成本價</b> · <b style="color:#ff6b6b">V55:期望值=Minervini公式(平均)</b> · <b style="color:#ff6b6b">V55:閘門改為賺賠比≥2:1(崩壞率不再否決)</b> · <b>V55:單腿依賴警告</b> · <b style="color:#ff6b6b">V56:修 badOdds 初始化順序(股性卡曾整張掛掉)</b> · <b>V56:停損腿階梯圖</b> · <b style="color:#ff6b6b">V57:判詞改由期望值驅動(不再與EV打架)</b> · <b style="color:#ff6b6b">V57:打平線=1/(1+賺賠比)</b> · <b>V57:單腿依賴不給綠燈</b> · <b style="color:#ff6b6b">V58:紅綠燈(只答「值不值得投入」,不答「現在能不能買」)</b> · <b>V58:總表燈號欄</b> · <b style="color:#ff6b6b">V59:兩道關卡(先體質→後時機),階段拉到最上面</b> · <b>V59:下一步指示</b> · <b style="color:#ff6b6b">V60:修 LAST_SUM 讀燈號時的 TDZ(總表曾整個消失)</b> · <b>V60:總表判詞改抓降級後的</b> · <b style="color:#ff6b6b">V61:術語後面加白話括號</b> · <b style="color:#ff6b6b">V61:部位上限給具體數字</b> · <b style="color:#ff6b6b">V61:原始數據收合</b> · <b>V61:砍掉重複判詞</b> · <b style="color:#ff6b6b">V62:Stage 2 補上 10週線(Weinstein 原版:價格&gt;10W&gt;30W)</b> · <b style="color:#ff6b6b">V62:補上 Stage 3 頭部(引擎原本沒有)</b> · <b>V62:符號後面直接寫字</b> · <b style="color:#ff6b6b">V63:10週線條件從「段偵測」拿掉(V62改過頭,把好好的大段砍碎)</b> · <b style="color:#ff6b6b">V63:10週線只用在「現在的Stage」</b> · <b style="color:#ff6b6b">V63:⚠靠運氣否決◆核心倉</b> · <b>V63:賺賠比∞不給綠燈</b> · <b style="color:#ff6b6b">V64:已結算&lt;3條腿→灰燈「資料不足」(不給紅燈)</b> · <b>V64:顯示還在跑的腿</b> · <b style="color:#ff6b6b">V65:總表底部「全部合計」(跨股票池加總,樣本才夠)</b> · <b style="color:#ff6b6b">V65:單檔燈號降級為「假設」,標出樣本數</b> · <b style="color:#ff6b6b">V65:⚪門檻 3→5</b> · <b style="color:#ff6b6b">V66:持倉鎖(一次只能一個倉,前一筆沒出清的腿不算樣本)</b> · <b style="color:#ff6b6b">V66:修掉「同一段行情被重複計數」的期望值虛胖</b> · <b style="color:#ff6b6b">V67:持倉鎖改「收掉2/3就放行」(修掉V66把停損腿藏起來、打擊率虛高)</b> · <b style="color:#ff6b6b">V68:全部合計加「中位數EV / 拿掉前5%最賺 / 獲利集中度」(拆穿右尾:平均是不是被少數monster拉高)</b> · <b style="color:#ff6b6b">V69:總表分色分區(兩關綠/等時機/黎明藍/觀察白/龜速灰/紅)+白燈拆三色+每列可點開看摘要(省事版不重抓)</b> · <b style="color:#ff6b6b">V70:時機判詞改「週線語氣」(不再說可進可抱→提醒回日K確認)+「⚠靠運氣」拆成「一次爆賺撐的(本性)/只跑過N次(會變好)/同段行情」</b> · <b style="color:#ff6b6b">V71:總表每列加「✕刪除鈕」(清掉打錯的/隨便丟的單一檔,不用清空全部)</b> · <b style="color:#ff6b6b">V72:龜速黑燈改紫燈(黑底看不見)+股票名放大提亮(12→15px)+總表最上面加燈號文字對照表+✕刪除鈕改紅色放大</b> · <b style="color:#ff6b6b">V73:【中位數升為主角】(平均會騙人→降級縮小)+全部合計搬到總表上方+所有分區說明/警告文字放大改暖色+右尾警告改大框並列出三條鐵律</b> · <b style="color:#ff6b6b">V74:總表主列直接顯示「停損 X%」(1×ADR,不用點開)+修正三條鐵律裡誤導的「壓5%」講法</b> · <b style="color:#ff6b6b">V75:【加入 base 計數】(O'Neil/MarketSmith/Minervini 標準:創高→回檔≥12%→再突破那個高才算一個 base;歸零=跌破前base低點 或 回檔>35%)</b> · <b style="color:#ff6b6b">V75:每條腿標 base 編號+衝頂/base內反彈警示(修掉「離頂2天還發進場訊號」)</b> · <b style="color:#ff6b6b">V75:個股基本資料條移到最上面(價/base/離30週線/兩道燈號)</b>
+  <h1>股票<span class="v">DNA</span> <span style="font-size:11px;color:var(--dim);font-weight:400">Stage 2 回測引擎 · V75.1</span></h1>
+  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b> · <b>崩壞率閘</b> · <b>50MA尾端切割</b> · <b>最近N段</b> · <b>大段=週線30週線判定</b> · <b>腿切割=base深度≥12%</b> · <b>O'Neil加權動能</b> · <b>ADR門檻(Qullamaggie)</b> · <b>V49:震盪度ADR正規化</b> · <b>V49:轉弱門檻=-12%(回檔≠失效)</b> · <b>V49:死亡判準=週線破30週線</b> · <b>V49:股性=速度×幅度</b> · <b>V50:Stage分五期</b> · <b>V50:Stage1修復vsStage4下跌</b> · <b>V50:最終峰值分佈+中位數</b> · <b style="color:#ff6b6b">V51:腿峰值不再共用段尾(地基修正)</b> · <b>V51:Stage4改用-12%</b> · <b>V51:動能熄火≠Stage4</b> · <b>V51:末期只看離30週線</b> · <b>V52:崩壞率獨立閘門</b> · <b style="color:#ff6b6b">V53:期望值(EV)=實際結算損益</b> · <b style="color:#ff6b6b">V53:崩壞不過關→機率區失效</b> · <b style="color:#ff6b6b">V53:平均/最猛降級為淡色</b> · <b style="color:#ff6b6b">V53:核心倉單一判準</b> · <b>V53:累積總表</b> · <b style="color:#ff6b6b">V54:EV改用中位損益(平均會被右尾騙)</b> · <b style="color:#ff6b6b">V54:勝率(賺錢的腿/已結算)</b> · <b>V54:勝率</b> · <b style="color:#ff6b6b">V55:加入停損(1×ADR,夾5~10%)</b> · <b style="color:#ff6b6b">V55:T1後停損移成本價</b> · <b style="color:#ff6b6b">V55:期望值=Minervini公式(平均)</b> · <b style="color:#ff6b6b">V55:閘門改為賺賠比≥2:1(崩壞率不再否決)</b> · <b>V55:單腿依賴警告</b> · <b style="color:#ff6b6b">V56:修 badOdds 初始化順序(股性卡曾整張掛掉)</b> · <b>V56:停損腿階梯圖</b> · <b style="color:#ff6b6b">V57:判詞改由期望值驅動(不再與EV打架)</b> · <b style="color:#ff6b6b">V57:打平線=1/(1+賺賠比)</b> · <b>V57:單腿依賴不給綠燈</b> · <b style="color:#ff6b6b">V58:紅綠燈(只答「值不值得投入」,不答「現在能不能買」)</b> · <b>V58:總表燈號欄</b> · <b style="color:#ff6b6b">V59:兩道關卡(先體質→後時機),階段拉到最上面</b> · <b>V59:下一步指示</b> · <b style="color:#ff6b6b">V60:修 LAST_SUM 讀燈號時的 TDZ(總表曾整個消失)</b> · <b>V60:總表判詞改抓降級後的</b> · <b style="color:#ff6b6b">V61:術語後面加白話括號</b> · <b style="color:#ff6b6b">V61:部位上限給具體數字</b> · <b style="color:#ff6b6b">V61:原始數據收合</b> · <b>V61:砍掉重複判詞</b> · <b style="color:#ff6b6b">V62:Stage 2 補上 10週線(Weinstein 原版:價格&gt;10W&gt;30W)</b> · <b style="color:#ff6b6b">V62:補上 Stage 3 頭部(引擎原本沒有)</b> · <b>V62:符號後面直接寫字</b> · <b style="color:#ff6b6b">V63:10週線條件從「段偵測」拿掉(V62改過頭,把好好的大段砍碎)</b> · <b style="color:#ff6b6b">V63:10週線只用在「現在的Stage」</b> · <b style="color:#ff6b6b">V63:⚠靠運氣否決◆核心倉</b> · <b>V63:賺賠比∞不給綠燈</b> · <b style="color:#ff6b6b">V64:已結算&lt;3條腿→灰燈「資料不足」(不給紅燈)</b> · <b>V64:顯示還在跑的腿</b> · <b style="color:#ff6b6b">V65:總表底部「全部合計」(跨股票池加總,樣本才夠)</b> · <b style="color:#ff6b6b">V65:單檔燈號降級為「假設」,標出樣本數</b> · <b style="color:#ff6b6b">V65:⚪門檻 3→5</b> · <b style="color:#ff6b6b">V66:持倉鎖(一次只能一個倉,前一筆沒出清的腿不算樣本)</b> · <b style="color:#ff6b6b">V66:修掉「同一段行情被重複計數」的期望值虛胖</b> · <b style="color:#ff6b6b">V67:持倉鎖改「收掉2/3就放行」(修掉V66把停損腿藏起來、打擊率虛高)</b> · <b style="color:#ff6b6b">V68:全部合計加「中位數EV / 拿掉前5%最賺 / 獲利集中度」(拆穿右尾:平均是不是被少數monster拉高)</b> · <b style="color:#ff6b6b">V69:總表分色分區(兩關綠/等時機/黎明藍/觀察白/龜速灰/紅)+白燈拆三色+每列可點開看摘要(省事版不重抓)</b> · <b style="color:#ff6b6b">V70:時機判詞改「週線語氣」(不再說可進可抱→提醒回日K確認)+「⚠靠運氣」拆成「一次爆賺撐的(本性)/只跑過N次(會變好)/同段行情」</b> · <b style="color:#ff6b6b">V71:總表每列加「✕刪除鈕」(清掉打錯的/隨便丟的單一檔,不用清空全部)</b> · <b style="color:#ff6b6b">V72:龜速黑燈改紫燈(黑底看不見)+股票名放大提亮(12→15px)+總表最上面加燈號文字對照表+✕刪除鈕改紅色放大</b> · <b style="color:#ff6b6b">V73:【中位數升為主角】(平均會騙人→降級縮小)+全部合計搬到總表上方+所有分區說明/警告文字放大改暖色+右尾警告改大框並列出三條鐵律</b> · <b style="color:#ff6b6b">V74:總表主列直接顯示「停損 X%」(1×ADR,不用點開)+修正三條鐵律裡誤導的「壓5%」講法</b> · <b style="color:#ff6b6b">V75:【加入 base 計數】(O'Neil/MarketSmith/Minervini 標準:創高→回檔≥12%→再突破那個高才算一個 base;歸零=跌破前base低點 或 回檔>35%)</b> · <b style="color:#ff6b6b">V75:每條腿標 base 編號+衝頂/base內反彈警示(修掉「離頂2天還發進場訊號」)</b> · <b style="color:#ff6b6b">V75:個股基本資料條移到最上面(價/base/離30週線/兩道燈號)</b> · <b style="color:#ff6b6b">V75.1:修 base 編號多算一個(第一條腿被標成base2)</b> · <b style="color:#ff6b6b">V75.1:12%只用來切腿,數base要「≥5週 或 深≥20%」才認列(小整理不算)—修掉MU一年被切出5個base、且淺base墊高基準害誤判歸零</b> · <b style="color:#ff6b6b">V75.1:每條腿改成可收合(預設一行,點▸展開細節)</b>
 
   <div class="panel">
     <div class="lbl">回測輸入</div>
@@ -326,6 +330,7 @@
       <div class="row">
         <div class="fld"><label>base歸零 回檔&gt;%(Minervini 35)</label><input type="number" id="baseResetPct" value="35" step="1" min="15"></div>
         <div class="fld"><label>真base 最少天數(O'Neil 5週)</label><input type="number" id="baseMinDays" value="25" step="1" min="5"></div>
+        <div class="fld"><label>或 深度≥%才算一個base</label><input type="number" id="baseMinDepth" value="20" step="1" min="10"></div>
       </div>
       <div class="grp">champion 判準 · ADR門檻 + 洗盤倍數</div>
       <div class="row">
@@ -781,18 +786,29 @@ function runBacktest(bars,cfg){
           }
         }
       }
-      // 步驟2: 給每個 base 編號(套用歸零規則)。第一條腿 = base 1。
-      let no=1, prevLo=null;
+      // 步驟2: 給每個 base 編號(套用歸零規則)。
+      // ===== V75.1 修正(實測 MU 抓到的兩個錯)=====
+      //  ① 編號多算一個: no 從 1 起跳又 ++, 害第一條腿被標成 base 2。改成從 0 起跳。
+      //  ② 12% 的門檻對「切腿」剛好, 對「數 base」太鬆 —— MU 一年被切出 5 個 base,
+      //     其中一個只有 7 天、深 16%。O'Neil/Minervini 的 base 是 5~26 週的整理, 不是小回檔。
+      //     更糟的是它會連鎖汙染歸零判斷: 因為多出一堆淺 base, 「前一個 base 的低點」
+      //     被墊到很高的 357.67, 結果 2026/2-4 那波輕鬆跌破 → 誤判歸零(專業標準是【不該】歸零的)。
+      //  → 認列一個 base 要夠份量: 【整理 ≥5週】或【深度 ≥20%】滿足其一。
+      //     不夠份量的 = 小整理, 不計數、也不能當「前一個 base 低點」的基準。
+      let no=0, prevLo=null;
       {
         let bl=Infinity; for(let k=seg.s;k<=legs[0].ig;k++) if(bars[k].l<bl) bl=bars[k].l;
         prevLo=isFinite(bl)?bl:bars[legs[0].ig].l;
       }
       found.forEach(B=>{
         const d=(B.hi>0)?(B.hi-B.lo)/B.hi*100:0;
+        B.depth=d; B.days=B.brk-B.hiIdx;
+        B.minor = !(B.days>=cfg.baseMinDays || d>=cfg.baseMinDepth);   // 份量不夠 = 小整理
+        if(B.minor){ B.no=Math.max(no,1); return; }                    // 不計數、不更新基準
         if(prevLo!=null && B.lo<prevLo){ no=1; B.why='跌破前一個 base 的低點('+prevLo.toFixed(2)+')'; }
         else if(d>cfg.baseResetPct){ no=1; B.why='回檔 '+d.toFixed(0)+'% > '+cfg.baseResetPct+'% = correction 不是 base'; }
         else no++;
-        B.no=no; B.depth=d; B.days=B.brk-B.hiIdx; prevLo=B.lo;
+        B.no=no; prevLo=B.lo;
       });
       // 步驟3: 把每條腿掛到它所屬的 base
       //   配對不能用「腿的日期 == base 突破日」—— 腿還要滿足量能/整理根數, 常常晚個幾天才發動。
@@ -805,7 +821,7 @@ function runBacktest(bars,cfg){
         if(idx===0){ kind=''; }
         else if(!cur){ kind='ext'; }
         else if(bars[L.ig].c < cur.hi){ kind='intra'; }          // 還在 base 的範圍內反彈
-        else if(!used.has(cur)){ used.add(cur); isBrk=true; kind=(cur.days<cfg.baseMinDays)?'short':''; }
+        else if(!used.has(cur)){ used.add(cur); isBrk=true; kind = cur.minor?'minor':((cur.days<cfg.baseMinDays)?'short':''); }
         else { kind='ext'; }                                      // 已經有腿突破過了 = 同一波的延伸
         L.baseNo   = cur?cur.no:1;
         L.baseLow  = cur?cur.lo:null;
@@ -868,6 +884,10 @@ function baseLine(L){
     margin:-2px 0 7px;padding:5px 8px;border-radius:0 5px 5px 0">
     ⚠ <b>這不是新的 base, 是衝頂</b> — 有創新高, 但中間<b>只回檔 ${L.baseDepth.toFixed(0)}%(不到 ${L.baseMinPct}%)、只隔 ${L.baseDays} 天</b>。
     沒整理過就創高 = <b>同一波推升的延伸</b>, 不是新的起漲點。這種位置進場等於<b>追在半山腰以上</b>。</div>`;
+  if(L.baseKind==='minor') s+=`<div style="font-size:12.5px;color:var(--muted);margin:-2px 0 6px;padding-left:2px">
+    這只是<b>小整理</b>(深 ${L.baseDepth.toFixed(0)}% / ${L.baseDays} 天), 份量不夠算一個 base — 沿用 base ${L.baseNo}。</div>`;
+  if(L.baseKind==='minor') s+=`<div style="font-size:12.5px;color:var(--muted);margin:-2px 0 6px;padding-left:2px">
+    這只是<b>小整理</b>(深 ${L.baseDepth.toFixed(0)}% / ${L.baseDays} 天), 份量不夠算一個 base — 沿用 base ${L.baseNo}。</div>`;
   if(L.baseKind==='short') s+=`<div style="font-size:12.5px;color:#d29922;background:#d2992214;border-left:3px solid #d29922;
     margin:-2px 0 7px;padding:5px 8px;border-radius:0 5px 5px 0">
     ⚠ <b>base 偏短</b> — 有突破舊高, 但只整理了 <b>${L.baseDays} 天</b>(O'Neil 標準: 真 base 至少 5 週 = 25 天)。
@@ -899,10 +919,10 @@ function render(res,cfg){
       const g=b[L.ig];
       // ===== V66: 持倉鎖擋掉的腿 —— 顯示但不計入統計 =====
       if(L.blocked){
-        html+=`<div class="leg" style="opacity:.4">
-          <div class="hd"><span class="ln">${baseBadge(L)}<span style="color:var(--dim);font-weight:600">加碼點</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--dim)">資金佔用中 · 不計入統計</span></span><span class="tag nor" style="opacity:.6">🔒 持倉鎖</span></div>
+        html+=`<details class="leg" style="opacity:.55"><summary class="legsum">
+          <div class="hd"><span class="ln">${baseBadge(L)}<span style="color:var(--dim);font-weight:600">加碼點</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--dim)">資金佔用中 · 不計入統計</span></span><span class="tag nor" style="opacity:.6">🔒 持倉鎖</span></div></summary>
           <div class="note"><b>為什麼不算:</b> 這條腿發動的時候, <b>前一筆交易還沒收掉 2/3</b>(還沒 +30% 收 1/3 + 破 20MA 收 1/3)—— 你的錢還壓在上面, 現實中<b>不會同時再開一個倉</b>。它是既有部位的<b>加碼點</b>, 不是一次新的獨立進場。<br><b style="color:var(--orange)">V65 以前把它當成獨立樣本 → 同一段行情被算好幾次 → 期望值 / 打擊率 / 賺賠比全部虛胖。V67 起, 前一筆收掉 2/3 就放行下一筆(含停損腿), 樣本才誠實。</b></div>
-        </div>`;
+        </details>`;
         return;
       }
       const t1=L.t1>=0?b[L.t1]:null, d1=L.t1>=0?L.t1-L.ig:null;
@@ -921,8 +941,12 @@ function render(res,cfg){
       const pnlTxt = L.live ? 'runner中' : (L.sl>=0?'⛔停損出場 ':(L.be>=0?'成本價出場 ':(L.t3>=0?'末棒出場 ':'')))+s2(L.legPnl)+'%';
       const enTxt = L.type==='ign'?'點火':'突破';
       const enCol = L.type==='ign'?'green':'blue';
-      html+=`<div class="leg">
-        <div class="hd"><span class="ln">${baseBadge(L)}<span style="color:var(--${enCol});font-weight:600">${enTxt}</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · <span style="color:var(--${pnlCls})">${pnlTxt}</span></span><span class="tag ${tag}">${tt}</span></div>
+      const _flag = L.baseKind==='ext'?'<span style="color:#f0883e">⚠衝頂</span> ':
+                    (L.baseKind==='intra'?'<span style="color:#f0883e">⚠非新base</span> ':
+                    (L.baseKind==='short'?'<span style="color:#d29922">⚠短base</span> ':''));
+      html+=`<details class="leg"><summary class="legsum">
+        <div class="hd"><span class="ln">${baseBadge(L)}<span style="color:var(--${enCol});font-weight:600">${enTxt}</span> · 腿 ${li+1} · ${g.date} @ ${g.c.toFixed(2)} · ${_flag}<span style="color:var(--${pnlCls})">${pnlTxt}</span></span><span class="tag ${tag}">${tt}</span></div>
+        </summary>
         ${baseLine(L)}
         <div class="track">
           <div class="stop g"><div class="dot"></div><div class="k">發動 D0</div><div class="d">${g.date}</div><div class="m">收 ${g.c.toFixed(2)}</div></div>
@@ -934,7 +958,7 @@ function render(res,cfg){
            : `<div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>`}
         </div>
         <div class="note"><b>操作:</b> ${adv}</div>
-      </div>`;
+      </details>`;
     });
     html+=`</div></div>`;
   });
@@ -1956,7 +1980,7 @@ async function go(){
     grindPnl:+$("grindPnl").value, maxFailRate:+$("maxFailRate").value/100, recentSegs:+$("recentSegs").value,
     stopK:+$("stopK").value, stopMin:+$("stopMin").value, stopMax:+$("stopMax").value, minRR:+$("minRR").value,
     atrLen:+$("atrLen").value, minBasePct:+$("minBasePct").value,
-    baseResetPct:+$("baseResetPct").value, baseMinDays:+$("baseMinDays").value,
+    baseResetPct:+$("baseResetPct").value, baseMinDays:+$("baseMinDays").value, baseMinDepth:+$("baseMinDepth").value,
     oppWk:+$("oppWk").value, minAdr:+$("minAdr").value, maxChop:+$("maxChop").value,
     weakPct:+$("weakPct").value, refAdr:+$("refAdr").value,
     midExtW30:+$("midExtW30").value, lateExtW30:+$("lateExtW30").value, lateExtLo52:+$("lateExtLo52").value,
