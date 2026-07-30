@@ -273,8 +273,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>股票<span class="v">DNA</span> <span style="font-size:11px;color:var(--dim);font-weight:400">Stage 2 回測引擎 · V76.4</span></h1>
-  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b> · <b>崩壞率閘</b> · <b>50MA尾端切割</b> · <b>最近N段</b> · <b>大段=週線30週線判定</b> · <b>腿切割=base深度≥12%</b> · <b>O'Neil加權動能</b> · <b>ADR門檻(Qullamaggie)</b> · <b>V49:震盪度ADR正規化</b> · <b>V49:轉弱門檻=-12%(回檔≠失效)</b> · <b>V49:死亡判準=週線破30週線</b> · <b>V49:股性=速度×幅度</b> · <b>V50:Stage分五期</b> · <b>V50:Stage1修復vsStage4下跌</b> · <b>V50:最終峰值分佈+中位數</b> · <b style="color:#ff6b6b">V51:腿峰值不再共用段尾(地基修正)</b> · <b>V51:Stage4改用-12%</b> · <b>V51:動能熄火≠Stage4</b> · <b>V51:末期只看離30週線</b> · <b>V52:崩壞率獨立閘門</b> · <b style="color:#ff6b6b">V53:期望值(EV)=實際結算損益</b> · <b style="color:#ff6b6b">V53:崩壞不過關→機率區失效</b> · <b style="color:#ff6b6b">V53:平均/最猛降級為淡色</b> · <b style="color:#ff6b6b">V53:核心倉單一判準</b> · <b>V53:累積總表</b> · <b style="color:#ff6b6b">V54:EV改用中位損益(平均會被右尾騙)</b> · <b style="color:#ff6b6b">V54:勝率(賺錢的腿/已結算)</b> · <b>V54:勝率</b> · <b style="color:#ff6b6b">V55:加入停損(1×ADR,夾5~10%)</b> · <b style="color:#ff6b6b">V55:T1後停損移成本價</b> · <b style="color:#ff6b6b">V55:期望值=Minervini公式(平均)</b> · <b style="color:#ff6b6b">V55:閘門改為賺賠比≥2:1(崩壞率不再否決)</b> · <b>V55:單腿依賴警告</b> · <b style="color:#ff6b6b">V56:修 badOdds 初始化順序(股性卡曾整張掛掉)</b> · <b>V56:停損腿階梯圖</b> · <b style="color:#ff6b6b">V57:判詞改由期望值驅動(不再與EV打架)</b> · <b style="color:#ff6b6b">V57:打平線=1/(1+賺賠比)</b> · <b>V57:單腿依賴不給綠燈</b> · <b style="color:#ff6b6b">V58:紅綠燈(只答「值不值得投入」,不答「現在能不能買」)</b> · <b>V58:總表燈號欄</b> · <b style="color:#ff6b6b">V59:兩道關卡(先體質→後時機),階段拉到最上面</b> · <b>V59:下一步指示</b> · <b style="color:#ff6b6b">V60:修 LAST_SUM 讀燈號時的 TDZ(總表曾整個消失)</b> · <b>V60:總表判詞改抓降級後的</b> · <b style="color:#ff6b6b">V61:術語後面加白話括號</b> · <b style="color:#ff6b6b">V61:部位上限給具體數字</b> · <b style="color:#ff6b6b">V61:原始數據收合</b> · <b>V61:砍掉重複判詞</b> · <b style="color:#ff6b6b">V62:Stage 2 補上 10週線(Weinstein 原版:價格&gt;10W&gt;30W)</b> · <b style="color:#ff6b6b">V62:補上 Stage 3 頭部(引擎原本沒有)</b> · <b>V62:符號後面直接寫字</b> · <b style="color:#ff6b6b">V63:10週線條件從「段偵測」拿掉(V62改過頭,把好好的大段砍碎)</b> · <b style="color:#ff6b6b">V63:10週線只用在「現在的Stage」</b> · <b style="color:#ff6b6b">V63:⚠靠運氣否決◆核心倉</b> · <b>V63:賺賠比∞不給綠燈</b> · <b style="color:#ff6b6b">V64:已結算&lt;3條腿→灰燈「資料不足」(不給紅燈)</b> · <b>V64:顯示還在跑的腿</b> · <b style="color:#ff6b6b">V65:總表底部「全部合計」(跨股票池加總,樣本才夠)</b> · <b style="color:#ff6b6b">V65:單檔燈號降級為「假設」,標出樣本數</b> · <b style="color:#ff6b6b">V65:⚪門檻 3→5</b> · <b style="color:#ff6b6b">V66:持倉鎖(一次只能一個倉,前一筆沒出清的腿不算樣本)</b> · <b style="color:#ff6b6b">V66:修掉「同一段行情被重複計數」的期望值虛胖</b> · <b style="color:#ff6b6b">V67:持倉鎖改「收掉2/3就放行」(修掉V66把停損腿藏起來、打擊率虛高)</b> · <b style="color:#ff6b6b">V68:全部合計加「中位數EV / 拿掉前5%最賺 / 獲利集中度」(拆穿右尾:平均是不是被少數monster拉高)</b> · <b style="color:#ff6b6b">V69:總表分色分區(兩關綠/等時機/黎明藍/觀察白/龜速灰/紅)+白燈拆三色+每列可點開看摘要(省事版不重抓)</b> · <b style="color:#ff6b6b">V70:時機判詞改「週線語氣」(不再說可進可抱→提醒回日K確認)+「⚠靠運氣」拆成「一次爆賺撐的(本性)/只跑過N次(會變好)/同段行情」</b> · <b style="color:#ff6b6b">V71:總表每列加「✕刪除鈕」(清掉打錯的/隨便丟的單一檔,不用清空全部)</b> · <b style="color:#ff6b6b">V72:龜速黑燈改紫燈(黑底看不見)+股票名放大提亮(12→15px)+總表最上面加燈號文字對照表+✕刪除鈕改紅色放大</b> · <b style="color:#ff6b6b">V73:【中位數升為主角】(平均會騙人→降級縮小)+全部合計搬到總表上方+所有分區說明/警告文字放大改暖色+右尾警告改大框並列出三條鐵律</b> · <b style="color:#ff6b6b">V74:總表主列直接顯示「停損 X%」(1×ADR,不用點開)+修正三條鐵律裡誤導的「壓5%」講法</b> · <b style="color:#ff6b6b">V75:【加入 base 計數】(O'Neil/MarketSmith/Minervini 標準:創高→回檔≥12%→再突破那個高才算一個 base;歸零=跌破前base低點 或 回檔>35%)</b> · <b style="color:#ff6b6b">V75:每條腿標 base 編號+衝頂/base內反彈警示(修掉「離頂2天還發進場訊號」)</b> · <b style="color:#ff6b6b">V75:個股基本資料條移到最上面(價/base/離30週線/兩道燈號)</b> · <b style="color:#ff6b6b">V75.1:修 base 編號多算一個(第一條腿被標成base2)</b> · <b style="color:#ff6b6b">V75.1:12%只用來切腿,數base要「≥5週 或 深≥20%」才認列(小整理不算)—修掉MU一年被切出5個base、且淺base墊高基準害誤判歸零</b> · <b style="color:#ff6b6b">V75.1:每條腿改成可收合(預設一行,點▸展開細節)</b> · <b style="color:#ff6b6b">V76:【腿一覽表升為主角】整段所有腿濃縮成一張表+白話結論(走過幾個base/賺幾次/幾次是追高)</b> · <b style="color:#ff6b6b">V76:股性卡/期望值/賺賠比/階梯圖全部收進「詳細分析」摺疊</b> · <b style="color:#ff6b6b">V76:base 文案不再當進場建議(標明「那條腿發動當時」,現在能不能買看時機燈)</b> · <b style="color:#ff6b6b">V76.1:修「小整理」把 monster/runner 蓋掉(型態與提醒拆成兩欄)</b> · <b style="color:#ff6b6b">V76.1:「最後一條腿」改抓最後一條【可進場】的腿(不用被持倉鎖擋掉的加碼點)</b> · <b style="color:#ff6b6b">V76.1:base 數改由引擎精算(歸零後繼續累加,原本取max會少算)+腿編號跨大段連續</b> · <b style="color:#ff6b6b">V76.1:邊界修正(全賠→不說「最賺的」改警告不適合;全被鎖→不硬講進場位置)</b> · <b style="color:#ff6b6b">V76.2:修「上面說3個base、下面說6個」自己打自己 — base數改由 countBases() 統一計算(沿base編號走,一變就+1,歸零後繼續累加)</b> · <b style="color:#ff6b6b">V76.3:修「上面說base2、下面說base1」— 上面講【價格結構】(含加碼點)、下面講【可獨立進場的訊號】,兩者不同時直接把兩個都寫出來</b> · <b style="color:#ff6b6b">V76.3:base1~2 判詞拿掉「主升段還沒走完,大眾還沒發現」(base位置撐不起市場情緒的宣稱)改成「突破成功率最高」</b> · <b style="color:#ff6b6b">V76.4:base 編號只在「有新腿」時才更新,之後價格一路跌也不會動 → 改標「最後一次結構定位在 base N(腿發動於 X 日)」,現價低於那條腿 ≥10% 時加⚠過時警語+價差</b>
+  <h1>股票<span class="v">DNA</span> <span style="font-size:11px;color:var(--dim);font-weight:400">Stage 2 回測引擎 · V77</span></h1>
+  <div class="sub">兩層 · <b>大段(150日)</b> ⊃ <b>腿(突破+點火)</b> · 三段階梯 · 頂部股性卡 · <b>慢磨credit</b> · <b>崩壞率閘</b> · <b>50MA尾端切割</b> · <b>最近N段</b> · <b>大段=週線30週線判定</b> · <b>腿切割=base深度≥12%</b> · <b>O'Neil加權動能</b> · <b>ADR門檻(Qullamaggie)</b> · <b>V49:震盪度ADR正規化</b> · <b>V49:轉弱門檻=-12%(回檔≠失效)</b> · <b>V49:死亡判準=週線破30週線</b> · <b>V49:股性=速度×幅度</b> · <b>V50:Stage分五期</b> · <b>V50:Stage1修復vsStage4下跌</b> · <b>V50:最終峰值分佈+中位數</b> · <b style="color:#ff6b6b">V51:腿峰值不再共用段尾(地基修正)</b> · <b>V51:Stage4改用-12%</b> · <b>V51:動能熄火≠Stage4</b> · <b>V51:末期只看離30週線</b> · <b>V52:崩壞率獨立閘門</b> · <b style="color:#ff6b6b">V53:期望值(EV)=實際結算損益</b> · <b style="color:#ff6b6b">V53:崩壞不過關→機率區失效</b> · <b style="color:#ff6b6b">V53:平均/最猛降級為淡色</b> · <b style="color:#ff6b6b">V53:核心倉單一判準</b> · <b>V53:累積總表</b> · <b style="color:#ff6b6b">V54:EV改用中位損益(平均會被右尾騙)</b> · <b style="color:#ff6b6b">V54:勝率(賺錢的腿/已結算)</b> · <b>V54:勝率</b> · <b style="color:#ff6b6b">V55:加入停損(1×ADR,夾5~10%)</b> · <b style="color:#ff6b6b">V55:T1後停損移成本價</b> · <b style="color:#ff6b6b">V55:期望值=Minervini公式(平均)</b> · <b style="color:#ff6b6b">V55:閘門改為賺賠比≥2:1(崩壞率不再否決)</b> · <b>V55:單腿依賴警告</b> · <b style="color:#ff6b6b">V56:修 badOdds 初始化順序(股性卡曾整張掛掉)</b> · <b>V56:停損腿階梯圖</b> · <b style="color:#ff6b6b">V57:判詞改由期望值驅動(不再與EV打架)</b> · <b style="color:#ff6b6b">V57:打平線=1/(1+賺賠比)</b> · <b>V57:單腿依賴不給綠燈</b> · <b style="color:#ff6b6b">V58:紅綠燈(只答「值不值得投入」,不答「現在能不能買」)</b> · <b>V58:總表燈號欄</b> · <b style="color:#ff6b6b">V59:兩道關卡(先體質→後時機),階段拉到最上面</b> · <b>V59:下一步指示</b> · <b style="color:#ff6b6b">V60:修 LAST_SUM 讀燈號時的 TDZ(總表曾整個消失)</b> · <b>V60:總表判詞改抓降級後的</b> · <b style="color:#ff6b6b">V61:術語後面加白話括號</b> · <b style="color:#ff6b6b">V61:部位上限給具體數字</b> · <b style="color:#ff6b6b">V61:原始數據收合</b> · <b>V61:砍掉重複判詞</b> · <b style="color:#ff6b6b">V62:Stage 2 補上 10週線(Weinstein 原版:價格&gt;10W&gt;30W)</b> · <b style="color:#ff6b6b">V62:補上 Stage 3 頭部(引擎原本沒有)</b> · <b>V62:符號後面直接寫字</b> · <b style="color:#ff6b6b">V63:10週線條件從「段偵測」拿掉(V62改過頭,把好好的大段砍碎)</b> · <b style="color:#ff6b6b">V63:10週線只用在「現在的Stage」</b> · <b style="color:#ff6b6b">V63:⚠靠運氣否決◆核心倉</b> · <b>V63:賺賠比∞不給綠燈</b> · <b style="color:#ff6b6b">V64:已結算&lt;3條腿→灰燈「資料不足」(不給紅燈)</b> · <b>V64:顯示還在跑的腿</b> · <b style="color:#ff6b6b">V65:總表底部「全部合計」(跨股票池加總,樣本才夠)</b> · <b style="color:#ff6b6b">V65:單檔燈號降級為「假設」,標出樣本數</b> · <b style="color:#ff6b6b">V65:⚪門檻 3→5</b> · <b style="color:#ff6b6b">V66:持倉鎖(一次只能一個倉,前一筆沒出清的腿不算樣本)</b> · <b style="color:#ff6b6b">V66:修掉「同一段行情被重複計數」的期望值虛胖</b> · <b style="color:#ff6b6b">V67:持倉鎖改「收掉2/3就放行」(修掉V66把停損腿藏起來、打擊率虛高)</b> · <b style="color:#ff6b6b">V68:全部合計加「中位數EV / 拿掉前5%最賺 / 獲利集中度」(拆穿右尾:平均是不是被少數monster拉高)</b> · <b style="color:#ff6b6b">V69:總表分色分區(兩關綠/等時機/黎明藍/觀察白/龜速灰/紅)+白燈拆三色+每列可點開看摘要(省事版不重抓)</b> · <b style="color:#ff6b6b">V70:時機判詞改「週線語氣」(不再說可進可抱→提醒回日K確認)+「⚠靠運氣」拆成「一次爆賺撐的(本性)/只跑過N次(會變好)/同段行情」</b> · <b style="color:#ff6b6b">V71:總表每列加「✕刪除鈕」(清掉打錯的/隨便丟的單一檔,不用清空全部)</b> · <b style="color:#ff6b6b">V72:龜速黑燈改紫燈(黑底看不見)+股票名放大提亮(12→15px)+總表最上面加燈號文字對照表+✕刪除鈕改紅色放大</b> · <b style="color:#ff6b6b">V73:【中位數升為主角】(平均會騙人→降級縮小)+全部合計搬到總表上方+所有分區說明/警告文字放大改暖色+右尾警告改大框並列出三條鐵律</b> · <b style="color:#ff6b6b">V74:總表主列直接顯示「停損 X%」(1×ADR,不用點開)+修正三條鐵律裡誤導的「壓5%」講法</b> · <b style="color:#ff6b6b">V75:【加入 base 計數】(O'Neil/MarketSmith/Minervini 標準:創高→回檔≥12%→再突破那個高才算一個 base;歸零=跌破前base低點 或 回檔>35%)</b> · <b style="color:#ff6b6b">V75:每條腿標 base 編號+衝頂/base內反彈警示(修掉「離頂2天還發進場訊號」)</b> · <b style="color:#ff6b6b">V75:個股基本資料條移到最上面(價/base/離30週線/兩道燈號)</b> · <b style="color:#ff6b6b">V75.1:修 base 編號多算一個(第一條腿被標成base2)</b> · <b style="color:#ff6b6b">V75.1:12%只用來切腿,數base要「≥5週 或 深≥20%」才認列(小整理不算)—修掉MU一年被切出5個base、且淺base墊高基準害誤判歸零</b> · <b style="color:#ff6b6b">V75.1:每條腿改成可收合(預設一行,點▸展開細節)</b> · <b style="color:#ff6b6b">V76:【腿一覽表升為主角】整段所有腿濃縮成一張表+白話結論(走過幾個base/賺幾次/幾次是追高)</b> · <b style="color:#ff6b6b">V76:股性卡/期望值/賺賠比/階梯圖全部收進「詳細分析」摺疊</b> · <b style="color:#ff6b6b">V76:base 文案不再當進場建議(標明「那條腿發動當時」,現在能不能買看時機燈)</b> · <b style="color:#ff6b6b">V76.1:修「小整理」把 monster/runner 蓋掉(型態與提醒拆成兩欄)</b> · <b style="color:#ff6b6b">V76.1:「最後一條腿」改抓最後一條【可進場】的腿(不用被持倉鎖擋掉的加碼點)</b> · <b style="color:#ff6b6b">V76.1:base 數改由引擎精算(歸零後繼續累加,原本取max會少算)+腿編號跨大段連續</b> · <b style="color:#ff6b6b">V76.1:邊界修正(全賠→不說「最賺的」改警告不適合;全被鎖→不硬講進場位置)</b> · <b style="color:#ff6b6b">V76.2:修「上面說3個base、下面說6個」自己打自己 — base數改由 countBases() 統一計算(沿base編號走,一變就+1,歸零後繼續累加)</b> · <b style="color:#ff6b6b">V76.3:修「上面說base2、下面說base1」— 上面講【價格結構】(含加碼點)、下面講【可獨立進場的訊號】,兩者不同時直接把兩個都寫出來</b> · <b style="color:#ff6b6b">V76.3:base1~2 判詞拿掉「主升段還沒走完,大眾還沒發現」(base位置撐不起市場情緒的宣稱)改成「突破成功率最高」</b> · <b style="color:#ff6b6b">V76.4:base 編號只在「有新腿」時才更新,之後價格一路跌也不會動 → 改標「最後一次結構定位在 base N(腿發動於 X 日)」,現價低於那條腿 ≥10% 時加⚠過時警語+價差</b> · <b style="color:#ff6b6b">V77:【出場大改・刪除守50MA】查證Qullamaggie原文=賣1/3後剩下用10或20MA移動停利、第一根收盤破就出(不等);Minervini七週法則=前7週破線視為洗盤給空間;Minervini賣在弱勢=出現「Stage2以來最大回檔」全出(純價格,繞開長均線太慢的病根)。新階梯:+30%收1/3(停損移成本)→破移動均線【剩下全出】→最大回檔安全網。快股(ADR≥5)自動用10MA、慢股用20MA。合成驗證:破20MA +80.5% vs 守50MA +72.0%,等3根反而更差(+78.6%)</b>
 
   <div class="panel">
     <div class="lbl">回測輸入</div>
@@ -303,8 +303,10 @@
       <div class="grp">三段階梯</div>
       <div class="row">
         <div class="fld"><label>T1 +30% 目標%</label><input type="number" id="tgt" value="30" min="5"></div>
-        <div class="fld"><label>T2 連N根破20</label><input type="number" id="brk20" value="3" min="1"></div>
-        <div class="fld"><label>T3 連N根破50</label><input type="number" id="brk50" value="2" min="1"></div>
+        <div class="fld"><label>移動停利 連N根破線(冠軍=1)</label><input type="number" id="trailN" value="1" min="1"></div>
+        <div class="fld"><label>七週寬限(交易日)</label><input type="number" id="graceD" value="35" min="0"></div>
+        <div class="fld"><label>快股改用10MA的ADR門檻</label><input type="number" id="fastAdr" value="5" step="0.5" min="0"></div>
+        <div class="fld"><label>連N根破50(僅用於切段)</label><input type="number" id="brk50" value="2" min="1"></div>
       </div>
       <div class="row" style="margin-top:8px">
         <div class="fld"><label>崩殺日 跌幅≤%</label><input type="number" id="crD" value="-8" max="0"></div>
@@ -466,7 +468,7 @@ function atrArr(bars,n){
    ============================================================ */
 function runBacktest(bars,cfg){
   const n=bars.length;
-  const ma20=sma(bars,"c",20), ma50=sma(bars,"c",50), ma150=sma(bars,"c",150), vol50=sma(bars,"v",50);
+  const ma10=sma(bars,"c",10), ma20=sma(bars,"c",20), ma50=sma(bars,"c",50), ma150=sma(bars,"c",150), vol50=sma(bars,"v",50);
   const atr=atrArr(bars,cfg.atrLen);
 
   // ---- Layer 1: 大段切割 (V48 · 改用週線判斷, champion 用週線數 base/判 Stage) ----
@@ -614,7 +616,7 @@ function runBacktest(bars,cfg){
   //   V55: 停損 = 1×ADR, 夾在 5~10% 之間(Minervini 上限 10%)。
   //        +30% 收掉 1/3 之後, 停損上移到成本價(Minervini: 部分獲利了結後移到 breakeven)。
   //   出場優先序(逐日): 停損 > T1目標 > T2破20MA > T3破50MA。
-  function ladder(ig, segEnd){
+  function ladder(ig, segEnd, segStart){
     const g=bars[ig];
     const adr0 = adrPct(bars, 20, ig);
     const stopPct = Math.min(cfg.stopMax, Math.max(cfg.stopMin, (adr0==null?cfg.stopMax:adr0)*cfg.stopK));
@@ -622,15 +624,40 @@ function runBacktest(bars,cfg){
     const tgtPx   = g.c*(1 + cfg.tgt/100);
     const tiers=[cfg.tgtA, cfg.tgtB, cfg.tgtC];
 
+    // ===== V77 出場改版 (Qullamaggie / Minervini 標準) =====
+    //   查證結果:
+    //   · Qullamaggie 原文 —— 3~5 天後賣 1/3~1/2、停損移成本, 剩下用【10日或20日均線】移動停利,
+    //     「等第一根 CLOSE 跌破就出」。快股用 10 日、慢股用 20 日。他的 50MA 只當趨勢濾網, 不當停利線。
+    //   · Minervini 七週法則 —— 跌破支撐均線若發生在【7 週之後】才賣(前期破線多半是洗盤, 要給空間)。
+    //   · Minervini 賣在弱勢 —— 出現「進入 Stage 2 以來最大的一次跌幅」= 趨勢性質改變, 全出。
+    //     這是【純價格】規則, 不用均線 → 正好繞開「引擎用長均線判 Stage 太慢」的病根。
+    //   Jasmine 七個實測案例零反例: 守 50MA 的最後一筆總是比破 20MA 更低(STX 787<915、
+    //     CIEN 466<485、MU 975<1032) —— 守 50MA 把利潤還回去。V77 刪除。
+    //
+    //   新階梯: T1 +30% 收 1/3(停損移成本) → T2 破移動均線【剩下全出】 → T3 最大回檔安全網。
     let t1=-1, t2=-1, t3=-1, t2type="", sl=-1, be=-1;
-    let run20=0, run50=0;
+    let runMA=0;
     let stopPx=stopPx0;      // 目前的停損價(T1 後上移到成本)
     let remain=1;            // 剩餘部位
     let proceeds=0;          // 已出場部位的加權價
     let term=segEnd, done=false;
 
+    // 這條腿要用哪一條均線移動停利: 高 ADR 的飆股用 10MA, 溫和的用 20MA(Qullamaggie: 看股票走多快)
+    const useFast = (adr0!=null && adr0>=cfg.fastAdr);
+    const trailMA = useFast ? ma10 : ma20;
+    const trailNm = useFast ? '10MA' : '20MA';
+    // 安全網: 記錄這段 Stage 2 以來, 進場前已經出現過的最大回檔深度
+    let priorMaxDD=0;
+    { let hi=-Infinity;
+      for(let k=segStart;k<=ig;k++){
+        if(bars[k].c>hi) hi=bars[k].c;
+        if(hi>0){ const dd=(hi-bars[k].l)/hi*100; if(dd>priorMaxDD) priorMaxDD=dd; }
+      } }
+    let hiSince=g.c;
+
     for(let k=ig+1;k<=segEnd;k++){
       const c=bars[k].c;
+      if(c>hiSince) hiSince=c;
       // (1) 停損最優先 —— 初始停損(全出) 或 成本價停損(剩餘全出)
       if(c < stopPx){
         if(t1<0) sl=k; else be=k;
@@ -641,21 +668,22 @@ function runBacktest(bars,cfg){
         t1=k; const q=Math.min(remain,1/3); proceeds += q*c; remain-=q;
         stopPx = g.c;                                   // breakeven stop
       }
-      // (3) T2 破20MA(崩殺當根 或 連brk20根) → 收 1/3
-      if(t2<0){
-        const chg=(c/bars[k-1].c-1)*100, ext=(c/g.c-1)*100;
-        const crash = vol50[k]!=null&&vol50[k]>0 && chg<=cfg.crD && bars[k].v>=cfg.crV*vol50[k] && ext>=15 && ma20[k]!=null && c<ma20[k];
-        if(ma20[k]!=null && c<ma20[k]) run20++; else run20=0;
-        if(crash || run20>=cfg.brk20){
-          t2=k; t2type = crash?"崩殺":"破20";
-          const q=Math.min(remain,1/3); proceeds += q*c; remain-=q;
-          if(remain<=1e-9){ term=k; done=true; break; }
-        }
+      // (3) T2 移動停利: 收盤跌破 trailMA 連 trailN 根 → 【剩下全部出清】(刪掉守50MA那一段)
+      //     七週寬限: 進場後 graceD 個交易日內的破線視為洗盤, 不出場(Minervini 七週法則)。
+      const chg=(c/bars[k-1].c-1)*100, ext=(c/g.c-1)*100;
+      const crash = vol50[k]!=null&&vol50[k]>0 && chg<=cfg.crD && bars[k].v>=cfg.crV*vol50[k] && ext>=15 && trailMA[k]!=null && c<trailMA[k];
+      if(trailMA[k]!=null && c<trailMA[k]) runMA++; else runMA=0;
+      const past7wk = (k-ig) > cfg.graceD;
+      if(crash || (past7wk && runMA>=cfg.trailN)){
+        t2=k; t2type = crash?"崩殺":("破"+trailNm);
+        proceeds += remain*c; remain=0; term=k; done=true; break;
       }
-      // (4) T3 連brk50根破50MA → 末 1/3 出清
-      if(ma50[k]!=null && c<ma50[k]) run50++; else run50=0;
-      if(run50>=cfg.brk50){
-        t3=k; proceeds += remain*c; remain=0; term=k; done=true; break;
+      // (4) 安全網: 出現「這段 Stage 2 以來最大的一次回檔」→ 趨勢變質, 全出(純價格, 不看均線)
+      if(hiSince>0){
+        const ddNow=(hiSince-bars[k].l)/hiSince*100;
+        if(priorMaxDD>0 && ddNow>priorMaxDD && ddNow>=cfg.minBasePct){
+          t3=k; proceeds += remain*c; remain=0; term=k; done=true; break;
+        }
       }
     }
     if(remain>1e-9){ proceeds += remain*bars[term].c; }   // runner 進行中 → 以段尾/現價計
@@ -668,7 +696,7 @@ function runBacktest(bars,cfg){
       for(let k=ig;k<=term;k++){ if(bars[k].c>=px) return k; }
       return -1;
     });
-    return {ig, tgtPx, t1, t2, t2type, t3, sl, be, pk, term, legPnl, stopPct, live, tHit};
+    return {ig, tgtPx, t1, t2, t2type, t3, sl, be, pk, term, legPnl, stopPct, live, tHit, trailNm};
   }
 
   const out=[];
@@ -680,7 +708,7 @@ function runBacktest(bars,cfg){
     const legDefs=detectLegs(seg);
     const base=bars[seg.s].c;                                   // 大段起點價
     const legs=legDefs.map(({ig,type}, li)=>{
-      const L=ladder(ig, seg.e);
+      const L=ladder(ig, seg.e, seg.s);
       const g=bars[ig];
       // ===== V51 地基修正: 「這條腿走到哪」必須只看這條腿自己的窗口 =====
       //   V50 bug: ladder() 的 term = t3(連破50MA) 或 段尾。但 AXTI/LITE/SNDK/COHR 這種
@@ -1012,14 +1040,14 @@ function render(res,cfg){
       const t2=L.t2>=0?b[L.t2]:null, d2=L.t2>=0?L.t2-L.ig:null;
       const t3=L.t3>=0?b[L.t3]:null, d3=L.t3>=0?L.t3-L.ig:null;
       const pk=b[L.pk], dPk=L.pk-L.ig, pkPct=pct(pk.h,g.c);
-      let tag="nor",tt="常規階梯",adv="+30% 收 1/3、破20MA 收 1/3、末 1/3 抱到連2根破50日。";
+      let tag="nor",tt="常規階梯",adv="+30% 收 1/3(停損移成本)、之後跌破 "+(L.trailNm||"20MA")+" 就<b>剩下全出</b>。";
       if(L.sl>=0){ tag="clx"; tt="⛔ 停損出場"; adv="進場後跌破停損("+L.stopPct.toFixed(1)+"% = 1×ADR)→ 全部出清。這是<b>正常成本</b>, 不是失敗 —— Qullamaggie 七成的交易長這樣。"; }
       else if(L.be>=0){ tag="nor"; tt="成本價出場"; adv="+30% 收掉 1/3 後停損上移到成本價, 之後跌回成本 → 剩餘 2/3 平出。留下 T1 那 1/3 的獲利。"; }
       else
-      if(L.climax){tag="clx";tt="climax · 賣強勢";adv="末端 + 快速見頂(峰值 D"+dPk+")= 氣竭,末 1/3 改用 5MA 快閃、別抱。";}
-      else if(L.monster){tag="mon";tt="8週持有 · monster";adv="起漲初期即強(大段內僅+"+L.posExt.toFixed(0)+"%),末 1/3 抱到50日,別急砍。";}
-      else if(L.runnerHold){tag="run";tt="續勢 runner · 抱";adv="末端(大段內+"+L.posExt.toFixed(0)+"%)但拖到峰值 D"+dPk+"才見頂 = 還在跑、非氣竭,末 1/3 用 50MA 移動停利抱住,別當 climax 砍。";}
-      else if(L.grinder){tag="grd";tt="慢磨 grinder · 抱";adv="沒暴衝但穩穩漲到 +30%、拖到峰值 D"+dPk+"才見頂、獲利出場(混合 "+s2(L.legPnl)+"%)= 慢波段贏家,用 50MA 抱住讓它磨,別因為漲得慢就早砍。";}
+      if(L.climax){tag="clx";tt="climax · 賣強勢";adv="末端 + 快速見頂(峰值 D"+dPk+")= 氣竭。噴出時<b>主動賣在強勢</b>,別等破線。";}
+      else if(L.monster){tag="mon";tt="8週持有 · monster";adv="起漲初期即強(大段內僅+"+L.posExt.toFixed(0)+"%)。前 7 週的破線是洗盤,給它空間;7 週後跌破 "+(L.trailNm||"20MA")+" 才走。";}
+      else if(L.runnerHold){tag="run";tt="續勢 runner · 抱";adv="末端(大段內+"+L.posExt.toFixed(0)+"%)但拖到峰值 D"+dPk+"才見頂 = 還在跑、非氣竭,用 "+(L.trailNm||"20MA")+" 移動停利抱住,別當 climax 砍。";}
+      else if(L.grinder){tag="grd";tt="慢磨 grinder · 抱";adv="沒暴衝但穩穩漲到 +30%、拖到峰值 D"+dPk+"才見頂、獲利出場(混合 "+s2(L.legPnl)+"%)= 慢波段贏家,用 "+(L.trailNm||"20MA")+" 抱住讓它磨,別因為漲得慢就早砍。";}
       const pnlCls = L.live ? 'b' : (L.legPnl>=0?'g':'r');
       const pnlTxt = L.live ? 'runner中' : (L.sl>=0?'⛔停損出場 ':(L.be>=0?'成本價出場 ':(L.t3>=0?'末棒出場 ':'')))+s2(L.legPnl)+'%';
       const enTxt = L.type==='ign'?'點火':'突破';
@@ -1035,10 +1063,10 @@ function render(res,cfg){
           <div class="stop g"><div class="dot"></div><div class="k">發動 D0</div><div class="d">${g.date}</div><div class="m">收 ${g.c.toFixed(2)}</div></div>
           <div class="stop ${t1?'a':'off'}"><div class="dot"></div><div class="k">T1 +${cfg.tgt}%</div><div class="d">${t1?t1.date:'未達'}</div><div class="m">${t1?('收 '+t1.c.toFixed(2)+' · D'+d1):('目標 '+L.tgtPx.toFixed(2))}</div></div>
           <div class="stop b"><div class="dot"></div><div class="k">峰值</div><div class="d">${pk.date}</div><div class="m">高 ${pk.h.toFixed(2)} · ${s2(pkPct)}% · D${dPk}</div></div>
-          <div class="stop ${t2?'o':'off'}"><div class="dot"></div><div class="k">T2 破20 · 1/3</div><div class="d">${t2?t2.date:'未破'}</div><div class="m">${t2?(L.t2type+' · 收 '+t2.c.toFixed(2)+' · D'+d2):'—'}</div></div>
+          <div class="stop ${t2?'o':'off'}"><div class="dot"></div><div class="k">T2 破${L.trailNm||'20MA'} · 剩下全出</div><div class="d">${t2?t2.date:'未破'}</div><div class="m">${t2?(L.t2type+' · 收 '+t2.c.toFixed(2)+' · D'+d2):'—'}</div></div>
           ${(L.sl>=0||L.be>=0) ? (()=>{const x=b[L.sl>=0?L.sl:L.be], dx=(L.sl>=0?L.sl:L.be)-L.ig;
              return '<div class="stop r"><div class="dot"></div><div class="k">'+(L.sl>=0?'⛔ 停損':'成本價停損')+'</div><div class="d">'+x.date+'</div><div class="m">收 '+x.c.toFixed(2)+' · D'+dx+' · 全出</div></div>';})()
-           : `<div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">T3 破50 · 末1/3</div><div class="d">${t3?t3.date:'尚抱'}</div><div class="m">${t3?('連'+cfg.brk50+'破 · 收 '+t3.c.toFixed(2)+' · D'+d3):'runner進行中'}</div></div>`}
+           : `<div class="stop ${t3?'r':'off'}"><div class="dot"></div><div class="k">安全網 · 最大回檔</div><div class="d">${t3?t3.date:'未觸發'}</div><div class="m">${t3?('史上最深回檔 · 收 '+t3.c.toFixed(2)+' · D'+d3):(t2?'—':'runner進行中')}</div></div>`}
         </div>
         <div class="note"><b>操作:</b> ${adv}</div>
       </details>`;
@@ -1441,7 +1469,7 @@ function personaCard(res,cfg){
     vcolor='orange'; vmark='⚠ 賠率不站在你這邊 — 別做';
     const negEV = (expect!=null && expect<=0);
     vtxt = (negEV
-        ? '<b>期望值 '+(expect==null?'—':s2(expect)+'%')+' —— 負的。</b>過去 '+nSet+' 次進場, 照你的規則(停損 1×ADR、+30% 收 1/3 並把停損移到成本、破 20MA 收 1/3、末 1/3 抱到破 50MA)做完, <b>平均每次是賠錢的</b>。'
+        ? '<b>期望值 '+(expect==null?'—':s2(expect)+'%')+' —— 負的。</b>過去 '+nSet+' 次進場, 照你的規則(停損 1×ADR、+30% 收 1/3 並把停損移到成本、跌破移動均線剩下全出。舊規則的末 1/3 抱到破 50MA)做完, <b>平均每次是賠錢的</b>。'
         : '<b>賺賠比只有 '+rrTxt+'</b> —— 沒到 Minervini 的最低標準 '+cfg.minRR+':1。')
       + '打擊率 '+Math.round(batAvg*100)+'%('+evWinN+'/'+nSet+')、平均賺 '+(avgWin==null?'—':s2(avgWin)+'%')+'、平均賠 '+(avgLoss==null?'—':'-'+avgLoss.toFixed(2)+'%')+'。'
       + '<b>低打擊率本身不是問題</b>(Qullamaggie 只有 25~30%)—— <b>問題是贏的時候賺得不夠多, 補不回輸的時候賠的。</b>'
@@ -1690,7 +1718,7 @@ function personaCard(res,cfg){
       ${liveLegs.length ? '<div class="evf" style="color:var(--blue);border-top-color:rgba(88,166,255,.35)">⏳ <b>另有 '+liveLegs.length+' 條腿還在跑</b>('+livePnl.map(v=>s2(v)+'%').join('、')+') —— <b>還沒出場, 所以沒算進上面的期望值</b>。<br>如果現在全部出場, 期望值會是 <b style="color:var(--'+(expectIf>0?'green':'red')+')">'+s2(expectIf)+'%</b>('+nAll+' 次平均)。</div>' : ''}
       ${oneLegDep ? '<div class="evf" style="color:var(--orange);border-top-color:rgba(219,139,58,.4)">⚠ <b>這個數字靠運氣撐著。</b>過去 '+nSet+' 次進場, <b>只有 1 次真的賺到大錢(+'+(bestPnl==null?'—':bestPnl.toFixed(0))+'%)</b>。把那一次拿掉重算, 期望值變成 <b>'+s2(expectNoBest)+'%</b> —— 賠錢的。<br>你買它的時候, 買到的是「未來的某一次」。而根據紀錄, <b>你大概率買到的是那些小賠的</b>。</div>' : ''}
       ${sharedExit ? '<div class="evf" style="color:var(--orange);border-top-color:rgba(219,139,58,.4)">⚠ <b>這 '+nSet+' 次其實是同一段行情。</b>它們的出場點只有 '+exitSet.size+' 個 —— 等於同一件事被算了好幾次, 不是 '+nSet+' 次獨立驗證。</div>' : ''}
-      <div class="evf" style="border-top:none;padding-top:2px">算法: 每條腿照你的規則模擬 —— <b>停損 1×ADR(夾 ${cfg.stopMin}~${cfg.stopMax}%)</b>、+30% 收 1/3 <b>並把停損移到成本價</b>、破 20MA 收 1/3、末 1/3 抱到連${cfg.brk50}根破 50MA。取算術平均 = Minervini 期望值。中位損益 ${evMed==null?'—':s2(evMed)+'%'}。</div>
+      <div class="evf" style="border-top:none;padding-top:2px">算法: 每條腿照你的規則模擬 —— <b>停損 1×ADR(夾 ${cfg.stopMin}~${cfg.stopMax}%)</b>、+30% 收 1/3 <b>並把停損移到成本價</b>、之後跌破移動均線(快股10MA/慢股20MA)剩下全出(七週寬限)、外加「Stage 2 以來最大回檔」安全網。<b style="color:#ff6b6b">V77 已刪除守 50MA</b>。取算術平均 = Minervini 期望值。中位損益 ${evMed==null?'—':s2(evMed)+'%'}。</div>
     </div>
 
     <div class="keys">
@@ -1992,7 +2020,7 @@ function tblRender(){
       + '</div>'
     + '</div>'
     + '<div style="font-family:var(--mono);font-size:12.5px;color:var(--txt);margin-top:4px">'
-      + '照你的規則(停損 1×ADR、+30% 收 1/3、破 20MA 收 1/3、末 1/3 抱到破 50MA)做完的結果。'
+      + '照你的規則(停損 1×ADR、+30% 收 1/3、之後跌破移動均線剩下全出)做完的結果。'
     + '</div>'
     + '<div class="pg">'
       + '<div class="pc"><div class="k">打擊率</div><div class="v" style="color:var(--txt)">'+Math.round(bat*100)+'%</div><div class="k" style="text-transform:none">'+N+' 次裡賺 '+W.length+' 次</div></div>'
@@ -2061,7 +2089,8 @@ async function go(){
   const cfg={
     minBase:+$("minBase").value, volX:+$("volX").value, end150:+$("end150").value,
     ignPct:+$("ignPct").value, ignVol:+$("ignVol").value, ignBack:+$("ignBack").value,
-    tgt:+$("tgt").value, brk20:+$("brk20").value, brk50:+$("brk50").value,
+    tgt:+$("tgt").value, brk50:+$("brk50").value,
+    trailN:+$("trailN").value, graceD:+$("graceD").value, fastAdr:+$("fastAdr").value,
     end50:+$("end50").value, ma50Look:+$("ma50Look").value,
     crD:+$("crD").value, crV:+$("crV").value,
     monD:+$("monD").value, lateExt:+$("lateExt").value, clxPeakD:+$("clxPeakD").value, clxExt:+$("clxExt").value, clxDay:+$("clxDay").value, clxV:+$("clxV").value,
