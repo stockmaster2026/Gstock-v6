@@ -589,7 +589,16 @@ function radarHtml(){
   const PS = (typeof LAST_SUM==='object'&&LAST_SUM) ? LAST_SUM.pullState : null;
   const DD = (typeof LAST_SUM==='object'&&LAST_SUM) ? LAST_SUM.ddPeak    : null;
   const DDD= (typeof LAST_SUM==='object'&&LAST_SUM) ? LAST_SUM.dPeak     : null;
-  const based = (PS==='pull'||PS==='deep');   // 已經退下來, 正在建新 base
+  // ===== V96.27b:【'broken' 被漏掉 —— 跌越多反而越沒被軟化, 方向剛好相反】=====
+  //   AXTI 實測: 從高點跌 48% → pullState='broken'(超過 35%), 不在 pull/deep 名單裡
+  //   → based=false → 紅條照樣印「該賺的人早就賺完了，你現在買的是別人剩下的」。
+  //   但「你買的是別人剩下的」這句話的語意是【你在高點接手】—— 只有貼著高點時才成立。
+  //   一檔已經腰斬的股票, 比回檔 20% 的更不可能是「在高點接手」。
+  //   漏掉 broken 等於: 跌 20% 有軟化、跌 48% 反而沒有, 邏輯是反的。
+  //   → broken 也要軟化, 但用它自己的說法: 那一波【已經結束】, 倍數是歷史,
+  //     現在的問題不是「太貴」而是「它還沒重新打底」。
+  const based  = (PS==='pull'||PS==='deep');   // 已經退下來, 正在建新 base
+  const dead   = (PS==='broken');              // V96.27b: 那一波已經結束(跌超過 35%)
   // V95: 30 週線狀態 + 這波真正的漲幅(不是跨波累計的倍數)
   const BW30 = (typeof LAST_SUM==='object'&&LAST_SUM) ? LAST_SUM.belowW30 : null;
   const TW30 = (typeof LAST_SUM==='object'&&LAST_SUM) ? LAST_SUM.w30Thin  : null;
@@ -670,9 +679,11 @@ function radarHtml(){
   if(M!=null){
     // V94: 有回檔的話, 這句不再說「你買的是別人剩下的」—— 那句只有在【貼著高點】時才成立。
     const backTxt = based ? ('，<b style="color:#58a6ff">但它已經從高點退下來 '+Math.abs(DD).toFixed(0)+'%</b>（'+DDD+' 天），這個倍數不是現在的買點問題') : '';
+    // V96.27b: 已經跌破的那一波 —— 倍數是【上一波的歷史】, 現在的問題不是太貴, 是還沒重新打底。
+    const deadTxt = dead ? ('，<b style="color:#58a6ff">但那一波已經結束了</b>（從高點跌了 '+Math.abs(DD).toFixed(0)+'%），這個倍數是<b>上一波的歷史</b> —— 現在的問題不是「太貴」，是<b>它還沒重新打底</b>') : '';
     // V96.10 ①: 剛噴出的那一波 —— 倍數是【上一波】累出來的, 跟這幾天無關, 同樣不能當否決票。
     const freshTxt = freshPop ? ('，<b style="color:#58a6ff">但那是上一波的跨波累計</b>（這一波才走 '+SAGE+' 個交易日），這個倍數不是現在的買點問題') : '';
-    const softTxt = backTxt || freshTxt;   // 兩種情況的共同點: 那個倍數不是「你買的是別人剩下的」
+    const softTxt = backTxt || deadTxt || freshTxt;   // 三種情況的共同點: 那個倍數不是「你買的是別人剩下的」
     const soft    = !!softTxt;
     if(M>=8) L.push({c: soft?'#d29922':'#f85149',
       t:'已經漲了 <b>'+M.toFixed(1)+' 倍</b>'+(soft?softTxt+'。':' —— <b>該賺的人早就賺完了</b>，你現在買的是別人剩下的。')});
@@ -4426,7 +4437,9 @@ async function go(){
             // ⚠ V96.27a 修: c4===false 原本給 △(黃), 但下面的階段定位帶寫「⛔不是買點·不在 Stage 2」——
             //   同一張卡兩種強度, 讀的人會自動挑鬆的那句(V96.9 修過同樣的毛病)。
             //   Weinstein 原版: Stage 1→2 必須是【從底部突破】, V 轉直拉不算 Stage 2。對齊成 ✗。
-            else if(S.c4===false){ wC=R; wT='✗ 不是 Stage 2'; wA='→ V轉沒打底，等橫盤換手做出底'; }
+            // ⚠ V96.27b: 結論塊寫「三個條件都過了」、這裡寫「✗ 不是 Stage 2」, 並排讀起來像互打。
+            //   實質不衝突(三條過、第四條打底沒過), 所以標題把兩件事一起講清楚。
+            else if(S.c4===false){ wC=R; wT='✗ 不是 Stage 2'; wA='→ 三條過了，但缺打底：V轉直拉沒換手'; }
             else if(wFresh){ wC=Y; wT='△ 待確認'; wA='→ 才站 '+S.w30Days+' 天，等週收盤守住'; }
             else { wC=G; wT='✓ 可以看'; wA='→ 這一關沒有擋你'; }
             wRow.push('30週線 '+(S.w30val!=null?S.w30val:'—')
@@ -4462,8 +4475,18 @@ async function go(){
             else if(pOver!=null){ oC=G; oT='✓ 在進場區'; oA='→ 離 pivot 僅 '+pOver+'%，收盤站上就是進場'; }
             else if(pGap!=null && pGap>10){ oC=M; oT='— 太遠'; oA='→ 還差 '+pGap+'%，這個距離不是可執行的買點'; }
             else { oC=Y; oT='△ 還沒到'; oA='→ 還差 '+(pGap!=null?pGap+'%':'—')+' 才碰到 pivot'; }
+            // ⚠ V96.27b 修:「base 2　成功率最高」印在一檔跌 48% 的股票上 = 誤讀成正面訊號。
+            //   引擎在下面明明寫了「這個定位已經過時（那條腿發動於 26/05/01、發動價 96.00，
+            //   現價已低 23%）」, 但這一欄沒有跟著帶。base 編號只在【有新腿】時才更新,
+            //   這一波受損/已跌破時, 那個編號講的是【上一次突破當時】的位置, 不是現在。
+            //   → 這一波已受損或不在 Stage 2 時, 不印「成功率最高」, 改印過時警語。
+            const _stale = (S.pullState==='broken' || S.inS2===false);
             oRow.push('base　第 '+(bN==null?'—':bN)+' 個'
-                      +(bN!=null&&bN>=4?'　<b style="color:#f0883e">晚期</b>':(bN!=null&&bN<=2?'　成功率最高':'')));
+                      +(_stale ? '　<b style="color:#f0883e">定位已過時</b>'
+                               : (bN!=null&&bN>=4?'　<b style="color:#f0883e">晚期</b>'
+                               : (bN!=null&&bN<=2?'　成功率最高':''))));
+            if(_stale) oRow.push('<span style="color:#8b949e">這個編號是<b>上一次突破當時</b>的位置，'
+                      +'這一波已受損，重新打底後會歸零成新的 base 1</span>');
             oRow.push('pivot　'+(pvPx==null?'<b style="color:#8b949e">無（三道閘門沒過）</b>':pvPx));
             // ⚠ pivot 不成立時【不印停損】—— 買不到的東西不該有停損, 印出來只會被誤讀成可執行。
             if(pvPx!=null) oRow.push('停損　'+((V&&V.stop!=null)?V.stop+'　風險 '+(V.risk!=null?V.risk+'%':'—'):'平台低點'));
@@ -5043,4 +5066,4 @@ $("clrTbl").addEventListener("click",()=>{
 tblRender();
 </script>
 </body>
-</html> · <b style="color:#ff6b6b">V96.27a:【V96.27 自己開的三個洞 —— Jasmine 用舊檔名那版跑出來就看到了】①<b>最嚴重: 拿錯 pivot</b>。初版用 <b>S.vcp.pivot</b>(最後一段收縮的高點)當 pivot，但引擎真正的<b>合格 pivot 是 S.pivot</b> —— 要過三道閘門(點火棒／收在 20MA 上／平台夠寬)。AXTI 實測：S.pivot=null，引擎自己在下面寫「目前沒有合格的 pivot，壓力位正在 <b>90.39</b> 形成中、被測試 2 次、還差 1 次才算一道牆」，我卻在 O&#39;Neil 欄把 90.39 印成「pivot 90.39」——<b>同一張卡一個說沒有、一個說有</b>，正是我們一路在修的那種矛盾，這次是我自己新加的。→ 一律以 S.pivot 為準；沒有就寫「無合格 pivot（三道閘門沒過）」並把<b>形成中的壓力位</b>講出來(那個數字可以拿去設價格提醒，「沒有」不能)。同時<b>pivot 不成立時不印停損</b> ——買不到的東西不該有停損，印出來只會被誤讀成可執行。另補一級「— 太遠」(gap>10%)：AXTI 還差 22.5% 才碰到，那不是「還沒到」，是<b>不可執行</b>。②<b>Weinstein 欄強度沒對齊</b>。c4=✗(V轉沒打底)時初版給 △待確認(黃)，但正下方的階段定位帶寫「⛔不是買點·不在 Stage 2」(紅) —— 同一張卡兩種強度，讀的人會自動挑鬆的那句(V96.9 修過一模一樣的毛病)。Weinstein 原版 Stage 1→2 必須是<b>從底部突破</b>，V 轉直拉不算 Stage 2 → 改成 <b>✗ 不是 Stage 2</b>。③<b>VCP 只印一個數字</b>。初版印 V.depths(只有<b>通過篩選</b>的那幾段)，AXTI 只剩 1 段 →畫面上寫「VCP 20.8%」，一個數字看不出任何東西；下面詳細區塊卻印 26.6→15.6→24.6→18.7→18.2→20.8 六段。改印 <b>allDepths</b>(最近 6 段完整序列)，跟下面同源，一眼看得出有沒有在收緊。⚠ 三處都是<b>純顯示層</b>，判斷邏輯一行沒動。</b>
+</html> · <b style="color:#ff6b6b">V96.27a:【V96.27 自己開的三個洞 —— Jasmine 用舊檔名那版跑出來就看到了】①<b>最嚴重: 拿錯 pivot</b>。初版用 <b>S.vcp.pivot</b>(最後一段收縮的高點)當 pivot，但引擎真正的<b>合格 pivot 是 S.pivot</b> —— 要過三道閘門(點火棒／收在 20MA 上／平台夠寬)。AXTI 實測：S.pivot=null，引擎自己在下面寫「目前沒有合格的 pivot，壓力位正在 <b>90.39</b> 形成中、被測試 2 次、還差 1 次才算一道牆」，我卻在 O&#39;Neil 欄把 90.39 印成「pivot 90.39」——<b>同一張卡一個說沒有、一個說有</b>，正是我們一路在修的那種矛盾，這次是我自己新加的。→ 一律以 S.pivot 為準；沒有就寫「無合格 pivot（三道閘門沒過）」並把<b>形成中的壓力位</b>講出來(那個數字可以拿去設價格提醒，「沒有」不能)。同時<b>pivot 不成立時不印停損</b> ——買不到的東西不該有停損，印出來只會被誤讀成可執行。另補一級「— 太遠」(gap>10%)：AXTI 還差 22.5% 才碰到，那不是「還沒到」，是<b>不可執行</b>。②<b>Weinstein 欄強度沒對齊</b>。c4=✗(V轉沒打底)時初版給 △待確認(黃)，但正下方的階段定位帶寫「⛔不是買點·不在 Stage 2」(紅) —— 同一張卡兩種強度，讀的人會自動挑鬆的那句(V96.9 修過一模一樣的毛病)。Weinstein 原版 Stage 1→2 必須是<b>從底部突破</b>，V 轉直拉不算 Stage 2 → 改成 <b>✗ 不是 Stage 2</b>。③<b>VCP 只印一個數字</b>。初版印 V.depths(只有<b>通過篩選</b>的那幾段)，AXTI 只剩 1 段 →畫面上寫「VCP 20.8%」，一個數字看不出任何東西；下面詳細區塊卻印 26.6→15.6→24.6→18.7→18.2→20.8 六段。改印 <b>allDepths</b>(最近 6 段完整序列)，跟下面同源，一眼看得出有沒有在收緊。⚠ 三處都是<b>純顯示層</b>，判斷邏輯一行沒動。</b> · <b style="color:#ff6b6b">V96.27b:【AXTI 實測抓到三個 —— 其中①是舊 bug，方向剛好相反】①<b>「已漲 63.6 倍・該賺的人早就賺完了」印在一檔跌 48% 的股票上</b>。病根：V94 的軟化旗標 based=(pullState 是 pull 或 deep)，<b>漏掉了 broken</b>(跌超過 35%)。結果變成「跌 20% 有軟化、跌 48% 反而沒有」—— <b>邏輯是反的</b>。「你現在買的是別人剩下的」語意是<b>你在高點接手</b>，只有貼著高點才成立；一檔已經腰斬的股票比回檔 20% 的<b>更不可能</b>是在高點接手。→ 新增 deadTxt：那一波<b>已經結束了</b>（從高點跌了 N%），這個倍數是<b>上一波的歷史</b> ——現在的問題不是「太貴」，是<b>它還沒重新打底</b>。②<b>O&#39;Neil 欄印「base 2　成功率最高」</b>，但同一張卡上面的紅膠囊寫「跌破 base 標準 −48%」，下面也寫「這個定位已經過時（那條腿發動於 26/05/01、發動價 96.00，現價已低 23%）」。base 編號只在<b>有新腿</b>時才更新，這一波受損時那個編號講的是<b>上一次突破當時</b>的位置。→ pullState=broken 或不在 Stage 2 時不印「成功率最高」，改印<b>定位已過時</b>＋「重新打底後會歸零成新的 base 1」。③<b>Weinstein 欄「✗ 不是 Stage 2」跟結論塊「三個條件都過了」並排像互打</b>（實質不衝突：三條過、第四條打底沒過）。→ 行動句改成<b>「三條過了，但缺打底：V轉直拉沒換手」</b>，兩件事一起講清楚。⚠ 另外查證了 Jasmine 問的「TradingView 有 pivot 線、引擎說沒有，合理嗎」——<b>引擎是對的</b>：引擎多了一道<b>平台閘門</b>（點火棒前面要有磨過的區間），AXTI 08/03 那根前面只有 1 根 → 擋下；她的 Pine V1 <b>沒有這道閘門</b>，只要出現點火棒就畫線。單根爆量 K 棒的高點<b>不是 pivot</b>（O&#39;Neil 連最短的 handle 都要 ≥5 個交易日）——<b>要修的是 Pine，不是引擎</b>。</b>
