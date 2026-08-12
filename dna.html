@@ -4376,6 +4376,128 @@ async function go(){
                  : ''))
         + '</div>'
         // ==========================================================================
+        // ===== V96.27:【三家分欄判決 —— 不再由引擎仲裁, 三個大師各講各的】=====
+        //   Jasmine:「三個大師他們還是有各自的做法, 彼此之間不是 100% 相同…
+        //   如果我們東抄一個西抄一個, 最後就變得什麼都不對。」
+        //   →【診斷正確, 但處方要換】。原本的做法是【判決取交集】: Weinstein 說要打底、
+        //   O'Neil 說要 base、Minervini 說不能延伸 —— 任一不過就整體否決 = 三重否決權。
+        //   結果跑兩檔強勢股(AXTI/AEHR)結論都是「不是買點」, 今天 0 檔可以動。
+        //
+        //   查證: Minervini 自己說 Trend Template 一套就刷掉 95%+ 的股票(幾千檔→5~20 檔)。
+        //   三套各刷 95% 再取交集 → 通過率趨近於零。而且【三位大師沒有一個人是三套一起跑的】,
+        //   每人跑的是自己的完整流程。把三個人的入場閘門串聯 =
+        //   要求一台車同時通過三家車廠的出廠檢驗 —— 沒有車過得了, 但那不代表車有問題。
+        //
+        //   → 改成【分層排隊 + 分欄顯示】, 引擎不做仲裁:
+        //       Weinstein  這檔能不能看?        (週線)
+        //       O'Neil     有沒有算得出的進場點? (日線 base / pivot)
+        //       Minervini  這個點好不好?        (Trend Template / 延伸)
+        //   三欄結論不一致時【照實顯示分歧】, 不替她決定聽誰的 ——
+        //   分歧本身就是資訊(通常代表這檔在轉折點上), 值得累積案例。
+        //
+        //   ⚠ 這一塊【純顯示層】: 讀的全是引擎已經算好的欄位(S.c1~c4 / S.tt / S.vcp / S.curBase),
+        //   不改任何燈號、不進排序、不動統計、不影響回測。下面原有的三個區塊全部保留當證據。
+        //   ⚠ 也順便解掉「TradingView 指標 vs dna.html 打架」: 指標是【單一主張】、
+        //   引擎是【三套混合】, 兩邊本來就不該一樣。分欄之後 Weinstein 欄可以直接跟指標對照,
+        //   對不上才是真 bug。
+        // ==========================================================================
+        + (function(){
+            const col=(name,sub,vc,vt,rows,act)=>
+              '<div style="flex:1;min-width:172px;border:1px solid '+vc+'55;border-left:4px solid '+vc
+              + ';border-radius:7px;padding:8px 10px;background:'+vc+'0f">'
+              + '<div style="font-size:10.5px;color:#8b949e;letter-spacing:.4px">'+name+'</div>'
+              + '<div style="font-size:10.5px;color:#6e7681;margin-bottom:5px">'+sub+'</div>'
+              + '<div style="font-size:14px;font-weight:800;color:'+vc+';margin-bottom:5px">'+vt+'</div>'
+              + rows.map(r=>'<div style="font-size:11.5px;color:#c9d1d9;line-height:1.6">'+r+'</div>').join('')
+              + '<div style="font-size:11.5px;color:'+vc+';margin-top:5px;padding-top:5px;'
+              + 'border-top:1px dashed #30363d;font-weight:600">'+act+'</div></div>';
+            const G='#3fb950', Y='#d29922', R='#f85149', M='#8b949e';
+
+            // ---------- 第一層 Weinstein: 能不能看 ----------
+            // 判準只用 Weinstein 自己那一套: 週收盤在 30 週線上 + 30 週線不下彎 + 10 週線在上 + 守得住。
+            // ⚠ 打底(c4)在 Weinstein 原版【只適用於 Stage 1→2 的初次突破】;
+            //   Stage 2 延續突破不需要重新打底 —— 所以 c4 為 null(走太久)時不扣分。
+            let wC,wT,wA; const wRow=[];
+            const w3 = [S.c1,S.c2,S.c3];
+            const wBad = w3.filter(x=>x===false).length;
+            const wFresh = (S.w30Days!=null && S.w30Days<=10);
+            if(S.extW30!=null && S.extW30<=0){ wC=R; wT='✗ 不可看'; wA='→ 在 30 週線下方，等站回去'; }
+            else if(wBad>0){ wC=R; wT='✗ 不可看'; wA='→ '+wBad+' 條沒過，等結構修好'; }
+            else if(S.c4===false){ wC=Y; wT='△ 待確認'; wA='→ 起漲前沒打底，等橫盤換手'; }
+            else if(wFresh){ wC=Y; wT='△ 待確認'; wA='→ 才站 '+S.w30Days+' 天，等週收盤守住'; }
+            else { wC=G; wT='✓ 可以看'; wA='→ 這一關沒有擋你'; }
+            wRow.push('30週線 '+(S.w30val!=null?S.w30val:'—')
+                      +'　價 '+(S.extW30==null?'—':(S.extW30>0?'+':'')+S.extW30+'%'));
+            wRow.push('斜率 '+(S.w30slp==null?'—':(S.w30slp>0?'+':'')+S.w30slp.toFixed(1)+'%（近4週）'));
+            wRow.push('站上 '+(S.w30Days==null?'—':S.w30Days+' 天')
+                      +(S.w30Date?'（'+S.w30Date+'）':''));
+            wRow.push('打底 '+(S.c4===true?'✓':(S.c4===false?'<b style="color:#f85149">✗ V轉直拉</b>':'－ 走太久，不列入')));
+
+            // ---------- 第二層 O'Neil: 有沒有算得出的進場點 ----------
+            // O'Neil 只問一件事: 有沒有 base、有沒有 pivot、離 pivot 幾 %(>5% 就是追高)。
+            // ⚠ base count 與 Weinstein 的 Stage 是【兩套獨立系統】, 這裡不互相影響。
+            const V=S.vcp||null; let oC,oT,oA; const oRow=[];
+            const bN=(S.curBase!=null?S.curBase:(S.nBase!=null?S.nBase:null));
+            const pvPx=(V&&V.pivot!=null)?V.pivot:null;
+            if(pvPx==null){ oC=M; oT='— 無買點'; oA='→ base 還沒成形，沒 pivot 就沒買點'; }
+            else if(V.over!=null && V.over>10){ oC=R; oT='✗ 來太晚'; oA='→ 已高出 pivot '+V.over+'%，等新平台'; }
+            else if(V.over!=null && V.over>5){ oC=Y; oT='△ 走掉一點'; oA='→ 已高出 '+V.over+'%，超過 5% 追高線'; }
+            else if(V.over!=null){ oC=G; oT='✓ 在進場區'; oA='→ 離 pivot 僅 '+V.over+'%，停損放 '+(V.stop!=null?V.stop:'平台低'); }
+            else { oC=Y; oT='△ 還沒到'; oA='→ 還差 '+(V.gap!=null?V.gap+'%':'—')+' 才碰到 pivot'; }
+            oRow.push('base　第 '+(bN==null?'—':bN)+' 個'
+                      +(bN!=null&&bN>=4?'　<b style="color:#f0883e">晚期</b>':(bN!=null&&bN<=2?'　成功率最高':'')));
+            oRow.push('pivot　'+(pvPx==null?'<b style="color:#8b949e">無</b>':pvPx)
+                      +(V&&V.pivotDate?'（'+V.pivotDate+'）':''));
+            oRow.push('停損　'+((V&&V.stop!=null)?V.stop+'　風險 '+(V.risk!=null?V.risk+'%':'—'):'—'));
+            if(S.brk&&S.brk.grade) oRow.push('突破品質　'+S.brk.grade+'（量 '+(S.brk.volX!=null?S.brk.volX+'×':'—')+'，收在振幅 '+(S.brk.pos!=null?S.brk.pos+'%':'—')+'）');
+
+            // ---------- 第三層 Minervini: 這個點好不好 ----------
+            // ⚠ 延伸的量尺【只用離 52 週高點 / 離 pivot】—— 不用「離 30 週線多遠」。
+            //   那個數字站越久必然越大, 沒有資訊量(V96.14 已查證, 這裡貫徹到底)。
+            const T=S.tt||null; let mC,mT,mA; const mRow=[];
+            const arr=T?[T.c1_above150,T.c2_150over200,T.c3_nearHi52,T.c4_offLo52]:[];
+            const mBad=arr.filter(x=>x===false).length, mOk=arr.filter(x=>x===true).length;
+            if(!T){ mC=M; mT='— 資料不足'; mA='→ 算不出來'; }
+            else if(mBad>0){ mC=R; mT='✗ 淘汰'; mA='→ '+mBad+' 條沒過，任一不過就出局'; }
+            else if(V&&V.ok===false){ mC=Y; mT='△ 結構不足'; mA='→ VCP 沒收緊：'+(V.why||'—'); }
+            else if(V&&V.over!=null&&V.over>10){ mC=R; mT='✗ 太延伸'; mA='→ 離 pivot 已 '+V.over+'%，風報比崩了'; }
+            else { mC=G; mT='✓ 可以進'; mA='→ 四條全過、結構也緊'; }
+            mRow.push('Trend Template　'+mOk+'/4 過'+(mBad?'（'+mBad+' 條✗）':''));
+            mRow.push('離52週高點　'+(T&&T.offHi52!=null?T.offHi52+'%':'—')+'　<span style="color:#6e7681">(門檻 ≤25%)</span>');
+            mRow.push('VCP　'+((V&&V.depths&&V.depths.length)?V.depths.join('→')+'%':'—'));
+            if(V&&V.why) mRow.push('<span style="color:#8b949e">'+V.why+'</span>');
+
+            // ---------- 三家一致 or 分歧 ----------
+            const vs=[{n:'Weinstein',c:wC,t:wT},{n:"O'Neil",c:oC,t:oT},{n:'Minervini',c:mC,t:mT}];
+            const nG=vs.filter(x=>x.c===G).length, nR=vs.filter(x=>x.c===R).length;
+            let sumC,sumT,sumW;
+            if(nG===3){ sumC=G; sumT='三家一致：可以動';
+              sumW='三欄都過了 —— 但<b>大單與題材引擎看不到</b>，下單前回 TradingView 確認。'; }
+            else if(nG===0&&nR>0){ sumC=R; sumT='三家一致：今天不能買';
+              sumW='注意<b>三家不能買的理由不一樣</b>：'+vs.map(x=>x.n+' '+x.t.replace(/^[✓✗△—]\s*/,'')).join('　·　')
+                 +'　—— 你要盯哪一個，取決於你想做哪一種交易。'; }
+            else { sumC=Y; sumT='⚠ 三家分歧';
+              sumW=vs.map(x=>'<b style="color:'+x.c+'">'+x.n+' '+x.t+'</b>').join('　·　')
+                 +'<br><span style="color:#8b949e">分歧通常代表它在轉折點上。<b>引擎不替你選</b> —— '
+                 +'把今天的盤面記下來，累積一批案例再回頭看誰比較準。</span>'; }
+
+            return '<div style="margin:10px 0 6px;padding:11px 12px;border-radius:9px;'
+              + 'border:2px solid '+sumC+';background:linear-gradient(180deg,'+sumC+'1f,'+sumC+'0a)">'
+              + '<div style="font-size:11px;color:#8b949e;letter-spacing:.6px;margin-bottom:2px">'
+              + '三家分欄判決 · 各算各的，引擎不仲裁</div>'
+              + '<div style="font-size:17px;font-weight:800;color:'+sumC+';margin-bottom:4px">'+sumT+'</div>'
+              + '<div style="font-size:12.5px;color:#c9d1d9;line-height:1.65;margin-bottom:9px">'+sumW+'</div>'
+              + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+              + col('① Weinstein','能不能看（週線）',wC,wT,wRow,wA)
+              + col("② O'Neil",'有沒有點（日線 base）',oC,oT,oRow,oA)
+              + col('③ Minervini','點好不好（進場品質）',mC,mT,mRow,mA)
+              + '</div>'
+              + '<div style="font-size:10.5px;color:#8b949e;margin-top:8px;padding-top:6px;border-top:1px dashed #30363d">'
+              + '⚠ 三家<b>沒有一個人是三套一起跑的</b>。這裡照實列出各自的判決，'
+              + '<b>不取交集、不投票</b> —— 下面各區塊是每一欄的證據，可以逐格回 TradingView 自己驗。'
+              + '</div></div>';
+          })()
+        // ==========================================================================
         // ===== V96 #16:【階段定位帶 —— 一眼分辨 GLW 與 AAOI】=====
         //   Jasmine: 「GLW 說這波結束了我看得懂, 但 AAOI 的說明我讀不出最大的區別是什麼。」
         //   兩檔都寫著「離30週線 +N%」, 但意義天差地遠:
