@@ -4423,7 +4423,10 @@ async function go(){
             const wFresh = (S.w30Days!=null && S.w30Days<=10);
             if(S.extW30!=null && S.extW30<=0){ wC=R; wT='✗ 不可看'; wA='→ 在 30 週線下方，等站回去'; }
             else if(wBad>0){ wC=R; wT='✗ 不可看'; wA='→ '+wBad+' 條沒過，等結構修好'; }
-            else if(S.c4===false){ wC=Y; wT='△ 待確認'; wA='→ 起漲前沒打底，等橫盤換手'; }
+            // ⚠ V96.27a 修: c4===false 原本給 △(黃), 但下面的階段定位帶寫「⛔不是買點·不在 Stage 2」——
+            //   同一張卡兩種強度, 讀的人會自動挑鬆的那句(V96.9 修過同樣的毛病)。
+            //   Weinstein 原版: Stage 1→2 必須是【從底部突破】, V 轉直拉不算 Stage 2。對齊成 ✗。
+            else if(S.c4===false){ wC=R; wT='✗ 不是 Stage 2'; wA='→ V轉沒打底，等橫盤換手做出底'; }
             else if(wFresh){ wC=Y; wT='△ 待確認'; wA='→ 才站 '+S.w30Days+' 天，等週收盤守住'; }
             else { wC=G; wT='✓ 可以看'; wA='→ 這一關沒有擋你'; }
             wRow.push('30週線 '+(S.w30val!=null?S.w30val:'—')
@@ -4436,20 +4439,37 @@ async function go(){
             // ---------- 第二層 O'Neil: 有沒有算得出的進場點 ----------
             // O'Neil 只問一件事: 有沒有 base、有沒有 pivot、離 pivot 幾 %(>5% 就是追高)。
             // ⚠ base count 與 Weinstein 的 Stage 是【兩套獨立系統】, 這裡不互相影響。
-            const V=S.vcp||null; let oC,oT,oA; const oRow=[];
+            // ⚠ V96.27a 修【最重要的一個】: 初版用 S.vcp.pivot(最後一段收縮的高點) 當 pivot,
+            //   但引擎真正的【合格 pivot】是 S.pivot —— 要過三道閘門(點火棒 / 收在20MA上 / 平台夠寬)。
+            //   AXTI 實測: S.pivot = null(引擎自己寫「目前沒有合格的 pivot，壓力位正在 90.39 形成中、
+            //   被測試 2 次、還差 1 次才算一道牆」), 我卻在這一欄把 90.39 印成「pivot」——
+            //   同一張卡上一個說「沒有 pivot」、一個說「pivot 90.39」, 正面矛盾。
+            //   → 一律以 S.pivot 為準; 沒有就寫「無合格 pivot」並把【形成中的壓力位】講出來
+            //     (那個數字可以拿去設價格提醒,「沒有」不能)。
+            const V=S.vcp||null, PW=S.pivotWhy||null; let oC,oT,oA; const oRow=[];
             const bN=(S.curBase!=null?S.curBase:(S.nBase!=null?S.nBase:null));
-            const pvPx=(V&&V.pivot!=null)?V.pivot:null;
-            if(pvPx==null){ oC=M; oT='— 無買點'; oA='→ base 還沒成形，沒 pivot 就沒買點'; }
-            else if(V.over!=null && V.over>10){ oC=R; oT='✗ 來太晚'; oA='→ 已高出 pivot '+V.over+'%，等新平台'; }
-            else if(V.over!=null && V.over>5){ oC=Y; oT='△ 走掉一點'; oA='→ 已高出 '+V.over+'%，超過 5% 追高線'; }
-            else if(V.over!=null){ oC=G; oT='✓ 在進場區'; oA='→ 離 pivot 僅 '+V.over+'%，停損放 '+(V.stop!=null?V.stop:'平台低'); }
-            else { oC=Y; oT='△ 還沒到'; oA='→ 還差 '+(V.gap!=null?V.gap+'%':'—')+' 才碰到 pivot'; }
+            const pvPx=(S.pivot!=null?S.pivot:null);
+            const _px=(S.px!=null?S.px:null);
+            const pOver=(pvPx!=null&&_px!=null&&_px>pvPx)? +(((_px/pvPx)-1)*100).toFixed(1):null;
+            const pGap =(pvPx!=null&&_px!=null&&_px<pvPx)? +(((pvPx/_px)-1)*100).toFixed(1):null;
+            if(pvPx==null){
+              oC=M; oT='— 無合格 pivot';
+              oA=(PW&&PW.wall)? ('→ 壓力位 '+PW.wall.px+' 形成中，還差 '+PW.wall.need+' 次測試')
+                              : '→ base 還沒成形，沒 pivot 就沒買點';
+            }
+            else if(pOver!=null && pOver>10){ oC=R; oT='✗ 來太晚'; oA='→ 已高出 pivot '+pOver+'%，等新平台'; }
+            else if(pOver!=null && pOver>5){ oC=Y; oT='△ 走掉一點'; oA='→ 已高出 '+pOver+'%，超過 5% 追高線'; }
+            else if(pOver!=null){ oC=G; oT='✓ 在進場區'; oA='→ 離 pivot 僅 '+pOver+'%，收盤站上就是進場'; }
+            else if(pGap!=null && pGap>10){ oC=M; oT='— 太遠'; oA='→ 還差 '+pGap+'%，這個距離不是可執行的買點'; }
+            else { oC=Y; oT='△ 還沒到'; oA='→ 還差 '+(pGap!=null?pGap+'%':'—')+' 才碰到 pivot'; }
             oRow.push('base　第 '+(bN==null?'—':bN)+' 個'
                       +(bN!=null&&bN>=4?'　<b style="color:#f0883e">晚期</b>':(bN!=null&&bN<=2?'　成功率最高':'')));
-            oRow.push('pivot　'+(pvPx==null?'<b style="color:#8b949e">無</b>':pvPx)
-                      +(V&&V.pivotDate?'（'+V.pivotDate+'）':''));
-            oRow.push('停損　'+((V&&V.stop!=null)?V.stop+'　風險 '+(V.risk!=null?V.risk+'%':'—'):'—'));
-            if(S.brk&&S.brk.grade) oRow.push('突破品質　'+S.brk.grade+'（量 '+(S.brk.volX!=null?S.brk.volX+'×':'—')+'，收在振幅 '+(S.brk.pos!=null?S.brk.pos+'%':'—')+'）');
+            oRow.push('pivot　'+(pvPx==null?'<b style="color:#8b949e">無（三道閘門沒過）</b>':pvPx));
+            // ⚠ pivot 不成立時【不印停損】—— 買不到的東西不該有停損, 印出來只會被誤讀成可執行。
+            if(pvPx!=null) oRow.push('停損　'+((V&&V.stop!=null)?V.stop+'　風險 '+(V.risk!=null?V.risk+'%':'—'):'平台低點'));
+            else if(PW&&PW.wall) oRow.push('形成中壓力位　'+PW.wall.px+'　已測 '+PW.wall.touches+' 次'
+                      +(PW.wall.lastDate?'（'+PW.wall.lastDate+'）':''));
+            if(pvPx!=null&&S.brk&&S.brk.grade) oRow.push('突破品質　'+S.brk.grade+'（量 '+(S.brk.volX!=null?S.brk.volX+'×':'—')+'，收在振幅 '+(S.brk.pos!=null?S.brk.pos+'%':'—')+'）');
 
             // ---------- 第三層 Minervini: 這個點好不好 ----------
             // ⚠ 延伸的量尺【只用離 52 週高點 / 離 pivot】—— 不用「離 30 週線多遠」。
@@ -4460,11 +4480,15 @@ async function go(){
             if(!T){ mC=M; mT='— 資料不足'; mA='→ 算不出來'; }
             else if(mBad>0){ mC=R; mT='✗ 淘汰'; mA='→ '+mBad+' 條沒過，任一不過就出局'; }
             else if(V&&V.ok===false){ mC=Y; mT='△ 結構不足'; mA='→ VCP 沒收緊：'+(V.why||'—'); }
-            else if(V&&V.over!=null&&V.over>10){ mC=R; mT='✗ 太延伸'; mA='→ 離 pivot 已 '+V.over+'%，風報比崩了'; }
+            else if(pOver!=null&&pOver>10){ mC=R; mT='✗ 太延伸'; mA='→ 離 pivot 已 '+pOver+'%，風報比崩了'; }
             else { mC=G; mT='✓ 可以進'; mA='→ 四條全過、結構也緊'; }
             mRow.push('Trend Template　'+mOk+'/4 過'+(mBad?'（'+mBad+' 條✗）':''));
             mRow.push('離52週高點　'+(T&&T.offHi52!=null?T.offHi52+'%':'—')+'　<span style="color:#6e7681">(門檻 ≤25%)</span>');
-            mRow.push('VCP　'+((V&&V.depths&&V.depths.length)?V.depths.join('→')+'%':'—'));
+            // ⚠ V96.27a 修: 初版印 V.depths(只有【通過篩選】的那幾段), AXTI 只剩 1 段 → 畫面上寫「VCP 20.8%」
+            //   一個數字看不出任何東西; 下面的詳細區塊卻印 6 段。改印 allDepths(最近 6 段完整序列),
+            //   跟下面同源, 一眼就看得出「有沒有在收緊」。
+            mRow.push('VCP　'+((V&&V.allDepths&&V.allDepths.length)?V.allDepths.join('→')+'%'
+                      :((V&&V.depths&&V.depths.length)?V.depths.join('→')+'%':'—')));
             if(V&&V.why) mRow.push('<span style="color:#8b949e">'+V.why+'</span>');
 
             // ---------- 三家一致 or 分歧 ----------
@@ -5019,4 +5043,4 @@ $("clrTbl").addEventListener("click",()=>{
 tblRender();
 </script>
 </body>
-</html>
+</html> · <b style="color:#ff6b6b">V96.27a:【V96.27 自己開的三個洞 —— Jasmine 用舊檔名那版跑出來就看到了】①<b>最嚴重: 拿錯 pivot</b>。初版用 <b>S.vcp.pivot</b>(最後一段收縮的高點)當 pivot，但引擎真正的<b>合格 pivot 是 S.pivot</b> —— 要過三道閘門(點火棒／收在 20MA 上／平台夠寬)。AXTI 實測：S.pivot=null，引擎自己在下面寫「目前沒有合格的 pivot，壓力位正在 <b>90.39</b> 形成中、被測試 2 次、還差 1 次才算一道牆」，我卻在 O&#39;Neil 欄把 90.39 印成「pivot 90.39」——<b>同一張卡一個說沒有、一個說有</b>，正是我們一路在修的那種矛盾，這次是我自己新加的。→ 一律以 S.pivot 為準；沒有就寫「無合格 pivot（三道閘門沒過）」並把<b>形成中的壓力位</b>講出來(那個數字可以拿去設價格提醒，「沒有」不能)。同時<b>pivot 不成立時不印停損</b> ——買不到的東西不該有停損，印出來只會被誤讀成可執行。另補一級「— 太遠」(gap>10%)：AXTI 還差 22.5% 才碰到，那不是「還沒到」，是<b>不可執行</b>。②<b>Weinstein 欄強度沒對齊</b>。c4=✗(V轉沒打底)時初版給 △待確認(黃)，但正下方的階段定位帶寫「⛔不是買點·不在 Stage 2」(紅) —— 同一張卡兩種強度，讀的人會自動挑鬆的那句(V96.9 修過一模一樣的毛病)。Weinstein 原版 Stage 1→2 必須是<b>從底部突破</b>，V 轉直拉不算 Stage 2 → 改成 <b>✗ 不是 Stage 2</b>。③<b>VCP 只印一個數字</b>。初版印 V.depths(只有<b>通過篩選</b>的那幾段)，AXTI 只剩 1 段 →畫面上寫「VCP 20.8%」，一個數字看不出任何東西；下面詳細區塊卻印 26.6→15.6→24.6→18.7→18.2→20.8 六段。改印 <b>allDepths</b>(最近 6 段完整序列)，跟下面同源，一眼看得出有沒有在收緊。⚠ 三處都是<b>純顯示層</b>，判斷邏輯一行沒動。</b>
