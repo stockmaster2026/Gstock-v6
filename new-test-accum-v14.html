@@ -1637,7 +1637,7 @@ async function getSPYCloses(){
   if(spyCloseCache&&Date.now()-spyCloseCacheTime<3600000) return spyCloseCache;
   try{
     // 抓2年數據確保有足夠歷史計算RS趨勢和新高
-    var r=await fetch('https://corsproxy.io/?'+encodeURIComponent(
+    var r=await fetch('https://corsproxy.io/?url='+encodeURIComponent(
       'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2y'));
     var d=await r.json();
     if(!d.chart||!d.chart.result||!d.chart.result[0])return null;
@@ -1651,7 +1651,7 @@ async function getSPYCloses(){
 
 // 為RS計算抓個股2年數據
 async function fYahoo2y(s){
-  var r=await fetch('https://corsproxy.io/?'+encodeURIComponent(
+  var r=await fetch('https://corsproxy.io/?url='+encodeURIComponent(
     'https://query1.finance.yahoo.com/v8/finance/chart/'+s+'?interval=1d&range=2y'));
   var d=await r.json();
   if(!d.chart||!d.chart.result||!d.chart.result[0])return null;
@@ -1736,7 +1736,7 @@ function getRSLabel(rs){
 }
 
 async function fYahoo(s){
-  var r=await fetch('https://corsproxy.io/?'+encodeURIComponent(
+  var r=await fetch('https://corsproxy.io/?url='+encodeURIComponent(
     'https://query1.finance.yahoo.com/v8/finance/chart/'+s+'?interval=1d&range=1y'));
   var d=await r.json();
   if(!d.chart||!d.chart.result||!d.chart.result[0])throw new Error('無法取得'+s+'的股價數據');
