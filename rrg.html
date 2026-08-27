@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.6.5</title>
+<title>RRG 板塊輪動圖 v2.6.6</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.6.5 · QCOM 派發誤判修正</div>
+<div class="sub">v2.6.6 · QCOM 派發誤判修正</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.6.5 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.6.6 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -314,7 +314,7 @@ window.onerror = function(msg, src, line, col, err) {
   var STORAGE_KEY_RADAR = 'biaoguo_sectors_v5';
   var SNAPSHOT_KEY = 'rrg_snapshots_v1';
   var SNAPSHOT_LIMIT = 20;
-  var PROXIES = ['https://corsproxy.io/?url=','https://api.allorigins.win/raw?url=','https://api.codetabs.com/v1/proxy/?quest='];
+  var PROXIES = ['https://corsproxy.io/?key=00bcaf2a&url=','https://api.allorigins.win/raw?url=','https://api.codetabs.com/v1/proxy/?quest='];
   var SECTOR_COLORS = {'AI巨頭':'#76b900','AI基礎設施':'#ff6b35','光通信':'#00d4a8','封測設備':'#06d4f0','AI電力散熱':'#ffd166','儲存硬體':'#ef476f','太空衛星':'#4ea5ff','無人機國防':'#a78bfa','量子運算':'#22c55e','AI生技':'#f97316','貴金屬礦業':'#eab308','機器人製造':'#6366f1','感測視覺':'#06b6d4','AI雲端基建':'#8b5cf6','自訂':'#ec4899'};
   var BUILTIN_WATCHLIST = [
     {name:'AI巨頭',stocks:['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL']},
@@ -499,7 +499,7 @@ window.onerror = function(msg, src, line, col, err) {
     container.addEventListener('change', updateScanEstimate);
     updateScanEstimate();
   }
-  // === v2.6.5 QCOM 派發誤判修正 ===
+  // === v2.6.6 QCOM 派發誤判修正 ===
   function saveCustomSectors(sectors) {
     try {
       var toSave=sectors.map(function(s){ return {name:s.name, tickers:s.stocks.slice()}; });
@@ -1417,7 +1417,7 @@ window.onerror = function(msg, src, line, col, err) {
       }
     }
     else if (q.key==='weakening'){
-      // v2.6.5: 走弱區依 RS 強度分流 — 強勢股(RS>=110)的走弱是回測，不是崩盤
+      // v2.6.6: 走弱區依 RS 強度分流 — 強勢股(RS>=110)的走弱是回測，不是崩盤
       var rsHigh=ratio>=110;
       var rsMed=ratio>=105;
       if (positionTier==='deep'){
@@ -1491,7 +1491,7 @@ window.onerror = function(msg, src, line, col, err) {
     }
     // === verbose 白話文（v2.6.3 重寫：降重複 + 台灣腔）===
     var reversal=detectReversal(s);
-    // v2.6.5: reversal 過濾 — 只在合理情況才警告
+    // v2.6.6: reversal 過濾 — 只在合理情況才警告
     if (reversal){
       if (reversal.type==='bullish'){
         // 觸底反彈警告：只在落後區或走弱深處才有意義
@@ -1579,7 +1579,7 @@ window.onerror = function(msg, src, line, col, err) {
       else sentence3='<strong style="color:#4ea5ff;">先觀察方向是否明確，不要急著進。</strong>';
     }
     else if (groupKey==='warn'){
-      // v2.6.5: 強勢股回測 (RS>=110 + 走弱) 給特別文案
+      // v2.6.6: 強勢股回測 (RS>=110 + 走弱) 給特別文案
       if (nowQKey==='weakening'&&rsVal>=110) sentence3='<strong style="color:#f7c948;">強勢股回測中，動能放緩很正常。</strong>RS 還是領先群，鎖利不加碼，等動能轉強再說，不要被一時的紅 K 嚇到砍掉。';
       else if (nowQKey==='leading') sentence3='<strong style="color:#f7c948;">領先區開始轉弱，要警覺了。</strong>不要逆勢加碼，等方向確認再說。';
       else if (nowQKey==='weakening') sentence3='<strong style="color:#f7c948;">已經在走弱了，方向不對就認錯。</strong>不要凹。';
@@ -1635,7 +1635,7 @@ window.onerror = function(msg, src, line, col, err) {
       var old=lastSnapMap[info.ticker];
       if (!old) return '';
       var dRS=info.ratio-old.ratio,dMom=info.mom-old.mom;
-      // v2.6.5: 變化太小（< 0.05）不顯示，避免 -0.0 / +0.0 干擾
+      // v2.6.6: 變化太小（< 0.05）不顯示，避免 -0.0 / +0.0 干擾
       if (Math.abs(dRS)<0.05&&Math.abs(dMom)<0.05) return '';
       var rsArrow=dRS>0?'+':'',momArrow=dMom>0?'+':'';
       var cls='hold-week-flat';
@@ -1936,7 +1936,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.6.5 (QCOM 派發誤判修正)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.6.6 (QCOM 派發誤判修正)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
