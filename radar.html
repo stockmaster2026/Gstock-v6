@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v6.5</title>
+<title>飆股雷達 v6.6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v6.5</div>
+  <div class="logo">飆股<span>RADAR</span> v6.6</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -185,7 +185,7 @@ transition:all 0.2s;width:78px;position:relative;
 var SKEY='biaoguo_sectors_v5';
 var HKEY='biaoguo_history_v1';
 
-// ═══ v6.5 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
+// ═══ v6.6 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
@@ -236,7 +236,7 @@ function getSectors(){
     if(d){
       deduped[q].id=d.id;
       deduped[q].icon=d.icon;
-      // v6.5 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
+      // v6.6 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
       if(d.etf) deduped[q].etf=d.etf;
     }
   }
@@ -312,18 +312,24 @@ function getTrendLabel(currentScore, score1d, score7d){
 
 var cache={};
 var currentSector=null;
+// v6.6 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
+var scanDone=false;
 
-const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
-async function api(ep){
-  const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+K);
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  return r.json();
-}
+// ═══ v6.6 變更：Finnhub 已完全移除 ═══════════════════════
+// 舊版每檔要發 2 次 Finnhub（/quote + /profile2），免費額度只有 60 次/分鐘，
+// 60 多檔一路掃下去必爆 HTTP 429。現在改成：只打 Yahoo（走自建 Worker，無限制），
+// 報價與漲跌幅直接從 Yahoo 的 meta 算。profile2 抱回來的 floatShares 原本就沒被用到。
 
-async function fetchYahoo(t){
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function fetchYahoo(t, retried){
   var base='https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1y';
   var url=PROXY+encodeURIComponent(base);
   var r=await fetch(url);
+  if(r.status===429 && !retried){
+    await sleep(2000);
+    return fetchYahoo(t, true);
+  }
   if(!r.ok) throw new Error('Yahoo HTTP '+r.status);
   var data=await r.json();
   if(!data.chart||!data.chart.result||!data.chart.result[0])
@@ -331,19 +337,23 @@ async function fetchYahoo(t){
   return data.chart.result[0];
 }
 
-async function fetchFloat(t){
-  try{
-    var r=await api('/stock/profile2?symbol='+t);
-    if(r&&r.shareOutstanding&&r.shareOutstanding>0)
-      return r.shareOutstanding*1000000;
-  }catch(e){}
-  return null;
-}
-
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-
-async function fetchQ(t){
-  return api('/quote?symbol='+t);
+// 從 Yahoo 的 chart 回傳裡拼出報價（代替原本的 Finnhub /quote）
+function quoteFromYahoo(result){
+  var meta=result.meta||{};
+  var price=meta.regularMarketPrice;
+  var prev=meta.chartPreviousClose||meta.previousClose;
+  if(!price||!prev){
+    try{
+      var cl=result.indicators.quote[0].close;
+      var arr=[];
+      for(var i=0;i<cl.length;i++) if(cl[i]) arr.push(cl[i]);
+      if(!price) price=arr[arr.length-1];
+      if(!prev)  prev =arr[arr.length-2];
+    }catch(e){}
+  }
+  if(!price) return null;
+  var dp=prev?((price/prev-1)*100):0;
+  return {c:price, pc:prev||price, dp:dp};
 }
 
 function analyzeYahoo(result, floatShares){
@@ -453,19 +463,11 @@ function analyzeYahoo(result, floatShares){
 async function loadStock(t){
   if(cache[t]&&cache[t].ok) return cache[t];
   try{
-    // v6.5 變更：Yahoo 或 Float 掛掉不再讓整檔 reject（原本 Promise.all 一失敗全檔變 err）
-    var results=await Promise.all([
-      fetchQ(t),
-      fetchYahoo(t).catch(function(e){return null;}),
-      fetchFloat(t).catch(function(e){return null;})
-    ]);
-    var q=results[0]; var yahoo=results[1]; var floatShares=results[2];
-    await sleep(150);
-    var price=q.c||q.pc||0;
-    if(!price) throw new Error('no price');
-    if(!q.c&&q.pc) q.c=q.pc;
-    if(!q.dp) q.dp=0;
-    var a=analyzeYahoo(yahoo, floatShares);
+    // v6.6 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
+    var yahoo=await fetchYahoo(t);
+    var q=quoteFromYahoo(yahoo);
+    if(!q) throw new Error('no price');
+    var a=analyzeYahoo(yahoo);
     var ph=getPhase(q.c,a);
     var dist=a&&a.wc>0?Math.round((q.c/a.wc-1)*100):0;
     cache[t]={ok:true,q:q,a:a,ph:ph,dist:dist,price:q.c,up:q.dp>=0};
@@ -561,7 +563,7 @@ function renderHeatStrip(selId){
     chip.onclick=(function(id){return function(){showSector(id);};})(sec.id);
     strip.appendChild(chip);
   });
-  recordTodayScores(todayScores);
+  if(scanDone) recordTodayScores(todayScores);
   updateHistoryInfo();
   renderUrgentList();
   renderDailyObserve();
@@ -998,7 +1000,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1057,7 +1059,7 @@ function showSector(sectorId){
       if(!cache[t]||!cache[t].ok) await loadStock(t);
       var el=document.getElementById('sc-'+t);
       if(el) fillCard(t,el);
-      if(i<sec.tickers.length-1) await sleep(300);
+      if(i<sec.tickers.length-1) await sleep(250);
     }
   })();
 }
@@ -1237,7 +1239,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1349,10 +1351,11 @@ window.submitBatchAdd = function(sectorId){
 async function initApp(){
   cache={};
   currentSector=null;
+  scanDone=false;
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
@@ -1375,8 +1378,10 @@ async function initApp(){
         if(el) fillCard(all[i],el);
       }
     }
-    if(i<all.length-1) await sleep(350);
+    if(i<all.length-1) await sleep(250);
   }
+  scanDone=true;
+  renderHeatStrip(currentSector);
 }
 
 initApp();
