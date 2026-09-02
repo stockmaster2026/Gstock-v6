@@ -205,7 +205,7 @@ function doFetch(){
   btn.disabled=true; setStatus('抓取中… '+sym,'');
 
   var yahoo='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=1y&interval=1d';
-  var url='https://corsproxy.io/?key=00bcaf2a&url='+encodeURIComponent(yahoo);
+  var url='https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent(yahoo);
 
   fetch(url).then(function(r){ return r.json(); }).then(function(j){
     var res=j.chart && j.chart.result && j.chart.result[0];
