@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v7.0</title>
+<title>飆股雷達 v7.1</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.0</div>
+  <div class="logo">飆股<span>RADAR</span> v7.1</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -185,7 +185,7 @@ transition:all 0.2s;width:78px;position:relative;
 var SKEY='biaoguo_sectors_v5';
 var HKEY='biaoguo_history_v1';
 
-// ═══ v7.0 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
+// ═══ v7.1 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
@@ -236,7 +236,7 @@ function getSectors(){
     if(d){
       deduped[q].id=d.id;
       deduped[q].icon=d.icon;
-      // v7.0 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
+      // v7.1 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
       if(d.etf) deduped[q].etf=d.etf;
     }
   }
@@ -312,10 +312,10 @@ function getTrendLabel(currentScore, score1d, score7d){
 
 var cache={};
 var currentSector=null;
-// v7.0 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
+// v7.1 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
 var scanDone=false;
 
-// ═══ v7.0 變更：Finnhub 已完全移除 ═══════════════════════
+// ═══ v7.1 變更：Finnhub 已完全移除 ═══════════════════════
 // 舊版每檔要發 2 次 Finnhub（/quote + /profile2），免費額度只有 60 次/分鐘，
 // 60 多檔一路掃下去必爆 HTTP 429。現在改成：只打 Yahoo（走自建 Worker，無限制），
 // 報價與漲跌幅直接從 Yahoo 的 meta 算。profile2 抱回來的 floatShares 原本就沒被用到。
@@ -338,9 +338,9 @@ async function fetchYahoo(t, retried){
 }
 
 // 從 Yahoo 的 chart 回傳裡拼出報價（代替原本的 Finnhub /quote）
-// ═══ v7.0 修正：不要用 meta.chartPreviousClose ═══════════════
+// ═══ v7.1 修正：不要用 meta.chartPreviousClose ═══════════════
 // chartPreviousClose 是「整段 range 開始前那一根的收盤」：range=1y 時它是一年前的價，
-// 拿它算漲跌幅會算成「近一年漲跌幅」（v7.0 出現 SMH +92%、LITE +556% 就是這個原因）。
+// 拿它算漲跌幅會算成「近一年漲跌幅」（v7.1 出現 SMH +92%、LITE +556% 就是這個原因）。
 // 正確做法：前一日收盤直接從 closes 陣列倒數第二根取，meta.previousClose 只當備援。
 function quoteFromYahoo(result){
   var meta=result.meta||{};
@@ -356,7 +356,7 @@ function quoteFromYahoo(result){
   return {c:price, pc:prev||price, dp:dp};
 }
 
-// ═══ v7.0 新增：成本區量能桶的桶寬工具 ═════════════════
+// ═══ v7.1 新增：成本區量能桶的桶寬工具 ═════════════════
 // niceStep：把任意數字靠到 1 / 2 / 5 的漂亮刻度（例 0.1968 -> 0.2、9.84 -> 10）
 function niceStep(x){
   if(!(x>0)) return 1;
@@ -431,7 +431,7 @@ function analyzeYahoo(result, floatShares){
     else if(maUpTrend&&aboveMA20) phase=3;
     else if(!maBearish&&fires.length>0&&aboveMA20) phase=2;
     else phase=1;
-    // ═══ v7.0 修正：成本區的量能桶 ══════════════════════
+    // ═══ v7.1 修正：成本區的量能桶 ══════════════════════
     // 舊版固定 $5 一格：NOK 這種 $10 的股票整段價格只落進 2 個桶，成本區算成 $5-$15；
     // LITE 這種 $870 的又被切成上百個桶、取樣太稀薄。現在桶寬隨股價縮放（約 2%）。
     // 舊版又把「量最大的兩個桶」直接當成區間上下界，但兩桶未必相鄰
@@ -483,7 +483,7 @@ function analyzeYahoo(result, floatShares){
     var atrT1=mainCostMid+3*atr14;
     var atrT2=mainCostMid+5*atr14;
     var atrT3=mainCostMid+8*atr14;
-    // ═══ v7.0 修正：ATR 停損改錨在現價，並以 -8% 為上限 ══════
+    // ═══ v7.1 修正：ATR 停損改錨在現價，並以 -8% 為上限 ══════
     // 舊版是 mainCostMid - 1.5*ATR，錨在成本中位而不是進場價，導致同一條公式
     // 在 NOK 上只有 -2.3%（會被雜訊掃出場）、在 DELL 上却有 -21%（超出紀律）。
     // 現在改成「現價 - 1.5*ATR」與「現價 -8%」取較嚴（較高）的那個。
@@ -505,13 +505,13 @@ function analyzeYahoo(result, floatShares){
 async function loadStock(t){
   if(cache[t]&&cache[t].ok) return cache[t];
   try{
-    // v7.0 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
+    // v7.1 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
     var yahoo=await fetchYahoo(t);
     var q=quoteFromYahoo(yahoo);
     if(!q) throw new Error('no price');
     var a=analyzeYahoo(yahoo);
     var ph=getPhase(q.c,a);
-    // v7.0 修正：卡片上的「vs 成本」改用成本區中位，與客觀數據那行統一
+    // v7.1 修正：卡片上的「vs 成本」改用成本區中位，與客觀數據那行統一
     // （舊版用加權成本 wc，NOK 會同時出現 -14% 與 -3.5% 兩個數字）
     var dist=a&&a.mainCostMid>0?Math.round((q.c/a.mainCostMid-1)*100):0;
     cache[t]={ok:true,q:q,a:a,ph:ph,dist:dist,price:q.c,up:q.dp>=0};
@@ -890,14 +890,14 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   else if(price < a.t2){pricePos='已達 T1 區'; advisory='at_t1';}
   else if(price < a.t3){pricePos='已達 T2 區'; advisory='at_t2';}
   else{pricePos='超越 T3 出貨區 🚨'; advisory='past_t3';}
-  // v7.0 變更：部位建議的停損與上面的 ATR 停損統一，不再各算各的
+  // v7.1 變更：部位建議的停損與上面的 ATR 停損統一，不再各算各的
   var stopLoss = a.atrStop;
   var stopPct = a.atrStopPct;
   var risk = price - stopLoss;
   var rewardT2 = a.t2 - price;
   var rrT2 = risk > 0 ? (rewardT2 / risk) : 0;
   var rrPass = rrT2 >= 3;
-  // v7.0 修正：原本寫死 '+'，負數時會印成 「+-3.5%」
+  // v7.1 修正：原本寫死 '+'，負數時會印成 「+-3.5%」
   var signCost = (price >= costMid ? '+' : '');
   var dataPoints = '<div>• 現價 vs 主力成本：<b>'+signCost+pctVsCost+'%</b>（'+pricePos+'）</div>'+
     '<div>• 技術熱度：<b>'+a.chip+'%</b>（'+chipLabel+'：'+chipMeaning+'）</div>'+
@@ -1021,11 +1021,16 @@ function getTradingAdvice(price, a, ph, holdingInfo){
       return {urgent:'WAIT', icon:'⏳', mainTitle:'觀察為主',
         actionLine:'未達 T1 但訊號不足',
         bg:'#fff8e0', border:'#dd9900', titleColor:'#cc8800',
-        summary:'現價高於主力成本但尚未達 T1。未通過的條件：'+
-          (a.phase!==3?'Phase 還不是 3（目前 '+ph.title+'）、':'')+
-          (!a.obvRising?'OBV 下降、':'')+
-          (chipDanger!==0?'技術熱度偏高、':'')+
-          '建議等回測或條件轉好。',
+        summary:(function(){
+          // v7.1：改用陣列 join，不再每項都接頓號（舊版結尾會多一個「、建議」）
+          var miss=[];
+          if(a.phase!==3) miss.push('Phase 還不是 3（目前 '+ph.title+'）');
+          if(!a.obvRising) miss.push('OBV 下降');
+          if(chipDanger!==0) miss.push('技術熱度偏高');
+          return '現價高於主力成本但尚未達 T1。'+
+            (miss.length?'未通過的條件：'+miss.join('、')+'。':'')+
+            '建議等回測或條件轉好。';
+        })(),
         dataPoints:dataPoints, suggestion:'🟡 暫不進場｜等回測到 $'+a.cL+'-$'+a.cH+(holdingAction?'<br><br>'+holdingAction:'')};
     }
   }
@@ -1052,7 +1057,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1128,7 +1133,7 @@ function fillCard(t,div){
     return;
   }
   var a=d.a,ph=d.ph,p=d.price;
-  // v7.0 變更：價格軸刻度也隨股價縮放，不再固定 $5
+  // v7.1 變更：價格軸刻度也隨股價縮放，不再固定 $5
   var axS=a&&a.step?a.step:niceStep(p*0.02);
   var pMn=a?snap(Math.min(a.cL*0.85,p*0.85),axS,false):snap(p*0.7,axS,false);
   var pMx=a?snap(Math.max(p*1.4,a.cH*1.1),axS,true):snap(p*1.5,axS,true);
@@ -1176,7 +1181,7 @@ function showDetail(t){
     '<div class="topbar-title" style="color:'+(d.up?'var(--green)':'var(--red)')+'">'+t+'　$'+d.price.toFixed(2)+'</div>'+
     '<div style="font-size:11px;color:'+(d.up?'var(--green)':'var(--red)')+';flex-shrink:0;">'+(d.up?'▲':'▼')+Math.abs(d.q.dp).toFixed(1)+'%</div>';
   var a=d.a,ph=d.ph,p=d.price;
-  // v7.0 變更：價格軸刻度也隨股價縮放，不再固定 $5
+  // v7.1 變更：價格軸刻度也隨股價縮放，不再固定 $5
   var axS=a&&a.step?a.step:niceStep(p*0.02);
   var pMn=snap((a&&a.botP?a.botP:p*0.7)*0.88,axS,false);
   var pMx=a&&a.t3?snap(a.t3*1.1,axS,true):snap(p*1.4,axS,true);
@@ -1295,7 +1300,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1411,7 +1416,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
