@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v6.6</title>
+<title>飆股雷達 v6.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v6.6</div>
+  <div class="logo">飆股<span>RADAR</span> v6.7</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -185,7 +185,7 @@ transition:all 0.2s;width:78px;position:relative;
 var SKEY='biaoguo_sectors_v5';
 var HKEY='biaoguo_history_v1';
 
-// ═══ v6.6 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
+// ═══ v6.7 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
@@ -236,7 +236,7 @@ function getSectors(){
     if(d){
       deduped[q].id=d.id;
       deduped[q].icon=d.icon;
-      // v6.6 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
+      // v6.7 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
       if(d.etf) deduped[q].etf=d.etf;
     }
   }
@@ -312,10 +312,10 @@ function getTrendLabel(currentScore, score1d, score7d){
 
 var cache={};
 var currentSector=null;
-// v6.6 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
+// v6.7 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
 var scanDone=false;
 
-// ═══ v6.6 變更：Finnhub 已完全移除 ═══════════════════════
+// ═══ v6.7 變更：Finnhub 已完全移除 ═══════════════════════
 // 舊版每檔要發 2 次 Finnhub（/quote + /profile2），免費額度只有 60 次/分鐘，
 // 60 多檔一路掃下去必爆 HTTP 429。現在改成：只打 Yahoo（走自建 Worker，無限制），
 // 報價與漲跌幅直接從 Yahoo 的 meta 算。profile2 抱回來的 floatShares 原本就沒被用到。
@@ -338,19 +338,19 @@ async function fetchYahoo(t, retried){
 }
 
 // 從 Yahoo 的 chart 回傳裡拼出報價（代替原本的 Finnhub /quote）
+// ═══ v6.7 修正：不要用 meta.chartPreviousClose ═══════════════
+// chartPreviousClose 是「整段 range 開始前那一根的收盤」：range=1y 時它是一年前的價，
+// 拿它算漲跌幅會算成「近一年漲跌幅」（v6.7 出現 SMH +92%、LITE +556% 就是這個原因）。
+// 正確做法：前一日收盤直接從 closes 陣列倒數第二根取，meta.previousClose 只當備援。
 function quoteFromYahoo(result){
   var meta=result.meta||{};
-  var price=meta.regularMarketPrice;
-  var prev=meta.chartPreviousClose||meta.previousClose;
-  if(!price||!prev){
-    try{
-      var cl=result.indicators.quote[0].close;
-      var arr=[];
-      for(var i=0;i<cl.length;i++) if(cl[i]) arr.push(cl[i]);
-      if(!price) price=arr[arr.length-1];
-      if(!prev)  prev =arr[arr.length-2];
-    }catch(e){}
-  }
+  var arr=[];
+  try{
+    var cl=result.indicators.quote[0].close;
+    for(var i=0;i<cl.length;i++) if(cl[i]) arr.push(cl[i]);
+  }catch(e){}
+  var price=meta.regularMarketPrice||arr[arr.length-1];
+  var prev=arr.length>=2?arr[arr.length-2]:meta.previousClose;
   if(!price) return null;
   var dp=prev?((price/prev-1)*100):0;
   return {c:price, pc:prev||price, dp:dp};
@@ -463,7 +463,7 @@ function analyzeYahoo(result, floatShares){
 async function loadStock(t){
   if(cache[t]&&cache[t].ok) return cache[t];
   try{
-    // v6.6 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
+    // v6.7 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
     var yahoo=await fetchYahoo(t);
     var q=quoteFromYahoo(yahoo);
     if(!q) throw new Error('no price');
@@ -1000,7 +1000,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1239,7 +1239,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1355,7 +1355,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
