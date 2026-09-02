@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v6.7</title>
+<title>飆股雷達 v6.8</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v6.7</div>
+  <div class="logo">飆股<span>RADAR</span> v6.8</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -185,7 +185,7 @@ transition:all 0.2s;width:78px;position:relative;
 var SKEY='biaoguo_sectors_v5';
 var HKEY='biaoguo_history_v1';
 
-// ═══ v6.7 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
+// ═══ v6.8 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
@@ -236,7 +236,7 @@ function getSectors(){
     if(d){
       deduped[q].id=d.id;
       deduped[q].icon=d.icon;
-      // v6.7 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
+      // v6.8 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
       if(d.etf) deduped[q].etf=d.etf;
     }
   }
@@ -312,10 +312,10 @@ function getTrendLabel(currentScore, score1d, score7d){
 
 var cache={};
 var currentSector=null;
-// v6.7 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
+// v6.8 變更：只有整輪掃完才寫入當日分數快照，避免中途關掉存到半載入的低分
 var scanDone=false;
 
-// ═══ v6.7 變更：Finnhub 已完全移除 ═══════════════════════
+// ═══ v6.8 變更：Finnhub 已完全移除 ═══════════════════════
 // 舊版每檔要發 2 次 Finnhub（/quote + /profile2），免費額度只有 60 次/分鐘，
 // 60 多檔一路掃下去必爆 HTTP 429。現在改成：只打 Yahoo（走自建 Worker，無限制），
 // 報價與漲跌幅直接從 Yahoo 的 meta 算。profile2 抱回來的 floatShares 原本就沒被用到。
@@ -338,9 +338,9 @@ async function fetchYahoo(t, retried){
 }
 
 // 從 Yahoo 的 chart 回傳裡拼出報價（代替原本的 Finnhub /quote）
-// ═══ v6.7 修正：不要用 meta.chartPreviousClose ═══════════════
+// ═══ v6.8 修正：不要用 meta.chartPreviousClose ═══════════════
 // chartPreviousClose 是「整段 range 開始前那一根的收盤」：range=1y 時它是一年前的價，
-// 拿它算漲跌幅會算成「近一年漲跌幅」（v6.7 出現 SMH +92%、LITE +556% 就是這個原因）。
+// 拿它算漲跌幅會算成「近一年漲跌幅」（v6.8 出現 SMH +92%、LITE +556% 就是這個原因）。
 // 正確做法：前一日收盤直接從 closes 陣列倒數第二根取，meta.previousClose 只當備援。
 function quoteFromYahoo(result){
   var meta=result.meta||{};
@@ -354,6 +354,22 @@ function quoteFromYahoo(result){
   if(!price) return null;
   var dp=prev?((price/prev-1)*100):0;
   return {c:price, pc:prev||price, dp:dp};
+}
+
+// ═══ v6.8 新增：成本區量能桶的桶寬工具 ═════════════════
+// niceStep：把任意數字靠到 1 / 2 / 5 的漂亮刻度（例 0.1968 -> 0.2、9.84 -> 10）
+function niceStep(x){
+  if(!(x>0)) return 1;
+  var e=Math.pow(10,Math.floor(Math.log(x)/Math.LN10));
+  var m=x/e;
+  var f=m<1.5?1:(m<3.5?2:(m<7.5?5:10));
+  return Math.round(f*e*10000)/10000;
+}
+// snap：把數字對齊到 step 的倍數（up=true 向上，否則向下）
+function snap(v,step,up){
+  if(!(step>0)) step=1;
+  var k=up?Math.ceil(v/step):Math.floor(v/step);
+  return Math.round(k*step*10000)/10000;
 }
 
 function analyzeYahoo(result, floatShares){
@@ -415,15 +431,35 @@ function analyzeYahoo(result, floatShares){
     else if(maUpTrend&&aboveMA20) phase=3;
     else if(!maBearish&&fires.length>0&&aboveMA20) phase=2;
     else phase=1;
+    // ═══ v6.8 修正：成本區的量能桶 ══════════════════════
+    // 舊版固定 $5 一格：NOK 這種 $10 的股票整段價格只落進 2 個桶，成本區算成 $5-$15；
+    // LITE 這種 $870 的又被切成上百個桶、取樣太稀薄。現在桶寬隨股價縮放（約 2%）。
+    // 舊版又把「量最大的兩個桶」直接當成區間上下界，但兩桶未必相鄰
+    // （DELL 的 $425 與 $490 被兜成一段）：現在只有相鄰的桶才合併。
+    // 另排除最近 2 根 K，避免當日爆量把成本區拉到現價身上（DELL 財報那根）。
+    var step=niceStep(price*0.02);
+    var zoneBars=recent60.slice(0,Math.max(recent60.length-2,15));
     var zn={};
-    recent60.forEach(function(d){
-      var z=Math.floor(d.c/5)*5;
+    zoneBars.forEach(function(d){
+      var z=snap(d.c,step,false);
       if(!zn[z])zn[z]=0;
       zn[z]+=d.v;
     });
-    var topZones=Object.keys(zn).sort(function(a,b){return zn[b]-zn[a];}).slice(0,2).map(Number).sort(function(a,b){return a-b;});
-    var cL=topZones[0]||Math.floor(price*0.85/5)*5;
-    var cH=(topZones[1]||cL)+5;
+    var zKeys=Object.keys(zn).sort(function(a,b){return zn[b]-zn[a];}).map(Number);
+    var cL,cH;
+    if(zKeys.length){
+      var zTop=zKeys[0], zMate=null;
+      for(var zi=1;zi<zKeys.length;zi++){
+        if(Math.abs(zKeys[zi]-zTop)<=step*1.5){zMate=zKeys[zi];break;}
+      }
+      cL=(zMate!==null)?Math.min(zTop,zMate):zTop;
+      cH=((zMate!==null)?Math.max(zTop,zMate):zTop)+step;
+    }else{
+      cL=snap(price*0.9,step,false);
+      cH=cL+step;
+    }
+    cL=Math.round(cL*10000)/10000;
+    cH=Math.round(cH*10000)/10000;
     var tv=0,tw=0;
     recent60.forEach(function(d){tv+=d.v;tw+=d.c*d.v;});
     var wc=tv>0?Math.round(tw/tv*100)/100:price;
@@ -453,7 +489,7 @@ function analyzeYahoo(result, floatShares){
       atr14:atr14,atrPct:atrPct,
       atrT1:atrT1,atrT2:atrT2,atrT3:atrT3,atrStop:atrStop,
       obvRising:obvRising,fires:fires,avgVol20:avgVol20,
-      cL:cL,cH:cH,wc:wc,distMA20:distMA20,
+      cL:cL,cH:cH,step:step,wc:wc,distMA20:distMA20,
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
       botP:botP,botD:botD,chip:chip,
       t1:t1,t2:t2,t3:t3,mainCostMid:mainCostMid};
@@ -463,7 +499,7 @@ function analyzeYahoo(result, floatShares){
 async function loadStock(t){
   if(cache[t]&&cache[t].ok) return cache[t];
   try{
-    // v6.7 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
+    // v6.8 變更：只打一次 Yahoo，報價與線圖共用同一份回傳
     var yahoo=await fetchYahoo(t);
     var q=quoteFromYahoo(yahoo);
     if(!q) throw new Error('no price');
@@ -1000,7 +1036,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1076,8 +1112,10 @@ function fillCard(t,div){
     return;
   }
   var a=d.a,ph=d.ph,p=d.price;
-  var pMn=a?Math.floor(a.cL*0.85/5)*5:Math.floor(p*0.7/5)*5;
-  var pMx=a?Math.ceil(p*1.4/5)*5:Math.ceil(p*1.5/5)*5;
+  // v6.8 變更：價格軸刻度也隨股價縮放，不再固定 $5
+  var axS=a&&a.step?a.step:niceStep(p*0.02);
+  var pMn=a?snap(Math.min(a.cL*0.85,p*0.85),axS,false):snap(p*0.7,axS,false);
+  var pMx=a?snap(Math.max(p*1.4,a.cH*1.1),axS,true):snap(p*1.5,axS,true);
   var cl=a?pp(a.cL,pMn,pMx):'35';
   var cw=a?((a.cH-a.cL)/(pMx-pMn)*100).toFixed(1):'20';
   var np=pp(p,pMn,pMx);
@@ -1122,8 +1160,10 @@ function showDetail(t){
     '<div class="topbar-title" style="color:'+(d.up?'var(--green)':'var(--red)')+'">'+t+'　$'+d.price.toFixed(2)+'</div>'+
     '<div style="font-size:11px;color:'+(d.up?'var(--green)':'var(--red)')+';flex-shrink:0;">'+(d.up?'▲':'▼')+Math.abs(d.q.dp).toFixed(1)+'%</div>';
   var a=d.a,ph=d.ph,p=d.price;
-  var pMn=Math.floor((a&&a.botP?a.botP:p*0.7)*0.88/5)*5;
-  var pMx=a&&a.t3?Math.ceil(a.t3*1.1/5)*5:Math.ceil(p*1.4/5)*5;
+  // v6.8 變更：價格軸刻度也隨股價縮放，不再固定 $5
+  var axS=a&&a.step?a.step:niceStep(p*0.02);
+  var pMn=snap((a&&a.botP?a.botP:p*0.7)*0.88,axS,false);
+  var pMx=a&&a.t3?snap(a.t3*1.1,axS,true):snap(p*1.4,axS,true);
   var cl=a?pp(a.cL,pMn,pMx):'30';
   var cw=a?((a.cH-a.cL)/(pMx-pMn)*100).toFixed(1):'20';
   var np=pp(p,pMn,pMx);
@@ -1239,7 +1279,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1355,7 +1395,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v6.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
