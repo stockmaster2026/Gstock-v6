@@ -1,11 +1,9 @@
-
 <!DOCTYPE html>
-
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v6.4</title>
+<title>飆股雷達 v6.5</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -17,12 +15,12 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;}
 
-.topbar{background:rgba(245,232,140,0.97);border-bottom:2px solid var(–border);padding:10px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:200;}
-.logo{font-family:‘Orbitron’,monospace;font-size:14px;font-weight:900;color:var(–orange);letter-spacing:2px;flex-shrink:0;}
-.logo span{color:var(–blue);}
-.back-btn{font-size:24px;color:var(–blue);cursor:pointer;flex-shrink:0;line-height:1;}
-.topbar-title{flex:1;font-family:‘Orbitron’,monospace;font-size:15px;font-weight:900;text-align:center;}
-.refresh-btn{background:var(–orange);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:900;cursor:pointer;flex-shrink:0;text-shadow:0 1px 2px rgba(0,0,0,0.2);}
+.topbar{background:rgba(245,232,140,0.97);border-bottom:2px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:200;}
+.logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--orange);letter-spacing:2px;flex-shrink:0;}
+.logo span{color:var(--blue);}
+.back-btn{font-size:24px;color:var(--blue);cursor:pointer;flex-shrink:0;line-height:1;}
+.topbar-title{flex:1;font-family:'Orbitron',monospace;font-size:15px;font-weight:900;text-align:center;}
+.refresh-btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:900;cursor:pointer;flex-shrink:0;text-shadow:0 1px 2px rgba(0,0,0,0.2);}
 
 .heat-strip{
 background:#fff8e0;border-bottom:3px solid #d4b800;
@@ -37,106 +35,106 @@ border:2px solid #d4b800;background:#fffde0;
 transition:all 0.2s;width:78px;position:relative;
 }
 .heat-chip:active{transform:scale(0.95);}
-.heat-chip.sel{border-color:var(–orange);background:rgba(221,102,0,0.12);}
+.heat-chip.sel{border-color:var(--orange);background:rgba(221,102,0,0.12);}
 .hc-icon{font-size:20px;margin-bottom:2px;}
 .hc-name{font-size:10px;color:#1a1a2e;margin-bottom:2px;font-weight:800;text-align:center;word-break:break-all;white-space:normal;width:100%;line-height:1.2;}
 .hc-score{font-size:11px;font-weight:700;color:#444;}
 .hc-change{font-size:9px;font-weight:700;margin-top:1px;}
-.hc-change.up{color:var(–green);}
-.hc-change.dn{color:var(–red);}
-.hc-change.flat{color:var(–dim);}
+.hc-change.up{color:var(--green);}
+.hc-change.dn{color:var(--red);}
+.hc-change.flat{color:var(--dim);}
 .hc-trend{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;margin-top:2px;color:white;}
-.tr-improving{background:var(–improving);}
-.tr-leading{background:var(–leading);}
-.tr-weakening{background:var(–weakening);}
-.tr-lagging{background:var(–lagging);}
+.tr-improving{background:var(--improving);}
+.tr-leading{background:var(--leading);}
+.tr-weakening{background:var(--weakening);}
+.tr-lagging{background:var(--lagging);}
 .hc-bar{width:100%;height:4px;background:rgba(0,0,0,0.12);border-radius:2px;margin-top:3px;overflow:hidden;}
 .hc-fill{height:100%;border-radius:2px;transition:width 1s ease;}
 .hot3{background:linear-gradient(90deg,#ff4400,#ff8800);}
 .hot2{background:linear-gradient(90deg,#ff8800,#ffcc00);}
 .hot1{background:linear-gradient(90deg,#ccaa00,#99bb00);}
-.cold{background:var(–dim);}
+.cold{background:var(--dim);}
 
 .search-wrap{padding:10px 14px 4px;display:flex;gap:8px;}
-.search-input{flex:1;border:1.5px solid var(–border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(–surface);outline:none;font-family:‘Noto Sans TC’,sans-serif;}
-.search-input:focus{border-color:var(–blue);}
-.search-btn{background:var(–blue);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-size:15px;font-weight:900;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,0.2);}
+.search-input{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);outline:none;font-family:'Noto Sans TC',sans-serif;}
+.search-input:focus{border-color:var(--blue);}
+.search-btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-size:15px;font-weight:900;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,0.2);}
 
-.history-info{padding:6px 14px;font-size:11px;color:var(–dim);background:rgba(255,255,255,0.5);border-bottom:1px solid var(–border);}
+.history-info{padding:6px 14px;font-size:11px;color:var(--dim);background:rgba(255,255,255,0.5);border-bottom:1px solid var(--border);}
 
 .page{display:none;padding:10px 14px 24px;flex-direction:column;}
 .page.active{display:flex;}
 
-.stock-card{background:var(–surface);border:1.5px solid var(–border);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:transform 0.15s;position:relative;margin-top:2px;}
+.stock-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:transform 0.15s;position:relative;margin-top:2px;}
 .stock-card:active{transform:scale(0.98);}
 .slbar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:12px 0 0 12px;}
-.sl-o{background:var(–orange);}.sl-b{background:var(–blue);}.sl-r{background:var(–red);}.sl-g{background:var(–green);}
+.sl-o{background:var(--orange);}.sl-b{background:var(--blue);}.sl-r{background:var(--red);}.sl-g{background:var(--green);}
 
 .srow{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:5px;}
-.sticker{font-family:‘Orbitron’,monospace;font-size:16px;font-weight:900;}
-.stoday{font-size:10px;color:var(–dim);margin-top:2px;}
+.sticker{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;}
+.stoday{font-size:10px;color:var(--dim);margin-top:2px;}
 .sright{text-align:right;}
-.sprice{font-family:‘Orbitron’,monospace;font-size:14px;font-weight:700;}
+.sprice{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;}
 .sdist{font-size:10px;margin-top:1px;}
-.up{color:var(–green);}.dn{color:var(–red);}
+.up{color:var(--green);}.dn{color:var(--red);}
 
 .sbadge{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:6px;}
-.bd-o{background:rgba(221,102,0,0.12);color:var(–orange);border:1px solid rgba(221,102,0,0.3);}
-.bd-b{background:rgba(0,102,187,0.12);color:var(–blue);border:1px solid rgba(0,102,187,0.3);}
-.bd-r{background:rgba(204,17,51,0.1);color:var(–red);border:1px solid rgba(204,17,51,0.2);}
-.bd-g{background:rgba(0,153,68,0.12);color:var(–green);border:1px solid rgba(0,153,68,0.3);}
+.bd-o{background:rgba(221,102,0,0.12);color:var(--orange);border:1px solid rgba(221,102,0,0.3);}
+.bd-b{background:rgba(0,102,187,0.12);color:var(--blue);border:1px solid rgba(0,102,187,0.3);}
+.bd-r{background:rgba(204,17,51,0.1);color:var(--red);border:1px solid rgba(204,17,51,0.2);}
+.bd-g{background:rgba(0,153,68,0.12);color:var(--green);border:1px solid rgba(0,153,68,0.3);}
 
 .chip-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
-.chip-lbl{font-size:10px;color:var(–dim);flex-shrink:0;width:42px;}
+.chip-lbl{font-size:10px;color:var(--dim);flex-shrink:0;width:42px;}
 .chip-track{flex:1;height:7px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
 .chip-fill{height:100%;border-radius:3px;transition:width 1.2s ease;}
 .cf-full{background:linear-gradient(90deg,#0066bb,#00aa55);}
 .cf-high{background:linear-gradient(90deg,#0088cc,#44aaff);}
 .cf-mid{background:linear-gradient(90deg,#dd8800,#ffbb44);}
 .cf-low{background:linear-gradient(90deg,#cc1133,#ff6688);}
-.chip-num{font-family:‘Orbitron’,monospace;font-size:11px;font-weight:700;flex-shrink:0;width:34px;text-align:right;}
+.chip-num{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;flex-shrink:0;width:34px;text-align:right;}
 
 .arrow-row{position:relative;height:13px;}
-.arrow-lbl{position:absolute;font-size:9px;font-weight:700;color:var(–orange);transform:translateX(-50%);white-space:nowrap;}
+.arrow-lbl{position:absolute;font-size:9px;font-weight:700;color:var(--orange);transform:translateX(-50%);white-space:nowrap;}
 .cost-track{height:7px;background:rgba(0,0,0,0.07);border-radius:3px;position:relative;overflow:hidden;}
 .cost-zone{position:absolute;top:0;bottom:0;background:rgba(0,102,187,0.3);}
-.cost-pin{position:absolute;top:0;bottom:0;width:3px;background:var(–orange);}
-.cost-axis{display:flex;justify-content:space-between;font-size:9px;color:var(–dim);margin-top:2px;}
-.shint{text-align:center;font-size:10px;color:var(–dim);margin-top:5px;}
+.cost-pin{position:absolute;top:0;bottom:0;width:3px;background:var(--orange);}
+.cost-axis{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px;}
+.shint{text-align:center;font-size:10px;color:var(--dim);margin-top:5px;}
 
-.dc{background:var(–surface);border:1.5px solid var(–border);border-radius:12px;padding:13px;margin-bottom:10px;margin-top:2px;}
-.dtitle{font-size:10px;color:var(–dim);letter-spacing:2px;margin-bottom:8px;}
-.big-chip{font-family:‘Orbitron’,monospace;font-size:32px;font-weight:900;margin-bottom:6px;}
-.bc-full{color:var(–green);}.bc-high{color:var(–blue);}.bc-mid{color:var(–orange);}.bc-low{color:var(–red);}
-.cost-big{font-family:‘Orbitron’,monospace;font-size:20px;font-weight:700;color:var(–blue);margin-bottom:10px;}
+.dc{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px;margin-top:2px;}
+.dtitle{font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;}
+.big-chip{font-family:'Orbitron',monospace;font-size:32px;font-weight:900;margin-bottom:6px;}
+.bc-full{color:var(--green);}.bc-high{color:var(--blue);}.bc-mid{color:var(--orange);}.bc-low{color:var(--red);}
+.cost-big{font-family:'Orbitron',monospace;font-size:20px;font-weight:700;color:var(--blue);margin-bottom:10px;}
 .adv{display:flex;gap:8px;border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.7;margin-top:8px;}
 .adv-o{background:rgba(221,102,0,0.07);border:1px solid rgba(221,102,0,0.2);}
 .adv-b{background:rgba(0,102,187,0.07);border:1px solid rgba(0,102,187,0.2);}
 .adv-r{background:rgba(204,17,51,0.05);border:1px solid rgba(204,17,51,0.15);}
 .adv-g{background:rgba(0,153,68,0.07);border:1px solid rgba(0,153,68,0.2);}
 .adv-title{font-weight:700;display:block;margin-bottom:2px;}
-.at-o{color:var(–orange);}.at-b{color:var(–blue);}.at-r{color:var(–red);}.at-g{color:var(–green);}
+.at-o{color:var(--orange);}.at-b{color:var(--blue);}.at-r{color:var(--red);}.at-g{color:var(--green);}
 .dr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);font-size:12px;}
 .dr:last-child{border:none;}
-.dv-b{color:var(–blue);font-weight:600;}.dv-g{color:var(–green);font-weight:600;}
-.dv-o{color:var(–orange);font-weight:600;}.dv-r{color:var(–red);font-weight:600;}
+.dv-b{color:var(--blue);font-weight:600;}.dv-g{color:var(--green);font-weight:600;}
+.dv-o{color:var(--orange);font-weight:600;}.dv-r{color:var(--red);font-weight:600;}
 
-.btn-add{width:100%;background:var(–green);color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:6px;font-family:‘Noto Sans TC’,sans-serif;}
-.btn-blue{background:var(–blue);}
-.btn-remove{width:100%;background:rgba(204,17,51,0.08);color:var(–red);border:1.5px solid rgba(204,17,51,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;font-family:‘Noto Sans TC’,sans-serif;}
+.btn-add{width:100%;background:var(--green);color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:6px;font-family:'Noto Sans TC',sans-serif;}
+.btn-blue{background:var(--blue);}
+.btn-remove{width:100%;background:rgba(204,17,51,0.08);color:var(--red);border:1.5px solid rgba(204,17,51,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;font-family:'Noto Sans TC',sans-serif;}
 
-.spinner{display:inline-block;width:20px;height:20px;border:3px solid var(–border);border-top:3px solid var(–blue);border-radius:50%;animation:spin 0.8s linear infinite;}
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid var(--border);border-top:3px solid var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.loading{text-align:center;padding:20px;color:var(–dim);font-size:13px;}
-.err{background:rgba(204,17,51,0.07);border:1px solid rgba(204,17,51,0.2);border-radius:10px;padding:10px;font-size:12px;color:var(–red);text-align:center;margin-bottom:8px;margin-top:2px;}
-.pg-hdr{font-size:11px;color:var(–dim);padding:8px 0 4px;}
-.empty-hint{text-align:center;padding:30px 20px;color:var(–dim);font-size:13px;line-height:1.8;}
+.loading{text-align:center;padding:20px;color:var(--dim);font-size:13px;}
+.err{background:rgba(204,17,51,0.07);border:1px solid rgba(204,17,51,0.2);border-radius:10px;padding:10px;font-size:12px;color:var(--red);text-align:center;margin-bottom:8px;margin-top:2px;}
+.pg-hdr{font-size:11px;color:var(--dim);padding:8px 0 4px;}
+.empty-hint{text-align:center;padding:30px 20px;color:var(--dim);font-size:13px;line-height:1.8;}
 
 .add-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;align-items:center;justify-content:center;padding:20px;}
 .add-modal.show{display:flex;}
-.add-modal-content{background:var(–surface);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;}
-.add-modal-title{font-size:15px;font-weight:700;margin-bottom:12px;color:var(–text);}
-.add-sector-btn{width:100%;background:var(–blue);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:6px;font-family:‘Noto Sans TC’,sans-serif;text-align:left;}
+.add-modal-content{background:var(--surface);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;}
+.add-modal-title{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text);}
+.add-sector-btn{width:100%;background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:6px;font-family:'Noto Sans TC',sans-serif;text-align:left;}
 .add-modal-close{width:100%;background:#ddd;color:#333;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;}
 </style>
 
@@ -144,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span></div>
+  <div class="logo">飆股<span>RADAR</span> v6.5</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -187,10 +185,13 @@ transition:all 0.2s;width:78px;position:relative;
 var SKEY='biaoguo_sectors_v5';
 var HKEY='biaoguo_history_v1';
 
+// ═══ v6.5 變更：CORS 代理改為自建 Cloudflare Worker ═══════════
+var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
+
 var SECTORS_DEFAULT=[
   {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','META','GOOGL','MSFT','AMZN']},
   {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'WCLD', tickers:['ANET','SMCI','DELL','CRWD','SNOW']},
-  {id:'optical',   icon:'💡', name:'光通信',     etf:'PHO',  tickers:['COHR','LITE','AAOI','AXTI','APH']},
+  {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH']},
   {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','ETN','GNRC','AXON']},
   {id:'space',     icon:'🛰️', name:'太空衛星',   etf:'UFO',  tickers:['LUNR','RKLB','PL','BKSY','ASTS']},
   {id:'drone',     icon:'🚁', name:'無人機國防', etf:'ITA',  tickers:['ONDS','KTOS','PLTR','ACHR','JOBY']},
@@ -235,7 +236,8 @@ function getSectors(){
     if(d){
       deduped[q].id=d.id;
       deduped[q].icon=d.icon;
-      if(!deduped[q].etf && d.etf) deduped[q].etf=d.etf;
+      // v6.5 變更：預設 ETF 一律覆蓋 localStorage 舊值，否則改了 SECTORS_DEFAULT 不會生效
+      if(d.etf) deduped[q].etf=d.etf;
     }
   }
   var storedIds={};
@@ -320,7 +322,7 @@ async function api(ep){
 
 async function fetchYahoo(t){
   var base='https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1y';
-  var url='https://corsproxy.io/?'+encodeURIComponent(base);
+  var url=PROXY+encodeURIComponent(base);
   var r=await fetch(url);
   if(!r.ok) throw new Error('Yahoo HTTP '+r.status);
   var data=await r.json();
@@ -451,7 +453,12 @@ function analyzeYahoo(result, floatShares){
 async function loadStock(t){
   if(cache[t]&&cache[t].ok) return cache[t];
   try{
-    var results=await Promise.all([fetchQ(t), fetchYahoo(t), fetchFloat(t)]);
+    // v6.5 變更：Yahoo 或 Float 掛掉不再讓整檔 reject（原本 Promise.all 一失敗全檔變 err）
+    var results=await Promise.all([
+      fetchQ(t),
+      fetchYahoo(t).catch(function(e){return null;}),
+      fetchFloat(t).catch(function(e){return null;})
+    ]);
     var q=results[0]; var yahoo=results[1]; var floatShares=results[2];
     await sleep(150);
     var price=q.c||q.pc||0;
@@ -991,7 +998,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span></div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1050,7 +1057,7 @@ function showSector(sectorId){
       if(!cache[t]||!cache[t].ok) await loadStock(t);
       var el=document.getElementById('sc-'+t);
       if(el) fillCard(t,el);
-      if(i<sec.tickers.length-1) await sleep(600);
+      if(i<sec.tickers.length-1) await sleep(300);
     }
   })();
 }
@@ -1167,7 +1174,7 @@ function showDetail(t){
       '<div class="big-chip bc-'+cc+'">'+cn+'%</div>'+
       '<div class="chip-track" style="height:12px;"><div class="chip-fill cf-'+cc+'" style="width:'+cn+'%;height:100%;"></div></div>'+
       '<div class="cost-axis" style="margin-top:5px;"><span>0% 低溫</span><span>30-60% 升溫 ⭐</span><span>100% 過熱</span></div>'+
-      // ═══ v6.4 變更：說明文字（移除「不是主力籌碼」這種會誤導的標籤對比，改用清晰的「技術熱度」說明）═
+      // ═══ v6.4 變更：說明文字 ═══
       '<div style="margin-top:8px;font-size:11px;color:#666;line-height:1.6;background:#f5f5f5;padding:8px;border-radius:6px;">'+
         '<b>ⓘ 說明：</b>這是「Phase + OBV + 一把火 + 均線」綜合<b>技術熱度分數</b>，<b>不是主力籌碼分析</b>。<br>'+
         '<b>0-30% 低溫</b>：技術指標冷清，多為吸籌期或下跌期（觀察）<br>'+
@@ -1230,7 +1237,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span></div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1345,7 +1352,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span></div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v6.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
@@ -1368,7 +1375,7 @@ async function initApp(){
         if(el) fillCard(all[i],el);
       }
     }
-    if(i<all.length-1) await sleep(700);
+    if(i<all.length-1) await sleep(350);
   }
 }
 
