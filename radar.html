@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.1</div>
+  <div class="logo">飆股<span>RADAR</span> v7.2</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -469,6 +469,17 @@ function analyzeYahoo(result, floatShares){
     }
     var botP=lowest.l;
     var botD=new Date(lowest.t*1000).toISOString().slice(0,10);
+    // ═══ v7.2 新增：週線位置（30 週線＝150 日線）與離 52 週高點 ═══════
+    // 9/3 四檔實測抓到的結構性盲點：技術熱度只量「現在有幾項多頭條件成立」，
+    // 完全沒有「這一波走到哪裡」的概念。DELL 漲了 7.2 倍、離 30 週線 +71%，
+    // IREN 已經跌破 30 週線 9%、從高點跌 46% —— 兩檔的熱度都落在 30-60「⭐最佳」。
+    // dna 判它們一個「延伸到末期」、一個「接刀」，靠的正是這兩個數字。
+    // 這裡不新增任何判斷邏輯，只是把這兩個維度算出來給卡片顯示。
+    var ma150 = (m>=150) ? valid.slice(-150).reduce(function(s,d){return s+d.c;},0)/150 : null;
+    var dist150 = (ma150 && ma150>0) ? (price/ma150-1)*100 : null;
+    var hi52 = valid[0].h;
+    for(var hj=1;hj<m;hj++){ if(valid[hj].h>hi52) hi52=valid[hj].h; }
+    var off52 = hi52>0 ? (price/hi52-1)*100 : null;
     var chip=0;
     chip+=phase*15;
     if(obvRising) chip+=20;
@@ -476,6 +487,20 @@ function analyzeYahoo(result, floatShares){
     if(aboveMA20) chip+=10;
     if(maUpTrend) chip+=15;
     chip=Math.min(chip,100);
+    // ═══ v7.2:【技術熱度到底在量什麼 —— 把每一項攤開】═══════════════
+    // Jasmine(9/3):「我也搞不清楚分數越高越好還是越低越好。」
+    // ⚠ 她問對了：這個分數是【現在有幾項多頭條件成立】的加總，<b>沒有方向性</b>——
+    //   不是越高越好，也不是越低越好。低分有兩種完全相反的原因：
+    //   ①真的剛起步（條件正要一項一項亮起來）②條件根本沒過。
+    //   IREN 45 分是後者（OBV 在下降、均線沒有多頭排列），卻被標成「⭐最佳進場區」。
+    // → 把五項的成敗與各自得分列出來，讓 45 分是怎麼來的看得見。
+    var chipParts=[
+      {n:'Phase',   ok:phase>=3,        txt:'Phase '+phase,                                    pts:phase*15},
+      {n:'OBV',     ok:obvRising,       txt:obvRising?'OBV 上升':'OBV 下降',                    pts:obvRising?20:0},
+      {n:'一把火',  ok:fires.length>0,  txt:'一把火 '+fires.length+' 次',                       pts:Math.min(fires.length*5,15)},
+      {n:'MA20',    ok:aboveMA20,       txt:aboveMA20?'站上 MA20':'在 MA20 下方',               pts:aboveMA20?10:0},
+      {n:'多頭排列',ok:maUpTrend,       txt:maUpTrend?'均線多頭排列':'均線未多頭排列',           pts:maUpTrend?15:0}
+    ];
     var mainCostMid=(cL+cH)/2;
     var t1=mainCostMid*1.3;
     var t2=mainCostMid*1.5;
@@ -497,7 +522,8 @@ function analyzeYahoo(result, floatShares){
       obvRising:obvRising,fires:fires,avgVol20:avgVol20,
       cL:cL,cH:cH,step:step,wc:wc,distMA20:distMA20,
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
-      botP:botP,botD:botD,chip:chip,
+      botP:botP,botD:botD,chip:chip,chipParts:chipParts,
+      ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,
       t1:t1,t2:t2,t3:t3,mainCostMid:mainCostMid};
   }catch(e){return null;}
 }
@@ -531,6 +557,20 @@ function getPhase(price,a){
 }
 
 function ccls(c){return c>=100?'full':c>=60?'high':c>=30?'mid':'low';}
+// ═══ v7.2:【級距文案從命令句改成描述句】════════════════════════════
+// 舊文案：0-30 低溫（吸籌期）／30-60 升溫 ⭐ 最佳／60-85 高溫（謹慎）…
+// ⚠ 問題出在中間那一段：30-60 被寫成「最佳進場區」，但機械上它的意思是
+//   「五項裡有兩三項沒過」。9/3 實測：DELL 50%（漲了 7.2 倍）與 IREN 45%
+//   （已跌破 30 週線）兩檔都落在這一段，兩檔都不該買。60% 以上反而都判對。
+// → 只描述「幾項條件成立」，不再給進場許可；中間那段的顏色也從綠色改成中性，
+//   綠色會被讀成「可以走」。這跟 dna V96.58 把體質燈從命令句改成描述句同一個修法。
+function chipBand(c){
+  if(c<30)  return {txt:'條件大多沒過',        col:'#888888'};
+  if(c<60)  return {txt:'條件過一半',          col:'#8a7a4a'};
+  if(c<85)  return {txt:'條件大多成立',        col:'#dd6600'};
+  if(c<95)  return {txt:'幾乎全滿 · 過熱',     col:'#cc0000'};
+  return           {txt:'全部滿格 · 極度過熱', col:'#cc0000'};
+}
 function pp(v,mn,mx){return Math.min(Math.max((v-mn)/(mx-mn)*100,2),96).toFixed(1);}
 
 function heatScore(tickers, etfTicker){
@@ -811,6 +851,8 @@ function renderDailyObserve(){
         html+='・'+d.sec.icon+' <b>'+d.sec.name+'</b> '+d.score+'分 ↑'+d.change1d;
         if(d.change7d!==null) html+='（7日 '+(d.change7d>=0?'+':'')+d.change7d+'）';
         if(rec) html+='　推薦：<span style="color:#009944;font-weight:700;">'+rec+'</span>';
+        // v7.2: 濾完沒人剩下就明說, 不要因為板塊在漲就硬塞一個名字
+        else html+='　<span style="color:#8a8a6a;font-size:11px;">這個板塊在漲，但今天沒有可以追的個股</span>';
         html+='</div>';
       });
     }
@@ -851,14 +893,25 @@ function renderDailyObserve(){
   box.style.display='block';
 }
 
+// ═══ v7.2:【板塊推薦與個股判決互相打架 —— 同一頁上就矛盾】═══════════
+// 9/3 Jasmine 抓到：板塊觀察寫「無人機國防 ↑7　推薦：PLTR」，同一頁往下捲
+// 就是滿版紅字「不要追高・技術熱度 100% 極度過熱」。
+// ⚠ 病根：舊版這裡自己另外挑一次（Phase3 + OBV 上升，依一把火次數排序），
+//   <b>完全沒有問卡片的判決</b> —— 跟 dna「可執行 1 檔 vs 今天 0 檔可以動」同一類病：
+//   同一個概念有兩條程式路徑。
+// → 改成直接重用 getTradingAdvice 的結果：只有卡片自己說可以進場（BUY / BUY_HALF）
+//   才推薦。濾完沒人剩下就回 null，由呼叫端明說「沒有可以追的個股」，
+//   不再因為板塊在漲就硬塞一個名字。
 function getRecommendStock(sec){
   if(!sec.tickers||!sec.tickers.length) return null;
   var candidates=[];
   sec.tickers.forEach(function(t){
     var d=cache[t];
-    if(d&&!d.err&&d.a&&d.a.phase===3&&d.a.obvRising){
-      candidates.push({t:t, fires:d.a.fires.length});
-    }
+    if(!d||d.err||!d.a) return;
+    var adv=getTradingAdvice(d.price, d.a, d.ph, null);
+    if(!adv) return;
+    if(adv.urgent!=='BUY' && adv.urgent!=='BUY_HALF') return;   // 卡片說不能進場就不推薦
+    candidates.push({t:t, fires:d.a.fires.length});
   });
   candidates.sort(function(a,b){return b.fires-a.fires;});
   return candidates.length?candidates[0].t:null;
@@ -878,11 +931,11 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   // a.chip 變數名稱保留（避免大改 code），但 UI 與 label 全部改成「技術熱度」
   // 邏輯不動：仍由 Phase + OBV + 一把火 + 均線 組成
   var chipLabel, chipMeaning, chipDanger;
-  if(a.chip < 30){chipLabel='低溫'; chipMeaning='技術指標冷清（吸籌期或下跌期）'; chipDanger=0;}
-  else if(a.chip < 60){chipLabel='升溫 ⭐'; chipMeaning='技術指標啟動，動能加速（最佳進場區）'; chipDanger=0;}
-  else if(a.chip < 85){chipLabel='高溫'; chipMeaning='技術指標已熱（續抱可，新進場謹慎）'; chipDanger=1;}
-  else if(a.chip < 95){chipLabel='過熱 🚨'; chipMeaning='技術指標過熱，短期回檔風險升高'; chipDanger=2;}
-  else {chipLabel='極度過熱 🚨🚨'; chipMeaning='技術指標極度過熱，等回測'; chipDanger=3;}
+  if(a.chip < 30){chipLabel='條件大多沒過'; chipMeaning='五項多頭條件只成立少數 —— 可能剛起步，也可能根本沒過，這個數字分不出來'; chipDanger=0;}
+  else if(a.chip < 60){chipLabel='條件過一半'; chipMeaning='五項成立一半左右 —— <b>不是「最佳進場區」</b>，要看下面哪幾項沒過'; chipDanger=0;}
+  else if(a.chip < 85){chipLabel='條件大多成立'; chipMeaning='多頭條件大多成立（續抱可，新進場謹慎）'; chipDanger=1;}
+  else if(a.chip < 95){chipLabel='幾乎全滿 · 過熱 🚨'; chipMeaning='五項幾乎全滿，短期回檔風險升高'; chipDanger=2;}
+  else {chipLabel='全部滿格 · 極度過熱 🚨🚨'; chipMeaning='五項全部滿格，等回測'; chipDanger=3;}
   var pricePos, advisory;
   if(price < a.cL){pricePos='低於主力成本'; advisory='low_cost';}
   else if(price <= a.cH){pricePos='在主力成本區內 ⭐'; advisory='in_cost';}
@@ -899,11 +952,19 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   var rrPass = rrT2 >= 3;
   // v7.1 修正：原本寫死 '+'，負數時會印成 「+-3.5%」
   var signCost = (price >= costMid ? '+' : '');
-  var dataPoints = '<div>• 現價 vs 主力成本：<b>'+signCost+pctVsCost+'%</b>（'+pricePos+'）</div>'+
+  var dataPoints = '<div>• 現價 vs 量能密集區：<b>'+signCost+pctVsCost+'%</b>（'+pricePos+'）</div>'+
+    // v7.2: 位置維度 —— 這一行就是 DELL 與 IREN 當初該被擋下來的地方
+    (a.dist150!==null?'<div>• <b>離 30 週線：'+(a.dist150>=0?'+':'')+a.dist150.toFixed(0)+'%</b>'
+        +(a.dist150<0?'（<b style="color:#cc0000;">在 30 週線下方，週線結構不成立</b>）'
+                     :(a.dist150>50?'（<b style="color:#dd6600;">已經走很遠</b>）':''))+'</div>':'')+
+    (a.off52!==null?'<div>• 離 52 週高點：<b>'+a.off52.toFixed(0)+'%</b>'
+        +(a.off52<-30?'（<b style="color:#cc0000;">這一波已受損</b>）':'')+'</div>':'')+
     '<div>• 技術熱度：<b>'+a.chip+'%</b>（'+chipLabel+'：'+chipMeaning+'）</div>'+
     '<div>• Phase 階段：<b>'+ph.title+'</b></div>'+
-    '<div>• 主力成本區：<b>$'+a.cL+' - $'+a.cH+'</b>（中位 $'+costMid.toFixed(2)+'）</div>'+
-    '<div>• T1 / T2 / T3：<b>$'+a.t1.toFixed(2)+' / $'+a.t2.toFixed(2)+' / $'+a.t3.toFixed(2)+'</b></div>'+
+    '<div>• 量能密集區：<b>$'+a.cL+' - $'+a.cH+'</b>（中位 $'+costMid.toFixed(2)+'）</div>'+
+    // v7.2: 固定倍數 T1/T2/T3 不再對外顯示，改印 ATR 版（至少跟個股波動度掛鉤）
+    '<div>• 參考區間（ATR）：停損 <b>$'+a.atrStop.toFixed(2)+'</b>（'+a.atrStopPct.toFixed(1)+'%）'
+      +'　T1 <b>$'+a.atrT1.toFixed(2)+'</b> / T2 <b>$'+a.atrT2.toFixed(2)+'</b> / T3 <b>$'+a.atrT3.toFixed(2)+'</b></div>'+
     '<div>• OBV 趨勢：<b>'+(a.obvRising?'上升（吸籌跡象）':'下降')+'</b></div>'+
     '<div>• 一把火（量增）：<b>近 60 天 '+a.fires.length+' 次</b></div>'+
     '<div>• R:R（用 T2 算）：<b>1:'+rrT2.toFixed(2)+'</b>'+(rrPass?' ✅':' ❌')+'</div>';
@@ -1057,7 +1118,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1161,7 +1222,13 @@ function fillCard(t,div){
     '<div style="font-size:11px;color:var(--dim);margin-bottom:4px;">均線: '+maStr+'</div>'+
     '<div style="font-size:10px;color:var(--dim);margin-bottom:3px;">📍 近期成本區 $'+(a?a.cL+'-$'+a.cH:'計算中...')+'</div>'+
     // ═══ v6.4 變更：卡片上的「綜合訊號強度」→「技術熱度」══════
-    (a?'<div style="font-size:'+(a.chip>=85?'13':'11')+'px;font-weight:'+(a.chip>=85?'900':'600')+';color:'+(a.chip<30?'#888':a.chip<60?'#009944':a.chip<85?'#dd6600':'#cc0000')+';margin-bottom:5px;'+(a.chip>=85?'background:rgba(255,200,200,0.4);padding:3px 6px;border-radius:5px;display:inline-block;':'')+'">技術熱度 '+a.chip+'%（'+(a.chip<30?'低溫（吸籌期）':a.chip<60?'升溫中 ⭐ 最佳':a.chip<85?'高溫（謹慎）':a.chip<95?'🚨 過熱（等回測）':'🚨🚨 極度過熱（不該追，等回測）')+'）</div>':'')+
+    (a?(function(){var _b=chipBand(a.chip);return '<div style="font-size:'+(a.chip>=85?'13':'11')+'px;font-weight:'+(a.chip>=85?'900':'600')+';color:'+_b.col+';margin-bottom:5px;'+(a.chip>=85?'background:rgba(255,200,200,0.4);padding:3px 6px;border-radius:5px;display:inline-block;':'')+'">技術熱度 '+a.chip+'%（'+_b.txt+'）</div>';})():'')+
+    // ═══ v7.2 新增：卡片上直接印週線位置 ══════════════════════════════
+    // 這一行就是 DELL（+71%）與 IREN（線下 9%）當初該被擋下來的地方。
+    // 只顯示數字與「在 30 週線上／下」，不下判斷 —— 判斷交給 dna。
+    (a&&a.dist150!==null?'<div style="font-size:11px;margin-bottom:5px;color:'+(a.dist150<0?'#cc0000':a.dist150>50?'#dd6600':'#555')+';">'
+      +(a.dist150<0?'⚠ 在 30 週線<b>下方</b> '+Math.abs(a.dist150).toFixed(0)+'%':'離 30 週線 <b>+'+a.dist150.toFixed(0)+'%</b>')
+      +(a.off52!==null?'　·　離 52 週高點 '+a.off52.toFixed(0)+'%':'')+'</div>':'')+
     (a?'<div style="font-size:10px;color:#666;margin-bottom:4px;">T1 <b style="color:#dd6600;">$'+a.t1.toFixed(1)+'</b>　T2 <b style="color:#cc1133;">$'+a.t2.toFixed(1)+'</b>　T3 <b style="color:#990033;">$'+a.t3.toFixed(1)+'</b></div>':'')+
     '<div class="arrow-row"><div class="arrow-lbl" style="left:'+np+'%">▼$'+p.toFixed(1)+'</div></div>'+
     '<div class="cost-track">'+
@@ -1236,22 +1303,39 @@ function showDetail(t){
       '<div class="dtitle">📊 技術熱度（Phase + OBV + 一把火 + 均線）</div>'+
       '<div class="big-chip bc-'+cc+'">'+cn+'%</div>'+
       '<div class="chip-track" style="height:12px;"><div class="chip-fill cf-'+cc+'" style="width:'+cn+'%;height:100%;"></div></div>'+
-      '<div class="cost-axis" style="margin-top:5px;"><span>0% 低溫</span><span>30-60% 升溫 ⭐</span><span>100% 過熱</span></div>'+
-      // ═══ v6.4 變更：說明文字 ═══
+      '<div class="cost-axis" style="margin-top:5px;"><span>0% 一項都沒過</span><span>50% 過一半</span><span>100% 全滿</span></div>'+
+      // ═══ v7.2 新增：把五項攤開，讓分數看得懂是怎麼來的 ═══════════
+      (a&&a.chipParts?'<div style="margin-top:8px;font-size:11.5px;line-height:1.9;">'
+        +a.chipParts.map(function(p){
+            return '<div style="display:flex;justify-content:space-between;border-bottom:1px dashed rgba(0,0,0,.08);">'
+              +'<span style="color:'+(p.ok?'#009944':'#aa4444')+';">'+(p.ok?'✓':'✗')+' '+p.txt+'</span>'
+              +'<span style="color:#888;font-family:monospace;">+'+p.pts+'</span></div>';
+          }).join('')
+        +'</div>':'')+
       '<div style="margin-top:8px;font-size:11px;color:#666;line-height:1.6;background:#f5f5f5;padding:8px;border-radius:6px;">'+
-        '<b>ⓘ 說明：</b>這是「Phase + OBV + 一把火 + 均線」綜合<b>技術熱度分數</b>，<b>不是主力籌碼分析</b>。<br>'+
-        '<b>0-30% 低溫</b>：技術指標冷清，多為吸籌期或下跌期（觀察）<br>'+
-        '<b>30-60% 升溫 ⭐</b>：技術指標啟動，動能加速（最佳進場區）<br>'+
-        '<b>60-85% 高溫</b>：技術指標已熱，續抱可，新進場需謹慎<br>'+
-        '<b>85-95% 過熱 🚨</b>：技術指標過熱，不該追高，等回測<br>'+
-        '<b>95%+ 極度過熱 🚨🚨</b>：技術指標極度過熱，絕對不該追，等回測'+
+        '<b>ⓘ 這個數字在量什麼：</b>它是<b>「現在有幾項多頭條件成立」的加總</b>，'+
+        '<b style="color:#aa4444;">不是越高越好，也不是越低越好</b>。<br>'+
+        '低分有兩種完全相反的原因：<b>①真的剛起步</b>（條件正要一項一項亮起來）'+
+        '<b>②條件根本沒過</b>（例如 OBV 在下降、均線沒有多頭排列）—— <b>這個分數分不出這兩種</b>，'+
+        '要看上面那五項各自的成敗。<br>'+
+        '<b>而且它完全沒有「這一波走到哪裡」的概念</b> —— 一檔剛突破的股票和一檔已經漲了七倍的股票，'+
+        '只要當下條件一樣，分數就一樣。要判斷位置，看卡片上的<b>離 30 週線 %</b> 與<b>離 52 週高點 %</b>，'+
+        '真正的買賣判決回 dna。'+
       '</div>'+
     '</div>'+
     (a?
     '<div class="dc">'+
-      '<div class="dtitle">📍 主力成本密集區 + T1/T2/T3 目標</div>'+
+      '<div class="dtitle">📍 量能密集區（近 60 天）</div>'+
       '<div class="cost-big">$'+a.cL+' -- $'+a.cH+'</div>'+
-      '<div style="font-size:11px;color:#666;margin-bottom:4px;">📐 固定倍數：T1 <b style="color:#dd6600;">$'+a.t1.toFixed(2)+'</b>　T2 <b style="color:#cc1133;">$'+a.t2.toFixed(2)+'</b>　T3 <b style="color:#990033;">$'+a.t3.toFixed(2)+'</b></div>'+
+      // ═══ v7.2:【固定倍數 T1/T2/T3 已移除】════════════════════════
+      // 舊版：T1/T2/T3 = 成本中位 × 1.3 / 1.5 / 1.8。那三個倍數是四個月前隨手定的，
+      // 與線型、個股波動度、Jasmine 的方法論全都無關。
+      // 查證（Minervini）：他明確主張<b>不要設固定目標價</b>，改用上升中的 10 或 21 EMA
+      // 跟蹤停利。而 Jasmine 自己的出場規則本來就是「跌破 20 日均線或離開 Stage 2」——
+      // 固定倍數留著只會在畫面上跟她的紀律打架。
+      // → 只保留 ATR 動態那一版（它至少跟個股波動度掛鉤），並改名叫「參考區間」。
+      '<div style="font-size:10.5px;color:#888;margin-bottom:4px;">這是「近 60 天成交量最密集的價格帶」，'+
+        '<b>不是主力真的在那裡買</b>。當支撐帶看，不要當成本讀。</div>'+
       '<div style="font-size:11px;color:#666;margin-bottom:10px;background:#f5f0ff;padding:4px 6px;border-radius:4px;border-left:3px solid #7c3aed;">⚡ ATR 動態：停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b><span style="color:#cc0000;font-size:10px;">（'+a.atrStopPct.toFixed(1)+'%）</span>　T1 <b style="color:#dd6600;">$'+a.atrT1.toFixed(2)+'</b>　T2 <b style="color:#cc1133;">$'+a.atrT2.toFixed(2)+'</b>　T3 <b style="color:#990033;">$'+a.atrT3.toFixed(2)+'</b><br><span style="color:#7c3aed;font-size:10px;">→ 推薦此版本（基於 ATR $'+a.atr14.toFixed(2)+'）</span></div>'+
       '<div class="arrow-row"><div class="arrow-lbl" style="left:'+np+'%">▼ $'+p.toFixed(2)+'</div></div>'+
       '<div class="cost-track" style="height:14px;position:relative;">'+
@@ -1273,7 +1357,9 @@ function showDetail(t){
       '<div class="dr"><span>底部確認</span><span class="dv-b">$'+a.botP.toFixed(2)+'（'+a.botD+'）</span></div>'+
       '<div class="dr"><span>主力成本（中位）</span><span class="dv-b">$'+a.mainCostMid.toFixed(2)+'</span></div>'+
       '<div class="dr"><span>加權成本</span><span class="dv-b">$'+a.wc+'</span></div>'+
-      '<div class="dr"><span>T1 / T2 / T3 目標</span><span><span style="color:#dd6600;font-weight:600;">$'+a.t1.toFixed(2)+'</span> / <span style="color:#cc1133;font-weight:600;">$'+a.t2.toFixed(2)+'</span> / <span style="color:#990033;font-weight:600;">$'+a.t3.toFixed(2)+'</span></span></div>'+
+      '<div class="dr"><span>離 30 週線 / 離 52 週高點</span><span>'
+        +(a.dist150!==null?'<span style="font-weight:700;color:'+(a.dist150<0?'#cc0000':a.dist150>50?'#dd6600':'#0066bb')+';">'+(a.dist150>=0?'+':'')+a.dist150.toFixed(0)+'%</span>':'—')
+        +' / '+(a.off52!==null?'<span style="font-weight:700;color:'+(a.off52<-30?'#cc0000':'#666')+';">'+a.off52.toFixed(0)+'%</span>':'—')+'</span></div>'+
       '<div class="dr"><span>現價</span><span class="'+(d.up?'dv-g':'dv-r')+'">$'+p.toFixed(2)+'</span></div>'+
       '<div class="dr"><span>MA5 / MA8 / MA10 / MA21</span><span style="font-size:11px;">$'+a.ma5.toFixed(1)+' / <b style="color:#0066cc;">$'+a.ma8.toFixed(1)+'</b> / $'+a.ma10.toFixed(1)+' / <b style="color:#cc6600;">$'+a.ma21.toFixed(1)+'</b></span></div>'+
       '<div class="dr"><span>ATR(14) / 波動率</span><span><b style="color:#7c3aed;">$'+a.atr14.toFixed(2)+'</b> <span style="color:#888;font-size:11px;">('+a.atrPct.toFixed(1)+'%)</span></span></div>'+
@@ -1300,7 +1386,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1416,7 +1502,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
