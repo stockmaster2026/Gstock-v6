@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.3</div>
+  <div class="logo">飆股<span>RADAR</span> v7.5</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -498,7 +498,7 @@ function analyzeYahoo(result, floatShares){
     //   IREN 畫面上就出現「✗ Phase 2」卻給 +30 分 —— 打叉又給分，當然看不懂。
     //   → Phase 這一列改成中性標記（ok:null），只講它是第幾階段與 3 以上才算亮。
     var chipParts=[
-      {n:'Phase',   ok:null,            txt:'Phase '+phase+'（3 以上才算亮）',                  pts:phase*15},
+      {n:'均線排列',ok:null,            txt:'均線排列 '+phase+'/4（3 以上才算亮・非 Weinstein 階段）',                  pts:phase*15},
       {n:'OBV',     ok:obvRising,       txt:obvRising?'OBV 上升':'OBV 下降',                    pts:obvRising?20:0},
       {n:'一把火',  ok:fires.length>0,  txt:'一把火 '+fires.length+' 次',                       pts:Math.min(fires.length*5,15)},
       {n:'MA20',    ok:aboveMA20,       txt:aboveMA20?'站上 MA20':'在 MA20 下方',               pts:aboveMA20?10:0},
@@ -552,13 +552,24 @@ async function loadStock(t){
   return cache[t];
 }
 
+// ═══ v7.4:【「Phase2」被讀成「Stage 2」—— 今天最危險的一個誤導】═══════
+// Jasmine(9/3) 抓到：radar 對 IREN 印「Phase2 啟動訊號」，但那檔在 30 週線下方 8%、
+// 從高點跌 46%，dna 與 Pine 都判 Stage 4 下跌。
+// ⚠ 兩件事都沒算錯 —— radar 的 phase 量的是【均線排列到哪個程度】：
+//     4＝多頭排列且離 MA20 >30%（最熱）／3＝多頭排列且站上 MA20
+//     2＝非空頭排列＋有一把火＋站上 MA20／1＝以上皆非
+//   IREN 確實有一把火、確實站上 20 日均線，所以 phase 2 是對的。
+//   <b>錯的是命名</b>：它跟 Weinstein 的 Stage 1-4 用同一組數字，而且
+//   <b>radar 的 4＝最熱（天花板），Weinstein 的 4＝崩跌（地板），意思剛好相反</b>。
+//   Stage 2 是 Jasmine 整套方法論的核心詞，這個撞名比任何算錯都危險。
+// → 數字全部拿掉，改用講它實際在量的東西的名字；並在畫面明講「這不是 Weinstein 階段」。
 function getPhase(price,a){
   if(!a) return{ph:'wait',badge:'⚠️ 數據不足',sc:'sl-r',bd:'bd-r',ac:'adv-r',at:'at-r',icon:'⚠️',title:'數據不足',text:'無法分析'};
-  if(a.phase===4) return{ph:'hot',badge:'🔴 Phase4 過熱·勿追買',sc:'sl-r',bd:'bd-r',ac:'adv-r',at:'at-r',icon:'⚡',title:'過熱，不追買',text:'均線多頭但離MA20超過30%，等回測MA20再考慮。'};
-  if(a.phase===3) return{ph:'hold',badge:'🟢 Phase3 多頭進行中',sc:'sl-g',bd:'bd-g',ac:'adv-g',at:'at-g',icon:'✅',title:'多頭進行中',text:'均線多頭排列，可持有。等回測MA20是加碼機會。'};
-  if(a.phase===2) return{ph:'watch',badge:'🟠 Phase2 啟動訊號',sc:'sl-o',bd:'bd-o',ac:'adv-o',at:'at-o',icon:'🚀',title:'啟動訊號出現',text:'有一把火確認！等量能持續+收盤站穩MA20進場。'};
-  if(a.obvRising) return{ph:'accum',badge:'🟡 Phase1 主力吸籌中',sc:'sl-b',bd:'bd-b',ac:'adv-b',at:'at-b',icon:'🐋',title:'主力吸籌中',text:'空頭走勢但OBV上升，主力悄悄買入。等Phase2訊號。'};
-  return{ph:'wait',badge:'🔴 Phase1 空頭整理',sc:'sl-r',bd:'bd-r',ac:'adv-r',at:'at-r',icon:'⏳',title:'觀望',text:'空頭排列，OBV未見異常，暫時觀望。'};
+  if(a.phase===4) return{ph:'hot',badge:'🔴 均線多頭·離MA20過遠',sc:'sl-r',bd:'bd-r',ac:'adv-r',at:'at-r',icon:'⚡',title:'離 MA20 過遠',text:'均線多頭但離MA20超過30%，等回測MA20再考慮。（這是均線排列，不是 Weinstein 階段）'};
+  if(a.phase===3) return{ph:'hold',badge:'🟢 均線多頭排列',sc:'sl-g',bd:'bd-g',ac:'adv-g',at:'at-g',icon:'✅',title:'均線多頭排列',text:'均線多頭排列，可持有。等回測MA20是加碼機會。（這是均線排列，不是 Weinstein 階段）'};
+  if(a.phase===2) return{ph:'watch',badge:'🟠 有一把火·站上MA20',sc:'sl-o',bd:'bd-o',ac:'adv-o',at:'at-o',icon:'🚀',title:'有一把火·站上MA20',text:'有一把火＋收在 MA20 上方。<b>這只是均線與量的狀態，不代表週線在 Stage 2</b> —— 週線位置看上面的「離 30 週線」。'};
+  if(a.obvRising) return{ph:'accum',badge:'🟡 空頭排列·但OBV上升',sc:'sl-b',bd:'bd-b',ac:'adv-b',at:'at-b',icon:'🐋',title:'空頭排列·OBV上升',text:'空頭排列但OBV上升。可能是吸籌，也可能只是跌深反彈 —— 這一格分不出來。'};
+  return{ph:'wait',badge:'🔴 空頭排列',sc:'sl-r',bd:'bd-r',ac:'adv-r',at:'at-r',icon:'⏳',title:'空頭排列',text:'空頭排列，OBV未見異常，暫時觀望。'};
 }
 
 function ccls(c){return c>=100?'full':c>=60?'high':c>=30?'mid':'low';}
@@ -960,13 +971,13 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   var dataPoints = '<div>• 現價 vs 量能密集區：<b>'+signCost+pctVsCost+'%</b>（'+pricePos+'）</div>'+
     // v7.2: 位置維度 —— 這一行就是 DELL 與 IREN 當初該被擋下來的地方
     (a.dist150!==null?'<div>• <b>離 30 週線：'+(a.dist150>=0?'+':'')+a.dist150.toFixed(0)+'%</b>'
-        +(a.dist150<0?'（<b style="color:#cc0000;">在 30 週線下方，週線結構不成立</b>）'
+        +(a.dist150<0?'（<b style="color:#cc0000;">在 30 週線下方 → 不是 Stage 2</b>，週線結構不成立）'
                      :(a.dist150>50?'（<b style="color:#dd6600;">已經走很遠</b>）':''))+'</div>':'')+
     (a.off52!==null?'<div>• 離 52 週高點：<b>'+a.off52.toFixed(0)+'%</b>'
         +(a.off52<-30?'（<b style="color:#cc0000;">這一波已受損</b>）':'')+'</div>':'')+
-    '<div>• 多頭條件：<b>5 項亮了 '+(a.chipLit!==undefined?a.chipLit:'—')+' 項</b>（加權 '+a.chip+'%：'+chipLabel+'）'
-      +'<span style="color:#888;">—— 這是過熱警報器，只有 85% 以上那一端可靠</span></div>'+
-    '<div>• Phase 階段：<b>'+ph.title+'</b></div>'+
+    '<div>• 多頭條件：<b>'+(a.chipLit!==undefined?a.chipLit:'—')+'/5 亮</b>'
+      +'<span style="color:#888;">　—— 看缺哪幾項，不要看亮幾項；五項全亮＝不要追</span></div>'+
+    '<div>• 均線排列：<b>'+ph.title+'</b><span style="color:#888;">　—— 這不是 Weinstein 階段</span></div>'+
     '<div>• 量能密集區：<b>$'+a.cL+' - $'+a.cH+'</b>（中位 $'+costMid.toFixed(2)+'）</div>'+
     // v7.2: 固定倍數 T1/T2/T3 不再對外顯示，改印 ATR 版（至少跟個股波動度掛鉤）
     '<div>• 參考區間（ATR）：停損 <b>$'+a.atrStop.toFixed(2)+'</b>（'+a.atrStopPct.toFixed(1)+'%）'
@@ -1082,7 +1093,7 @@ function getTradingAdvice(price, a, ph, holdingInfo){
       return {urgent:'BUY_HALF', icon:'🟢', mainTitle:'可控位進場',
         actionLine:'Phase3 但離成本較遠',
         bg:'#f0f8e8', border:'#88aa44', titleColor:'#5a7a2a',
-        summary:'現價 $'+price.toFixed(2)+' 高於成本但未達 T1，Phase3 多頭。可進場但要控位。',
+        summary:'現價 $'+price.toFixed(2)+' 高於成本但未達 T1，均線多頭排列。可進場但要控位。',
         dataPoints:dataPoints, suggestion:'🟢 部位減半（池子 3-5%）｜停損 $'+stopLoss.toFixed(2)+(holdingAction?'<br><br>'+holdingAction:'')};
     } else {
       return {urgent:'WAIT', icon:'⏳', mainTitle:'觀察為主',
@@ -1091,7 +1102,7 @@ function getTradingAdvice(price, a, ph, holdingInfo){
         summary:(function(){
           // v7.1：改用陣列 join，不再每項都接頓號（舊版結尾會多一個「、建議」）
           var miss=[];
-          if(a.phase!==3) miss.push('Phase 還不是 3（目前 '+ph.title+'）');
+          if(a.phase!==3) miss.push('均線還沒多頭排列（目前 '+ph.title+'）');
           if(!a.obvRising) miss.push('OBV 下降');
           if(chipDanger!==0) miss.push('技術熱度偏高');
           return '現價高於主力成本但尚未達 T1。'+
@@ -1124,7 +1135,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1233,7 +1244,7 @@ function fillCard(t,div){
     // 這一行就是 DELL（+71%）與 IREN（線下 9%）當初該被擋下來的地方。
     // 只顯示數字與「在 30 週線上／下」，不下判斷 —— 判斷交給 dna。
     (a&&a.dist150!==null?'<div style="font-size:11px;margin-bottom:5px;color:'+(a.dist150<0?'#cc0000':a.dist150>50?'#dd6600':'#555')+';">'
-      +(a.dist150<0?'⚠ 在 30 週線<b>下方</b> '+Math.abs(a.dist150).toFixed(0)+'%':'離 30 週線 <b>+'+a.dist150.toFixed(0)+'%</b>')
+      +(a.dist150<0?'⛔ <b>不是 Stage 2</b> —— 在 30 週線<b>下方</b> '+Math.abs(a.dist150).toFixed(0)+'%':'離 30 週線 <b>+'+a.dist150.toFixed(0)+'%</b>')
       +(a.off52!==null?'　·　離 52 週高點 '+a.off52.toFixed(0)+'%':'')+'</div>':'')+
     (a?'<div style="font-size:10px;color:#666;margin-bottom:4px;">T1 <b style="color:#dd6600;">$'+a.t1.toFixed(1)+'</b>　T2 <b style="color:#cc1133;">$'+a.t2.toFixed(1)+'</b>　T3 <b style="color:#990033;">$'+a.t3.toFixed(1)+'</b></div>':'')+
     '<div class="arrow-row"><div class="arrow-lbl" style="left:'+np+'%">▼$'+p.toFixed(1)+'</div></div>'+
@@ -1287,7 +1298,41 @@ function showDetail(t){
     }
   }
   var advice = getTradingAdvice(p, a, ph, holdingInfo);
+  // ═══ v7.5:【一眼看完的總結 —— 東西全在同一頁但分散在五個框裡】═══════
+  // Jasmine(9/3):「最後總結其實是想告訴我這一檔目前例如他在哪一個 stage、
+  //   他的成本…不要分不同的框。」
+  // → 把四個問題按順序排成一格：①這一波在哪 ②支撐在哪 ③風險多大 ④條件缺哪幾項。
+  //   全部重用已經算好的值，<b>沒有新增任何判斷</b>。
+  var sumHtml = a ? (
+    '<div class="dc" style="border:2px solid #dd6600;background:#fffdf5;">'+
+      '<div class="dtitle" style="color:#dd6600;">📋 一眼看完 —— '+t+' $'+p.toFixed(2)+'</div>'+
+      '<div style="font-size:12.5px;line-height:2.0;">'+
+        '<div><b>① 這一波在哪</b>　'+
+          (a.dist150===null?'<span style="color:#888;">資料不足（不滿 150 根）</span>'
+           :(a.dist150<0
+              ?'<b style="color:#cc0000;">⛔ 不是 Stage 2</b> —— 在 30 週線下方 '+Math.abs(a.dist150).toFixed(0)+'%'
+              :'在 30 週線上方 <b>+'+a.dist150.toFixed(0)+'%</b>'+(a.dist150>50?'<b style="color:#dd6600;">（已經走很遠）</b>':'')))+
+          (a.off52!==null?'　·　離 52 週高點 <b style="color:'+(a.off52<-30?'#cc0000':'#666')+';">'+a.off52.toFixed(0)+'%</b>'
+            +(a.off52<-30?'<b style="color:#cc0000;">（這一波已受損）</b>':''):'')+
+          '</div>'+
+        '<div><b>② 支撐／成本在哪</b>　量能密集區 <b style="color:#0066bb;">$'+a.cL+' - $'+a.cH+'</b>'+
+          '（中位 $'+a.mainCostMid.toFixed(2)+'）　現價 <b>'+(p>=a.mainCostMid?'+':'')+((p/a.mainCostMid-1)*100).toFixed(1)+'%</b> 於中位</div>'+
+        '<div><b>③ 風險多大</b>　停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b>'+
+          '（<b>'+a.atrStopPct.toFixed(1)+'%</b>，取 1.5×ATR 與 −8% 較嚴者）</div>'+
+        '<div><b>④ 多頭條件缺哪幾項</b>　'+
+          (a.chipParts?a.chipParts.filter(function(x){return x.ok===false;}).map(function(x){return x.txt;}).join('、')||'<b style="color:#009944;">五項全亮</b>':'—')+
+          '　<span style="color:#888;">（'+(a.chipLit!==undefined?a.chipLit:'—')+'/5 亮）</span></div>'+
+        '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ddd;"><b>→ 結論</b>　'+
+          '<b style="color:'+advice.titleColor+';">'+advice.mainTitle+'</b>'+
+          (advice.actionLine?'　'+advice.actionLine:'')+'</div>'+
+      '</div>'+
+      '<div style="margin-top:8px;font-size:11px;color:#cc0000;background:#fff0f0;padding:6px 8px;border-radius:5px;">'+
+        '⚠ <b>這一頁不做買賣判決。</b>買價、停損位置、週線 Stage 以 dna 為準 —— 這裡只提供位置、支撐帶與條件清單。'+
+      '</div>'+
+    '</div>'
+  ) : '';
   document.getElementById('detailPage').innerHTML=
+    sumHtml+
     '<div class="dc" style="background:'+advice.bg+';border:3px solid '+advice.border+';padding:18px 14px;">'+
       '<div style="text-align:center;font-size:54px;line-height:1;margin-bottom:6px;">'+advice.icon+'</div>'+
       '<div style="text-align:center;font-size:28px;font-weight:900;color:'+advice.titleColor+';margin-bottom:6px;letter-spacing:2px;">'+advice.mainTitle+'</div>'+
@@ -1306,17 +1351,23 @@ function showDetail(t){
     '</div>'+
     // ═══ v6.4 變更：「綜合訊號強度」→「技術熱度」標題 ═════════
     '<div class="dc">'+
-      '<div class="dtitle">📊 多頭條件計分（Phase／OBV／一把火／MA20／多頭排列）</div>'+
-      // ═══ v7.3:【百分比條本身就在誤導】════════════════════════════
-      // Jasmine 問了三次「幾 % 才算好」—— 問題不在解釋不夠，在畫面。
-      // 一個 0~100% 的進度條，視覺上就是在說「越滿越好」，寫再多字在旁邊都蓋不過它。
-      // → 標題改成「5 項過了 N 項」，百分比降成小字附註，進度條保留但只當視覺輔助。
-      '<div class="big-chip bc-'+cc+'" style="font-size:24px;">5 項亮了 '
-        +(a&&a.chipLit!==undefined?a.chipLit:'—')+' 項</div>'+
-      '<div style="font-size:12px;color:#888;margin:-2px 0 6px;">加權分數 '+cn+'%（各項權重不同，所以不等於 '
-        +(a&&a.chipLit!==undefined?a.chipLit:'—')+'/5）</div>'+
-      '<div class="chip-track" style="height:12px;"><div class="chip-fill cf-'+cc+'" style="width:'+cn+'%;height:100%;"></div></div>'+
-      '<div class="cost-axis" style="margin-top:5px;"><span>0% 一項都沒過</span><span>50% 過一半</span><span>100% 全滿</span></div>'+
+      '<div class="dtitle">📊 多頭條件清單（均線排列／OBV／一把火／MA20／多頭排列）</div>'+
+      '<div style="font-size:11.5px;color:#cc0000;background:#fff0f0;padding:6px 8px;border-radius:5px;margin-bottom:6px;border-left:3px solid #cc0000;">'+
+        '⚠ <b>這裡的分級是「均線排列」，跟 Weinstein 的 Stage 1-4 完全無關</b>，'+
+        '而且數字剛好相反 —— 這裡的最高級是<b>最熱</b>，Weinstein 的 Stage 4 是<b>崩跌</b>。'+
+        '一檔已經跌破 30 週線的股票，只要有一把火＋站上 MA20，這裡照樣會亮。'+
+        '<b>週線階段看上面的「離 30 週線」，或直接回 dna。</b>'+
+      '</div>'+
+      // ═══ v7.5:【分數刪掉，只留清單】═════════════════════════════
+      // Jasmine(9/3):「85% 已經過熱沒有參考價值，30-60 又不準確，那我就不知道
+      //   它存在的意義是什麼。」—— 她說得對，而且理由比「不準」更根本：
+      //   ⚠ 這五項<b>全部都已經單獨顯示在同一頁上了</b>（Phase 標籤、OBV、一把火、
+      //     均線那幾行）。加權相加不帶進任何新資訊，只是<b>製造一個看起來像結論的數字</b>。
+      //   → 百分比與進度條整個移除，只留五項清單（每一行都是事實，而且看得到缺哪一項）。
+      '<div style="font-size:15px;font-weight:800;color:#555;margin-bottom:2px;">'
+        +(a&&a.chipLit!==undefined?a.chipLit:'—')+' / 5 亮</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:6px;">這裡只列事實，<b>不給總分</b>'+
+        ' —— 加總成一個百分比會變成一個假的結論，而這五項下面每一行都已經是原始事實。</div>'+
       // ═══ v7.2 新增：把五項攤開，讓分數看得懂是怎麼來的 ═══════════
       (a&&a.chipParts?'<div style="margin-top:8px;font-size:11.5px;line-height:1.9;">'
         +a.chipParts.map(function(p){
@@ -1327,19 +1378,17 @@ function showDetail(t){
           }).join('')
         +'</div>':'')+
       '<div style="margin-top:8px;font-size:12px;line-height:1.75;background:#fff8e6;padding:9px;border-radius:6px;border-left:4px solid #dd6600;">'+
-        '<b style="font-size:13px;">怎麼用這個數字 —— 一句話：<span style="color:#cc0000;">它是過熱警報器，不是進場指南針。</span></b><br><br>'+
-        '<b>它在量什麼：</b>上面那五項多頭條件，現在亮了幾項。就這樣。<br>'+
-        '<b style="color:#cc0000;">沒有「最好的範圍」</b> —— 它只有一端能用：<br>'+
-        '<div style="margin:5px 0 5px 8px;">'+
-          '<b style="color:#cc0000;">・85% 以上</b>　五項幾乎全亮＝該漲的都漲了。<b>這是它唯一可靠的訊號：不要追。</b><br>'+
-          '<b style="color:#8a7a4a;">・30~60%</b>　<b>無法判斷</b>。可能真的剛起步，也可能條件壞掉 —— 一定要看上面<b>是哪幾項沒過</b>。<br>'+
-          '<b style="color:#888;">・30% 以下</b>　多頭條件幾乎沒有，不是這檔的時候。'+
-        '</div>'+
-        '<b>為什麼中間那段不能用：</b>低分有兩種完全相反的原因 —— ①真的剛起步 ②條件根本沒過。'+
-        '這個數字<b>分不出這兩種</b>。（實例：IREN 45% 是後者，OBV 在下降、均線沒有多頭排列。）<br>'+
-        '<b>而且它沒有「這一波走到哪裡」的概念</b> —— 一檔剛突破的和一檔已經漲了七倍的，只要當下條件一樣，分數就一樣。<br><br>'+
-        '<b>那該看什麼：</b>位置看卡片上的<b>離 30 週線 %</b> 與<b>離 52 週高點 %</b>；'+
-        '<b style="color:#cc0000;">該不該買、買在哪、停損放哪，回 dna。這一格不負責買賣判決。</b>'+
+        '<b style="font-size:13px;">怎麼用這五項</b><br><br>'+
+        '<b>它們是「現在有哪幾項多頭條件成立」的清單，不是分數。</b>'+
+        '原本這裡有一個 0~100% 的加權百分比，v7.5 拿掉了 —— 因為'+
+        '<b style="color:#cc0000;">那五項全部都已經單獨顯示在這一頁上</b>，'+
+        '加總只是製造一個看起來像結論的數字。<br><br>'+
+        '<b>唯一穩定可讀的訊號是「五項全亮」</b> —— 那代表這一波該漲的都漲了，不要追。'+
+        '亮 2~3 項則<b>無法判斷</b>：可能真的剛起步，也可能條件正在壞掉'+
+        '（IREN 亮 2 項，缺的是 OBV 與多頭排列 —— 是後者）。<b>看缺哪幾項，不要看亮幾項。</b><br><br>'+
+        '<b>而且這五項沒有「這一波走到哪裡」的概念</b> —— 一檔剛突破的和一檔已經漲了七倍的，'+
+        '只要當下條件一樣，清單就一樣。位置看最上面總結的<b>離 30 週線</b>與<b>離 52 週高點</b>；'+
+        '<b style="color:#cc0000;">該不該買、買在哪、停損放哪，回 dna。</b>'+
       '</div>'+
     '</div>'+
     (a?
@@ -1405,7 +1454,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1521,7 +1570,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
