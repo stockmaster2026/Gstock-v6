@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.2</div>
+  <div class="logo">飆股<span>RADAR</span> v7.3</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -494,13 +494,18 @@ function analyzeYahoo(result, floatShares){
     //   ①真的剛起步（條件正要一項一項亮起來）②條件根本沒過。
     //   IREN 45 分是後者（OBV 在下降、均線沒有多頭排列），卻被標成「⭐最佳進場區」。
     // → 把五項的成敗與各自得分列出來，讓 45 分是怎麼來的看得見。
+    // ⚠ v7.3 修：Phase 是 1~4 的階段，不是「過／沒過」。舊版寫 ok:phase>=3，
+    //   IREN 畫面上就出現「✗ Phase 2」卻給 +30 分 —— 打叉又給分，當然看不懂。
+    //   → Phase 這一列改成中性標記（ok:null），只講它是第幾階段與 3 以上才算亮。
     var chipParts=[
-      {n:'Phase',   ok:phase>=3,        txt:'Phase '+phase,                                    pts:phase*15},
+      {n:'Phase',   ok:null,            txt:'Phase '+phase+'（3 以上才算亮）',                  pts:phase*15},
       {n:'OBV',     ok:obvRising,       txt:obvRising?'OBV 上升':'OBV 下降',                    pts:obvRising?20:0},
       {n:'一把火',  ok:fires.length>0,  txt:'一把火 '+fires.length+' 次',                       pts:Math.min(fires.length*5,15)},
       {n:'MA20',    ok:aboveMA20,       txt:aboveMA20?'站上 MA20':'在 MA20 下方',               pts:aboveMA20?10:0},
       {n:'多頭排列',ok:maUpTrend,       txt:maUpTrend?'均線多頭排列':'均線未多頭排列',           pts:maUpTrend?15:0}
     ];
+    // v7.3:「亮了幾項」才是這個數字真正的內容 —— 百分比只是它的包裝
+    var chipLit = (phase>=3?1:0) + (obvRising?1:0) + (fires.length>0?1:0) + (aboveMA20?1:0) + (maUpTrend?1:0);
     var mainCostMid=(cL+cH)/2;
     var t1=mainCostMid*1.3;
     var t2=mainCostMid*1.5;
@@ -522,7 +527,7 @@ function analyzeYahoo(result, floatShares){
       obvRising:obvRising,fires:fires,avgVol20:avgVol20,
       cL:cL,cH:cH,step:step,wc:wc,distMA20:distMA20,
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
-      botP:botP,botD:botD,chip:chip,chipParts:chipParts,
+      botP:botP,botD:botD,chip:chip,chipParts:chipParts,chipLit:chipLit,
       ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,
       t1:t1,t2:t2,t3:t3,mainCostMid:mainCostMid};
   }catch(e){return null;}
@@ -959,7 +964,8 @@ function getTradingAdvice(price, a, ph, holdingInfo){
                      :(a.dist150>50?'（<b style="color:#dd6600;">已經走很遠</b>）':''))+'</div>':'')+
     (a.off52!==null?'<div>• 離 52 週高點：<b>'+a.off52.toFixed(0)+'%</b>'
         +(a.off52<-30?'（<b style="color:#cc0000;">這一波已受損</b>）':'')+'</div>':'')+
-    '<div>• 技術熱度：<b>'+a.chip+'%</b>（'+chipLabel+'：'+chipMeaning+'）</div>'+
+    '<div>• 多頭條件：<b>5 項亮了 '+(a.chipLit!==undefined?a.chipLit:'—')+' 項</b>（加權 '+a.chip+'%：'+chipLabel+'）'
+      +'<span style="color:#888;">—— 這是過熱警報器，只有 85% 以上那一端可靠</span></div>'+
     '<div>• Phase 階段：<b>'+ph.title+'</b></div>'+
     '<div>• 量能密集區：<b>$'+a.cL+' - $'+a.cH+'</b>（中位 $'+costMid.toFixed(2)+'）</div>'+
     // v7.2: 固定倍數 T1/T2/T3 不再對外顯示，改印 ATR 版（至少跟個股波動度掛鉤）
@@ -1118,7 +1124,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1300,27 +1306,40 @@ function showDetail(t){
     '</div>'+
     // ═══ v6.4 變更：「綜合訊號強度」→「技術熱度」標題 ═════════
     '<div class="dc">'+
-      '<div class="dtitle">📊 技術熱度（Phase + OBV + 一把火 + 均線）</div>'+
-      '<div class="big-chip bc-'+cc+'">'+cn+'%</div>'+
+      '<div class="dtitle">📊 多頭條件計分（Phase／OBV／一把火／MA20／多頭排列）</div>'+
+      // ═══ v7.3:【百分比條本身就在誤導】════════════════════════════
+      // Jasmine 問了三次「幾 % 才算好」—— 問題不在解釋不夠，在畫面。
+      // 一個 0~100% 的進度條，視覺上就是在說「越滿越好」，寫再多字在旁邊都蓋不過它。
+      // → 標題改成「5 項過了 N 項」，百分比降成小字附註，進度條保留但只當視覺輔助。
+      '<div class="big-chip bc-'+cc+'" style="font-size:24px;">5 項亮了 '
+        +(a&&a.chipLit!==undefined?a.chipLit:'—')+' 項</div>'+
+      '<div style="font-size:12px;color:#888;margin:-2px 0 6px;">加權分數 '+cn+'%（各項權重不同，所以不等於 '
+        +(a&&a.chipLit!==undefined?a.chipLit:'—')+'/5）</div>'+
       '<div class="chip-track" style="height:12px;"><div class="chip-fill cf-'+cc+'" style="width:'+cn+'%;height:100%;"></div></div>'+
       '<div class="cost-axis" style="margin-top:5px;"><span>0% 一項都沒過</span><span>50% 過一半</span><span>100% 全滿</span></div>'+
       // ═══ v7.2 新增：把五項攤開，讓分數看得懂是怎麼來的 ═══════════
       (a&&a.chipParts?'<div style="margin-top:8px;font-size:11.5px;line-height:1.9;">'
         +a.chipParts.map(function(p){
             return '<div style="display:flex;justify-content:space-between;border-bottom:1px dashed rgba(0,0,0,.08);">'
-              +'<span style="color:'+(p.ok?'#009944':'#aa4444')+';">'+(p.ok?'✓':'✗')+' '+p.txt+'</span>'
+              +'<span style="color:'+(p.ok===null?'#666666':(p.ok?'#009944':'#aa4444'))+';">'
+                +(p.ok===null?'·':(p.ok?'✓':'✗'))+' '+p.txt+'</span>'
               +'<span style="color:#888;font-family:monospace;">+'+p.pts+'</span></div>';
           }).join('')
         +'</div>':'')+
-      '<div style="margin-top:8px;font-size:11px;color:#666;line-height:1.6;background:#f5f5f5;padding:8px;border-radius:6px;">'+
-        '<b>ⓘ 這個數字在量什麼：</b>它是<b>「現在有幾項多頭條件成立」的加總</b>，'+
-        '<b style="color:#aa4444;">不是越高越好，也不是越低越好</b>。<br>'+
-        '低分有兩種完全相反的原因：<b>①真的剛起步</b>（條件正要一項一項亮起來）'+
-        '<b>②條件根本沒過</b>（例如 OBV 在下降、均線沒有多頭排列）—— <b>這個分數分不出這兩種</b>，'+
-        '要看上面那五項各自的成敗。<br>'+
-        '<b>而且它完全沒有「這一波走到哪裡」的概念</b> —— 一檔剛突破的股票和一檔已經漲了七倍的股票，'+
-        '只要當下條件一樣，分數就一樣。要判斷位置，看卡片上的<b>離 30 週線 %</b> 與<b>離 52 週高點 %</b>，'+
-        '真正的買賣判決回 dna。'+
+      '<div style="margin-top:8px;font-size:12px;line-height:1.75;background:#fff8e6;padding:9px;border-radius:6px;border-left:4px solid #dd6600;">'+
+        '<b style="font-size:13px;">怎麼用這個數字 —— 一句話：<span style="color:#cc0000;">它是過熱警報器，不是進場指南針。</span></b><br><br>'+
+        '<b>它在量什麼：</b>上面那五項多頭條件，現在亮了幾項。就這樣。<br>'+
+        '<b style="color:#cc0000;">沒有「最好的範圍」</b> —— 它只有一端能用：<br>'+
+        '<div style="margin:5px 0 5px 8px;">'+
+          '<b style="color:#cc0000;">・85% 以上</b>　五項幾乎全亮＝該漲的都漲了。<b>這是它唯一可靠的訊號：不要追。</b><br>'+
+          '<b style="color:#8a7a4a;">・30~60%</b>　<b>無法判斷</b>。可能真的剛起步，也可能條件壞掉 —— 一定要看上面<b>是哪幾項沒過</b>。<br>'+
+          '<b style="color:#888;">・30% 以下</b>　多頭條件幾乎沒有，不是這檔的時候。'+
+        '</div>'+
+        '<b>為什麼中間那段不能用：</b>低分有兩種完全相反的原因 —— ①真的剛起步 ②條件根本沒過。'+
+        '這個數字<b>分不出這兩種</b>。（實例：IREN 45% 是後者，OBV 在下降、均線沒有多頭排列。）<br>'+
+        '<b>而且它沒有「這一波走到哪裡」的概念</b> —— 一檔剛突破的和一檔已經漲了七倍的，只要當下條件一樣，分數就一樣。<br><br>'+
+        '<b>那該看什麼：</b>位置看卡片上的<b>離 30 週線 %</b> 與<b>離 52 週高點 %</b>；'+
+        '<b style="color:#cc0000;">該不該買、買在哪、停損放哪，回 dna。這一格不負責買賣判決。</b>'+
       '</div>'+
     '</div>'+
     (a?
@@ -1386,7 +1405,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1502,7 +1521,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.2</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
