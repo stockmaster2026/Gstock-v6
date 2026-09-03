@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.5</div>
+  <div class="logo">飆股<span>RADAR</span> v7.6</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -475,6 +475,16 @@ function analyzeYahoo(result, floatShares){
     // IREN 已經跌破 30 週線 9%、從高點跌 46% —— 兩檔的熱度都落在 30-60「⭐最佳」。
     // dna 判它們一個「延伸到末期」、一個「接刀」，靠的正是這兩個數字。
     // 這裡不新增任何判斷邏輯，只是把這兩個維度算出來給卡片顯示。
+    // ═══ v7.6:【radar 從頭到尾沒有日期】═══════════════════════════
+    // Jasmine(9/3):「捲到中間開始解釋的時候，並沒有辦法知道這是哪一檔股票、
+    //   什麼價位、哪一天的資料。」
+    // ⚠ 她說得對 —— dna 有「資料最後一根 26/09/03」那一格，radar 一個日期都沒有。
+    //   資料是今天的還是三天前快取的，畫面上看不出來。
+    // → 記下最後一根 K 棒的日期，讓每一段的標題都能蓋上「代號 · 價位 · 日期」。
+    var lastT = new Date(valid[m-1].t*1000);
+    var asOf = String(lastT.getFullYear()).slice(2)+'/'
+             + ('0'+(lastT.getMonth()+1)).slice(-2)+'/'
+             + ('0'+lastT.getDate()).slice(-2);
     var ma150 = (m>=150) ? valid.slice(-150).reduce(function(s,d){return s+d.c;},0)/150 : null;
     var dist150 = (ma150 && ma150>0) ? (price/ma150-1)*100 : null;
     var hi52 = valid[0].h;
@@ -528,7 +538,7 @@ function analyzeYahoo(result, floatShares){
       cL:cL,cH:cH,step:step,wc:wc,distMA20:distMA20,
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
       botP:botP,botD:botD,chip:chip,chipParts:chipParts,chipLit:chipLit,
-      ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,
+      ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,asOf:asOf,
       t1:t1,t2:t2,t3:t3,mainCostMid:mainCostMid};
   }catch(e){return null;}
 }
@@ -1135,7 +1145,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1303,9 +1313,13 @@ function showDetail(t){
   //   他的成本…不要分不同的框。」
   // → 把四個問題按順序排成一格：①這一波在哪 ②支撐在哪 ③風險多大 ④條件缺哪幾項。
   //   全部重用已經算好的值，<b>沒有新增任何判斷</b>。
+  // v7.6: 代號 · 價位 · 資料日期 —— 蓋在每一段標題上，捲到哪裡都知道在看什麼
+  var stamp = ' <span style="font-weight:400;font-size:11px;color:#888;">'
+            + t+' · $'+p.toFixed(2)+' · 資料最後一根 '+(a&&a.asOf?a.asOf:'—')+'</span>';
   var sumHtml = a ? (
     '<div class="dc" style="border:2px solid #dd6600;background:#fffdf5;">'+
-      '<div class="dtitle" style="color:#dd6600;">📋 一眼看完 —— '+t+' $'+p.toFixed(2)+'</div>'+
+      '<div class="dtitle" style="color:#dd6600;">📋 一眼看完 —— '+t+' $'+p.toFixed(2)+
+        ' <span style="font-weight:400;font-size:12px;color:#888;">（資料最後一根 '+(a.asOf||'—')+'）</span></div>'+
       '<div style="font-size:12.5px;line-height:2.0;">'+
         '<div><b>① 這一波在哪</b>　'+
           (a.dist150===null?'<span style="color:#888;">資料不足（不滿 150 根）</span>'
@@ -1351,7 +1365,7 @@ function showDetail(t){
     '</div>'+
     // ═══ v6.4 變更：「綜合訊號強度」→「技術熱度」標題 ═════════
     '<div class="dc">'+
-      '<div class="dtitle">📊 多頭條件清單（均線排列／OBV／一把火／MA20／多頭排列）</div>'+
+      '<div class="dtitle">📊 多頭條件清單（均線排列／OBV／一把火／MA20／多頭排列）'+stamp+'</div>'+
       '<div style="font-size:11.5px;color:#cc0000;background:#fff0f0;padding:6px 8px;border-radius:5px;margin-bottom:6px;border-left:3px solid #cc0000;">'+
         '⚠ <b>這裡的分級是「均線排列」，跟 Weinstein 的 Stage 1-4 完全無關</b>，'+
         '而且數字剛好相反 —— 這裡的最高級是<b>最熱</b>，Weinstein 的 Stage 4 是<b>崩跌</b>。'+
@@ -1393,7 +1407,7 @@ function showDetail(t){
     '</div>'+
     (a?
     '<div class="dc">'+
-      '<div class="dtitle">📍 量能密集區（近 60 天）</div>'+
+      '<div class="dtitle">📍 量能密集區（近 60 天）'+stamp+'</div>'+
       '<div class="cost-big">$'+a.cL+' -- $'+a.cH+'</div>'+
       // ═══ v7.2:【固定倍數 T1/T2/T3 已移除】════════════════════════
       // 舊版：T1/T2/T3 = 成本中位 × 1.3 / 1.5 / 1.8。那三個倍數是四個月前隨手定的，
@@ -1421,7 +1435,7 @@ function showDetail(t){
       '<div class="cost-axis" style="margin-top:3px;"><span>$'+pMn+'</span><span style="color:var(--blue);font-weight:600;">現價'+ds+'於成本</span><span>$'+pMx+'</span></div>'+
     '</div>'+
     '<div class="dc">'+
-      '<div class="dtitle">📊 詳細數據</div>'+
+      '<div class="dtitle">📊 詳細數據'+stamp+'</div>'+
       '<div class="dr"><span>底部確認</span><span class="dv-b">$'+a.botP.toFixed(2)+'（'+a.botD+'）</span></div>'+
       '<div class="dr"><span>主力成本（中位）</span><span class="dv-b">$'+a.mainCostMid.toFixed(2)+'</span></div>'+
       '<div class="dr"><span>加權成本</span><span class="dv-b">$'+a.wc+'</span></div>'+
@@ -1454,7 +1468,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1570,7 +1584,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.5</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
