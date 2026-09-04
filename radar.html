@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v7.9</title>
+<title>飆股雷達 v8.0</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.9</div>
+  <div class="logo">飆股<span>RADAR</span> v8.0</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -1162,20 +1162,46 @@ function getTradingAdvice(price, a, ph, holdingInfo){
       holdingAction = '<div style="font-weight:700;color:#dd9900;">⏳ 接近 T1（差 '+distToT1.toFixed(1)+'%）→ 觀察中</div>';
     }
   }
-  // ═══ v6.4 變更：技術熱度過熱警告（不再叫「主力出貨」）═══════
-  if(chipDanger >= 3){
-    return {urgent:'DANGER', icon:'🚨', mainTitle:'不 要 追 高',
-      actionLine:'技術熱度 '+a.chip+'% 極度過熱',
-      bg:'#ffe0e0', border:'#cc0000', titleColor:'#cc0000',
-      summary:'技術熱度已達 '+a.chip+'%（極度過熱區）。Phase+OBV+一把火+均線全部滿格，短期回檔風險極高，等回測再說。',
-      dataPoints:dataPoints, suggestion:'⛔ 技術指標已達極度過熱，不該追高，等回測再說'+(holdingAction?'<br><br>'+holdingAction:'')};
+  // ═══ v8.0:【卡片與詳情頁改用同一個判斷】════════════════════════════
+  // Jasmine(9/3) 抓到：卡片說 NVAX「🟢 值得點進去」，點進去卻是滿版紅字
+  // 「不要追高・技術熱度 95% 極度過熱」—— 同一檔、同一頁、兩個相反的結論。
+  //
+  // 病因：技術熱度 % 在 v7.5 從畫面刪掉了，**但它一直還在跑判決**。
+  //   舊邏輯 chipDanger>=2 直接蓋掉後面所有分支，也就是「五項亮很多」＝「不要追高」。
+  //   那是一個壞掉的過熱代理：它量的是條件成立幾項，不是這一波走了多遠。
+  //   NVAX 五項全亮，但只在支撐帶上方 12%、離 30 週線 +16%、離高點 -14%
+  //   —— 位置一點都不極端，卻被判「極度過熱」。她的直覺是對的。
+  //
+  // → 過熱與否一律改由**位置**決定（離 30 週線、離支撐帶），與卡片同一個
+  //   clickTriage()。技術熱度 % 從判決樹整個退場。
+  var tg = clickTriage(a, price);
+  if(tg && tg.rank===3){
+    return {urgent:'AVOID', icon:'⛔', mainTitle:'跳 過',
+      actionLine:tg.why,
+      bg:'#f1f1f1', border:'#999', titleColor:'#666',
+      summary:'位置就不成立了，下面的條件清單不用看。'+tg.why+'。',
+      dataPoints:dataPoints, suggestion:'⛔ 不要進場｜等週線結構重新成立'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
-  if(chipDanger >= 2){
-    return {urgent:'WARNING', icon:'⚠️', mainTitle:'不建議追高',
-      actionLine:'技術熱度 '+a.chip+'% 過熱',
-      bg:'#fff0d0', border:'#dd4400', titleColor:'#dd4400',
-      summary:'技術熱度 '+a.chip+'%（過熱區）。Phase+OBV+一把火+均線大部分滿格，短期上漲動能已釋放，等回測再說。',
-      dataPoints:dataPoints, suggestion:'⚠️ 技術指標已過熱，不該追高，等回測突破點或量能密集區再評估'+(holdingAction?'<br><br>'+holdingAction:'')};
+  if(tg && tg.rank===2){
+    return {urgent:'WARNING', icon:'🔺', mainTitle:'太遠・等回測',
+      actionLine:tg.why,
+      bg:'#fff3e0', border:'#dd6600', titleColor:'#dd6600',
+      summary:'條件可能都成立，但這裡買<b>沒有結構可以放停損</b> —— '+tg.why+'。要嘛等回測到量能密集區，要嘛回 dna 看有沒有更近的 pivot。',
+      dataPoints:dataPoints, suggestion:'⚠️ 不建議新進場｜等回測到 $'+a.cL+'-$'+a.cH+(holdingAction?'<br><br>'+holdingAction:'')};
+  }
+  if(tg && tg.rank===0){
+    var inBand = (price>=a.cL && price<=a.cH);
+    return {urgent:inBand?'BUY':'BUY_HALF', icon:inBand?'✅':'🟢',
+      mainTitle:'值得進一步查',
+      actionLine:tg.why,
+      bg:'#e8f8e8', border:'#009944', titleColor:'#009944',
+      summary:'位置與條件這一關都過了：'+tg.why+'。'+
+        (inBand?'現價就在量能密集區內，支撐貼在腳下。':'現價在支撐帶上方但還沒走遠，停損放得出來。')+
+        '<b>這一頁到此為止 —— 買不買、買在哪、停損放哪，回 dna 確認有沒有合格的 pivot。</b>',
+      dataPoints:dataPoints,
+      suggestion:'✅ 參考停損 $'+a.atrStop.toFixed(2)+'（'+a.atrStopPct.toFixed(1)+'%）<br>'+
+        '📊 部位：'+(inBand?'池子資金 5-10%':'池子資金 3-5%（控位）')+'<br>'+
+        '🔎 下一步：回 dna 確認 pivot 與停損位'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   if(advisory === 'past_t3'){
     return {urgent:'WARNING', icon:'🚨', mainTitle:'不要進場',
@@ -1219,7 +1245,7 @@ function getTradingAdvice(price, a, ph, holdingInfo){
     }
   }
   if(advisory === 'pre_t1'){
-    if(a.phase === 3 && a.obvRising && chipDanger === 0){
+    if(a.phase === 3 && a.obvRising){
       return {urgent:'BUY_HALF', icon:'🟢', mainTitle:'可控位進場',
         actionLine:'Phase3 但已離開密集區',
         bg:'#f0f8e8', border:'#88aa44', titleColor:'#5a7a2a',
@@ -1234,7 +1260,6 @@ function getTradingAdvice(price, a, ph, holdingInfo){
           var miss=[];
           if(a.phase!==3) miss.push('均線還沒多頭排列（目前 '+ph.title+'）');
           if(!a.obvRising) miss.push('OBV 下降');
-          if(chipDanger!==0) miss.push('技術熱度偏高');
           return '現價在量能密集區上方、乖離還不大。'+
             (miss.length?'未通過的條件：'+miss.join('、')+'。':'')+
             '建議等回測或條件轉好。';
@@ -1265,7 +1290,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1611,7 +1636,7 @@ function showDetail(t){
         }).join('')
       )+
       '<div style="font-size:10px;color:var(--dim);margin-top:8px;text-align:center;">'+
-        '總監控：'+getSectors().reduce(function(sum,s){return sum+s.tickers.length;},0)+'/120支'+
+        '總監控：'+getSectors().reduce(function(sum,s){return sum+s.tickers.length;},0)+'/200支'+
       '</div>'+
     '</div>';
 }
@@ -1620,7 +1645,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1631,7 +1656,7 @@ function addStock(ticker,sectorId){
   if(!sec)return;
   if(!sec.tickers.includes(ticker)){
     var total=sectors.reduce(function(sum,s){return sum+s.tickers.length;},0);
-    if(total>=120){alert('候補名單已達上限120支！');return;}
+    if(total>=200){alert('候補名單已達上限200支！');return;}
     sec.tickers.push(ticker);
     saveSectors(sectors);
     closeAddModal();
@@ -1699,7 +1724,7 @@ window.openBatchAdd = function(sectorId){
       '例：<code style="background:#eee;padding:2px 6px;border-radius:4px;">IIJI ONDS APH</code>'+
     '</div>'+
     '<input id="batchInput" type="text" placeholder="輸入代號" style="width:100%;padding:11px;border:1.5px solid #ccc;border-radius:8px;font-size:15px;text-transform:uppercase;margin-bottom:10px;-webkit-appearance:none;">'+
-    '<div style="font-size:11px;color:#999;margin-bottom:10px;">目前「'+sec.name+'」有 <b>'+sec.tickers.length+'</b> 檔　總監控：'+sectors.reduce(function(s,x){return s+x.tickers.length;},0)+'/120</div>'+
+    '<div style="font-size:11px;color:#999;margin-bottom:10px;">目前「'+sec.name+'」有 <b>'+sec.tickers.length+'</b> 檔　總監控：'+sectors.reduce(function(s,x){return s+x.tickers.length;},0)+'/200</div>'+
     '<button onclick="submitBatchAdd(\''+sectorId+'\')" style="width:100%;background:#009944;color:#fff;border:none;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;-webkit-appearance:none;">確認新增</button>';
   document.getElementById('addModal').classList.add('show');
 };
@@ -1716,7 +1741,7 @@ window.submitBatchAdd = function(sectorId){
   var added=[], existed=[], total=sectors.reduce(function(s,x){return s+x.tickers.length;},0);
   tickers.forEach(function(t){
     if(sec.tickers.indexOf(t)>=0){existed.push(t);}
-    else if(total>=120){}
+    else if(total>=200){}
     else {sec.tickers.push(t); added.push(t); total++;}
   });
   saveSectors(sectors);
@@ -1724,7 +1749,7 @@ window.submitBatchAdd = function(sectorId){
   var msg='';
   if(added.length>0) msg+='✅ 已加入：'+added.join('、')+'\n';
   if(existed.length>0) msg+='⚠️ 已存在：'+existed.join('、')+'\n';
-  if(total>=120&&tickers.length>added.length+existed.length){msg+='❌ 部分未加：已達 120 支上限';}
+  if(total>=200&&tickers.length>added.length+existed.length){msg+='❌ 部分未加：已達 200 支上限';}
   alert(msg||'沒有新增');
   if(currentSector===sectorId){showSector(sectorId);}
 };
@@ -1736,7 +1761,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
