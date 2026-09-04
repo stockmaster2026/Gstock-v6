@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v8.0</title>
+<title>飆股雷達 v8.1</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v8.0</div>
+  <div class="logo">飆股<span>RADAR</span> v8.1</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -190,18 +190,16 @@ var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
   {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','META','GOOGL','MSFT','AMZN']},
-  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'WCLD', tickers:['ANET','SMCI','DELL','CRWD','SNOW']},
+  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','CRWD','SNOW']},
   {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH']},
   {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','ETN','GNRC','AXON']},
-  {id:'space',     icon:'🛰️', name:'太空衛星',   etf:'UFO',  tickers:['LUNR','RKLB','PL','BKSY','ASTS']},
+  {id:'space',     icon:'🛰️', name:'太空衛星',   etf:'UFO',  tickers:['LUNR','RKLB','PL','BKSY','ASTS','IRDM','SATS','GSAT','VSAT']},
   {id:'drone',     icon:'🚁', name:'無人機國防', etf:'ITA',  tickers:['ONDS','KTOS','PLTR','ACHR','JOBY']},
   {id:'quantum',   icon:'⚛️', name:'量子運算',   etf:'QTUM', tickers:['IONQ','RGTI','QBTS','QUBT']},
   {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','NTAP','STX','SNDK','P']},
   {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['TEM','HIMS','RXRX','NVAX','CRSP']},
-  {id:'satcom',    icon:'🌐', name:'衛星通信',   etf:'UFO',  tickers:['IRDM','SATS','GSAT','VSAT']},
   {id:'metals',    icon:'💰', name:'貴金屬礦業', etf:'GDX',  tickers:['GLD','SLV','NEM','AEM','WPM']},
-  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['TSLA','SYM','SERV','ISRG']},
-  {id:'sensor',    icon:'👁️', name:'感測視覺',   etf:'ROBO', tickers:['CGNX','AMBA','OUST','TEL']},
+  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['TSLA','SYM','SERV','ISRG','CGNX','AMBA','OUST','TEL']},
   {id:'ai_compute',icon:'☁️', name:'AI算力雲',   etf:'SKYY', tickers:['NBIS','CRWV','IREN']},
   // ═══ v7.8 新增：應用層原本一個都沒有 ═══════════════════════════
   // 舊的 14 個板塊全是硬體與基礎設施。名單裡沒有的東西，radar 永遠不會告訴你它在漲，
@@ -220,7 +218,7 @@ var MIGKEY='gstock_radar_mig';
 function migrateSectors(){
   try{
     var done=localStorage.getItem(MIGKEY)||'';
-    if(done.indexOf('v78')>=0) return;
+    if(done.indexOf('v81')>=0) return;
     var secs=getSectors();
     var drop={ai_infra:['CRWD','SNOW'], drone:['PLTR']};      // 已搬到 資安／AI軟體應用
     var add ={ai_infra:['VRT','MRVL'],  drone:['AVAV']};      // 搬走之後補回同性質的
@@ -230,8 +228,21 @@ function migrateSectors(){
       var ad=add[sec.id];
       if(ad) ad.forEach(function(t){if(sec.tickers.indexOf(t)<0) sec.tickers.push(t);});
     });
+    // ═══ v8.1:【兩組重疊的板塊合併】═════════════════════════════════
+    // 衛星通信與太空衛星本來就掛同一支 ETF（UFO），是同一個板塊被切成兩半，
+    // 兩邊各只有 4~5 檔，誰都湊不出足夠的樣本。感測視覺（ROBO）與機器人（BOTZ）
+    // 的基準 ETF 成分也大幅重疊，同理合併。
+    // 合併＝把來源的成分股併進目標，然後把來源整個刪掉（名稱不動）。
+    var merge=[{from:'satcom',to:'space'},{from:'sensor',to:'robot'}];
+    merge.forEach(function(m){
+      var src=null,dst=null;
+      secs.forEach(function(sec){ if(sec.id===m.from) src=sec; if(sec.id===m.to) dst=sec; });
+      if(!src||!dst) return;
+      src.tickers.forEach(function(t){ if(dst.tickers.indexOf(t)<0) dst.tickers.push(t); });
+      secs=secs.filter(function(sec){ return sec.id!==m.from; });
+    });
     saveSectors(secs);
-    localStorage.setItem(MIGKEY, done+' v78');
+    localStorage.setItem(MIGKEY, done+' v78 v81');
   }catch(e){}
 }
 
@@ -1290,7 +1301,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1645,7 +1656,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1761,7 +1772,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.0</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
