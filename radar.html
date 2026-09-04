@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v7.8</title>
+<title>飆股雷達 v7.9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.8</div>
+  <div class="logo">飆股<span>RADAR</span> v7.9</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -632,6 +632,82 @@ function chipBand(c){
   if(c<95)  return {txt:'幾乎全滿 · 過熱',     col:'#cc0000'};
   return           {txt:'全部滿格 · 極度過熱', col:'#cc0000'};
 }
+// ═══ v7.9:【要不要點進去，卡片上就要能決定】════════════════════════
+// Jasmine(9/3):「假設有 10 檔，我是不是可以一眼就看出哪個不錯，而不是每一檔都點進去。
+//   到底你需要怎樣的訊號給我，讓我知道我需要再點進去看詳細的？」
+//
+// 卡片上原本掛的是「技術熱度 %」—— 但 v7.5 已經因為那個數字沒有預測力，
+// 把它從詳情頁整個刪掉了，卡片卻還留著，兩邊自相矛盾。這一版一併拿掉。
+//
+// 取而代之的判斷只問兩件事，而且都是這一頁真正算得準的東西：
+//   ① 位置能不能用 —— 週線結構在不在、離支撐帶多遠（決定停損放不放得出來）
+//   ② 條件成不成立 —— 五項亮了幾項
+// 位置是硬關卡：位置不對，條件再滿也沒用（那正是 v7.4 的 IREN 與 DELL）。
+//
+// ⚠ 綠燈的意思是「值得點進去看」，不是「可以買」。買價與停損仍然以 dna 為準。
+function clickTriage(a, price){
+  if(!a) return null;
+  var d150=a.dist150, o52=a.off52;
+  // 現價離支撐帶的距離：在帶內＝0，帶上＝正，帶下＝負
+  var band = price>a.cH ? ((price/a.cH-1)*100) : (price<a.cL ? ((price/a.cL-1)*100) : 0);
+  if(d150!==null && d150<0)
+    return {rank:3,ic:'⚫',t:'跳過',c:'#777',bg:'#f1f1f1',
+            why:'在 30 週線下方 '+Math.abs(d150).toFixed(0)+'%，週線結構不成立'};
+  if(o52!==null && o52<-30)
+    return {rank:3,ic:'⚫',t:'跳過',c:'#777',bg:'#f1f1f1',
+            why:'離 52 週高點 '+o52.toFixed(0)+'%，這一波已受損'};
+  if(d150!==null && d150>50)
+    return {rank:2,ic:'🔺',t:'太遠・等回測',c:'#dd6600',bg:'#fff3e0',
+            why:'離 30 週線 +'+d150.toFixed(0)+'%，乖離過大'};
+  if(band>20)
+    return {rank:2,ic:'🔺',t:'太遠・等回測',c:'#dd6600',bg:'#fff3e0',
+            why:'離支撐帶上緣 +'+band.toFixed(0)+'%，這裡買沒有結構可以放停損'};
+  if(band<0)
+    return {rank:1,ic:'🟡',t:'觀察',c:'#cc8800',bg:'#fff8e0',
+            why:'跌破支撐帶 '+band.toFixed(0)+'%，等它站回去'};
+  var lit=(a.chipLit!==undefined?a.chipLit:0);
+  var miss=(a.chipParts||[]).filter(function(x){return x.ok===false;}).map(function(x){return x.n;});
+  if(a.aboveMA20 && lit>=3)
+    return {rank:0,ic:'🟢',t:'值得點進去',c:'#009944',bg:'#e8f8e8',
+            why:'貼近支撐帶（'+(band>0?'+'+band.toFixed(0)+'%':'在帶內')+'）＋條件 '+lit+'/5'};
+  return {rank:1,ic:'🟡',t:'觀察',c:'#cc8800',bg:'#fff8e0',
+          why:'位置可用，但缺 '+(miss.join('、')||'啟動訊號')};
+}
+
+// v7.9: 板塊清單最上面的一行總結 —— 十檔不用一檔一檔點
+function renderTriage(sectorId){
+  var box=document.getElementById('triageSummary'); if(!box) return;
+  var sec=getSectors().find(function(x){return x.id===sectorId;}); if(!sec) return;
+  var go=[],watch=[],far=0,skip=0,pending=0,asOf=null;
+  sec.tickers.forEach(function(t){
+    var d=cache[t];
+    if(!d||d.err||!d.a){pending++;return;}
+    if(d.a.asOf) asOf=d.a.asOf;
+    var tg=clickTriage(d.a,d.price);
+    if(!tg){pending++;return;}
+    if(tg.rank===0) go.push(t);
+    else if(tg.rank===1) watch.push(t);
+    else if(tg.rank===2) far++;
+    else skip++;
+  });
+  var head='<div style="font-size:11px;color:#888;margin-bottom:4px;">'
+    +'📋 這個板塊哪幾檔值得點進去　<span style="color:#aaa;">資料最後一根 '+(asOf||'—')+'</span></div>';
+  var line;
+  if(go.length){
+    line='<div style="font-size:14px;font-weight:900;color:#009944;">🟢 值得點進去 '+go.length+' 檔：'+go.join('、')+'</div>';
+  }else if(pending){
+    line='<div style="font-size:13px;color:#888;">⏳ 還在載入…</div>';
+  }else{
+    line='<div style="font-size:13px;font-weight:700;color:#cc8800;">🟢 值得點進去 0 檔'
+      +'<span style="font-weight:400;color:#888;">　—— 不是工具壞掉：位置可用的都缺條件，條件夠的都已經走遠了</span></div>';
+  }
+  var tail='<div style="font-size:11px;color:#666;margin-top:3px;">🟡 觀察 '+watch.length
+    +(watch.length?'（'+watch.join('、')+'）':'')+'　🔺 太遠 '+far+'　⚫ 跳過 '+skip
+    +(pending?'　⏳ '+pending:'')+'</div>';
+  box.innerHTML='<div style="background:#fffdf5;border:2px solid #dd6600;border-radius:10px;padding:9px 11px;margin-bottom:10px;">'
+    +head+line+tail+'</div>';
+}
+
 function pp(v,mn,mx){return Math.min(Math.max((v-mn)/(mx-mn)*100,2),96).toFixed(1);}
 
 // ═══ v7.8:【當日漲跌幅的絕對值不再進分數】═══════════════════════════
@@ -1189,7 +1265,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1235,6 +1311,7 @@ function showSector(sectorId){
     cont.innerHTML+='<div class="empty-hint">這個板塊還沒有股票<br>用上方搜尋框輸入代號</div>';
     return;
   }
+  cont.innerHTML+='<div id="triageSummary"></div>';   // v7.9: 一行總結，放在卡片上方
   sec.tickers.forEach(function(t){
     var div=document.createElement('div');
     div.className='stock-card';
@@ -1242,12 +1319,14 @@ function showSector(sectorId){
     div.innerHTML='<div class="slbar sl-b"></div><div class="loading"><div class="spinner"></div></div>';
     cont.appendChild(div);
   });
+  renderTriage(sectorId);
   (async function(){
     for(var i=0;i<sec.tickers.length;i++){
       var t=sec.tickers[i];
       if(!cache[t]||!cache[t].ok) await loadStock(t);
       var el=document.getElementById('sc-'+t);
       if(el) fillCard(t,el);
+      renderTriage(sectorId);            // v7.9: 每載入一檔就更新總結
       if(i<sec.tickers.length-1) await sleep(250);
     }
   })();
@@ -1292,8 +1371,13 @@ function fillCard(t,div){
       '<span>OBV: '+obvStr+'</span><span>一把火: '+fireStr+'</span></div>'+
     '<div style="font-size:11px;color:var(--dim);margin-bottom:4px;">均線: '+maStr+'</div>'+
     '<div style="font-size:10px;color:var(--dim);margin-bottom:3px;">📍 近期成本區 $'+(a?a.cL+'-$'+a.cH:'計算中...')+'</div>'+
-    // ═══ v6.4 變更：卡片上的「綜合訊號強度」→「技術熱度」══════
-    (a?(function(){var _b=chipBand(a.chip);return '<div style="font-size:'+(a.chip>=85?'13':'11')+'px;font-weight:'+(a.chip>=85?'900':'600')+';color:'+_b.col+';margin-bottom:5px;'+(a.chip>=85?'background:rgba(255,200,200,0.4);padding:3px 6px;border-radius:5px;display:inline-block;':'')+'">技術熱度 '+a.chip+'%（'+_b.txt+'）</div>';})():'')+
+    // ═══ v7.9:【技術熱度 % 從卡片移除，改成「要不要點進去」】══════════
+    // v7.5 已經把那個百分比從詳情頁刪掉（五項全部單獨顯示在同一頁，加總只是
+    // 製造一個看起來像結論的數字），卡片卻一直還掛著 —— 兩邊自相矛盾。
+    (a?(function(){var g=clickTriage(a,p); if(!g) return '';
+      return '<div style="display:inline-block;background:'+g.bg+';border:1px solid '+g.c+';color:'+g.c+
+        ';border-radius:6px;padding:3px 8px;font-size:12.5px;font-weight:900;margin-bottom:4px;">'+g.ic+' '+g.t+'</div>'+
+        '<div style="font-size:11px;color:#666;margin-bottom:5px;">'+g.why+'</div>';})():'')+
     // ═══ v7.2 新增：卡片上直接印週線位置 ══════════════════════════════
     // 這一行就是 DELL（+71%）與 IREN（線下 9%）當初該被擋下來的地方。
     // 只顯示數字與「在 30 週線上／下」，不下判斷 —— 判斷交給 dna。
@@ -1536,7 +1620,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1652,7 +1736,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
