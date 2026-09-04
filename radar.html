@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v7.7</title>
+<title>飆股雷達 v7.8</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.7</div>
+  <div class="logo">飆股<span>RADAR</span> v7.8</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -203,8 +203,37 @@ var SECTORS_DEFAULT=[
   {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['TSLA','SYM','SERV','ISRG']},
   {id:'sensor',    icon:'👁️', name:'感測視覺',   etf:'ROBO', tickers:['CGNX','AMBA','OUST','TEL']},
   {id:'ai_compute',icon:'☁️', name:'AI算力雲',   etf:'SKYY', tickers:['NBIS','CRWV','IREN']},
+  // ═══ v7.8 新增：應用層原本一個都沒有 ═══════════════════════════
+  // 舊的 14 個板塊全是硬體與基礎設施。名單裡沒有的東西，radar 永遠不會告訴你它在漲，
+  // 所以「軟體在走強但我沒看到」不是漏看，是結構上看不到。
+  // 基準用 XSW（等權重軟體）而不是 IGV —— IGV 前三大就佔 30%，它漲往往只是三檔在漲。
+  {id:'ai_soft',   icon:'🧠', name:'AI軟體應用', etf:'XSW',  tickers:['NOW','CRM','SNOW','DDOG','WDAY','TEAM','APP','MDB','PLTR']},
+  // 資安獨立：IGV 裡 PANW+CRWD+FTNT+ZS 約佔 22%，跟應用軟體混在一起會互相污染
+  {id:'cyber',     icon:'🔒', name:'資安',       etf:'CIBR', tickers:['PANW','CRWD','FTNT','ZS','S']},
   {id:'custom',    icon:'⭐', name:'自訂',       etf:null,   tickers:[]},
 ];
+
+// ═══ v7.8:【一次性成分股搬移】════════════════════════════════════
+// getSectors 的合併邏輯只會把「新板塊」整個補進來，不會動已存在板塊的 tickers，
+// 所以 CRWD／SNOW／PLTR 放錯位置這件事必須靠一次性遷移修，否則會兩邊重複計分。
+var MIGKEY='gstock_radar_mig';
+function migrateSectors(){
+  try{
+    var done=localStorage.getItem(MIGKEY)||'';
+    if(done.indexOf('v78')>=0) return;
+    var secs=getSectors();
+    var drop={ai_infra:['CRWD','SNOW'], drone:['PLTR']};      // 已搬到 資安／AI軟體應用
+    var add ={ai_infra:['VRT','MRVL'],  drone:['AVAV']};      // 搬走之後補回同性質的
+    secs.forEach(function(sec){
+      var rm=drop[sec.id];
+      if(rm) sec.tickers=sec.tickers.filter(function(t){return rm.indexOf(t)<0;});
+      var ad=add[sec.id];
+      if(ad) ad.forEach(function(t){if(sec.tickers.indexOf(t)<0) sec.tickers.push(t);});
+    });
+    saveSectors(secs);
+    localStorage.setItem(MIGKEY, done+' v78');
+  }catch(e){}
+}
 
 function getSectors(){
   var stored=null;
@@ -605,16 +634,29 @@ function chipBand(c){
 }
 function pp(v,mn,mx){return Math.min(Math.max((v-mn)/(mx-mn)*100,2),96).toFixed(1);}
 
+// ═══ v7.8:【當日漲跌幅的絕對值不再進分數】═══════════════════════════
+// 舊版 chgScore 直接吃 d.q.dp，佔 30 分（滿分的三成）。後果是大盤好的那天所有板塊
+// 一起墊高、大盤差的那天一起變「落後」—— 那量的是大盤方向，不是輪動。
+// 新版改成兩層相對強弱：
+//   個股 vs 該板塊 ETF   → 同業之內誰在領先
+//   板塊 ETF vs SPY      → 這個板塊有沒有在被買
+// 相對值 ±5% 映到 0~100，權重維持 0.3，總分刻度與舊版一致（0~90）。
+// ⚠ 公式換了，v7.8 之前存下來的歷史分數與新分數不能直接比 —— 剛換版的頭幾天
+//   「1日／7日變化」會失真，等新的紀錄累積起來才有意義。
+function relScore(dp, base){
+  return Math.min(Math.max(((dp-base)+5)*10,0),100)*0.3;
+}
 function heatScore(tickers, etfTicker){
+  var spyDp=(cache['SPY']&&!cache['SPY'].err)?(cache['SPY'].q.dp||0):0;
+  var etfDp=(etfTicker&&cache[etfTicker]&&!cache[etfTicker].err)?(cache[etfTicker].q.dp||0):spyDp;
   var stockScore=0;
   if(tickers&&tickers.length){
     var s=[];
     tickers.forEach(function(t){
       var d=cache[t];if(!d||d.err)return;
       var phaseScore=d.a?([0,20,50,80,60][d.a.phase]||20):20;
-      var chgScore=Math.min(Math.max(((d.q.dp||0)+10)*4,0),100)*0.3;
       var obvScore=d.a&&d.a.obvRising?20:0;
-      s.push(phaseScore*0.5+chgScore+obvScore);
+      s.push(phaseScore*0.5+relScore(d.q.dp||0, etfDp)+obvScore);
     });
     stockScore=s.length?s.reduce(function(a,b){return a+b;},0)/s.length:0;
   }
@@ -622,9 +664,8 @@ function heatScore(tickers, etfTicker){
     var etfData=cache[etfTicker];
     if(etfData&&!etfData.err&&etfData.a){
       var etfPhase=([0,20,50,80,60][etfData.a.phase]||20);
-      var etfChg=Math.min(Math.max(((etfData.q.dp||0)+10)*4,0),100)*0.3;
       var etfObv=etfData.a.obvRising?20:0;
-      var etfScore=etfPhase*0.5+etfChg+etfObv;
+      var etfScore=etfPhase*0.5+relScore(etfData.q.dp||0, spyDp)+etfObv;
       return Math.round(etfScore*0.6+stockScore*0.4);
     }
   }
@@ -1148,7 +1189,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1333,10 +1374,29 @@ function showDetail(t){
           (a.off52!==null?'　·　離 52 週高點 <b style="color:'+(a.off52<-30?'#cc0000':'#666')+';">'+a.off52.toFixed(0)+'%</b>'
             +(a.off52<-30?'<b style="color:#cc0000;">（這一波已受損）</b>':''):'')+
           '</div>'+
+        // v7.8: 這兩個數字一個擋追高、一個擋接刀，但數字本身不會講話 —— 各補一句白話
+        '<div style="font-size:11.5px;color:#666;line-height:1.7;margin:0 0 4px 16px;">'+
+          (a.dist150===null?'':'<div>· 離 30 週線 '+(a.dist150>=0?'+':'')+a.dist150.toFixed(0)+'%　'+
+            (a.dist150<0
+              ?'<b style="color:#cc0000;">週線結構不成立</b>　收在 30 週線下方，這裡買是接刀不是回檔'
+              :(a.dist150>50
+                 ?'<b style="color:#dd6600;">乖離過大</b>　離長期均線太遠，這裡買就是追高，停損放不出來'
+                 :(a.dist150>20
+                    ?'位置健康　在 30 週線上方但沒走過頭，屬於可以往下查的區間'
+                    :'剛站上不久　週線結構才要開始，位置好但要再確認')))+'</div>')+
+          (a.off52===null?'':'<div>· 離 52 週高點 '+a.off52.toFixed(0)+'%　'+
+            (a.off52>=-10
+              ?'<b style="color:#009944;">就在高點附近</b>　這一波沒受傷，強勢股該有的樣子'
+              :(a.off52>=-30
+                 ?'離高點有一段　還在整理，等它重新挑戰前高'
+                 :'<b style="color:#cc0000;">這一波已受損</b>　跌掉三成以上，不是領導股，要重新打底'))+'</div>')+
+        '</div>'+
         // v7.7: Jasmine —— 成本區是這一頁少數算得準的東西，總結要一眼看到，所以放大
         '<div style="margin-top:2px;"><b>② 支撐／成本在哪</b>'+
           '<span style="color:#888;font-size:11px;">　近 60 天成交量最密集的價格帶・當支撐看</span></div>'+
         '<div style="text-align:center;background:#eef5fc;border:1px solid #cfe2f5;border-radius:8px;padding:9px 6px;margin:3px 0 5px;">'+
+          // v7.8: 只有數字看不出那是什麼 —— 大字上面補標題
+          '<div style="font-size:11.5px;color:#0066bb;font-weight:700;letter-spacing:0.5px;margin-bottom:2px;">量能密集區（估計成本區間）</div>'+
           '<div style="font-family:\'Orbitron\',monospace;font-size:30px;font-weight:700;color:#0066bb;line-height:1.15;">$'+a.cL+' -- $'+a.cH+'</div>'+
           '<div style="font-size:12px;color:#555;margin-top:3px;line-height:1.5;">中位 <b>$'+a.mainCostMid.toFixed(2)+'</b>'+
             '　·　現價 <b style="color:'+(p>=a.mainCostMid?'#cc6600':'#0066bb')+';">'+(p>=a.mainCostMid?'+':'')+((p/a.mainCostMid-1)*100).toFixed(1)+'%</b> 於中位</div>'+
@@ -1476,7 +1536,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1592,14 +1652,16 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
   document.getElementById('cardContainer').innerHTML='';
   renderHeatStrip(null);
+  migrateSectors();
   var sectors=getSectors();
   var allSet={};
+  allSet['SPY']=1;   // v7.8: 市場基準，板塊 ETF 的相對強弱要拿它當分母
   sectors.forEach(function(s){
     s.tickers.forEach(function(t){allSet[t]=1;});
     if(s.etf) allSet[s.etf]=1;
