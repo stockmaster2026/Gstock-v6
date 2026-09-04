@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.0</title>
+<title>反彈回測 v1.1</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -22,6 +22,8 @@ body{margin:0;background:var(--bg);color:var(--ink);
 h2{font-size:15px;margin:0 0 8px;}
 h3{font-size:13.5px;margin:14px 0 6px;color:var(--sub);}
 label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px;}
+select[multiple]{height:auto;padding:4px;}
+select[multiple] option{padding:7px 6px;border-bottom:1px solid #f0ece0;}
 select,input,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;
   font-size:15px;background:#fff;font-family:inherit;}
 textarea{height:70px;resize:vertical;}
@@ -54,14 +56,15 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.0</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.1</div></div>
 <div class="wrap">
 
 <div class="card">
   <h2>要測什麼</h2>
 
-  <label>板塊（讀 radar 存的名單）</label>
-  <select id="secSel"></select>
+  <label>板塊（讀 radar 存的名單・可按住多選）</label>
+  <select id="secSel" multiple size="8"></select>
+  <div class="note">選幾個就跑幾個，重複的代號會自動去掉。</div>
 
   <label>或自己貼代號（空白／逗號分隔，會蓋過上面的板塊）</label>
   <textarea id="manual" placeholder="例如：NVAX CRSP TEM HIMS"></textarea>
@@ -373,6 +376,31 @@ function render(name,tr,extraSlices){
       '這一張直接回答「Stage 2 那道閘門是幫我還是害我」—— 如果下方那組明顯較差，閘門是對的。');
     if(extraSlices) h+=extraSlices(tr);
   }
+  // ═══ v1.1:【每一檔的貢獻】════════════════════════════════════
+  // 跑整批的時候，總期望值可能整個是一兩檔撐起來的。那不是策略有效，
+  // 是那一兩檔剛好走了大波段 —— 換一批名單就消失。所以要能一眼看到分布。
+  if(s){
+    var byTk={};
+    tr.forEach(function(t){(byTk[t.tk]=byTk[t.tk]||[]).push(t);});
+    var rows=Object.keys(byTk).map(function(k){
+      var st=stats(byTk[k]);
+      return {k:k,n:st?st.n:0,ev:st?st.ev:null,sum:st?st.ev*st.n:0,open:byTk[k].length-(st?st.n:0)};
+    }).sort(function(a,b){return b.sum-a.sum;});
+    var totR=rows.reduce(function(x,r){return x+r.sum;},0);
+    h+='<h3>每一檔貢獻了多少 R</h3>'
+      +'<div class="note" style="margin-bottom:5px;">如果總 R 幾乎全來自最上面一兩檔，'
+      +'那不是策略有效，是那一兩檔剛好走了大波段 —— 換一批名單就消失。</div>'
+      +'<div class="scroll"><table><tr><th class="l">代號</th><th>筆數</th><th>期望值R</th>'
+      +'<th>合計R</th><th>佔總R</th></tr>';
+    rows.forEach(function(r){
+      var share=(totR>0&&r.sum>0)?(r.sum/totR*100):null;
+      h+='<tr><td class="l"><b>'+r.k+'</b></td><td>'+r.n+(r.open?' <span class="m">+'+r.open+'開</span>':'')+'</td>'
+        +'<td class="'+cls(r.ev)+'">'+(r.ev===null?'—':fx(r.ev))+'</td>'
+        +'<td class="'+cls(r.sum)+'">'+fx(r.sum,1)+'</td>'
+        +'<td>'+(share===null?'—':fx(share,0)+'%')+'</td></tr>';
+    });
+    h+='</table></div>';
+  }
   // 明細
   h+='<h3>每一筆交易</h3><div class="scroll"><table>'
     +'<tr><th class="l">代號</th><th class="l">進場</th><th>進價</th><th>停損</th><th>風險%</th>'
@@ -402,9 +430,14 @@ function fibSlices(tr){
 /* ═══ 主流程 ═══ */
 $('run').onclick=async function(){
   var manual=$('manual').value.trim();
-  var list=(manual?manual.split(/[\s,;]+/):($('secSel').value||'').split(','))
+  var picked=[];
+  Array.prototype.forEach.call($('secSel').selectedOptions||[],function(o){
+    picked=picked.concat(o.value.split(','));
+  });
+  var list=(manual?manual.split(/[\s,;]+/):picked)
     .map(function(x){return x.trim().toUpperCase();})
     .filter(function(x){return x;});
+  list=list.filter(function(x,i){return list.indexOf(x)===i;});   // v1.1 去重
   if(!list.length){alert('沒有股票代號');return;}
   var doD=$('ruleD').checked, doC=$('ruleC').checked;
   if(!doD&&!doC){alert('至少選一個規則');return;}
