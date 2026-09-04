@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v8.1</title>
+<title>飆股雷達 v8.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v8.1</div>
+  <div class="logo">飆股<span>RADAR</span> v8.3</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -661,6 +661,14 @@ function clickTriage(a, price){
   var d150=a.dist150, o52=a.off52;
   // 現價離支撐帶的距離：在帶內＝0，帶上＝正，帶下＝負
   var band = price>a.cH ? ((price/a.cH-1)*100) : (price<a.cL ? ((price/a.cL-1)*100) : 0);
+  // ═══ v8.3:【新上市／資料不足不該拿到綠燈】════════════════════════
+  // 原本 d150===null 時，前面兩道 ⛔ 與 🔺 全部因為 !==null 而被跳過，
+  // 只剩下「離支撐帶多遠」在把關 —— 一檔剛上市 40 根的股票（例如 2026/7/10
+  // 掛牌的 SKHY）可以在完全沒有週線結構可驗的情況下直接拿到 🟢。
+  // 位置是這套判斷的硬關卡，位置驗不了就不該給綠燈。
+  if(d150===null)
+    return {rank:1,ic:'🟡',t:'資料不足',c:'#888',bg:'#f5f5f5',
+            why:'日線不滿 150 根（新上市或資料缺漏），30 週線算不出來、週線結構無法驗證'};
   if(d150!==null && d150<0)
     return {rank:3,ic:'⚫',t:'跳過',c:'#777',bg:'#f1f1f1',
             why:'在 30 週線下方 '+Math.abs(d150).toFixed(0)+'%，週線結構不成立'};
@@ -1301,7 +1309,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1656,7 +1664,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1772,13 +1780,13 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
   document.getElementById('cardContainer').innerHTML='';
+  migrateSectors();          // v8.2: 必須在第一次畫板塊列之前跑
   renderHeatStrip(null);
-  migrateSectors();
   var sectors=getSectors();
   var allSet={};
   allSet['SPY']=1;   // v7.8: 市場基準，板塊 ETF 的相對強弱要拿它當分母
