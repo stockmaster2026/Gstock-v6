@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v7.1</title>
+<title>飆股雷達 v7.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v7.6</div>
+  <div class="logo">飆股<span>RADAR</span> v7.7</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -517,12 +517,18 @@ function analyzeYahoo(result, floatShares){
     // v7.3:「亮了幾項」才是這個數字真正的內容 —— 百分比只是它的包裝
     var chipLit = (phase>=3?1:0) + (obvRising?1:0) + (fires.length>0?1:0) + (aboveMA20?1:0) + (maUpTrend?1:0);
     var mainCostMid=(cL+cH)/2;
-    var t1=mainCostMid*1.3;
-    var t2=mainCostMid*1.5;
-    var t3=mainCostMid*1.8;
-    var atrT1=mainCostMid+3*atr14;
-    var atrT2=mainCostMid+5*atr14;
-    var atrT3=mainCostMid+8*atr14;
+    // ═══ v7.7:【T1/T2/T3 兩個版本全部移除】════════════════════════
+    // 舊固定倍數版 = 中位 × 1.3 / 1.5 / 1.8 —— 三個倍數是隨手定的。
+    // ATR 版      = 中位 + 3 / 5 / 8 × ATR —— 錨在「量能密集區中位」而不是
+    //   進場價，跟 v6.9 已經修掉的舊 ATR 停損是同一個錨點錯誤：停損改錨現價了，
+    //   目標價沒跟著改。現價離密集區越遠，這三個數字越失真。
+    // 另外舊版 R:R 是用固定倍數的 t2 算的，畫面上顯示 ATR 版 T2，同一頁兩條線。
+    // → 兩版全拿掉，R:R 一起拿掉。出場一律回 dna / 跌破 20 日均線。
+    // 只留下「離密集區中位 +30% / +50% / +80%」這三條乖離帶用來分級位置，
+    // 名字改成 dev30/50/80，不再假裝是目標價。
+    var dev30=mainCostMid*1.3;
+    var dev50=mainCostMid*1.5;
+    var dev80=mainCostMid*1.8;
     // ═══ v7.1 修正：ATR 停損改錨在現價，並以 -8% 為上限 ══════
     // 舊版是 mainCostMid - 1.5*ATR，錨在成本中位而不是進場價，導致同一條公式
     // 在 NOK 上只有 -2.3%（會被雜訊掃出場）、在 DELL 上却有 -21%（超出紀律）。
@@ -533,13 +539,13 @@ function analyzeYahoo(result, floatShares){
     var atrPct=mainCostMid>0?(atr14/mainCostMid*100):0;
     return{phase:phase,ma5:ma5,ma8:ma8,ma10:ma10,ma20:ma20,ma21:ma21,ma50:ma50,
       atr14:atr14,atrPct:atrPct,
-      atrT1:atrT1,atrT2:atrT2,atrT3:atrT3,atrStop:atrStop,atrStopPct:atrStopPct,
+      atrStop:atrStop,atrStopPct:atrStopPct,
       obvRising:obvRising,fires:fires,avgVol20:avgVol20,
       cL:cL,cH:cH,step:step,wc:wc,distMA20:distMA20,
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
       botP:botP,botD:botD,chip:chip,chipParts:chipParts,chipLit:chipLit,
       ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,asOf:asOf,
-      t1:t1,t2:t2,t3:t3,mainCostMid:mainCostMid};
+      dev30:dev30,dev50:dev50,dev80:dev80,mainCostMid:mainCostMid};
   }catch(e){return null;}
 }
 
@@ -951,8 +957,6 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   }
   var costMid = a.mainCostMid;
   var pctVsCost = ((price/costMid - 1) * 100).toFixed(1);
-  var pctVsT3 = ((price/a.t3 - 1) * 100).toFixed(1);
-  var pctVsT1 = ((price/a.t1 - 1) * 100).toFixed(1);
   // ═══ v6.4 變更：「籌碼」改名為「技術熱度」══════════════════
   // a.chip 變數名稱保留（避免大改 code），但 UI 與 label 全部改成「技術熱度」
   // 邏輯不動：仍由 Phase + OBV + 一把火 + 均線 組成
@@ -963,19 +967,18 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   else if(a.chip < 95){chipLabel='幾乎全滿 · 過熱 🚨'; chipMeaning='五項幾乎全滿，短期回檔風險升高'; chipDanger=2;}
   else {chipLabel='全部滿格 · 極度過熱 🚨🚨'; chipMeaning='五項全部滿格，等回測'; chipDanger=3;}
   var pricePos, advisory;
-  if(price < a.cL){pricePos='低於主力成本'; advisory='low_cost';}
-  else if(price <= a.cH){pricePos='在主力成本區內 ⭐'; advisory='in_cost';}
-  else if(price < a.t1){pricePos='高於成本但未達 T1'; advisory='pre_t1';}
-  else if(price < a.t2){pricePos='已達 T1 區'; advisory='at_t1';}
-  else if(price < a.t3){pricePos='已達 T2 區'; advisory='at_t2';}
-  else{pricePos='超越 T3 出貨區 🚨'; advisory='past_t3';}
+  // v7.7: 分級門檻不變（+30% / +50% / +80%），只是不再包裝成「T1/T2/T3」
+  if(price < a.cL){pricePos='低於量能密集區'; advisory='low_cost';}
+  else if(price <= a.cH){pricePos='在量能密集區內 ⭐'; advisory='in_cost';}
+  else if(price < a.dev30){pricePos='在密集區上方・乖離未達 30%'; advisory='pre_t1';}
+  else if(price < a.dev50){pricePos='離密集區中位 +30% 以上'; advisory='at_t1';}
+  else if(price < a.dev80){pricePos='離密集區中位 +50% 以上'; advisory='at_t2';}
+  else{pricePos='離密集區中位 +80% 以上 🚨'; advisory='past_t3';}
   // v7.1 變更：部位建議的停損與上面的 ATR 停損統一，不再各算各的
   var stopLoss = a.atrStop;
   var stopPct = a.atrStopPct;
+  // v7.7: R:R 移除 —— reward 端是假的（來自固定倍數 t2），算出來的比值沒有意義
   var risk = price - stopLoss;
-  var rewardT2 = a.t2 - price;
-  var rrT2 = risk > 0 ? (rewardT2 / risk) : 0;
-  var rrPass = rrT2 >= 3;
   // v7.1 修正：原本寫死 '+'，負數時會印成 「+-3.5%」
   var signCost = (price >= costMid ? '+' : '');
   var dataPoints = '<div>• 現價 vs 量能密集區：<b>'+signCost+pctVsCost+'%</b>（'+pricePos+'）</div>'+
@@ -989,12 +992,10 @@ function getTradingAdvice(price, a, ph, holdingInfo){
       +'<span style="color:#888;">　—— 看缺哪幾項，不要看亮幾項；五項全亮＝不要追</span></div>'+
     '<div>• 均線排列：<b>'+ph.title+'</b><span style="color:#888;">　—— 這不是 Weinstein 階段</span></div>'+
     '<div>• 量能密集區：<b>$'+a.cL+' - $'+a.cH+'</b>（中位 $'+costMid.toFixed(2)+'）</div>'+
-    // v7.2: 固定倍數 T1/T2/T3 不再對外顯示，改印 ATR 版（至少跟個股波動度掛鉤）
-    '<div>• 參考區間（ATR）：停損 <b>$'+a.atrStop.toFixed(2)+'</b>（'+a.atrStopPct.toFixed(1)+'%）'
-      +'　T1 <b>$'+a.atrT1.toFixed(2)+'</b> / T2 <b>$'+a.atrT2.toFixed(2)+'</b> / T3 <b>$'+a.atrT3.toFixed(2)+'</b></div>'+
+    // v7.7: 目標價（固定倍數版與 ATR 版）與 R:R 全部移除，只留停損
+    '<div>• 停損（1.5×ATR 與 −8% 取較嚴）：<b>$'+a.atrStop.toFixed(2)+'</b>（'+a.atrStopPct.toFixed(1)+'%）</div>'+
     '<div>• OBV 趨勢：<b>'+(a.obvRising?'上升（吸籌跡象）':'下降')+'</b></div>'+
-    '<div>• 一把火（量增）：<b>近 60 天 '+a.fires.length+' 次</b></div>'+
-    '<div>• R:R（用 T2 算）：<b>1:'+rrT2.toFixed(2)+'</b>'+(rrPass?' ✅':' ❌')+'</div>';
+    '<div>• 一把火（量增）：<b>近 60 天 '+a.fires.length+' 次</b></div>';
   var holdingAction = '';
   if(holdingInfo && holdingInfo.hasPosition){
     var entryPrice = holdingInfo.entryPrice;
@@ -1057,57 +1058,59 @@ function getTradingAdvice(price, a, ph, holdingInfo){
       actionLine:'技術熱度 '+a.chip+'% 過熱',
       bg:'#fff0d0', border:'#dd4400', titleColor:'#dd4400',
       summary:'技術熱度 '+a.chip+'%（過熱區）。Phase+OBV+一把火+均線大部分滿格，短期上漲動能已釋放，等回測再說。',
-      dataPoints:dataPoints, suggestion:'⚠️ 技術指標已過熱，不該追高，等回測突破點或主力成本帶再評估'+(holdingAction?'<br><br>'+holdingAction:'')};
+      dataPoints:dataPoints, suggestion:'⚠️ 技術指標已過熱，不該追高，等回測突破點或量能密集區再評估'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   if(advisory === 'past_t3'){
     return {urgent:'WARNING', icon:'🚨', mainTitle:'不要進場',
-      actionLine:'已超越 T3 出貨區',
+      actionLine:'離量能密集區中位 +80% 以上',
       bg:'#ffe0e0', border:'#cc0000', titleColor:'#cc0000',
-      summary:'現價 $'+price.toFixed(2)+' 已超越 T3 $'+a.t3.toFixed(2)+'（比 T3 還高 '+pctVsT3+'%）。主力出貨區，現在進場等於接刀。',
+      summary:'現價 $'+price.toFixed(2)+' 已經在量能密集區中位 $'+costMid.toFixed(2)+' 上方 '+pctVsCost+'%。乖離極大，這裡沒有支撐可以靠，現在進場等於追在半空中。',
       dataPoints:dataPoints, suggestion:'⛔ 不要追高｜如果已持有：拉緊停損'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   if(advisory === 'at_t2'){
     return {urgent:'WARNING', icon:'⚠️', mainTitle:'進場價偏高',
-      actionLine:'已達 T2 區，風險大於報酬',
+      actionLine:'離密集區中位 +50% 以上，乖離過大',
       bg:'#fff4e0', border:'#dd6600', titleColor:'#dd6600',
-      summary:'現價 $'+price.toFixed(2)+' 已達 T2 區（比 T1 高 '+pctVsT1+'%）。可能還有 T3 空間，但風險已大於報酬。',
+      summary:'現價 $'+price.toFixed(2)+' 在量能密集區中位上方 '+pctVsCost+'%。可能還會漲，但最近的支撐帶已經在很下面，新進場的停損放不出來。',
       dataPoints:dataPoints, suggestion:'⚠️ 不建議新進場'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   if(advisory === 'at_t1'){
     return {urgent:'CAUTION', icon:'⏳', mainTitle:'謹慎評估',
-      actionLine:'剛達 T1，需確認突破',
+      actionLine:'離密集區中位 +30% 以上',
       bg:'#fff8d0', border:'#dd9900', titleColor:'#cc8800',
-      summary:'現價 $'+price.toFixed(2)+' 接近或已達 T1。如果剛突破 T1 + 量增 + Phase3 = 可考慮，否則應等回測。',
-      dataPoints:dataPoints, suggestion:'⚠️ 條件性進場｜需確認：1) 突破 T1 後量增 2) 大盤環境 3) R:R >= 1:3'+(holdingAction?'<br><br>'+holdingAction:'')};
+      summary:'現價 $'+price.toFixed(2)+' 在量能密集區中位上方 '+pctVsCost+'%。已經離支撐帶有一段距離，要嘛等回測、要嘛用更近的結構當停損 —— 買價與停損以 dna 為準。',
+      dataPoints:dataPoints, suggestion:'⚠️ 條件性進場｜先回 dna 確認有沒有合格的 pivot 與停損位'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   if(advisory === 'in_cost'){
-    if(a.phase >= 2 && a.obvRising && rrPass){
+    // v7.7: 原本這一關還要 rrPass —— 但 R:R 的 reward 端是假的（固定倍數 t2），
+    //   而且現價在密集區內時它幾乎必然大於 3，本來就沒有實際擋掉任何東西。一併移除。
+    if(a.phase >= 2 && a.obvRising){
       var posSize = '池子資金 5-10%（中等部位）';
-      var positionAdvice = '進場 $'+price.toFixed(2)+' / 停損 $'+stopLoss.toFixed(2)+' ('+stopPct.toFixed(1)+'%) / R:R 1:'+rrT2.toFixed(1);
+      var positionAdvice = '參考停損 $'+stopLoss.toFixed(2)+'（'+stopPct.toFixed(1)+'%）—— 實際買價與停損以 dna 為準';
       return {urgent:'BUY', icon:'✅', mainTitle:'可考慮進場',
-        actionLine:'主力成本區 + Phase'+a.phase+' + OBV 上升',
+        actionLine:'量能密集區 + Phase'+a.phase+' + OBV 上升',
         bg:'#e8f8e8', border:'#009944', titleColor:'#009944',
-        summary:'現價 $'+price.toFixed(2)+' 在主力成本區內 + Phase'+a.phase+' + OBV 上升 + R:R 通過。這是理想進場區間。',
+        summary:'現價 $'+price.toFixed(2)+' 在量能密集區內 + Phase'+a.phase+' + OBV 上升。位置與條件都站得住，是值得往下查的區間。',
         dataPoints:dataPoints,
-        suggestion:'✅ '+positionAdvice+'<br>📊 部位：'+posSize+'<br>🎯 T1 $'+a.t1.toFixed(2)+' / T2 $'+a.t2.toFixed(2)+' / T3 $'+a.t3.toFixed(2)+(holdingAction?'<br><br>'+holdingAction:'')};
+        suggestion:'✅ '+positionAdvice+'<br>📊 部位：'+posSize+(holdingAction?'<br><br>'+holdingAction:'')};
     } else {
       return {urgent:'WAIT', icon:'⏳', mainTitle:'觀察等待',
-        actionLine:'在成本區但啟動訊號不足',
+        actionLine:'在密集區但啟動訊號不足',
         bg:'#fff8e0', border:'#dd9900', titleColor:'#cc8800',
-        summary:'現價在主力成本區內，但 Phase'+a.phase+' 還沒啟動或 OBV 沒上升或 R:R 不足。等啟動訊號。',
+        summary:'現價在量能密集區內，但 Phase'+a.phase+' 還沒啟動或 OBV 沒上升。等啟動訊號。',
         dataPoints:dataPoints, suggestion:'🟡 暫不進場｜等待：1) Phase 提升 2) OBV 上升 3) 一把火'+(holdingAction?'<br><br>'+holdingAction:'')};
     }
   }
   if(advisory === 'pre_t1'){
     if(a.phase === 3 && a.obvRising && chipDanger === 0){
       return {urgent:'BUY_HALF', icon:'🟢', mainTitle:'可控位進場',
-        actionLine:'Phase3 但離成本較遠',
+        actionLine:'Phase3 但已離開密集區',
         bg:'#f0f8e8', border:'#88aa44', titleColor:'#5a7a2a',
-        summary:'現價 $'+price.toFixed(2)+' 高於成本但未達 T1，均線多頭排列。可進場但要控位。',
+        summary:'現價 $'+price.toFixed(2)+' 在量能密集區上方、乖離還不大，均線多頭排列。可進場但要控位。',
         dataPoints:dataPoints, suggestion:'🟢 部位減半（池子 3-5%）｜停損 $'+stopLoss.toFixed(2)+(holdingAction?'<br><br>'+holdingAction:'')};
     } else {
       return {urgent:'WAIT', icon:'⏳', mainTitle:'觀察為主',
-        actionLine:'未達 T1 但訊號不足',
+        actionLine:'在密集區上方但訊號不足',
         bg:'#fff8e0', border:'#dd9900', titleColor:'#cc8800',
         summary:(function(){
           // v7.1：改用陣列 join，不再每項都接頓號（舊版結尾會多一個「、建議」）
@@ -1115,7 +1118,7 @@ function getTradingAdvice(price, a, ph, holdingInfo){
           if(a.phase!==3) miss.push('均線還沒多頭排列（目前 '+ph.title+'）');
           if(!a.obvRising) miss.push('OBV 下降');
           if(chipDanger!==0) miss.push('技術熱度偏高');
-          return '現價高於主力成本但尚未達 T1。'+
+          return '現價在量能密集區上方、乖離還不大。'+
             (miss.length?'未通過的條件：'+miss.join('、')+'。':'')+
             '建議等回測或條件轉好。';
         })(),
@@ -1124,9 +1127,9 @@ function getTradingAdvice(price, a, ph, holdingInfo){
   }
   if(advisory === 'low_cost'){
     return {urgent:'AVOID', icon:'⛔', mainTitle:'不要進場',
-      actionLine:'已跌破主力成本',
+      actionLine:'已跌破量能密集區',
       bg:'#ffe0e0', border:'#cc1133', titleColor:'#cc1133',
-      summary:'現價 $'+price.toFixed(2)+' 已跌破主力成本 $'+a.cL+'。空頭走勢，不該抄底。',
+      summary:'現價 $'+price.toFixed(2)+' 已跌破量能密集區下緣 $'+a.cL+'。支撐帶失守，不該抄底。',
       dataPoints:dataPoints, suggestion:'⛔ 不要進場｜等待重新確認底部 + Phase 翻多'+(holdingAction?'<br><br>'+holdingAction:'')};
   }
   return {urgent:'NEUTRAL', icon:'⏳', mainTitle:'觀察中',
@@ -1145,7 +1148,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1256,7 +1259,8 @@ function fillCard(t,div){
     (a&&a.dist150!==null?'<div style="font-size:11px;margin-bottom:5px;color:'+(a.dist150<0?'#cc0000':a.dist150>50?'#dd6600':'#555')+';">'
       +(a.dist150<0?'⛔ <b>不是 Stage 2</b> —— 在 30 週線<b>下方</b> '+Math.abs(a.dist150).toFixed(0)+'%':'離 30 週線 <b>+'+a.dist150.toFixed(0)+'%</b>')
       +(a.off52!==null?'　·　離 52 週高點 '+a.off52.toFixed(0)+'%':'')+'</div>':'')+
-    (a?'<div style="font-size:10px;color:#666;margin-bottom:4px;">T1 <b style="color:#dd6600;">$'+a.t1.toFixed(1)+'</b>　T2 <b style="color:#cc1133;">$'+a.t2.toFixed(1)+'</b>　T3 <b style="color:#990033;">$'+a.t3.toFixed(1)+'</b></div>':'')+
+    // v7.7: 卡片上的 T1/T2/T3 一併移除，改印參考停損（這是唯一有錨在現價的數字）
+    (a?'<div style="font-size:10px;color:#666;margin-bottom:4px;">參考停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b>（'+a.atrStopPct.toFixed(1)+'%）<span style="color:#999;">・目標價回 dna</span></div>':'')+
     '<div class="arrow-row"><div class="arrow-lbl" style="left:'+np+'%">▼$'+p.toFixed(1)+'</div></div>'+
     '<div class="cost-track">'+
       (a?'<div class="cost-zone" style="left:'+cl+'%;width:'+cw+'%"></div>':'')+
@@ -1278,7 +1282,7 @@ function showDetail(t){
   // v7.1 變更：價格軸刻度也隨股價縮放，不再固定 $5
   var axS=a&&a.step?a.step:niceStep(p*0.02);
   var pMn=snap((a&&a.botP?a.botP:p*0.7)*0.88,axS,false);
-  var pMx=a&&a.t3?snap(a.t3*1.1,axS,true):snap(p*1.4,axS,true);
+  var pMx=a?snap(Math.max(p*1.35,a.cH*1.25),axS,true):snap(p*1.4,axS,true);
   var cl=a?pp(a.cL,pMn,pMx):'30';
   var cw=a?((a.cH-a.cL)/(pMx-pMn)*100).toFixed(1):'20';
   var np=pp(p,pMn,pMx);
@@ -1329,8 +1333,14 @@ function showDetail(t){
           (a.off52!==null?'　·　離 52 週高點 <b style="color:'+(a.off52<-30?'#cc0000':'#666')+';">'+a.off52.toFixed(0)+'%</b>'
             +(a.off52<-30?'<b style="color:#cc0000;">（這一波已受損）</b>':''):'')+
           '</div>'+
-        '<div><b>② 支撐／成本在哪</b>　量能密集區 <b style="color:#0066bb;">$'+a.cL+' - $'+a.cH+'</b>'+
-          '（中位 $'+a.mainCostMid.toFixed(2)+'）　現價 <b>'+(p>=a.mainCostMid?'+':'')+((p/a.mainCostMid-1)*100).toFixed(1)+'%</b> 於中位</div>'+
+        // v7.7: Jasmine —— 成本區是這一頁少數算得準的東西，總結要一眼看到，所以放大
+        '<div style="margin-top:2px;"><b>② 支撐／成本在哪</b>'+
+          '<span style="color:#888;font-size:11px;">　近 60 天成交量最密集的價格帶・當支撐看</span></div>'+
+        '<div style="text-align:center;background:#eef5fc;border:1px solid #cfe2f5;border-radius:8px;padding:9px 6px;margin:3px 0 5px;">'+
+          '<div style="font-family:\'Orbitron\',monospace;font-size:30px;font-weight:700;color:#0066bb;line-height:1.15;">$'+a.cL+' -- $'+a.cH+'</div>'+
+          '<div style="font-size:12px;color:#555;margin-top:3px;line-height:1.5;">中位 <b>$'+a.mainCostMid.toFixed(2)+'</b>'+
+            '　·　現價 <b style="color:'+(p>=a.mainCostMid?'#cc6600':'#0066bb')+';">'+(p>=a.mainCostMid?'+':'')+((p/a.mainCostMid-1)*100).toFixed(1)+'%</b> 於中位</div>'+
+        '</div>'+
         '<div><b>③ 風險多大</b>　停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b>'+
           '（<b>'+a.atrStopPct.toFixed(1)+'%</b>，取 1.5×ATR 與 −8% 較嚴者）</div>'+
         '<div><b>④ 多頭條件缺哪幾項</b>　'+
@@ -1418,26 +1428,24 @@ function showDetail(t){
       // → 只保留 ATR 動態那一版（它至少跟個股波動度掛鉤），並改名叫「參考區間」。
       '<div style="font-size:10.5px;color:#888;margin-bottom:4px;">這是「近 60 天成交量最密集的價格帶」，'+
         '<b>不是主力真的在那裡買</b>。當支撐帶看，不要當成本讀。</div>'+
-      '<div style="font-size:11px;color:#666;margin-bottom:10px;background:#f5f0ff;padding:4px 6px;border-radius:4px;border-left:3px solid #7c3aed;">⚡ ATR 動態：停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b><span style="color:#cc0000;font-size:10px;">（'+a.atrStopPct.toFixed(1)+'%）</span>　T1 <b style="color:#dd6600;">$'+a.atrT1.toFixed(2)+'</b>　T2 <b style="color:#cc1133;">$'+a.atrT2.toFixed(2)+'</b>　T3 <b style="color:#990033;">$'+a.atrT3.toFixed(2)+'</b><br><span style="color:#7c3aed;font-size:10px;">→ 推薦此版本（基於 ATR $'+a.atr14.toFixed(2)+'）</span></div>'+
+      '<div style="font-size:11px;color:#666;margin-bottom:10px;background:#f5f0ff;padding:5px 7px;border-radius:4px;border-left:3px solid #7c3aed;">⚡ 參考停損 <b style="color:#cc0000;">$'+a.atrStop.toFixed(2)+'</b><span style="color:#cc0000;font-size:10px;">（'+a.atrStopPct.toFixed(1)+'%）</span><span style="color:#888;">　取 1.5×ATR 與 −8% 較嚴者・ATR $'+a.atr14.toFixed(2)+'</span><br><span style="color:#7c3aed;font-size:10px;">→ v7.7 起不再顯示目標價：出場看 dna 或跌破 20 日均線，不看固定倍數</span></div>'+
       '<div class="arrow-row"><div class="arrow-lbl" style="left:'+np+'%">▼ $'+p.toFixed(2)+'</div></div>'+
       '<div class="cost-track" style="height:14px;position:relative;">'+
         '<div class="cost-zone" style="left:'+cl+'%;width:'+cw+'%;height:100%;"></div>'+
         '<div class="cost-pin" style="left:'+np+'%;height:100%;"></div>'+
-        '<div style="position:absolute;left:'+pp(a.t1,pMn,pMx)+'%;top:0;bottom:0;width:2px;background:#dd6600;"></div>'+
-        '<div style="position:absolute;left:'+pp(a.t2,pMn,pMx)+'%;top:0;bottom:0;width:2px;background:#cc1133;"></div>'+
-        '<div style="position:absolute;left:'+pp(a.t3,pMn,pMx)+'%;top:0;bottom:0;width:2px;background:#990033;"></div>'+
+        // v7.7: T1/T2/T3 三根標線移除。這條軸現在只有三個東西：
+        //   藍塊 = 量能密集區、橘針 = 現價、紅針 = 參考停損。
+        '<div style="position:absolute;left:'+pp(a.atrStop,pMn,pMx)+'%;top:0;bottom:0;width:2px;background:#cc0000;"></div>'+
       '</div>'+
       '<div style="position:relative;height:14px;margin-top:2px;font-size:9px;font-weight:700;">'+
-        '<div style="position:absolute;left:'+pp(a.t1,pMn,pMx)+'%;color:#dd6600;transform:translateX(-50%);">T1</div>'+
-        '<div style="position:absolute;left:'+pp(a.t2,pMn,pMx)+'%;color:#cc1133;transform:translateX(-50%);">T2</div>'+
-        '<div style="position:absolute;left:'+pp(a.t3,pMn,pMx)+'%;color:#990033;transform:translateX(-50%);">T3</div>'+
+        '<div style="position:absolute;left:'+pp(a.atrStop,pMn,pMx)+'%;color:#cc0000;transform:translateX(-50%);">停損</div>'+
       '</div>'+
       '<div class="cost-axis" style="margin-top:3px;"><span>$'+pMn+'</span><span style="color:var(--blue);font-weight:600;">現價'+ds+'於成本</span><span>$'+pMx+'</span></div>'+
     '</div>'+
     '<div class="dc">'+
       '<div class="dtitle">📊 詳細數據'+stamp+'</div>'+
       '<div class="dr"><span>底部確認</span><span class="dv-b">$'+a.botP.toFixed(2)+'（'+a.botD+'）</span></div>'+
-      '<div class="dr"><span>主力成本（中位）</span><span class="dv-b">$'+a.mainCostMid.toFixed(2)+'</span></div>'+
+      '<div class="dr"><span>量能密集區中位</span><span class="dv-b">$'+a.mainCostMid.toFixed(2)+'</span></div>'+
       '<div class="dr"><span>加權成本</span><span class="dv-b">$'+a.wc+'</span></div>'+
       '<div class="dr"><span>離 30 週線 / 離 52 週高點</span><span>'
         +(a.dist150!==null?'<span style="font-weight:700;color:'+(a.dist150<0?'#cc0000':a.dist150>50?'#dd6600':'#0066bb')+';">'+(a.dist150>=0?'+':'')+a.dist150.toFixed(0)+'%</span>':'—')
@@ -1468,7 +1476,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1584,7 +1592,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v7.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v7.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
