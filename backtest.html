@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v2.0</title>
+<title>反彈回測 v2.2</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -57,7 +57,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v2.0</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v2.2</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -81,6 +81,7 @@ td.l,th.l{text-align:left;}
     <option value="3y" selected>3 年（前 2 年調參數・後 1 年驗證）</option>
     <option value="5y">5 年（樣本多，但含不同市場環境）</option>
     <option value="2y">2 年</option>
+    <option value="1y">1 年（只看最近這一段主流行情）</option>
   </select>
 
   <label>風險上限（進場價到停損的距離，超過就跳過這一筆）</label>
@@ -272,13 +273,17 @@ function runTrade(bars,entryIdx,stop,exitFn,meta){
     // 最多往上走多少（MFE）、最多往下走多少（MAE），不管你怎麼出場。
     //   MFE 中位數 = 這個訊號通常給你多少空間可以賺
     //   MAE 中位數 = 進場後通常會先讓你難受多少（決定停損要放多遠）
-    var mfe=0, mae=0;
+    // v2.2: 連「什麼時候發生」一起記 —— 這才是「能不能用眼睛管出場」的關鍵。
+    // 先讓你難受再往上走（先跌後漲）＝ 停損夠寬就活得下來，看盤管出場可行。
+    // 先往上走再掉回來（先漲後跌）＝ 你看到的獲利會自己蒸發，用眼睛管只會一路等。
+    var mfe=0, mae=0, mfeD=0, maeD=0;
     for(var q=entryIdx;q<Math.min(bars.length,entryIdx+20);q++){
-      mfe=Math.max(mfe,(bars[q].h/e-1)*100);
-      mae=Math.min(mae,(bars[q].l/e-1)*100);
+      var up=(bars[q].h/e-1)*100, dn=(bars[q].l/e-1)*100;
+      if(up>mfe){mfe=up;mfeD=q-entryIdx;}
+      if(dn<mae){mae=dn;maeD=q-entryIdx;}
     }
     return {
-      mfe:mfe, mae:mae,
+      mfe:mfe, mae:mae, mfeD:mfeD, maeD:maeD,
       tk:meta.tk, sigD:meta.sigD, inD:bars[entryIdx].d, inP:e,
       stop:stop, riskPct:(risk/e)*100,
       outD:bars[xi].d, outP:x, retPct:(x/e-1)*100, R:(x-e)/risk,
@@ -538,6 +543,15 @@ function render(name,tr,extraSlices){
       + '<b class="'+cls(s.medMFE)+'">'+pct(s.medMFE)+'</b></div>'
       + '<div class="kv"><span><b>MAE 中位數</b>　進場後最多往下走多少</span>'
       + '<b class="'+cls(s.medMAE)+'">'+pct(s.medMAE)+'</b></div>'
+      + sliceTable(slice(tr,function(t){
+          if(t.mfe<=0||t.mae>=0) return null;
+          return t.maeD<t.mfeD?'先跌後漲（停損夠寬就活得下來）':'先漲後跌（獲利會自己蒸發）';
+        },['先跌後漲（停損夠寬就活得下來）','先漲後跌（獲利會自己蒸發）']),
+        '切片：先跌還是先漲　★ v2.2 新增',
+        '<b>這一張直接回答「能不能用眼睛管出場」。</b>「先跌後漲」代表最難受的點發生在前面，'
+        +'停損放夠寬就熬得過去，之後你看著線圖決定何時走是可行的；'
+        +'「先漲後跌」代表你會先看到獲利、然後看著它蒸發 —— 那種情況用眼睛管出場，'
+        +'結果通常是一路等到變成虧損。')
       + '<div class="note">MFE 是「這個訊號通常給你多少空間可以賺」，MAE 是「通常會先讓你難受多少」。'
       + '<b>MFE 中位數必須明顯大於 MAE 中位數的絕對值</b>，用眼睛管出場才有意義；'
       + '如果兩個差不多，那代表這個訊號進場後就是在原地磨，怎麼出場都一樣。</div>';
@@ -559,6 +573,19 @@ function render(name,tr,extraSlices){
       'Weinstein 真正的分界不是價格在線的哪一邊，而是<b>那條線本身在上升還是下彎</b>。'
       +'「離 52 週高點 −25%」這個前提同時網進兩種相反的東西：還在跌的（Stage 4，真死貓跳）'
       +'與已經打完底在橫盤的（Stage 1，那是底部不是反彈）。這一張把它們分開。');
+    // ═══ v2.1:【按進場年份切開】════════════════════════════════════
+    // Jasmine(9/4):「光通訊、算力雲三年前根本沒人注意，硬去抓沒有意義。」
+    // 她說對了一半，而且偏誤的方向跟直覺相反：這些名單是**今天**挑的，
+    // 挑它們正是因為它們後來變成主流 —— 拿今天的贏家回頭測三年，
+    // 會讓數字看起來**比實際好**，不是比較差。
+    // 這一張看邊際是穩定的還是集中在某一年；如果全部來自最近一年，
+    // 那就不是策略有效，是那一年剛好是它們的行情。
+    h+=sliceTable(slice(tr,function(t){
+        return t.inD.slice(0,4);
+      },['2023','2024','2025','2026']),
+      '切片：進場年份　★ v2.1 新增',
+      '如果正期望值幾乎全來自最近一年，那不是策略有效，是那一年剛好是這批名單的行情 —— '
+      +'而這批名單是<b>今天</b>挑的。');
     h+=sliceTable(slice(tr,function(t){
         return t.days<=2?'0–2 天（多半是被雜訊掃掉）':(t.days<=10?'3–10 天':'11 天以上');
       },['0–2 天（多半是被雜訊掃掉）','3–10 天','11 天以上']),
