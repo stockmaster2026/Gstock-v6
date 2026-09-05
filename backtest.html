@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.3</title>
+<title>反彈回測 v1.6</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -56,7 +56,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.3</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.6</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -91,7 +91,19 @@ td.l,th.l{text-align:left;}
     <option value="99">不設限</option>
   </select>
 
+  <label>D／E 的出場規則（同一批進場，只換出場 —— 用來隔離出場的影響）</label>
+  <select id="exitRule">
+    <option value="swing" selected>跌破前一個 swing low（結構破壞・原版）</option>
+    <option value="above5">收盤站上 5 日均線就出（Connors 式獲利了結）</option>
+    <option value="below5">收盤跌破 5 日均線出（很快的移動停損）</option>
+    <option value="below10">收盤跌破 10 日均線出</option>
+    <option value="below20">收盤跌破 20 日均線出</option>
+  </select>
+  <div class="note">⚠ 進場在強勢（帶量突破）時，「站上 5MA」在買進當天多半就成立 —— 那條是給
+    「進場在弱勢（超賣、價格在 5MA 下方）」用的。配錯了會自相矛盾，跑出來的數字沒有意義。</div>
+
   <label>規則</label>
+  <div class="chk"><input type="checkbox" id="ruleE" checked><span><b>E · 強勢股回檔</b>　真 Stage 2（150日均線上升＋收在其上）＋離52週高點 15% 內 → 回檔碰 MA20 且量縮 → 突破前一日高點進</span></div>
   <div class="chk"><input type="checkbox" id="ruleD" checked><span><b>D · 反彈</b>　2B／收復MA20 止跌 → 突破 swing high 進 → 跌破前一個 swing low 出</span></div>
   <div class="chk"><input type="checkbox" id="ruleC" checked><span><b>C · 對照組</b>　O'Neil 突破，但<b>拿掉 30 週線那道閘門</b></span></div>
 
@@ -118,6 +130,7 @@ var MIN_SAMPLE=30;         // 低於這個數字不下結論
 var TARGET_EV=0.3;         // 期望值門檻（R）
 var MAX_STREAK=6;          // 最大連續虧損門檻
 var MAXRISK=12, MAXEXT=25; // v1.2: 風險上限、進場離止跌低點上限（跑之前由畫面設定）
+var EXITMODE='swing';      // v1.5: D 的出場規則
 
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 function $(id){return document.getElementById(id);}
@@ -178,7 +191,11 @@ function prep(bars){
   });
   bars.forEach(function(b,i){
     b.atr=sma(tr,14,i);
-    b.ma10=sma(c,10,i); b.ma20=sma(c,20,i); b.ma150=sma(c,150,i);
+    b.ma5=sma(c,5,i); b.ma10=sma(c,10,i); b.ma20=sma(c,20,i); b.ma150=sma(c,150,i);
+    // v1.4: 30 週線的「斜率」—— Weinstein 真正的分界不是價格在線的哪一邊，
+    // 而是那條線本身在上升（Stage 1→2）還是下彎（Stage 4）。
+    var p20=(i>=20)?bars[i-20].ma150:null;
+    b.slope150=(b.ma150&&p20)?((b.ma150/p20-1)*100):null;
     b.av20=sma(v,20,i); b.av50=sma(v,50,i);
     var lo=Math.max(0,i-251), hh=0;
     for(var k=lo;k<=i;k++) hh=Math.max(hh,bars[k].h);
@@ -230,7 +247,7 @@ function runTrade(bars,entryIdx,stop,exitFn,meta){
       stop:stop, riskPct:(risk/e)*100,
       outD:bars[xi].d, outP:x, retPct:(x/e-1)*100, R:(x-e)/risk,
       days:xi-entryIdx, why:why,
-      fib:meta.fib, d150:meta.d150, off52:meta.off52, volX:meta.volX, ext:(meta.ext===undefined?null:meta.ext),
+      fib:meta.fib, d150:meta.d150, off52:meta.off52, volX:meta.volX, ext:(meta.ext===undefined?null:meta.ext), slope:(meta.slope===undefined?null:meta.slope),
       open:(why==='還在場內')
     };
   }
@@ -301,7 +318,7 @@ function ruleD(bars,tk){
     if(extPct>MAXEXT){i++;continue;}                 // 反彈已經走太遠 → 不追
     var fib=(b.hi52>pivotLow)?((eb.o-pivotLow)/(bars[i].hi52-pivotLow))*100:null;
     var tr=runTrade(bars,entry,stopD,exitD,{
-      tk:tk,sigD:bars[i].d,fib:fib,volX:volX,ext:extPct,
+      tk:tk,sigD:bars[i].d,fib:fib,volX:volX,ext:extPct,slope:eb.slope150,
       d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
       off52:eb.hi52?(eb.o/eb.hi52-1)*100:null});
     if(tr){out.push(tr);guardUntil=bars.findIndex(function(z){return z.d===tr.outD;});}
@@ -309,12 +326,67 @@ function ruleD(bars,tk){
   }
   return out;
 }
-// 出場：收盤跌破進場後最近一個已確認的 swing low
+// ═══ v1.5:【出場規則可換，用來隔離「出場」這個變數】════════════════
+// 同一批進場、只換出場，才知道差異是出場造成的還是進場造成的。
+// ⚠ 進出場必須配對：進場在弱勢（超賣）→ 出場用強勢訊號（站上 5MA）；
+//   進場在強勢（帶量突破）→ 出場用跌破結構／均線。配錯了規則會自相矛盾。
 function exitD(bars,i,entryIdx){
+  var b=bars[i];
+  if(EXITMODE==='above5')  return (b.ma5 &&b.c>b.ma5 )?'站上5MA':null;
+  if(EXITMODE==='below5')  return (b.ma5 &&b.c<b.ma5 )?'跌破5MA':null;
+  if(EXITMODE==='below10') return (b.ma10&&b.c<b.ma10)?'跌破10MA':null;
+  if(EXITMODE==='below20') return (b.ma20&&b.c<b.ma20)?'跌破20MA':null;
   for(var k=i-2;k>entryIdx;k--){
-    if(bars[k].swL) return bars[i].c<bars[k].l?'結構破壞':null;
+    if(bars[k].swL) return b.c<bars[k].l?'結構破壞':null;
   }
   return null;
+}
+
+/* ═══ 規則 E：強勢股回檔（v1.6）═══════════════════════════════════
+   Jasmine(9/4):「一百多檔股票我其實不可能去買，大概有八成我從來不碰。」
+   她是對的 —— 但解法不是手動挑「熟悉的那幾檔」（她熟悉它們正是因為它們
+   後來漲了，那是倖存者偏差從後門進來），而是把「強勢」寫成算得出來的條件，
+   讓規則自己去挑。
+   ⚠ D 與 E 互斥：D 的前提是離 52 週高點 −25% 以上，E 是 15% 以內。
+     也就是說先前那 98 筆裡，一檔強勢股都沒有。
+   這一版才是 Connors「200 日均線之上買回檔」與 Minervini「回測 10-20 日
+   均線」共同認可的那個設定。                                      */
+function ruleE(bars,tk){
+  var out=[], i=160, guardUntil=-1;
+  while(i<bars.length-1){
+    var b=bars[i];
+    if(!b.ma20||!b.ma150||b.slope150===null||!b.av20||!b.hi52||i<=guardUntil){i++;continue;}
+    // 前提①真 Stage 2：長均線上升 且 收在其上
+    if(!(b.slope150>0 && b.c>b.ma150)){i++;continue;}
+    // 前提②強勢：離 52 週高點 15% 以內
+    var off52=(b.c/b.hi52-1)*100;
+    if(off52<-15){i++;continue;}
+    // 訊號：回檔碰到 MA20 附近
+    if(!(b.l<=b.ma20*1.02)){i++;continue;}
+    // 且回檔是「量縮」的 —— 健康的回檔沒有人急著賣
+    var v5=0; for(var k=Math.max(0,i-4);k<=i;k++) v5+=bars[k].v; v5/=5;
+    if(!(v5<b.av20)){i++;continue;}
+    // 進場：10 根內收盤突破前一日高點；期間跌破長均線就作廢
+    var pullLow=b.l, entry=-1, volX=0;
+    for(var j=i+1;j<Math.min(bars.length,i+11);j++){
+      var x=bars[j];
+      if(x.l<pullLow) pullLow=x.l;
+      if(x.ma150&&x.c<x.ma150) break;
+      if(x.c>bars[j-1].h){entry=j+1;volX=x.av20?x.v/x.av20:0;break;}
+    }
+    if(entry<0||entry>=bars.length){i++;continue;}
+    var eb=bars[entry];
+    var stopE=Math.min(pullLow*0.999, eb.o-Math.max(eb.atr||0, eb.o*0.03));
+    var riskPct=(eb.o-stopE)/eb.o*100;
+    if(riskPct>MAXRISK||riskPct<=0){i++;continue;}
+    var tr=runTrade(bars,entry,stopE,exitD,{
+      tk:tk,sigD:b.d,fib:null,volX:volX,ext:null,slope:eb.slope150,
+      d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
+      off52:eb.hi52?(eb.o/eb.hi52-1)*100:null});
+    if(tr){out.push(tr);guardUntil=bars.findIndex(function(z){return z.d===tr.outD;});}
+    i=Math.max(i+1,guardUntil);
+  }
+  return out;
 }
 
 /* ═══ 規則 C：O'Neil 突破，拿掉 Stage 2 閘門 ═══ */
@@ -336,7 +408,7 @@ function ruleC(bars,tk){
     var noiseC=Math.max(eb.atr||0, eb.o*0.03);   // v1.3: 同一條「停損不放在雜訊裡」
     stop=Math.min(stop, eb.o-noiseC);
     var tr=runTrade(bars,entry,stop,exitC,{
-      tk:tk,sigD:b.d,fib:null,volX:b.v/b.av50,
+      tk:tk,sigD:b.d,fib:null,volX:b.v/b.av50,slope:eb.slope150,
       d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
       off52:eb.hi52?(eb.o/eb.hi52-1)*100:null});
     if(tr){out.push(tr);guardUntil=bars.findIndex(function(z){return z.d===tr.outD;});}
@@ -420,6 +492,15 @@ function render(name,tr,extraSlices){
       '切片：進場時在 30 週線的哪一邊',
       '這一張直接回答「Stage 2 那道閘門是幫我還是害我」—— 如果下方那組明顯較差，閘門是對的。');
     h+=sliceTable(slice(tr,function(t){
+        if(t.slope===null) return null;
+        return t.slope>1?'30週線上升（打完底・Stage 1→2）'
+             :(t.slope<-1?'30週線下降（還在跌・Stage 4）':'30週線走平（打底中）');
+      },['30週線上升（打完底・Stage 1→2）','30週線走平（打底中）','30週線下降（還在跌・Stage 4）']),
+      '切片：30 週線本身的方向　★ v1.4 新增',
+      'Weinstein 真正的分界不是價格在線的哪一邊，而是<b>那條線本身在上升還是下彎</b>。'
+      +'「離 52 週高點 −25%」這個前提同時網進兩種相反的東西：還在跌的（Stage 4，真死貓跳）'
+      +'與已經打完底在橫盤的（Stage 1，那是底部不是反彈）。這一張把它們分開。');
+    h+=sliceTable(slice(tr,function(t){
         return t.days<=2?'0–2 天（多半是被雜訊掃掉）':(t.days<=10?'3–10 天':'11 天以上');
       },['0–2 天（多半是被雜訊掃掉）','3–10 天','11 天以上']),
       '切片：持有幾天',
@@ -492,19 +573,21 @@ $('run').onclick=async function(){
     .filter(function(x){return x;});
   list=list.filter(function(x,i){return list.indexOf(x)===i;});   // v1.1 去重
   if(!list.length){alert('沒有股票代號');return;}
-  var doD=$('ruleD').checked, doC=$('ruleC').checked;
-  if(!doD&&!doC){alert('至少選一個規則');return;}
+  var doD=$('ruleD').checked, doC=$('ruleC').checked, doE=$('ruleE').checked;
+  if(!doD&&!doC&&!doE){alert('至少選一個規則');return;}
   var range=$('rangeSel').value;
   MAXRISK=parseFloat($('maxRisk').value); MAXEXT=parseFloat($('maxExt').value);
+  EXITMODE=$('exitRule').value;
 
   $('run').disabled=true; $('out').innerHTML='';
-  var allD=[], allC=[], failed=[];
+  var allD=[], allC=[], allE=[], failed=[];
   for(var i=0;i<list.length;i++){
     var tk=list[i];
     $('prog').textContent='('+(i+1)+'/'+list.length+') '+tk;
     $('pbar').style.width=((i+1)/list.length*100)+'%';
     try{
       var bars=prep(await fetchBars(tk,range));
+      if(doE) allE=allE.concat(ruleE(bars,tk));
       if(doD) allD=allD.concat(ruleD(bars,tk));
       if(doC) allC=allC.concat(ruleC(bars,tk));
     }catch(e){ failed.push(tk+'（'+(e.message||'失敗')+'）'); }
@@ -513,6 +596,7 @@ $('run').onclick=async function(){
   $('prog').textContent='跑完 '+list.length+' 檔';
   var h='';
   if(failed.length) h+='<div class="card"><h2>⚠️ 抓不到</h2><div class="note">'+failed.join('、')+'</div></div>';
+  if(doE) h+=render('E · 強勢股回檔',allE,null);
   if(doD) h+=render('D · 反彈規則',allD,fibSlices);
   if(doC) h+=render("C · O'Neil 突破（拿掉 30 週線閘門）",allC,null);
   if(doD&&doC){
