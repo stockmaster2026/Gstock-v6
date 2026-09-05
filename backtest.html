@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.2</title>
+<title>反彈回測 v1.3</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -56,7 +56,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.2</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.3</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -170,7 +170,14 @@ async function fetchBars(t,range,retried){
 function sma(a,n,i){if(i<n-1)return null;var s=0;for(var k=i-n+1;k<=i;k++)s+=a[k];return s/n;}
 function prep(bars){
   var c=bars.map(function(b){return b.c;}), v=bars.map(function(b){return b.v;});
+  // v1.3: True Range → ATR(14)，用來擋「停損放在雜訊裡面」
+  var tr=bars.map(function(b,i){
+    if(i===0) return b.h-b.l;
+    var pc=bars[i-1].c;
+    return Math.max(b.h-b.l, Math.abs(b.h-pc), Math.abs(b.l-pc));
+  });
   bars.forEach(function(b,i){
+    b.atr=sma(tr,14,i);
     b.ma10=sma(c,10,i); b.ma20=sma(c,20,i); b.ma150=sma(c,150,i);
     b.av20=sma(v,20,i); b.av50=sma(v,50,i);
     var lo=Math.max(0,i-251), hh=0;
@@ -278,6 +285,16 @@ function ruleD(bars,tk){
     // 現實中放不出來，而且會把 R 值整個稀釋：NBIS 實際賠 23.6%，卻只顯示
     // −0.55R，因為分母是 43%。正確的停損是最近那個更高的低點＝回檔低點。
     var stopD=Math.max(pullLow*0.999, pivotLow*0.999);
+    // ═══ v1.3:【停損不能放在雜訊裡面】════════════════════════════════
+    // v1.2 只設了風險上限，忘了下限。結果出現一堆 1.3~3% 的停損
+    // （AVAV 1.3%、ALNY 2.2%、GNRC 2.5%、MRVL 3.3%），任何一根正常的
+    // 日內波動都會掃到 —— 那些 −1.01R 不是策略失敗，是這筆交易從設計上
+    // 就不可能活下來。3/2 進、3/3 出，看起來像「反彈只走一天」，其實是
+    // 停損位置的問題。
+    // 修法不是把短天期的虧損刪掉（那等於偷偷把輸的拿走），而是把停損推到
+    // 雜訊之外：至少 1×ATR(14) 或 3%，取較寬者。
+    var noise=Math.max(eb.atr||0, eb.o*0.03);
+    stopD=Math.min(stopD, eb.o-noise);
     var riskPct=(eb.o-stopD)/eb.o*100;
     var extPct=(eb.o/pivotLow-1)*100;
     if(riskPct>MAXRISK||riskPct<=0){i++;continue;}   // 停損放不出來 → 不做
@@ -316,6 +333,8 @@ function ruleC(bars,tk){
     var entry=i+1; if(entry>=bars.length) break;
     var eb=bars[entry];
     var stop=Math.max(baseLow, eb.o*0.92);
+    var noiseC=Math.max(eb.atr||0, eb.o*0.03);   // v1.3: 同一條「停損不放在雜訊裡」
+    stop=Math.min(stop, eb.o-noiseC);
     var tr=runTrade(bars,entry,stop,exitC,{
       tk:tk,sigD:b.d,fib:null,volX:b.v/b.av50,
       d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
@@ -400,6 +419,11 @@ function render(name,tr,extraSlices){
       },['30週線上方','30週線下方']),
       '切片：進場時在 30 週線的哪一邊',
       '這一張直接回答「Stage 2 那道閘門是幫我還是害我」—— 如果下方那組明顯較差，閘門是對的。');
+    h+=sliceTable(slice(tr,function(t){
+        return t.days<=2?'0–2 天（多半是被雜訊掃掉）':(t.days<=10?'3–10 天':'11 天以上');
+      },['0–2 天（多半是被雜訊掃掉）','3–10 天','11 天以上']),
+      '切片：持有幾天',
+      '如果 0–2 天那組筆數很多而且期望值很差，代表停損還是放得太近，不是策略本身的問題。');
     if(extraSlices) h+=extraSlices(tr);
   }
   // ═══ v1.1:【每一檔的貢獻】════════════════════════════════════
@@ -451,7 +475,9 @@ function fibSlices(tr){
     return t.fib<38.2?'<38.2%（弱）':(t.fib<=61.8?'38.2–61.8%':'>61.8%（可能真反轉）');
   },['<38.2%（弱）','38.2–61.8%','>61.8%（可能真反轉）']),
   '切片：進場時回補了跌幅的百分之幾',
-  '驗證「死貓跳通常只回補 23.6–50%、超過 61.8% 才可能是真回升」這個說法在你的名單上成不成立。');
+  '驗證「死貓跳通常只回補 23.6–50%、超過 61.8% 才可能是真回升」這個說法在你的名單上成不成立。'
+  +'<br><b>注意：上面「進場離止跌低點多遠」那個上限會直接壓住這一欄</b> —— 設 25% 的時候，'
+  +'Fib 幾乎一定落在 &lt;38.2%，高回補那兩組會沒有樣本。要驗這個說法必須把它設成「不設限」。');
 }
 
 /* ═══ 主流程 ═══ */
