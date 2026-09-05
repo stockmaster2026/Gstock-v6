@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.1</title>
+<title>反彈回測 v1.2</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -56,7 +56,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.1</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.2</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -74,6 +74,21 @@ td.l,th.l{text-align:left;}
     <option value="3y" selected>3 年（前 2 年調參數・後 1 年驗證）</option>
     <option value="5y">5 年（樣本多，但含不同市場環境）</option>
     <option value="2y">2 年</option>
+  </select>
+
+  <label>風險上限（進場價到停損的距離，超過就跳過這一筆）</label>
+  <select id="maxRisk">
+    <option value="10">10%（嚴）</option>
+    <option value="12" selected>12%（預設・對齊 dna 的 10% 規則）</option>
+    <option value="15">15%</option>
+    <option value="99">不設限（看原始樣貌）</option>
+  </select>
+
+  <label>進場最多可以離止跌低點多遠（反彈已經走太遠就不追）</label>
+  <select id="maxExt">
+    <option value="15">15%</option>
+    <option value="25" selected>25%（預設）</option>
+    <option value="99">不設限</option>
   </select>
 
   <label>規則</label>
@@ -102,6 +117,7 @@ var COST=0.001;            // 單邊 0.1%
 var MIN_SAMPLE=30;         // 低於這個數字不下結論
 var TARGET_EV=0.3;         // 期望值門檻（R）
 var MAX_STREAK=6;          // 最大連續虧損門檻
+var MAXRISK=12, MAXEXT=25; // v1.2: 風險上限、進場離止跌低點上限（跑之前由畫面設定）
 
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 function $(id){return document.getElementById(id);}
@@ -207,7 +223,7 @@ function runTrade(bars,entryIdx,stop,exitFn,meta){
       stop:stop, riskPct:(risk/e)*100,
       outD:bars[xi].d, outP:x, retPct:(x/e-1)*100, R:(x-e)/risk,
       days:xi-entryIdx, why:why,
-      fib:meta.fib, d150:meta.d150, off52:meta.off52, volX:meta.volX,
+      fib:meta.fib, d150:meta.d150, off52:meta.off52, volX:meta.volX, ext:(meta.ext===undefined?null:meta.ext),
       open:(why==='還在場內')
     };
   }
@@ -241,24 +257,34 @@ function ruleD(bars,tk){
     for(var k=Math.max(0,i-15);k<=i;k++) if(bars[k].l<pivotLow){pivotLow=bars[k].l;pivIdx=k;}
 
     // ── 反彈 → 回檔 → 突破 swing high ────────────
-    var maxH=b.h, pulled=false, interimHigh=null, entry=-1, volX=0;
+    var maxH=b.h, pulled=false, interimHigh=null, entry=-1, volX=0, pullLow=Infinity;
     for(var j=i+1;j<Math.min(bars.length,i+45);j++){
       var x=bars[j];
       if(x.l<pivotLow) break;                       // 破止跌低點 → 作廢
       if(!pulled){
         if(x.h>maxH) maxH=x.h;
-        if(x.c<bars[j-1].l||(x.ma10&&x.c<x.ma10)){pulled=true;interimHigh=maxH;}
+        if(x.c<bars[j-1].l||(x.ma10&&x.c<x.ma10)){pulled=true;interimHigh=maxH;pullLow=x.l;}
       }else{
+        if(x.l<pullLow) pullLow=x.l;                // v1.2: 記回檔的低點
         if(x.c>interimHigh&&x.av20&&x.v>=1.5*x.av20){entry=j+1;volX=x.v/x.av20;break;}
       }
     }
     if(entry<0||entry>=bars.length){i++;continue;}
 
     var eb=bars[entry];
-    var swingHi=Math.max(interimHigh, bars[entry-1].h);
+    // ═══ v1.2:【停損改放回檔低點，不是原始止跌低點】═══════════════════
+    // 舊版停損放止跌低點，但進場要等突破確認 —— 等確認時價格早已從底部彈上
+    // 一大截，所以風險動輒 25~43%（CIEN 25%、LITE 36%、NBIS 43%）。那種停損
+    // 現實中放不出來，而且會把 R 值整個稀釋：NBIS 實際賠 23.6%，卻只顯示
+    // −0.55R，因為分母是 43%。正確的停損是最近那個更高的低點＝回檔低點。
+    var stopD=Math.max(pullLow*0.999, pivotLow*0.999);
+    var riskPct=(eb.o-stopD)/eb.o*100;
+    var extPct=(eb.o/pivotLow-1)*100;
+    if(riskPct>MAXRISK||riskPct<=0){i++;continue;}   // 停損放不出來 → 不做
+    if(extPct>MAXEXT){i++;continue;}                 // 反彈已經走太遠 → 不追
     var fib=(b.hi52>pivotLow)?((eb.o-pivotLow)/(bars[i].hi52-pivotLow))*100:null;
-    var tr=runTrade(bars,entry,pivotLow*0.999,exitD,{
-      tk:tk,sigD:bars[i].d,fib:fib,volX:volX,
+    var tr=runTrade(bars,entry,stopD,exitD,{
+      tk:tk,sigD:bars[i].d,fib:fib,volX:volX,ext:extPct,
       d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
       off52:eb.hi52?(eb.o/eb.hi52-1)*100:null});
     if(tr){out.push(tr);guardUntil=bars.findIndex(function(z){return z.d===tr.outD;});}
@@ -405,13 +431,14 @@ function render(name,tr,extraSlices){
   h+='<h3>每一筆交易</h3><div class="scroll"><table>'
     +'<tr><th class="l">代號</th><th class="l">進場</th><th>進價</th><th>停損</th><th>風險%</th>'
     +'<th class="l">出場</th><th>報酬%</th><th>R</th><th>天</th><th class="l">原因</th>'
-    +'<th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
+    +'<th>離底%</th><th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
   tr.slice().sort(function(a,b){return a.inD<b.inD?1:-1;}).forEach(function(t){
     h+='<tr><td class="l"><b>'+t.tk+'</b></td><td class="l">'+t.inD+'</td><td>'+fx(t.inP)+'</td>'
       +'<td>'+fx(t.stop)+'</td><td>'+fx(t.riskPct,1)+'%</td><td class="l">'+t.outD+'</td>'
       +'<td class="'+cls(t.retPct)+'">'+pct(t.retPct)+'</td>'
       +'<td class="'+cls(t.R)+'"><b>'+fx(t.R)+'</b></td><td>'+t.days+'</td>'
       +'<td class="l '+(t.open?'m':'')+'">'+t.why+'</td>'
+      +'<td>'+(t.ext===null?'—':fx(t.ext,0)+'%')+'</td>'
       +'<td>'+(t.fib===null?'—':fx(t.fib,0)+'%')+'</td>'
       +'<td>'+(t.d150===null?'—':pct(t.d150,0))+'</td>'
       +'<td>'+fx(t.volX,1)+'</td></tr>';
@@ -442,6 +469,7 @@ $('run').onclick=async function(){
   var doD=$('ruleD').checked, doC=$('ruleC').checked;
   if(!doD&&!doC){alert('至少選一個規則');return;}
   var range=$('rangeSel').value;
+  MAXRISK=parseFloat($('maxRisk').value); MAXEXT=parseFloat($('maxExt').value);
 
   $('run').disabled=true; $('out').innerHTML='';
   var allD=[], allC=[], failed=[];
