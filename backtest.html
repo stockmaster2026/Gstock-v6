@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.6</title>
+<title>反彈回測 v1.8</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -56,7 +56,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.6</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.8</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -117,6 +117,18 @@ td.l,th.l{text-align:left;}
     ② 只有日線，所以進場價一律用<b>次日開盤</b>，不是理想價位。<br>
     ③ 進出各扣 0.1% 成本。跌深股價差更大，實際只會更差。
   </div>
+</div>
+
+<div class="card">
+  <h2>🔍 資料檢查</h2>
+  <div class="note">懷疑抓到的價格不對時用這個。輸入代號，印出最近 15 根的原始 OHLC，
+  直接拿去跟 TradingView 對。<br>
+  ⚠ TradingView 右下角如果亮著 <b>ADJ</b>，它顯示的是<b>還原除息</b>的價格；
+  Yahoo 這支 API 回的是<b>未還原除息</b>的收盤價。有配息的股票，越往前差越多（DELL 三年大約差幾個 %），
+  但那不會造成幾十 % 的落差。</div>
+  <input id="chkTk" placeholder="例如 DELL">
+  <button class="ghost" id="chkBtn">印出最近 15 根</button>
+  <div id="chkOut"></div>
 </div>
 
 <div id="out"></div>
@@ -242,7 +254,19 @@ function runTrade(bars,entryIdx,stop,exitFn,meta){
   }
   return fin(bars[bars.length-1].c*(1-COST),bars.length-1,'還在場內');
   function fin(x,xi,why){
+    // ═══ v1.7:【MFE / MAE —— 量的是訊號本身，跟出場完全無關】═════════
+    // Jasmine(9/4) 想用「機械進場＋看線圖決定出場」。那樣的話，回測的機械
+    // 出場數字就套不到她的做法上。這兩個欄位測的是進場後 20 根之內，價格
+    // 最多往上走多少（MFE）、最多往下走多少（MAE），不管你怎麼出場。
+    //   MFE 中位數 = 這個訊號通常給你多少空間可以賺
+    //   MAE 中位數 = 進場後通常會先讓你難受多少（決定停損要放多遠）
+    var mfe=0, mae=0;
+    for(var q=entryIdx;q<Math.min(bars.length,entryIdx+20);q++){
+      mfe=Math.max(mfe,(bars[q].h/e-1)*100);
+      mae=Math.min(mae,(bars[q].l/e-1)*100);
+    }
     return {
+      mfe:mfe, mae:mae,
       tk:meta.tk, sigD:meta.sigD, inD:bars[entryIdx].d, inP:e,
       stop:stop, riskPct:(risk/e)*100,
       outD:bars[xi].d, outP:x, retPct:(x/e-1)*100, R:(x-e)/risk,
@@ -424,6 +448,8 @@ function stats(tr){
   if(!c.length) return null;
   var R=c.map(function(t){return t.R;}).sort(function(a,b){return a-b;});
   var ret=c.map(function(t){return t.retPct;}).sort(function(a,b){return a-b;});
+  var mfe=tr.map(function(t){return t.mfe;}).sort(function(a,b){return a-b;});   // v1.7: 含未平倉
+  var mae=tr.map(function(t){return t.mae;}).sort(function(a,b){return a-b;});
   var win=c.filter(function(t){return t.R>0;}), los=c.filter(function(t){return t.R<=0;});
   var streak=0,worst=0;
   c.forEach(function(t){ if(t.R<=0){streak++;worst=Math.max(worst,streak);}else streak=0; });
@@ -436,6 +462,7 @@ function stats(tr){
     ev:R.reduce(function(s,x){return s+x;},0)/R.length,
     medR:med(R), medRet:med(ret),
     worstR:R[0], worstStreak:worst,
+    medMFE:med(mfe), medMAE:med(mae), nSig:tr.length,
     days:c.reduce(function(s,t){return s+t.days;},0)/c.length
   };
 }
@@ -481,7 +508,17 @@ function render(name,tr,extraSlices){
         +'<b class="'+cls(s.medRet)+'">'+pct(s.medRet)+'</b></div>'
       +'<div class="kv"><span>最大單筆虧損</span><b class="r">'+fx(s.worstR)+'R</b></div>'
       +'<div class="kv"><span>最大連續虧損</span><b>'+s.worstStreak+' 筆</b></div>'
-      +'<div class="kv"><span>平均持有</span><b>'+fx(s.days,0)+' 天</b></div>';
+      +'<div class="kv"><span>平均持有</span><b>'+fx(s.days,0)+' 天</b></div>'
+      + '<h3>訊號品質（進場後 20 根・與出場規則無關）</h3>'
+      + '<div class="note" style="margin-bottom:5px;">如果你打算「機械進場＋看線圖決定出場」，'
+      + '該看的是這兩個數字，不是上面那些 —— 上面那些是機械出場算出來的，套不到你的做法上。</div>'
+      + '<div class="kv"><span><b>MFE 中位數</b>　進場後最多往上走多少</span>'
+      + '<b class="'+cls(s.medMFE)+'">'+pct(s.medMFE)+'</b></div>'
+      + '<div class="kv"><span><b>MAE 中位數</b>　進場後最多往下走多少</span>'
+      + '<b class="'+cls(s.medMAE)+'">'+pct(s.medMAE)+'</b></div>'
+      + '<div class="note">MFE 是「這個訊號通常給你多少空間可以賺」，MAE 是「通常會先讓你難受多少」。'
+      + '<b>MFE 中位數必須明顯大於 MAE 中位數的絕對值</b>，用眼睛管出場才有意義；'
+      + '如果兩個差不多，那代表這個訊號進場後就是在原地磨，怎麼出場都一樣。</div>';
     if(s.ev>0&&s.medRet<=0)
       h+='<div class="warn"><b>期望值是正的，但中位數是負的。</b>這代表獲利靠少數幾筆大賺撐著 —— '
         +'你必須每一筆都做、而且一筆都不能錯過那幾隻 monster。這種系統對紀律的要求極高，'
@@ -536,13 +573,14 @@ function render(name,tr,extraSlices){
   h+='<h3>每一筆交易</h3><div class="scroll"><table>'
     +'<tr><th class="l">代號</th><th class="l">進場</th><th>進價</th><th>停損</th><th>風險%</th>'
     +'<th class="l">出場</th><th>報酬%</th><th>R</th><th>天</th><th class="l">原因</th>'
-    +'<th>離底%</th><th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
+    +'<th>MFE%</th><th>MAE%</th><th>離底%</th><th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
   tr.slice().sort(function(a,b){return a.inD<b.inD?1:-1;}).forEach(function(t){
     h+='<tr><td class="l"><b>'+t.tk+'</b></td><td class="l">'+t.inD+'</td><td>'+fx(t.inP)+'</td>'
       +'<td>'+fx(t.stop)+'</td><td>'+fx(t.riskPct,1)+'%</td><td class="l">'+t.outD+'</td>'
       +'<td class="'+cls(t.retPct)+'">'+pct(t.retPct)+'</td>'
       +'<td class="'+cls(t.R)+'"><b>'+fx(t.R)+'</b></td><td>'+t.days+'</td>'
       +'<td class="l '+(t.open?'m':'')+'">'+t.why+'</td>'
+      +'<td class="g">'+fx(t.mfe,1)+'%</td><td class="r">'+fx(t.mae,1)+'%</td>'
       +'<td>'+(t.ext===null?'—':fx(t.ext,0)+'%')+'</td>'
       +'<td>'+(t.fib===null?'—':fx(t.fib,0)+'%')+'</td>'
       +'<td>'+(t.d150===null?'—':pct(t.d150,0))+'</td>'
@@ -611,6 +649,22 @@ $('run').onclick=async function(){
   }
   $('out').innerHTML=h;
   $('run').disabled=false;
+};
+$('chkBtn').onclick=async function(){
+  var tk=($('chkTk').value||'').trim().toUpperCase();
+  if(!tk){alert('請輸入代號');return;}
+  $('chkOut').innerHTML='<div class="note">抓取中…</div>';
+  try{
+    var bars=await fetchBars(tk,$('rangeSel').value);
+    var last=bars.slice(-15);
+    var h='<h3>'+tk+'　共 '+bars.length+' 根　'+bars[0].d+' → '+bars[bars.length-1].d+'</h3>'
+      +'<div class="scroll"><table><tr><th class="l">日期</th><th>開</th><th>高</th><th>低</th><th>收</th><th>量</th></tr>';
+    last.slice().reverse().forEach(function(b){
+      h+='<tr><td class="l">'+b.d+'</td><td>'+fx(b.o)+'</td><td>'+fx(b.h)+'</td>'
+        +'<td>'+fx(b.l)+'</td><td><b>'+fx(b.c)+'</b></td><td>'+(b.v/1e6).toFixed(1)+'M</td></tr>';
+    });
+    $('chkOut').innerHTML=h+'</table></div>';
+  }catch(e){ $('chkOut').innerHTML='<div class="warn">'+tk+'：'+(e.message||'失敗')+'</div>'; }
 };
 loadSectors();
 </script>
