@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>反彈回測 v1.8</title>
+<title>反彈回測 v2.0</title>
 <style>
 :root{
   --bg:#f7edb8; --card:#fdfbef; --ink:#333; --sub:#666; --mute:#999;
@@ -24,7 +24,8 @@ h3{font-size:13.5px;margin:14px 0 6px;color:var(--sub);}
 label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px;}
 select[multiple]{height:auto;padding:4px;}
 select[multiple] option{padding:7px 6px;border-bottom:1px solid #f0ece0;}
-select,input,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;
+select,input,textarea{position:relative;z-index:1;-webkit-appearance:none;appearance:none;
+  width:100%;padding:11px 9px;border:1px solid var(--line);border-radius:8px;
   font-size:15px;background:#fff;font-family:inherit;}
 textarea{height:70px;resize:vertical;}
 button{width:100%;padding:13px;border:0;border-radius:10px;background:var(--blue);color:#fff;
@@ -56,7 +57,7 @@ td.l,th.l{text-align:left;}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">反彈<span>BACKTEST</span> v1.8</div></div>
+<div class="top"><div class="logo">反彈<span>BACKTEST</span> v2.0</div></div>
 <div class="wrap">
 
 <div class="card">
@@ -68,6 +69,12 @@ td.l,th.l{text-align:left;}
 
   <label>或自己貼代號（空白／逗號分隔，會蓋過上面的板塊）</label>
   <textarea id="manual" placeholder="例如：NVAX CRSP TEM HIMS"></textarea>
+
+  <label>明細怎麼排</label>
+  <select id="sortBy">
+    <option value="date" selected>依日期（新到舊）</option>
+    <option value="tk">依代號分組 —— 同一檔的每一筆排在一起，方便拿去對 K 線</option>
+  </select>
 
   <label>資料長度</label>
   <select id="rangeSel">
@@ -126,7 +133,11 @@ td.l,th.l{text-align:left;}
   ⚠ TradingView 右下角如果亮著 <b>ADJ</b>，它顯示的是<b>還原除息</b>的價格；
   Yahoo 這支 API 回的是<b>未還原除息</b>的收盤價。有配息的股票，越往前差越多（DELL 三年大約差幾個 %），
   但那不會造成幾十 % 的落差。</div>
-  <input id="chkTk" placeholder="例如 DELL">
+  <label>從名單挑（不用打字）</label>
+  <select id="chkSel"></select>
+  <label>或自己輸入</label>
+  <input id="chkTk" type="text" inputmode="text" autocapitalize="characters"
+         autocorrect="off" spellcheck="false" placeholder="例如 DELL">
   <button class="ghost" id="chkBtn">印出最近 15 根</button>
   <div id="chkOut"></div>
 </div>
@@ -143,6 +154,7 @@ var TARGET_EV=0.3;         // 期望值門檻（R）
 var MAX_STREAK=6;          // 最大連續虧損門檻
 var MAXRISK=12, MAXEXT=25; // v1.2: 風險上限、進場離止跌低點上限（跑之前由畫面設定）
 var EXITMODE='swing';      // v1.5: D 的出場規則
+var SORTBY='date';         // v2.0: 明細排序
 
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 function $(id){return document.getElementById(id);}
@@ -385,8 +397,12 @@ function ruleE(bars,tk){
     // 前提②強勢：離 52 週高點 15% 以內
     var off52=(b.c/b.hi52-1)*100;
     if(off52<-15){i++;continue;}
-    // 訊號：回檔碰到 MA20 附近
-    if(!(b.l<=b.ma20*1.02)){i++;continue;}
+    // ═══ v1.9:【Jasmine 找到的 bug —— 回檔條件只有上限沒有下限】═════════
+    // 舊版寫 `b.l <= b.ma20*1.02`，一檔已經跌到 MA20 下方 20% 的股票照樣成立。
+    // 本意是「回檔到均線附近」，寫出來變成「只要不在均線上方太遠都算」，
+    // 於是抓進來的根本不是回檔，是已經在崩的股票（AMKR 2026-07-01 就是這樣
+    // 被抓進來的：那是它第一根 −7.24% 的破線 K）。v1.8 之前的 E 結果全部作廢。
+    if(!(b.l<=b.ma20*1.02 && b.c>=b.ma20*0.95)){i++;continue;}
     // 且回檔是「量縮」的 —— 健康的回檔沒有人急著賣
     var v5=0; for(var k=Math.max(0,i-4);k<=i;k++) v5+=bars[k].v; v5/=5;
     if(!(v5<b.av20)){i++;continue;}
@@ -396,7 +412,13 @@ function ruleE(bars,tk){
       var x=bars[j];
       if(x.l<pullLow) pullLow=x.l;
       if(x.ma150&&x.c<x.ma150) break;
-      if(x.c>bars[j-1].h){entry=j+1;volX=x.av20?x.v/x.av20:0;break;}
+      if(x.c<x.ma20*0.95) break;                 // v1.9: 回檔崩掉了 → 作廢，不是回檔
+      // v1.9: 確認棒必須「收回 MA20 之上」而且「有量」——
+      //   舊版只要求收盤 > 前一日高點，一根反彈紅 K 就觸發，
+      //   在正在破線的股票上這種紅 K 到處都是。
+      if(x.c>bars[j-1].h && x.ma20 && x.c>x.ma20 && x.av20 && x.v>=x.av20){
+        entry=j+1;volX=x.v/x.av20;break;
+      }
     }
     if(entry<0||entry>=bars.length){i++;continue;}
     var eb=bars[entry];
@@ -404,7 +426,7 @@ function ruleE(bars,tk){
     var riskPct=(eb.o-stopE)/eb.o*100;
     if(riskPct>MAXRISK||riskPct<=0){i++;continue;}
     var tr=runTrade(bars,entry,stopE,exitD,{
-      tk:tk,sigD:b.d,fib:null,volX:volX,ext:null,slope:eb.slope150,
+      tk:tk,sigD:b.d,fib:null,volX:volX,ext:(eb.ma20?(eb.o/eb.ma20-1)*100:null),slope:eb.slope150,
       d150:eb.ma150?(eb.o/eb.ma150-1)*100:null,
       off52:eb.hi52?(eb.o/eb.hi52-1)*100:null});
     if(tr){out.push(tr);guardUntil=bars.findIndex(function(z){return z.d===tr.outD;});}
@@ -573,8 +595,21 @@ function render(name,tr,extraSlices){
   h+='<h3>每一筆交易</h3><div class="scroll"><table>'
     +'<tr><th class="l">代號</th><th class="l">進場</th><th>進價</th><th>停損</th><th>風險%</th>'
     +'<th class="l">出場</th><th>報酬%</th><th>R</th><th>天</th><th class="l">原因</th>'
-    +'<th>MFE%</th><th>MAE%</th><th>離底%</th><th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
-  tr.slice().sort(function(a,b){return a.inD<b.inD?1:-1;}).forEach(function(t){
+    +'<th>MFE%</th><th>MAE%</th><th>離底/離MA20%</th><th>Fib%</th><th>離30週</th><th>量倍</th></tr>';
+  // v2.0: Jasmine —— 同一檔的每一筆要排在一起，才有辦法一次拿去對 TradingView
+  var rows=tr.slice();
+  if(SORTBY==='tk') rows.sort(function(a,b){
+    return a.tk===b.tk ? (a.inD<b.inD?-1:1) : (a.tk<b.tk?-1:1);
+  });
+  else rows.sort(function(a,b){return a.inD<b.inD?1:-1;});
+  var lastTk=null;
+  rows.forEach(function(t){
+    if(SORTBY==='tk'&&t.tk!==lastTk){
+      lastTk=t.tk;
+      h+='<tr><td class="l" colspan="14" style="background:#f3eecf;font-weight:900;padding-top:7px;">'
+        +t.tk+'　<span style="font-weight:400;color:#888;">'
+        +tr.filter(function(z){return z.tk===t.tk;}).length+' 筆</span></td></tr>';
+    }
     h+='<tr><td class="l"><b>'+t.tk+'</b></td><td class="l">'+t.inD+'</td><td>'+fx(t.inP)+'</td>'
       +'<td>'+fx(t.stop)+'</td><td>'+fx(t.riskPct,1)+'%</td><td class="l">'+t.outD+'</td>'
       +'<td class="'+cls(t.retPct)+'">'+pct(t.retPct)+'</td>'
@@ -615,7 +650,7 @@ $('run').onclick=async function(){
   if(!doD&&!doC&&!doE){alert('至少選一個規則');return;}
   var range=$('rangeSel').value;
   MAXRISK=parseFloat($('maxRisk').value); MAXEXT=parseFloat($('maxExt').value);
-  EXITMODE=$('exitRule').value;
+  EXITMODE=$('exitRule').value; SORTBY=$('sortBy').value;
 
   $('run').disabled=true; $('out').innerHTML='';
   var allD=[], allC=[], allE=[], failed=[];
@@ -650,9 +685,17 @@ $('run').onclick=async function(){
   $('out').innerHTML=h;
   $('run').disabled=false;
 };
+(function fillChk(){
+  var all={};
+  try{var raw=localStorage.getItem(SKEY); if(raw) JSON.parse(raw).forEach(function(x){
+    (x.tickers||[]).forEach(function(t){all[t]=1;});});}catch(e){}
+  var ks=Object.keys(all).sort();
+  $('chkSel').innerHTML='<option value="">（選一檔）</option>'
+    +ks.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('');
+})();
 $('chkBtn').onclick=async function(){
-  var tk=($('chkTk').value||'').trim().toUpperCase();
-  if(!tk){alert('請輸入代號');return;}
+  var tk=(($('chkTk').value||'').trim()||($('chkSel').value||'')).toUpperCase();
+  if(!tk){alert('請先從下拉選一檔，或在框裡輸入代號');return;}
   $('chkOut').innerHTML='<div class="note">抓取中…</div>';
   try{
     var bars=await fetchBars(tk,$('rangeSel').value);
