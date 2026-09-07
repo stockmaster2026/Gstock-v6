@@ -50,8 +50,8 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.2</span></h1>
-<div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.2 加上 Qullamaggie 的 20MA 版，以及「抽掉最大貢獻者之後」的敏感度檢查。</div>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.3</span></h1>
+<div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
 <div class="rule">
@@ -74,22 +74,25 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
   <div>
     <div class="lbl">進場規則</div>
     <select id="rule">
-      <option value="all">三種一起跑（分開統計）</option>
-      <option value="F1">只跑 F1 · Minervini cheat</option>
-      <option value="F2">只跑 F2 · 回測 50 日線</option>
-      <option value="F3">只跑 F3 · 破低拉回</option>
+      <option value="orig">兩條原版一起跑（P1 ＋ P2）</option>
+      <option value="P1">P1 pocket pivot（Kacher-Morales 原文）</option>
+      <option value="P2">P2 VCP pivot 突破（Minervini／O'Neil）</option>
+      <option value="all">我編的三條（F1 F2 F3 · 對照用）</option>
+      <option value="F1">F1 Minervini cheat（我編的）</option>
+      <option value="F2">F2 回測 50 日線（我編的）</option>
+      <option value="F3">F3 破低拉回（我編的）</option>
     </select>
   </div>
   <div>
     <div class="lbl">出場規則</div>
     <select id="exit">
+      <option value="X4b">X4b Qullamaggie · 3~5 天收 1/3 ＋ 20MA（唯一過關）</option>
       <option value="all">六種一起跑（對照）</option>
       <option value="X1a">X1a Minervini · 2R 收 1/3 ＋ 50MA</option>
       <option value="X1b">X1b Minervini · 2R 收 1/3 ＋ 20MA</option>
       <option value="X2">X2 O'Neil · 20~25% ＋ 八週法則</option>
       <option value="X3">X3 Kacher-Morales · 七週法則</option>
       <option value="X4">X4a Qullamaggie · 3~5 天收 1/3 ＋ 10MA</option>
-      <option value="X4b">X4b Qullamaggie · 3~5 天收 1/3 ＋ 20MA</option>
       <option value="X0">X0 對照組 · 跌破 swing low</option>
     </select>
   </div>
@@ -117,7 +120,32 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
   <div style="flex:1;min-width:180px"><div id="prog" class="sub"></div></div>
 </div>
 
-<details><summary>▸ 三種規則實際在檢查什麼（跑之前先看一次）</summary>
+<details><summary>▸ 兩條原版進場在檢查什麼（P1／P2 · 參數來自原文）</summary>
+<div class="rule" style="border-color:var(--green);background:rgba(63,185,80,.08)">
+<b style="color:var(--green)">為什麼要有這兩條</b><br>
+下面 F1／F2／F3 的門檻（base 深幾 %、窗口寬幾 %、量低於中位）<b>全部是我編的</b>，
+Minervini 只說 cheat 在 base 的下三分之一，沒給任何數字。
+所以先前每一輪「賺錢的都是 F3」其實只證明了我編的其中一條比較會賺，
+<b>不能拿來判斷他們的方法行不行</b>。這兩條的參數有原文可以對。
+</div>
+<div class="rule">
+<b>P1 · pocket pivot</b>（Kacher &amp; Morales）<br>
+原文：上漲日，<b>當天的量超過前十個交易日裡任何一根下跌日的量</b>；
+股票要在建設性的型態裡、沿 10 日或 50 日線找到支撐、且不延伸；下跌趨勢裡的 pocket pivot 一律忽略。<br>
+程式：上升趨勢（150 日線上升）＋收盤在 50 日線上方＋上漲日＋量 &gt; 前 10 根任何下跌日的量
+＋當天低點貼近 10MA 或 50MA（3% 內或觸線收回）＋不超過 50MA 的 15%。停損取這根低點與 10 日線較低者。
+</div>
+<div class="rule">
+<b>P2 · VCP pivot 突破</b>（Minervini／O'Neil）<br>
+原文：pivot ＝ base 裡<b>最後一段、最緊的那次收縮的高點</b>，突破它才是買點；
+突破當天量要比平常高 40~50%；離 pivot 已漲超過 5% 就是追高、跳過。<br>
+程式：Trend Template 前提（150 日線上升、收盤在 150 與 50 日線上方、離 52 週高點 25% 內）
+＋base 深 8~35%、長 ≥25 根＋掃 5~20 根取最窄的收縮（寬 ≤15%）＋收盤突破那個高點的第一根
+＋量 ≥1.4× 60 日<b>中位</b>量（用中位數是因為平均會被財報爆量墊高）＋離 pivot ≤5%。停損放收縮的低點。
+</div>
+</details>
+
+<details><summary>▸ 我編的三條在檢查什麼（F1／F2／F3 · 對照用）</summary>
 <div class="rule">
 <b>共同前提</b>（三種都要過，這就是「還在上升趨勢裡」）：150 日線近 20 根在上升；
 收盤在 150 日線上方（F1 允許到下方 8% —— Minervini 原版說 low cheat 可以在 50 日線下方 8~10%）；
@@ -408,8 +436,72 @@ function runExit(b, entIdx, ent, stop0, mode){
   return { i:L, R:realR, pct:realPct, why:"還在跑", live:true };
 }
 
+/* ═══════════ 原版進場（有明確原文，參數不是我編的） ═══════════ */
+
+// P1 · pocket pivot —— Kacher & Morales 原文
+//   「上漲日，量超過前十個交易日裡任何一根下跌日的量」。
+//   限定條件也照原文：在建設性的型態裡、在 10 或 50 日線附近找到支撐、不延伸。
+function sigP1(b,i){
+  const x=b[i];
+  if(i<170 || x.ma10==null || x.ma50==null || x.ma150==null || x.hi52==null) return null;
+  if(!(x.ma150 > b[i-20].ma150)) return null;            // 上升趨勢裡才算（原文：downtrend 的 pocket pivot 一律忽略）
+  if(!(x.c > x.ma50)) return null;                       // 原文：pocket pivot 應買在 50 日線之上
+  if(!(x.c > b[i-1].c)) return null;                     // 上漲日
+  // 量 > 前 10 根裡任何一根【下跌日】的量
+  let maxDn=0;
+  for(let k=i-10;k<i;k++){ if(k<1) continue; if(b[k].c < b[k-1].c && b[k].v>maxDn) maxDn=b[k].v; }
+  if(!(maxDn>0 && x.v > maxDn)) return null;
+  // 在 10 或 50 日線附近（原文：constructive，沿均線找到支撐）
+  const near10 = Math.abs(x.l - x.ma10)/x.ma10 <= 0.03 || (x.l <= x.ma10 && x.c >= x.ma10);
+  const near50 = Math.abs(x.l - x.ma50)/x.ma50 <= 0.03 || (x.l <= x.ma50 && x.c >= x.ma50);
+  if(!(near10 || near50)) return null;
+  // 不延伸（原文：not extended to the upside）
+  if((x.hi52 - x.c)/x.hi52 < 0) return null;
+  if(x.c > x.ma50*1.15) return null;
+  // 停損：原文用均線 violation，回測需要一個價位 → 取這根的低點與 10 日線較低者
+  const stopRaw = Math.min(x.l, x.ma10);
+  return { rule:"P1", stopRaw, note:`量 ${(x.v/maxDn).toFixed(2)}× 最大下跌日量 · 貼 ${near10?"10MA":"50MA"}` };
+}
+
+// P2 · VCP pivot 突破 —— Minervini／O'Neil
+//   pivot ＝ base 裡最後一段、最緊的那次收縮的高點；突破它才是買點。
+//   量門檻用 O'Neil 原文的「比平常高 40~50%」，分母取中位數（平均會被財報爆量墊高）。
+function sigP2(b,i){
+  const x=b[i];
+  if(i<170 || x.ma50==null || x.ma150==null || x.hi52==null || x.mv60==null) return null;
+  // Trend Template 前提
+  if(!(x.ma150 > b[i-20].ma150)) return null;
+  if(!(x.c > x.ma150 && x.c > x.ma50)) return null;
+  if((x.hi52 - x.c)/x.hi52 > 0.25) return null;          // 離 52 週高點 25% 以內
+  // base：最近 60 根的高點下來，深度 8~35%、長度 ≥25 根（O'Neil 最短的 base）
+  //  base 的高點要往回找 —— 突破那天自己就是最高點, 不能拿它當 base 高
+  let hi=-Infinity,hIdx=-1;
+  for(let k=Math.max(0,i-60);k<=i-25;k++) if(b[k].h>hi){ hi=b[k].h; hIdx=k; }
+  if(hIdx<0) return null;
+  let lo=Infinity; for(let k=hIdx;k<=i;k++) if(b[k].l<lo) lo=b[k].l;
+  const depth=(hi-lo)/hi;
+  if(depth<0.08 || depth>0.35) return null;
+  // 最後一段收縮：掃 5~20 根取最窄（O'Neil 連最短的 handle 都要 ≥5 個交易日）
+  let win=null;
+  for(let w=5;w<=20;w++){
+    const st=i-w, en=i-1; if(st<1) continue;
+    let wh=-Infinity, wl=Infinity;
+    for(let k=st;k<=en;k++){ if(b[k].h>wh)wh=b[k].h; if(b[k].l<wl)wl=b[k].l; }
+    const width=(wh-wl)/wl;
+    if(width>0.15) continue;                             // 寬超過 15% 不算收縮
+    if(!win || width<win.width) win={width,hi:wh,lo:wl,bars:w};
+  }
+  if(!win) return null;
+  if(!(x.c > win.hi)) return null;                       // 收盤突破 pivot
+  if(b[i-1].c > win.hi) return null;                     // 只認突破的第一根
+  if(!(x.v >= x.mv60*1.4)) return null;                  // 量 ≥1.4× 60 日中位量
+  if((x.c - win.hi)/win.hi > 0.05) return null;          // 原版：離 pivot 超過 5% 就是追高
+  return { rule:"P2", stopRaw:win.lo,
+           note:`pivot ${win.hi.toFixed(2)} · 收縮 ${win.bars} 根 ${(win.width*100).toFixed(1)}% · 量 ${(x.v/x.mv60).toFixed(2)}×` };
+}
+
 /* ─────────── 主流程 ─────────── */
-const RULES = { F1:sigF1, F2:sigF2, F3:sigF3 };
+const RULES = { F1:sigF1, F2:sigF2, F3:sigF3, P1:sigP1, P2:sigP2 };
 
 async function run(){
   STOP=false; $("go").disabled=true; $("out").innerHTML="";
@@ -417,7 +509,7 @@ async function run(){
   const years = +$("range").value;
   const riskMax = +$("riskMax").value/100;
   const wantRule = $("rule").value, wantExit = $("exit").value;
-  const rules = wantRule==="all" ? ["F1","F2","F3"] : [wantRule];
+  const rules = wantRule==="orig" ? ["P1","P2"] : (wantRule==="all" ? ["F1","F2","F3"] : [wantRule]);
   const exits = wantExit==="all" ? ["X4","X4b","X1a","X1b","X2","X3","X0"] : [wantExit];
   const gap = +$("gap").value*1000;
 
@@ -524,7 +616,8 @@ function render(trades, rules, exits, fail){
       <div>這批名單在這段期間內一次都沒有觸發。這本身就是一個結果 —— 條件太嚴，或這些股票在這段期間不符合共同前提（150 日線上升＋沒有離高點太遠）。</div></div>`;
     return;
   }
-  const RULE_NAME={F1:"F1 Minervini cheat",F2:"F2 回測 50 日線",F3:"F3 破低拉回"};
+  const RULE_NAME={ F1:"F1 Minervini cheat（我編的）", F2:"F2 回測 50 日線（我編的）", F3:"F3 破低拉回（我編的）",
+    P1:"P1 pocket pivot（原文）", P2:"P2 VCP pivot 突破（原文）" };
   const EXIT_NAME={ "X1a":"X1a Minervini · 2R 收 1/3 ＋ 50MA", "X1b":"X1b Minervini · 2R 收 1/3 ＋ 20MA",
     "X2":"X2 O'Neil · 20~25% ＋ 八週法則", "X3":"X3 Kacher-Morales · 七週法則",
     "X4":"X4a Qullamaggie · 3~5 天收 1/3 ＋ 10MA", "X4b":"X4b Qullamaggie · 3~5 天收 1/3 ＋ 20MA",
