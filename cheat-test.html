@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>逢低買入回測 · 冠軍版 v1.0</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --line:#30363d; --txt:#c9d1d9; --dim:#8b949e;
+  --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --orange:#f0883e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  font-size:15px;line-height:1.7;padding:14px}
+h1{font-size:19px;margin:0 0 2px}
+h1 span{color:var(--green)}
+.sub{font-size:11px;color:var(--dim);font-weight:400}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px;margin:12px 0}
+.lbl{font-size:12px;color:var(--dim);margin-bottom:4px}
+textarea,input,select{background:#0d1117;color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:9px 11px;font-size:14px;width:100%;font-family:inherit}
+textarea{min-height:76px;resize:vertical}
+button{background:var(--green);color:#04260f;border:0;border-radius:7px;
+  padding:10px 18px;font-size:15px;font-weight:700;cursor:pointer}
+button.ghost{background:#21262d;color:var(--txt);border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:10px}
+.row>div{flex:1;min-width:130px}
+.warn{border-left:4px solid var(--amber);background:rgba(210,153,34,.09);
+  padding:10px 12px;border-radius:0 7px 7px 0;font-size:13px;margin:10px 0}
+.rule{border-left:4px solid var(--blue);background:rgba(88,166,255,.07);
+  padding:10px 12px;border-radius:0 7px 7px 0;font-size:13px;margin:8px 0}
+.rule b{color:var(--blue)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--dim);font-weight:600;font-size:11.5px}
+td.n{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
+.g{color:var(--green)} .r{color:var(--red)} .a{color:var(--amber)} .d{color:var(--dim)}
+.verdict{font-size:21px;font-weight:800;margin:6px 0}
+.big{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:24px;font-weight:700}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:20px;
+  padding:2px 11px;font-size:12px;margin:2px 4px 2px 0}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
+#log{font-size:12px;color:var(--dim);white-space:pre-wrap;max-height:160px;overflow:auto}
+.h2{font-size:15px;font-weight:700;color:var(--orange);margin:16px 0 2px}
+</style>
+</head>
+<body>
+
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.0</span></h1>
+<div class="sub">Minervini cheat／O'Neil 回測 50 日線／Gil Morales 破低拉回 —— 三種「不等突破前高」的進場，加上五種出場的對照實驗。</div>
+
+<div class="card">
+<div class="rule">
+<b>這個檔案要回答的問題</b><br>
+冠軍操盤手確實有逢低買入的邏輯，但那些邏輯都附帶一條可以放停損的線。
+這裡把三種寫成可計算的規則去測，看它們在你自己的名單上到底有沒有正期望值 ——
+<b>而不是先蓋一個會說 yes 的工具</b>。
+</div>
+
+<div class="rule" style="border-color:var(--orange);background:rgba(240,136,62,.08)">
+<b style="color:var(--orange)">通過標準（先寫死，事後不准移動）</b><br>
+樣本 ≥ 30 筆　·　期望值 &gt; +0.3R　·　<b style="color:var(--orange)">報酬中位數必須為正</b>　·　最大連虧 ≤ 6 筆<br>
+<span class="d">中位數為負而期望值為正 ＝ 獲利靠少數 monster 撐著，那跟「多做幾筆把虧損補回來」正好相反。</span>
+</div>
+
+<div class="lbl" style="margin-top:14px">股票清單（空白或逗號分隔）</div>
+<textarea id="tickers">AXTI AAOI LITE MU GLW DELL COHR MRVL RKLB AEHR NBIS AMD SNDK NOK INTC BE</textarea>
+
+<div class="row">
+  <div>
+    <div class="lbl">進場規則</div>
+    <select id="rule">
+      <option value="all">三種一起跑（分開統計）</option>
+      <option value="F1">只跑 F1 · Minervini cheat</option>
+      <option value="F2">只跑 F2 · 回測 50 日線</option>
+      <option value="F3">只跑 F3 · 破低拉回</option>
+    </select>
+  </div>
+  <div>
+    <div class="lbl">出場規則</div>
+    <select id="exit">
+      <option value="all">五種一起跑（對照）</option>
+      <option value="E1">E1 跌破 swing low</option>
+      <option value="E2">E2 收盤破 20MA</option>
+      <option value="E3">E3 收盤破 10MA</option>
+      <option value="E4">E4 只有停損</option>
+      <option value="E5">E5 停損＋時間閘門</option>
+    </select>
+  </div>
+  <div>
+    <div class="lbl">回測長度</div>
+    <select id="range">
+      <option value="3">3 年</option>
+      <option value="2">2 年</option>
+      <option value="1">1 年</option>
+    </select>
+  </div>
+  <div>
+    <div class="lbl">風險上限 %</div>
+    <input id="riskMax" type="number" value="8" min="3" max="15" step="0.5">
+  </div>
+  <div>
+    <div class="lbl">每檔間隔（秒）</div>
+    <input id="gap" type="number" value="1.5" min="0.5" max="10" step="0.5">
+  </div>
+</div>
+
+<div class="row">
+  <div style="flex:0 0 auto"><button id="go">開始回測</button></div>
+  <div style="flex:0 0 auto"><button id="stop" class="ghost">停止</button></div>
+  <div style="flex:1;min-width:180px"><div id="prog" class="sub"></div></div>
+</div>
+
+<details><summary>▸ 三種規則實際在檢查什麼（跑之前先看一次）</summary>
+<div class="rule">
+<b>共同前提</b>（三種都要過，這就是「還在上升趨勢裡」）：150 日線近 20 根在上升；
+收盤在 150 日線上方（F1 允許到下方 8% —— Minervini 原版說 low cheat 可以在 50 日線下方 8~10%）；
+離 52 週高點在 30% 以內（F2/F3 收緊到 25%，Trend Template 原版）。
+</div>
+<div class="rule">
+<b>F1 · Minervini cheat</b>（Cup Completion Cheat）<br>
+先要有一個 base：最近 60 根裡的高點下來，深度 12~35%、長度 ≥25 根。
+現價落在 base 的下半部（低於 40% 位置 ＝ low cheat／mid cheat）。
+在那裡出現一段緊縮：掃 5~15 根取最窄的窗口，寬度 ≤10%，而且窗口內的量低於 60 日中位量（量乾涸）。<br>
+<b>進場</b> 收盤突破那個小窗口的高點　<b>停損</b> 窗口的低點
+</div>
+<div class="rule">
+<b>F2 · 回測 50 日線</b>（O'Neil／IBD ＋ Kacher-Morales pocket pivot）<br>
+前 15 根內曾經回測 50 日線（最低點碰到 50 日線 +3% 以內），期間沒有收在 50 日線下方 7%。<br>
+<b>進場</b> 收盤重新站上 50 日線、且高過前一根的高、且當天的量大於前 10 根裡任何一根<b>下跌日</b>的量（pocket pivot 條件）　<b>停損</b> 這段回檔的最低點
+</div>
+<div class="rule">
+<b>F3 · 破低拉回</b>（Gil Morales undercut &amp; rally ＝ Wyckoff shakeout）<br>
+最近 40 根內有一個 swing low（左右各 3 根都更高）。之後某一根的最低價跌破它，
+然後 5 根之內收盤重新站回那個前低之上。<br>
+<b>進場</b> 收回前低的那一根　<b>停損</b> 跌破期間的最低點
+</div>
+<div class="rule" style="border-color:var(--red);background:rgba(248,81,73,.08)">
+<b style="color:var(--red)">共同的硬閘門</b>：算出來的風險（進場價到停損）超過上面設定的上限就<b>不進場</b>，
+而且停損至少要放到 1×ATR(14) 或 3% 之外（太緊會被日內雜訊掃掉，那是 v1.3 學到的）。
+</div>
+</details>
+
+<details><summary>▸ 五種出場在比什麼</summary>
+<div class="rule">
+D 與 E 兩條規則的舊回測都出現一模一樣的死亡區間（10 天內出場幾乎全輸、撐過 11 天勝率 6 成以上）。
+三種完全不同的進場配同一個出場，卻長出同一個病 —— <b>所以問題很可能在出場，不在進場</b>。
+這一版把出場拉出來當變數。<br><br>
+<b>E1</b> 跌破進場後最近一個 swing low 就收盤出（舊版用的，當對照組）<br>
+<b>E2</b> 收盤跌破 20MA 就出<br>
+<b>E3</b> 收盤跌破 10MA 就出（Qullamaggie 的快線版）<br>
+<b>E4</b> 只有初始停損，不移動，一直抱到停損被打到<br>
+<b>E5</b> 初始停損 ＋ 時間閘門：10 根之內沒有走到 +1R 就平倉走人<br>
+<span class="d">五種都保留初始停損。進場價一律用次日開盤，進出各扣 0.1%。</span>
+</div>
+</details>
+</div>
+
+<div id="out"></div>
+
+<div class="card"><div class="lbl">執行紀錄</div><div id="log">還沒開始。</div></div>
+
+<script>
+"use strict";
+const PROXY = "https://gstock-proxy.cykjas.workers.dev/?url=";
+const $ = id => document.getElementById(id);
+let STOP = false;
+
+function log(s){ const el=$("log"); el.textContent = s + "\n" + el.textContent; }
+
+/* ─────────── 資料 ─────────── */
+async function fetchBars(tk, years){
+  const now = Math.floor(Date.now()/1000);
+  const p1  = now - Math.round(years*365.25*86400) - 300*86400; // 多抓 300 天算均線
+  const urls = [
+    `https://query1.finance.yahoo.com/v8/finance/chart/${tk}?period1=${p1}&period2=${now}&interval=1d`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${tk}?range=5y&interval=1d`
+  ];
+  let best = null;
+  for(const u of urls){
+    try{
+      const r = await fetch(PROXY + encodeURIComponent(u + "&_cb=" + Date.now()), {cache:"no-store"});
+      if(!r.ok) continue;
+      const j = await r.json();
+      const res = j && j.chart && j.chart.result && j.chart.result[0];
+      if(!res || !res.timestamp) continue;
+      const q = res.indicators.quote[0], t = res.timestamp, out = [];
+      for(let i=0;i<t.length;i++){
+        if(q.close[i]==null || q.open[i]==null || q.high[i]==null || q.low[i]==null) continue;
+        out.push({ d:new Date(t[i]*1000).toISOString().slice(0,10),
+                   o:q.open[i], h:q.high[i], l:q.low[i], c:q.close[i], v:q.volume[i]||0 });
+      }
+      if(out.length && (!best || out.length > best.length)) best = out;
+    }catch(e){}
+  }
+  return best;
+}
+
+/* ─────────── 指標 ─────────── */
+function sma(b,n,i){ if(i<n-1) return null; let s=0; for(let k=i-n+1;k<=i;k++) s+=b[k].c; return s/n; }
+function medVol(b,n,i){ if(i<n-1) return null; const a=[]; for(let k=i-n+1;k<=i;k++) a.push(b[k].v);
+  a.sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; }
+function atr(b,n,i){ if(i<n) return null; let s=0;
+  for(let k=i-n+1;k<=i;k++){ const tr=Math.max(b[k].h-b[k].l, Math.abs(b[k].h-b[k-1].c), Math.abs(b[k].l-b[k-1].c)); s+=tr; }
+  return s/n; }
+
+function prep(b){
+  for(let i=0;i<b.length;i++){
+    b[i].ma10=sma(b,10,i); b[i].ma20=sma(b,20,i); b[i].ma50=sma(b,50,i); b[i].ma150=sma(b,150,i);
+    b[i].mv60=medVol(b,60,i); b[i].atr=atr(b,14,i);
+    if(i>=250){ let h=-Infinity,l=Infinity;
+      for(let k=i-249;k<=i;k++){ if(b[k].h>h)h=b[k].h; if(b[k].l<l)l=b[k].l; }
+      b[i].hi52=h; b[i].lo52=l; } else { b[i].hi52=null; b[i].lo52=null; }
+  }
+  return b;
+}
+
+/* 共同前提：還在上升趨勢裡 */
+function trendOK(b,i,loose){
+  const x=b[i];
+  if(x.ma150==null || i<170 || x.hi52==null) return false;
+  if(!(x.ma150 > b[i-20].ma150)) return false;                 // 150 日線在上升
+  const floor = loose ? x.ma150*0.92 : x.ma150;                // F1 允許略低於 150 日線
+  if(!(x.c > floor)) return false;
+  const off = (x.hi52 - x.c)/x.hi52;
+  return off <= (loose ? 0.30 : 0.25);
+}
+
+/* ─────────── F1 Minervini cheat ─────────── */
+function sigF1(b,i){
+  if(!trendOK(b,i,true)) return null;
+  // base：最近 60 根的高點，深度 12~35%，長度 ≥25 根
+  let hi=-Infinity, hIdx=-1;
+  for(let k=Math.max(0,i-60);k<=i;k++) if(b[k].h>hi){ hi=b[k].h; hIdx=k; }
+  if(hIdx<0 || i-hIdx < 25) return null;
+  let lo=Infinity; for(let k=hIdx;k<=i;k++) if(b[k].l<lo) lo=b[k].l;
+  const depth=(hi-lo)/hi;
+  if(depth<0.12 || depth>0.35) return null;
+  // 現價在 base 下半部
+  const pos=(b[i].c-lo)/(hi-lo);
+  if(pos>0.40) return null;
+  // 緊縮窗口：掃 5~15 根取最窄（不含今天）
+  let win=null;
+  for(let w=5;w<=15;w++){
+    const s=i-w, e=i-1; if(s<1) continue;
+    let wh=-Infinity, wl=Infinity, vs=0;
+    for(let k=s;k<=e;k++){ if(b[k].h>wh)wh=b[k].h; if(b[k].l<wl)wl=b[k].l; vs+=b[k].v; }
+    const width=(wh-wl)/wl;
+    if(width>0.10) continue;
+    if(!win || width<win.width) win={width,hi:wh,lo:wl,vAvg:vs/(e-s+1),bars:w};
+  }
+  if(!win) return null;
+  if(b[i].mv60==null || !(win.vAvg < b[i].mv60)) return null;   // 量乾涸
+  if(!(b[i].c > win.hi)) return null;                           // 收盤突破窗口高
+  if(b[i-1].c > win.hi) return null;                            // 前一根還沒突破（只認第一根）
+  return { rule:"F1", stopRaw:win.lo, note:`base −${(depth*100).toFixed(0)}% · 位置 ${(pos*100).toFixed(0)}% · 窗 ${win.bars} 根 ${(win.width*100).toFixed(1)}%` };
+}
+
+/* ─────────── F2 回測 50 日線 + pocket pivot ─────────── */
+function sigF2(b,i){
+  if(!trendOK(b,i,false)) return null;
+  const x=b[i]; if(x.ma50==null) return null;
+  let touched=false, dipLo=Infinity, broke=false;
+  for(let k=i-15;k<i;k++){
+    if(k<1||b[k].ma50==null) continue;
+    if(b[k].l <= b[k].ma50*1.03) touched=true;
+    if(b[k].c <  b[k].ma50*0.93) broke=true;
+    if(b[k].l < dipLo) dipLo=b[k].l;
+  }
+  if(!touched || broke || dipLo===Infinity) return null;
+  if(!(x.c > x.ma50)) return null;
+  if(!(x.c > b[i-1].h)) return null;
+  // pocket pivot：量 > 前 10 根裡任何一根下跌日的量
+  let maxDn=0;
+  for(let k=i-10;k<i;k++){ if(k<1) continue; if(b[k].c < b[k-1].c && b[k].v>maxDn) maxDn=b[k].v; }
+  if(!(maxDn>0 && x.v > maxDn)) return null;
+  return { rule:"F2", stopRaw:dipLo, note:`回測 50MA · 谷底 ${dipLo.toFixed(2)}` };
+}
+
+/* ─────────── F3 破低拉回 ─────────── */
+function sigF3(b,i){
+  if(!trendOK(b,i,true)) return null;
+  // 最近 40 根內的 swing low（左右各 3 根）
+  let sl=null;
+  for(let k=i-40;k<=i-6;k++){
+    if(k<4) continue;
+    let ok=true;
+    for(let m=k-3;m<=k+3;m++){ if(m!==k && b[m] && b[m].l < b[k].l){ ok=false; break; } }
+    if(ok) sl={idx:k, px:b[k].l};
+  }
+  if(!sl) return null;
+  // 之後有跌破，且今天收回
+  let uIdx=-1, uLo=Infinity;
+  for(let k=sl.idx+4;k<=i;k++){ if(b[k].l < sl.px){ if(uIdx<0) uIdx=k; if(b[k].l<uLo) uLo=b[k].l; } }
+  if(uIdx<0 || i-uIdx>5) return null;
+  if(!(b[i].c > sl.px)) return null;
+  if(b[i-1].c > sl.px) return null;      // 只認收回的第一根
+  return { rule:"F3", stopRaw:uLo, note:`破前低 ${sl.px.toFixed(2)} → 收回` };
+}
+
+/* ─────────── 出場 ─────────── */
+function runExit(b, entIdx, ent, stop, mode){
+  const R = ent - stop;
+  let swing = stop;
+  for(let i=entIdx;i<b.length;i++){
+    const x=b[i];
+    if(x.l <= stop) return { i, px:stop, why:"停損" };            // 初始停損永遠有效
+    const held = i-entIdx;
+    if(mode==="E2" && x.ma20!=null && x.c < x.ma20) return { i, px:x.c, why:"破20MA" };
+    if(mode==="E3" && x.ma10!=null && x.c < x.ma10) return { i, px:x.c, why:"破10MA" };
+    if(mode==="E1"){
+      // 進場後最近一個 swing low
+      for(let k=Math.max(entIdx,i-20);k<=i-4;k++){
+        if(k<4) continue;
+        let ok=true;
+        for(let m=k-3;m<=k+3;m++){ if(m!==k && b[m] && b[m].l < b[k].l){ ok=false; break; } }
+        if(ok && b[k].l>swing) swing=b[k].l;
+      }
+      if(x.c < swing) return { i, px:x.c, why:"破swing low" };
+    }
+    if(mode==="E5" && held>=10){
+      let mfe=-Infinity; for(let k=entIdx;k<=i;k++) if(b[k].h>mfe) mfe=b[k].h;
+      if(mfe < ent + R) return { i, px:x.c, why:"時間閘門" };
+    }
+    if(held>250) return { i, px:x.c, why:"滿一年" };
+  }
+  return { i:b.length-1, px:b[b.length-1].c, why:"還在跑", live:true };
+}
+
+/* ─────────── 主流程 ─────────── */
+const RULES = { F1:sigF1, F2:sigF2, F3:sigF3 };
+
+async function run(){
+  STOP=false; $("go").disabled=true; $("out").innerHTML="";
+  const tks = $("tickers").value.toUpperCase().split(/[^A-Z0-9.\-]+/).filter(Boolean);
+  const years = +$("range").value;
+  const riskMax = +$("riskMax").value/100;
+  const wantRule = $("rule").value, wantExit = $("exit").value;
+  const rules = wantRule==="all" ? ["F1","F2","F3"] : [wantRule];
+  const exits = wantExit==="all" ? ["E1","E2","E3","E4","E5"] : [wantExit];
+  const gap = +$("gap").value*1000;
+
+  const trades = [];   // 每筆 { tk, rule, exit, date, entry, stop, out, R, pct, days, year, slope, off52 }
+  let fail = [];
+
+  for(let n=0;n<tks.length;n++){
+    if(STOP){ log("已停止。"); break; }
+    const tk = tks[n];
+    $("prog").textContent = `跑第 ${n+1} / ${tks.length} 檔：${tk}`;
+    let b = await fetchBars(tk, years);
+    if(!b || b.length<200){ fail.push(tk); log(`✗ ${tk} 抓不到或資料不足`); await sleep(gap); continue; }
+    b = prep(b);
+    const startIdx = Math.max(170, b.length - Math.round(years*252));
+    let found=0;
+
+    for(const rl of rules){
+      for(const ex of exits){
+        let lockUntil = -1;
+        for(let i=startIdx;i<b.length-1;i++){
+          if(i<=lockUntil) continue;
+          const sig = RULES[rl](b,i);
+          if(!sig) continue;
+          const ent = b[i+1].o * 1.001;                       // 次日開盤 + 滑價
+          // 停損：至少放到 1×ATR 或 3% 之外
+          const pad = Math.max(b[i].atr||0, ent*0.03);
+          let stop = Math.min(sig.stopRaw, ent - pad);
+          const risk = (ent-stop)/ent;
+          if(risk > riskMax) continue;                        // 風險超過上限 → 不進場
+          const r = runExit(b, i+1, ent, stop, ex);
+          const outPx = r.px * 0.999;
+          const R = (outPx-ent)/(ent-stop);
+          trades.push({ tk, rule:rl, exit:ex, date:b[i+1].d, entry:ent, stop, out:outPx,
+                        R, pct:(outPx/ent-1)*100, days:r.i-(i+1), why:r.why, live:!!r.live,
+                        year:b[i+1].d.slice(0,4),
+                        slope: b[i].ma150!=null && b[i-20].ma150!=null ? (b[i].ma150/b[i-20].ma150-1)*100 : null,
+                        off52: b[i].hi52 ? (b[i].hi52-b[i].c)/b[i].hi52*100 : null,
+                        note: sig.note });
+          lockUntil = r.i;                                    // 持倉鎖：這一筆結束才算下一筆
+          found++;
+        }
+      }
+    }
+    log(`✓ ${tk}　${b.length} 根　找到 ${found} 筆`);
+    await sleep(gap);
+  }
+
+  $("prog").textContent = "跑完了。";
+  $("go").disabled=false;
+  render(trades, rules, exits, fail);
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ─────────── 統計 ─────────── */
+function stats(ts){
+  const done = ts.filter(t=>!t.live);
+  const n = done.length;
+  if(!n) return null;
+  const Rs = done.map(t=>t.R), pcts = done.map(t=>t.pct).sort((a,b)=>a-b);
+  const wins = done.filter(t=>t.R>0), loss = done.filter(t=>t.R<=0);
+  const avgW = wins.length ? wins.reduce((s,t)=>s+t.R,0)/wins.length : 0;
+  const avgL = loss.length ? loss.reduce((s,t)=>s+t.R,0)/loss.length : 0;
+  const ev = Rs.reduce((a,b)=>a+b,0)/n;
+  const med = pcts.length%2 ? pcts[(pcts.length-1)/2] : (pcts[pcts.length/2-1]+pcts[pcts.length/2])/2;
+  let streak=0, worst=0;
+  done.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{
+    if(t.R<=0){ streak++; if(streak>worst) worst=streak; } else streak=0; });
+  const days = done.reduce((s,t)=>s+t.days,0)/n;
+  return { n, win:wins.length/n*100, avgW, avgL, ev, med, worst, days };
+}
+
+function verdict(s){
+  if(!s) return { txt:"沒有樣本", col:"var(--dim)", why:"這批名單在這段期間內沒有觸發任何訊號。" };
+  const fails=[];
+  if(s.n<30) fails.push(`樣本只有 ${s.n} 筆（要 ≥30）`);
+  if(s.ev<=0.3) fails.push(`期望值 ${s.ev.toFixed(2)}R（要 >0.3R）`);
+  if(s.med<=0) fails.push(`報酬中位數 ${s.med.toFixed(1)}%（必須為正）`);
+  if(s.worst>6) fails.push(`最大連虧 ${s.worst} 筆（要 ≤6）`);
+  if(!fails.length) return { txt:"通過", col:"var(--green)", why:"四條標準全過。下一步是小額實單驗證，不是直接放大部位。" };
+  return { txt:"不通過", col:"var(--red)", why:"沒過的是：" + fails.join("；") + "。" };
+}
+
+function bar(label, s){
+  if(!s) return `<tr><td>${label}</td><td colspan="7" class="d">無樣本</td></tr>`;
+  const evc = s.ev>0.3?"g":(s.ev>0?"a":"r");
+  const mdc = s.med>0?"g":"r";
+  return `<tr><td>${label}</td><td class="n">${s.n}</td><td class="n">${s.win.toFixed(0)}%</td>
+    <td class="n ${evc}">${s.ev.toFixed(2)}R</td><td class="n ${mdc}">${s.med.toFixed(1)}%</td>
+    <td class="n">${s.avgW.toFixed(2)}R</td><td class="n">${s.avgL.toFixed(2)}R</td>
+    <td class="n ${s.worst>6?'r':''}">${s.worst}</td></tr>`;
+}
+
+function table(title, rows){
+  return `<div class="h2">${title}</div><table>
+    <tr><th>　</th><th style="text-align:right">筆數</th><th style="text-align:right">勝率</th>
+    <th style="text-align:right">期望值</th><th style="text-align:right">報酬中位數</th>
+    <th style="text-align:right">平均賺</th><th style="text-align:right">平均賠</th><th style="text-align:right">最大連虧</th></tr>
+    ${rows}</table>`;
+}
+
+function render(trades, rules, exits, fail){
+  const o=$("out");
+  if(!trades.length){
+    o.innerHTML = `<div class="card"><div class="verdict" style="color:var(--dim)">沒有任何訊號</div>
+      <div>這批名單在這段期間內一次都沒有觸發。這本身就是一個結果 —— 條件太嚴，或這些股票在這段期間不符合共同前提（150 日線上升＋沒有離高點太遠）。</div></div>`;
+    return;
+  }
+  const RULE_NAME={F1:"F1 Minervini cheat",F2:"F2 回測 50 日線",F3:"F3 破低拉回"};
+  const EXIT_NAME={E1:"E1 破 swing low",E2:"E2 破 20MA",E3:"E3 破 10MA",E4:"E4 只有停損",E5:"E5 停損＋時間閘門"};
+
+  let html = "";
+
+  // 主結論：每種出場的總表
+  for(const ex of exits){
+    const t = trades.filter(x=>x.exit===ex);
+    const s = stats(t), v = verdict(s);
+    html += `<div class="card">
+      <div class="lbl">出場：${EXIT_NAME[ex]}</div>
+      <div class="verdict" style="color:${v.col}">${v.txt}</div>
+      <div style="font-size:13px">${v.why}</div>`;
+    if(s){
+      html += `<div style="margin-top:8px">
+        <span class="pill">樣本 <b>${s.n}</b></span>
+        <span class="pill">勝率 <b>${s.win.toFixed(0)}%</b></span>
+        <span class="pill">期望值 <b class="${s.ev>0.3?'g':'r'}">${s.ev.toFixed(2)}R</b></span>
+        <span class="pill">中位數 <b class="${s.med>0?'g':'r'}">${s.med.toFixed(1)}%</b></span>
+        <span class="pill">最大連虧 <b>${s.worst}</b></span>
+        <span class="pill">平均持有 <b>${s.days.toFixed(0)}</b> 天</span></div>`;
+      html += table("依進場規則拆開", rules.map(r=>bar(RULE_NAME[r], stats(t.filter(x=>x.rule===r)))).join(""));
+      html += table("持有天數（三種進場都出現過同一個死亡區間，看這一版有沒有變）",
+        [bar("0–2 天", stats(t.filter(x=>x.days<=2))),
+         bar("3–10 天", stats(t.filter(x=>x.days>2&&x.days<=10))),
+         bar("11 天以上", stats(t.filter(x=>x.days>10)))].join(""));
+      html += table("進場年份",
+        [...new Set(t.map(x=>x.year))].sort().map(y=>bar(y, stats(t.filter(x=>x.year===y)))).join(""));
+      html += table("進場時離 52 週高點",
+        [bar("0–10%", stats(t.filter(x=>x.off52!=null&&x.off52<10))),
+         bar("10–20%", stats(t.filter(x=>x.off52!=null&&x.off52>=10&&x.off52<20))),
+         bar("20% 以上", stats(t.filter(x=>x.off52!=null&&x.off52>=20)))].join(""));
+      html += table("150 日線斜率（近 20 根）",
+        [bar("上升 >3%", stats(t.filter(x=>x.slope!=null&&x.slope>3))),
+         bar("微升 0–3%", stats(t.filter(x=>x.slope!=null&&x.slope>=0&&x.slope<=3)))].join(""));
+      // 集中度
+      const done=t.filter(x=>!x.live);
+      const tot=done.reduce((a,b)=>a+Math.max(b.R,0),0);
+      const byTk={}; done.forEach(x=>{ byTk[x.tk]=(byTk[x.tk]||0)+x.R; });
+      const top=Object.entries(byTk).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      if(tot>0) html += `<div class="warn">獲利集中度：${top.map(([k,v])=>`${k} ${(v/tot*100).toFixed(0)}%`).join("　·　")}
+        —— 單一檔佔比過高代表這個結果是被少數股票撐起來的，換一批名單就不成立。</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // 明細
+  const rows = trades.slice().sort((a,b)=>a.tk<b.tk?-1:(a.tk>b.tk?1:(a.date<b.date?-1:1)))
+    .map(t=>`<tr><td>${t.tk}</td><td>${t.rule}</td><td>${t.exit}</td><td>${t.date}</td>
+      <td class="n">${t.entry.toFixed(2)}</td><td class="n">${t.stop.toFixed(2)}</td>
+      <td class="n">${((t.entry-t.stop)/t.entry*100).toFixed(1)}%</td>
+      <td class="n ${t.R>0?'g':'r'}">${t.R.toFixed(2)}R</td>
+      <td class="n ${t.pct>0?'g':'r'}">${t.pct.toFixed(1)}%</td>
+      <td class="n">${t.days}</td><td class="d">${t.why}</td><td class="d">${t.note||""}</td></tr>`).join("");
+  html += `<div class="card"><details><summary>▸ 每一筆明細（${trades.length} 筆 · 依代號分組，方便回 TradingView 對 K 線）</summary>
+    <table><tr><th>代號</th><th>規則</th><th>出場</th><th>進場日</th>
+    <th style="text-align:right">進場</th><th style="text-align:right">停損</th><th style="text-align:right">風險</th>
+    <th style="text-align:right">R</th><th style="text-align:right">報酬</th><th style="text-align:right">天數</th>
+    <th>出場原因</th><th>訊號</th></tr>${rows}</table></details></div>`;
+
+  if(fail.length) html += `<div class="card"><div class="warn">抓不到資料：${fail.join("、")}</div></div>`;
+
+  html += `<div class="card"><div class="warn">
+    <b>讀這份結果的三個提醒</b><br>
+    ① 這批名單是<b>今天</b>挑的，拿今天的贏家回頭測三年，數字會系統性偏好。真正乾淨的做法是把「好班」寫成當下算得出來的條件（RS 排名前 20% 之類），那是下一步。<br>
+    ② 期望值為正但中位數為負 ＝ 獲利靠少數幾筆撐著。那種策略你做十筆會有七筆難受，很難照紀律執行完。<br>
+    ③ 通過標準是跑之前就寫死的。<b>不要因為差一點就去調參數</b> —— 那叫事後移動球門。</div></div>`;
+
+  o.innerHTML = html;
+}
+
+$("go").onclick = run;
+$("stop").onclick = ()=>{ STOP=true; };
+</script>
+</body>
+</html>
