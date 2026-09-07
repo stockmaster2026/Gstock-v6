@@ -50,8 +50,8 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.1</span></h1>
-<div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法（上一版是我自己拼的，作廢）。</div>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.2</span></h1>
+<div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.2 加上 Qullamaggie 的 20MA 版，以及「抽掉最大貢獻者之後」的敏感度檢查。</div>
 
 <div class="card">
 <div class="rule">
@@ -68,7 +68,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </div>
 
 <div class="lbl" style="margin-top:14px">股票清單（空白或逗號分隔）</div>
-<textarea id="tickers">AXTI AAOI LITE MU GLW DELL COHR MRVL RKLB AEHR NBIS AMD SNDK NOK INTC BE</textarea>
+<textarea id="tickers">AXTI AAOI LITE MU GLW DELL COHR MRVL RKLB AEHR NBIS AMD SNDK INTC BE</textarea>
 
 <div class="row">
   <div>
@@ -88,7 +88,8 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
       <option value="X1b">X1b Minervini · 2R 收 1/3 ＋ 20MA</option>
       <option value="X2">X2 O'Neil · 20~25% ＋ 八週法則</option>
       <option value="X3">X3 Kacher-Morales · 七週法則</option>
-      <option value="X4">X4 Qullamaggie · 3~5 天收 1/3 ＋ 10MA</option>
+      <option value="X4">X4a Qullamaggie · 3~5 天收 1/3 ＋ 10MA</option>
+      <option value="X4b">X4b Qullamaggie · 3~5 天收 1/3 ＋ 20MA</option>
       <option value="X0">X0 對照組 · 跌破 swing low</option>
     </select>
   </div>
@@ -385,9 +386,10 @@ function runExit(b, entIdx, ent, stop0, mode){
       }
     }
 
-    if(mode==="X4"){
+    if(mode==="X4" || mode==="X4b"){
+      const ma = (mode==="X4") ? x.ma10 : x.ma20;
       if(remain>=1 && held>=4 && x.c > ent){ take(1/3, x.c); stop = ent; }      // 3~5 天有獲利才收 1/3、停損移成本
-      if(remain<1 && x.ma10!=null && x.c < x.ma10){ take(remain, x.c); return done(i,"收盤跌破 10MA"); }
+      if(remain<1 && ma!=null && x.c < ma){ take(remain, x.c); return done(i,"收盤跌破 "+(mode==="X4"?"10":"20")+"MA"); }
     }
 
     if(mode==="X0"){
@@ -416,7 +418,7 @@ async function run(){
   const riskMax = +$("riskMax").value/100;
   const wantRule = $("rule").value, wantExit = $("exit").value;
   const rules = wantRule==="all" ? ["F1","F2","F3"] : [wantRule];
-  const exits = wantExit==="all" ? ["X1a","X1b","X2","X3","X4","X0"] : [wantExit];
+  const exits = wantExit==="all" ? ["X4","X4b","X1a","X1b","X2","X3","X0"] : [wantExit];
   const gap = +$("gap").value*1000;
 
   const trades = [];   // 每筆 { tk, rule, exit, date, entry, stop, out, R, pct, days, year, slope, off52 }
@@ -525,7 +527,8 @@ function render(trades, rules, exits, fail){
   const RULE_NAME={F1:"F1 Minervini cheat",F2:"F2 回測 50 日線",F3:"F3 破低拉回"};
   const EXIT_NAME={ "X1a":"X1a Minervini · 2R 收 1/3 ＋ 50MA", "X1b":"X1b Minervini · 2R 收 1/3 ＋ 20MA",
     "X2":"X2 O'Neil · 20~25% ＋ 八週法則", "X3":"X3 Kacher-Morales · 七週法則",
-    "X4":"X4 Qullamaggie · 3~5 天收 1/3 ＋ 10MA", "X0":"X0 對照組 · 破 swing low" };
+    "X4":"X4a Qullamaggie · 3~5 天收 1/3 ＋ 10MA", "X4b":"X4b Qullamaggie · 3~5 天收 1/3 ＋ 20MA",
+    "X0":"X0 對照組 · 破 swing low" };
 
   let html = "";
 
@@ -564,8 +567,18 @@ function render(trades, rules, exits, fail){
       const tot=done.reduce((a,b)=>a+Math.max(b.R,0),0);
       const byTk={}; done.forEach(x=>{ byTk[x.tk]=(byTk[x.tk]||0)+x.R; });
       const top=Object.entries(byTk).sort((a,b)=>b[1]-a[1]).slice(0,3);
-      if(tot>0) html += `<div class="warn">獲利集中度：${top.map(([k,v])=>`${k} ${(v/tot*100).toFixed(0)}%`).join("　·　")}
-        —— 單一檔佔比過高代表這個結果是被少數股票撐起來的，換一批名單就不成立。</div>`;
+      if(tot>0){
+        const topTk = top[0][0];
+        const sNo = stats(t.filter(x=>x.tk!==topTk));
+        const vNo = verdict(sNo);
+        html += `<div class="warn">獲利集中度：${top.map(([k,v])=>`${k} ${(v/tot*100).toFixed(0)}%`).join("　·　")}</div>`;
+        html += table(`抽掉最大貢獻者（${topTk}）之後　—　這一列才是「換一批名單還成不成立」`,
+          bar("全部（含 "+topTk+"）", s) + bar("抽掉 "+topTk, sNo));
+        html += `<div class="${vNo.txt==="通過"?"rule":"warn"}" style="margin-top:4px">
+          抽掉 ${topTk} 之後：<b style="color:${vNo.col}">${vNo.txt}</b>　${vNo.why}<br>
+          <span class="d">⚠ 這是敏感度檢查，<b>不是</b>叫你把 ${topTk} 從名單刪掉。
+          因為它賺錢就刪掉它，那是事後移動球門 —— 真正的問題是「少了它還剩什麼」。</span></div>`;
+      }
     }
     html += `</div>`;
   }
