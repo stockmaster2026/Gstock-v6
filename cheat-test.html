@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.3</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.4</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -69,6 +69,20 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 
 <div class="lbl" style="margin-top:14px">股票清單（空白或逗號分隔）</div>
 <textarea id="tickers">AXTI AAOI LITE MU GLW DELL COHR MRVL RKLB AEHR NBIS AMD SNDK INTC BE</textarea>
+
+<div id="secBox" style="margin-top:10px;padding:11px 13px;border:1px solid var(--line);border-radius:8px">
+  <div style="font-size:13px;margin-bottom:6px">
+    <b style="color:var(--blue)">從 radar 的板塊名單帶進來</b>
+    <span class="d" style="font-size:11.5px">　—　不用自己打，直接讀你這台瀏覽器裡 radar 存的板塊</span>
+  </div>
+  <div id="secList" class="d" style="font-size:12.5px">讀取中…</div>
+  <div class="row" style="margin-top:8px">
+    <div style="flex:0 0 auto"><button class="ghost" id="secAdd" style="font-size:13px;padding:7px 13px">加入勾選的板塊</button></div>
+    <div style="flex:0 0 auto"><button class="ghost" id="secAll" style="font-size:13px;padding:7px 13px">全部板塊都加</button></div>
+    <div style="flex:0 0 auto"><button class="ghost" id="secClr" style="font-size:13px;padding:7px 13px">清空清單</button></div>
+  </div>
+  <div id="secMsg" class="d" style="font-size:12px;margin-top:6px"></div>
+</div>
 
 <div class="row">
   <div>
@@ -700,6 +714,70 @@ function render(trades, rules, exits, fail){
 
   o.innerHTML = html;
 }
+
+/* ─────────── 從 radar 讀板塊名單（只讀不寫） ─────────── */
+const SECTOR_KEYS = ["biaoguo_sectors_v5","biaoguo_sectors_v4","gstock_radar_sectors"];
+let SECTORS = [];
+
+function grabSectors(){
+  for(const k of SECTOR_KEYS){
+    let raw=null;
+    try{ raw = localStorage.getItem(k); }catch(e){ continue; }
+    if(!raw) continue;
+    let j=null; try{ j=JSON.parse(raw); }catch(e){ continue; }
+    const arr = Array.isArray(j) ? j : Object.keys(j||{}).map(id=>Object.assign({id},j[id]));
+    const out=[];
+    arr.forEach(it=>{
+      if(!it || typeof it!=="object") return;
+      const name = it.name || it.title || it.label || it.id || "(未命名)";
+      let tk = it.tickers || it.list || it.syms || it.symbols || it.stocks || it.items;
+      if(!Array.isArray(tk)) return;
+      tk = tk.map(x=> typeof x==="string" ? x : (x && (x.tk||x.sym||x.ticker||x.code)) )
+             .filter(Boolean).map(x=>String(x).toUpperCase());
+      if(tk.length) out.push({ name, tickers:tk });
+    });
+    if(out.length) return { key:k, sectors:out };
+  }
+  return null;
+}
+
+function renderSectors(){
+  const box=$("secList"), msg=$("secMsg");
+  const got = grabSectors();
+  if(!got){
+    box.innerHTML = '<span style="color:var(--amber)">讀不到板塊名單。</span> '
+      + '請先在同一個瀏覽器開一次 radar.html（讓它把板塊存進本機），再回到這一頁重新整理。';
+    return;
+  }
+  SECTORS = got.sectors;
+  box.innerHTML = SECTORS.map((sc,idx)=>
+    '<label style="display:inline-block;margin:3px 10px 3px 0;cursor:pointer;color:var(--txt)">'
+    + '<input type="checkbox" class="secChk" data-i="'+idx+'" style="width:auto;margin-right:5px;vertical-align:middle">'
+    + sc.name + ' <span class="d">('+sc.tickers.length+')</span></label>').join("");
+  msg.textContent = "讀到 " + SECTORS.length + " 個板塊、合計 "
+    + new Set(SECTORS.flatMap(s=>s.tickers)).size + " 檔（已去重）。來源：" + got.key;
+}
+
+function addTickers(list){
+  const cur = $("tickers").value.toUpperCase().split(/[^A-Z0-9.\-]+/).filter(Boolean);
+  const set = new Set(cur);
+  let added=0;
+  list.forEach(t=>{ if(!set.has(t)){ set.add(t); added++; } });
+  const all=[...set];
+  $("tickers").value = all.join(" ");
+  $("secMsg").textContent = "加了 " + added + " 檔，清單現在共 " + all.length
+    + " 檔。⚠ 檔數越多跑越久，大約 "
+    + Math.round(all.length * (+$("gap").value + 1.2) / 60) + " 分鐘（別關這一頁）。";
+}
+
+$("secAdd").onclick = ()=>{
+  const picked=[...document.querySelectorAll(".secChk")].filter(c=>c.checked).map(c=>SECTORS[+c.dataset.i]);
+  if(!picked.length){ $("secMsg").textContent = "還沒勾任何板塊。"; return; }
+  addTickers(picked.flatMap(s=>s.tickers));
+};
+$("secAll").onclick = ()=> addTickers(SECTORS.flatMap(s=>s.tickers));
+$("secClr").onclick = ()=>{ $("tickers").value=""; $("secMsg").textContent="清單已清空。"; };
+renderSectors();
 
 $("go").onclick = run;
 $("stop").onclick = ()=>{ STOP=true; };
