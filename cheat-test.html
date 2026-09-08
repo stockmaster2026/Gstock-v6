@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.6</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.7</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -77,6 +77,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
   </div>
   <div id="secList" class="d" style="font-size:12.5px">讀取中…</div>
   <div class="row" style="margin-top:8px">
+    <div style="flex:0 0 auto"><button class="ghost" id="secOnly" style="font-size:13px;padding:7px 13px;border-color:var(--amber);color:var(--amber)">只留勾選的板塊</button></div>
     <div style="flex:0 0 auto"><button class="ghost" id="secAdd" style="font-size:13px;padding:7px 13px">加入勾選的板塊</button></div>
     <div style="flex:0 0 auto"><button class="ghost" id="secAll" style="font-size:13px;padding:7px 13px">全部板塊都加</button></div>
     <div style="flex:0 0 auto"><button class="ghost" id="secClr" style="font-size:13px;padding:7px 13px">清空清單</button></div>
@@ -554,7 +555,23 @@ const RULES = { F1:sigF1, F2:sigF2, F3:sigF3, P1:sigP1, P1L:sigP1L, P2:sigP2 };
 
 async function run(){
   STOP=false; $("go").disabled=true; $("out").innerHTML="";
+  $("log").textContent = "開始…";          // v1.7：先清掉上一輪的紀錄，不然殘骸會讓人以為這輪有跑
   const tks = $("tickers").value.toUpperCase().split(/[^A-Z0-9.\-]+/).filter(Boolean);
+
+  // v1.7：清單是空的要直接講，不要跑完才說「沒有任何訊號」——那兩件事完全不同
+  if(!tks.length){
+    $("prog").textContent = "沒有跑。";
+    $("go").disabled = false;
+    $("log").textContent = "清單是空的，沒有跑。";
+    $("out").innerHTML = `<div class="card">
+      <div class="verdict" style="color:var(--amber)">清單是空的 —— 這輪沒有跑</div>
+      <div>股票清單那一格沒有東西，所以一檔都沒抓。<b>這不是「沒有訊號」</b>，是根本沒開始。</div>
+      <div style="margin-top:8px">最常見的原因：按了「清空清單」、勾了板塊，但<b>忘了按「加入勾選的板塊」</b>。勾選只是打勾，不會自己填進清單。</div>
+      <div style="margin-top:8px">要單獨測一個板塊，直接按 <b>「只留勾選的板塊」</b> 就好（清空＋填入一次做完），
+      然後確認下面那行寫「清單現在共 N 檔」再開始回測。</div></div>`;
+    return;
+  }
+
   const years = +$("range").value;
   const riskMax = +$("riskMax").value/100;
   const wantRule = $("rule").value, wantExit = $("exit").value;
@@ -819,13 +836,25 @@ function addTickers(list){
   $("tickers").value = all.join(" ");
   $("secMsg").textContent = "加了 " + added + " 檔，清單現在共 " + all.length
     + " 檔。⚠ 檔數越多跑越久，大約 "
-    + Math.round(all.length * (+$("gap").value + 1.2) / 60) + " 分鐘（別關這一頁）。";
+    + Math.round(all.length * (+$("gap").value + 1.2) / 60) + " 分鐘（別關這一頁）。"
+    // v1.7：加了 0 檔＝它們本來就在清單裡，這輪跑的是全部，不是你勾的那個板塊
+    + (added===0 ? "　⚠ 加了 0 檔代表這些股票本來就在清單裡 —— 這輪會跑全部 " + all.length
+        + " 檔，不是只跑你勾的板塊。要單獨測請按「只留勾選的板塊」。" : "");
 }
 
 $("secAdd").onclick = ()=>{
   const picked=[...document.querySelectorAll(".secChk")].filter(c=>c.checked).map(c=>SECTORS[+c.dataset.i]);
   if(!picked.length){ $("secMsg").textContent = "還沒勾任何板塊。"; return; }
   addTickers(picked.flatMap(s=>s.tickers));
+};
+
+// v1.7：一個板塊一個板塊測用這顆 —— 清空＋填入勾選的，一次做完
+$("secOnly").onclick = ()=>{
+  const picked=[...document.querySelectorAll(".secChk")].filter(c=>c.checked).map(c=>SECTORS[+c.dataset.i]);
+  if(!picked.length){ $("secMsg").textContent = "還沒勾任何板塊。"; return; }
+  $("tickers").value = "";
+  addTickers(picked.flatMap(s=>s.tickers));
+  $("secMsg").textContent = "只留：" + picked.map(s=>s.name).join("、") + "。" + $("secMsg").textContent;
 };
 $("secAll").onclick = ()=> addTickers(SECTORS.flatMap(s=>s.tickers));
 $("secClr").onclick = ()=>{ $("tickers").value=""; $("secMsg").textContent="清單已清空。"; };
