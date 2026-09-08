@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.7</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.8</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -135,6 +135,12 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 <div class="row">
   <div style="flex:0 0 auto"><button id="go">開始回測</button></div>
   <div style="flex:0 0 auto"><button id="stop" class="ghost">停止</button></div>
+  <div style="flex:0 0 auto;align-self:center">
+    <label style="cursor:pointer;font-size:13px;color:var(--txt)">
+      <input type="checkbox" id="screen" style="width:auto;margin-right:6px;vertical-align:middle">
+      套用原文選股條件（漲幅 ≥30% ／ ADR >5% ／ 日成交額 >$1000萬）
+    </label>
+  </div>
   <div style="flex:1;min-width:180px"><div id="prog" class="sub"></div></div>
 </div>
 
@@ -290,10 +296,34 @@ function atr(b,n,i){ if(i<n) return null; let s=0;
   for(let k=i-n+1;k<=i;k++){ const tr=Math.max(b[k].h-b[k].l, Math.abs(b[k].h-b[k-1].c), Math.abs(b[k].l-b[k-1].c)); s+=tr; }
   return s/n; }
 
+/* ─── v1.8：原文的「選股條件」—— 前面每一版都漏掉的一層 ───
+   Qullamaggie 篩股三條：1/3/6 個月漲幅任一 ≥30%、ADR(20)% > 5%、日成交金額 > $10M。
+   ADR 公式來自原文 FAQ：過去 20 根 (High/Low − 1) 的平均 ×100。
+   ⚠ 這不是為了讓數字好看新加的門檻，是原文本來就有、我們沒實作的那一層。 */
+function adr20(b,i){ if(i<20) return null; let s=0;
+  for(let k=i-19;k<=i;k++){ if(!(b[k].l>0)) return null; s += b[k].h/b[k].l - 1; }
+  return s/20*100; }
+
+function medDollarVol(b,n,i){ if(i<n-1) return null; const a=[];
+  for(let k=i-n+1;k<=i;k++) a.push(b[k].c*b[k].v);
+  a.sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; }
+
+// 1 / 3 / 6 個月漲幅取最大（%）
+function momMax(b,i){ if(i<126) return null;
+  const g=[21,63,126].map(n=> b[i-n].c>0 ? (b[i].c/b[i-n].c-1)*100 : -999);
+  return Math.max(...g); }
+
+// 三條全過才算通過原文的選股篩選
+function passScreen(b,i){
+  const x=b[i];
+  return x.adr!=null && x.adr>5 && x.dvol!=null && x.dvol>1e7 && x.mom!=null && x.mom>=30;
+}
+
 function prep(b){
   for(let i=0;i<b.length;i++){
     b[i].ma10=sma(b,10,i); b[i].ma20=sma(b,20,i); b[i].ma50=sma(b,50,i); b[i].ma150=sma(b,150,i);
     b[i].mv60=medVol(b,60,i); b[i].atr=atr(b,14,i);
+    b[i].adr=adr20(b,i); b[i].dvol=medDollarVol(b,20,i); b[i].mom=momMax(b,i);
     if(i>=250){ let h=-Infinity,l=Infinity;
       for(let k=i-249;k<=i;k++){ if(b[k].h>h)h=b[k].h; if(b[k].l<l)l=b[k].l; }
       b[i].hi52=h; b[i].lo52=l; } else { b[i].hi52=null; b[i].lo52=null; }
@@ -578,6 +608,7 @@ async function run(){
   const rules = wantRule==="orig" ? ["P1","P2"] : (wantRule==="cmp" ? ["P1","P1L"] : (wantRule==="all" ? ["F1","F2","F3"] : [wantRule]));
   const exits = wantExit==="all" ? ["X4","X4b","X1a","X1b","X2","X3","X0"] : [wantExit];
   const gap = +$("gap").value*1000;
+  const screenOn = $("screen").checked;
 
   const trades = [];   // 每筆 { tk, rule, exit, date, entry, stop, out, R, pct, days, year, slope, off52 }
   let fail = [];
@@ -599,6 +630,7 @@ async function run(){
           if(i<=lockUntil) continue;
           const sig = RULES[rl](b,i);
           if(!sig) continue;
+          if(screenOn && !passScreen(b,i)) continue;          // v1.8：套用原文選股條件
           const ent = b[i+1].o * 1.001;                       // 次日開盤 + 滑價
           // 停損：至少放到 1×ATR 或 3% 之外
           const pad = Math.max(b[i].atr||0, ent*0.03);
@@ -611,6 +643,7 @@ async function run(){
                         year:b[i+1].d.slice(0,4), sec: TK2SEC[tk] || "未分類",
                         slope: b[i].ma150!=null && b[i-20].ma150!=null ? (b[i].ma150/b[i-20].ma150-1)*100 : null,
                         off52: b[i].hi52 ? (b[i].hi52-b[i].c)/b[i].hi52*100 : null,
+                        adr: b[i].adr, dvol: b[i].dvol, mom: b[i].mom, scr: passScreen(b,i),
                         note: sig.note });
           lockUntil = r.i;                                    // 持倉鎖：這一筆結束才算下一筆
           found++;
@@ -736,6 +769,19 @@ function render(trades, rules, exits, fail){
       html += table("150 日線斜率（近 20 根）",
         [bar("上升 >3%", stats(t.filter(x=>x.slope!=null&&x.slope>3))),
          bar("微升 0–3%", stats(t.filter(x=>x.slope!=null&&x.slope>=0&&x.slope<=3)))].join(""));
+      // ═══ v1.8：原文的選股那一層 —— 先只切片看，不改進場 ═══
+      html += table("ADR%（進場當天 · 20 日平均日內振幅 · 原文的門檻是 >5%）",
+        [bar("<3%（巨頭大多在這）", stats(t.filter(x=>x.adr!=null&&x.adr<3))),
+         bar("3–5%", stats(t.filter(x=>x.adr!=null&&x.adr>=3&&x.adr<5))),
+         bar("5–8%（原文要的）", stats(t.filter(x=>x.adr!=null&&x.adr>=5&&x.adr<8))),
+         bar("8% 以上", stats(t.filter(x=>x.adr!=null&&x.adr>=8)))].join(""));
+      html += table("有沒有通過原文的選股三條（漲幅 ≥30% 任一 ／ ADR >5% ／ 日成交額 >$1000萬）",
+        [bar("三條全過", stats(t.filter(x=>x.scr))),
+         bar("沒全過", stats(t.filter(x=>!x.scr)))].join(""));
+      html += `<div class="note" style="border-left:3px solid var(--amber);padding:8px 11px;margin:6px 0;font-size:13px">
+        這兩張表是<b>切片，不是新門檻</b>。原文在進場訊號之前本來就有一層選股（漲幅、ADR、成交金額），
+        前面每一版都只做了訊號沒做選股 —— 等於一直在測原文根本不會買的股票（巨頭 ADR 約 1.5~2.5%，一開始就不合格）。
+        先看這兩張表的數字自己怎麼說，確認之後再用上面的勾選框把它變成真的過濾條件。</div>`;
       // 集中度
       const done=t.filter(x=>!x.live);
       const tot=done.reduce((a,b)=>a+Math.max(b.R,0),0);
