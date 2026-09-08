@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.8</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.9</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -139,6 +139,12 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
     <label style="cursor:pointer;font-size:13px;color:var(--txt)">
       <input type="checkbox" id="screen" style="width:auto;margin-right:6px;vertical-align:middle">
       套用原文選股條件（漲幅 ≥30% ／ ADR >5% ／ 日成交額 >$1000萬）
+    </label>
+  </div>
+  <div style="flex:0 0 auto;align-self:center">
+    <label style="cursor:pointer;font-size:13px;color:var(--txt)">
+      <input type="checkbox" id="rsOnly" style="width:auto;margin-right:6px;vertical-align:middle">
+      只做 RS 為正（進場時強於大盤）
     </label>
   </div>
   <div style="flex:1;min-width:180px"><div id="prog" class="sub"></div></div>
@@ -609,6 +615,22 @@ async function run(){
   const exits = wantExit==="all" ? ["X4","X4b","X1a","X1b","X2","X3","X0"] : [wantExit];
   const gap = +$("gap").value*1000;
   const screenOn = $("screen").checked;
+  const rsOn = $("rsOnly").checked;
+
+  // ─── v1.9：相對強弱 —— 先抓一次大盤，算出「每個日期的 SPY 近 63 日報酬」 ───
+  //   RS ＝ 個股 63 日報酬 − 同期 SPY 63 日報酬。大盤都在漲的時候，漲 20% 不算強。
+  $("prog").textContent = "先抓大盤 SPY…";
+  let SPY63 = null;
+  {
+    const sp = await fetchBars("SPY", years);
+    if(sp && sp.length>70){
+      SPY63 = {};
+      for(let j=63;j<sp.length;j++) SPY63[sp[j].d] = (sp[j].c/sp[j-63].c - 1)*100;
+      log(`✓ SPY　${sp.length} 根（算 RS 用）`);
+    } else {
+      log("✗ SPY 抓不到 —— 這輪沒有 RS 資料，相對強弱那張表會是空的");
+    }
+  }
 
   const trades = [];   // 每筆 { tk, rule, exit, date, entry, stop, out, R, pct, days, year, slope, off52 }
   let fail = [];
@@ -631,6 +653,11 @@ async function run(){
           const sig = RULES[rl](b,i);
           if(!sig) continue;
           if(screenOn && !passScreen(b,i)) continue;          // v1.8：套用原文選股條件
+          // v1.9：RS ＝ 個股 63 日報酬 − 同期大盤 63 日報酬
+          let rs = null;
+          if(SPY63 && i>=63 && SPY63[b[i].d]!=null && b[i-63].c>0)
+            rs = (b[i].c/b[i-63].c - 1)*100 - SPY63[b[i].d];
+          if(rsOn && !(rs>0)) continue;                        // v1.9：只做強於大盤的
           const ent = b[i+1].o * 1.001;                       // 次日開盤 + 滑價
           // 停損：至少放到 1×ATR 或 3% 之外
           const pad = Math.max(b[i].atr||0, ent*0.03);
@@ -643,7 +670,7 @@ async function run(){
                         year:b[i+1].d.slice(0,4), sec: TK2SEC[tk] || "未分類",
                         slope: b[i].ma150!=null && b[i-20].ma150!=null ? (b[i].ma150/b[i-20].ma150-1)*100 : null,
                         off52: b[i].hi52 ? (b[i].hi52-b[i].c)/b[i].hi52*100 : null,
-                        adr: b[i].adr, dvol: b[i].dvol, mom: b[i].mom, scr: passScreen(b,i),
+                        adr: b[i].adr, dvol: b[i].dvol, mom: b[i].mom, scr: passScreen(b,i), rs,
                         note: sig.note });
           lockUntil = r.i;                                    // 持倉鎖：這一筆結束才算下一筆
           found++;
@@ -770,6 +797,23 @@ function render(trades, rules, exits, fail){
         [bar("上升 >3%", stats(t.filter(x=>x.slope!=null&&x.slope>3))),
          bar("微升 0–3%", stats(t.filter(x=>x.slope!=null&&x.slope>=0&&x.slope<=3)))].join(""));
       // ═══ v1.8：原文的選股那一層 —— 先只切片看，不改進場 ═══
+      // ═══ v1.9：強弱那一層 —— 先只切片看，不改進場 ═══
+      html += table("進場時已經漲多少（1／3／6 個月取最大 · 絕對動能）",
+        [bar("跌的（<0%）", stats(t.filter(x=>x.mom!=null&&x.mom<0))),
+         bar("0–15%", stats(t.filter(x=>x.mom!=null&&x.mom>=0&&x.mom<15))),
+         bar("15–30%", stats(t.filter(x=>x.mom!=null&&x.mom>=15&&x.mom<30))),
+         bar("30–60%", stats(t.filter(x=>x.mom!=null&&x.mom>=30&&x.mom<60))),
+         bar("60% 以上", stats(t.filter(x=>x.mom!=null&&x.mom>=60)))].join(""));
+      html += table("進場時的相對強弱 RS（近 63 日報酬 − 同期 SPY · 正的＝強於大盤）",
+        [bar("弱於大盤（RS<0）", stats(t.filter(x=>x.rs!=null&&x.rs<0))),
+         bar("小勝 0–10", stats(t.filter(x=>x.rs!=null&&x.rs>=0&&x.rs<10))),
+         bar("10–25", stats(t.filter(x=>x.rs!=null&&x.rs>=10&&x.rs<25))),
+         bar("25 以上（很強）", stats(t.filter(x=>x.rs!=null&&x.rs>=25)))].join(""));
+      html += `<div class="note" style="border-left:3px solid var(--amber);padding:8px 11px;margin:6px 0;font-size:13px">
+        這兩張表在回答 Jasmine 的那句話：<b>「弱勢股回檔絕對不能碰」</b>。
+        RS 與動能都是<b>進場當天就算得出來</b>的，不是今天挑名單 —— 所以它們可以真的變成規則。
+        判準跑之前就寫死：高的那組要比低的那組 EV 高 <b>0.3R 以上、而且中位數為正</b>，才算成立；
+        差不多就是不成立，跟 ADR 那次一樣要認。筆數不到 30 的那一格只能當線索。</div>`;
       html += table("ADR%（進場當天 · 20 日平均日內振幅 · 原文的門檻是 >5%）",
         [bar("<3%（巨頭大多在這）", stats(t.filter(x=>x.adr!=null&&x.adr<3))),
          bar("3–5%", stats(t.filter(x=>x.adr!=null&&x.adr>=3&&x.adr<5))),
