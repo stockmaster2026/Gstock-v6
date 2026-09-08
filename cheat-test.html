@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v2.0</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v2.1</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -125,6 +125,10 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
   <div>
     <div class="lbl">風險上限 %</div>
     <input id="riskMax" type="number" value="8" min="3" max="15" step="0.5">
+  </div>
+  <div>
+    <div class="lbl">收 1/3 的天數（X4a/X4b）</div>
+    <input id="takeDay" type="number" value="4" min="1" max="20" step="1">
   </div>
   <div>
     <div class="lbl">每檔間隔（秒）</div>
@@ -422,6 +426,7 @@ function sigF3(b,i){
 
 /* ─────────── 出場（全部照原版） ─────────── */
 //  回傳 { i, R, pct, why } —— R 與 pct 已把部分獲利按比例算進去。
+let TAKE_DAY = 4;   // v2.1：X4a/X4b 早期收 1/3 的天數（原文說 3~5 天，預設取 4）
 function runExit(b, entIdx, ent, stop0, mode){
   const R0 = ent - stop0;
   let stop = stop0, remain = 1, realR = 0, realPct = 0;
@@ -476,7 +481,7 @@ function runExit(b, entIdx, ent, stop0, mode){
 
     if(mode==="X4" || mode==="X4b"){
       const ma = (mode==="X4") ? x.ma10 : x.ma20;
-      if(remain>=1 && held>=4 && x.c > ent){ take(1/3, x.c); stop = ent; }      // 3~5 天有獲利才收 1/3、停損移成本
+      if(remain>=1 && held>=TAKE_DAY && x.c > ent){ take(1/3, x.c); stop = ent; }  // 滿 TAKE_DAY 天且有獲利才收 1/3、停損移成本
       if(remain<1 && ma!=null && x.c < ma){ take(remain, x.c); return done(i,"收盤跌破 "+(mode==="X4"?"10":"20")+"MA"); }
     }
 
@@ -615,6 +620,7 @@ async function run(){
   const exits = wantExit==="all" ? ["X4","X4b","X1a","X1b","X2","X3","X0"] : [wantExit];
   const gap = +$("gap").value*1000;
   const screenOn = $("screen").checked;
+  TAKE_DAY = Math.max(1, Math.round(+$("takeDay").value || 4));   // v2.1
   const rsOn = $("rsOnly").checked;
 
   // ─── v1.9：相對強弱 —— 先抓一次大盤，算出「每個日期的 SPY 近 63 日報酬」 ───
