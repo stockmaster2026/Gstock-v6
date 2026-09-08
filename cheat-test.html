@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.9</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v2.0</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -620,15 +620,16 @@ async function run(){
   // ─── v1.9：相對強弱 —— 先抓一次大盤，算出「每個日期的 SPY 近 63 日報酬」 ───
   //   RS ＝ 個股 63 日報酬 − 同期 SPY 63 日報酬。大盤都在漲的時候，漲 20% 不算強。
   $("prog").textContent = "先抓大盤 SPY…";
-  let SPY63 = null;
+  let SPY63 = null, SPY126 = null;
   {
     const sp = await fetchBars("SPY", years);
-    if(sp && sp.length>70){
-      SPY63 = {};
+    if(sp && sp.length>140){
+      SPY63 = {}; SPY126 = {};
       for(let j=63;j<sp.length;j++) SPY63[sp[j].d] = (sp[j].c/sp[j-63].c - 1)*100;
+      for(let j=126;j<sp.length;j++) SPY126[sp[j].d] = (sp[j].c/sp[j-126].c - 1)*100;
       log(`✓ SPY　${sp.length} 根（算 RS 用）`);
     } else {
-      log("✗ SPY 抓不到 —— 這輪沒有 RS 資料，相對強弱那張表會是空的");
+      log("✗ SPY 抓不到 —— 這輪沒有 RS 資料，相對強弱那幾張表會是空的");
     }
   }
 
@@ -658,6 +659,18 @@ async function run(){
           if(SPY63 && i>=63 && SPY63[b[i].d]!=null && b[i-63].c>0)
             rs = (b[i].c/b[i-63].c - 1)*100 - SPY63[b[i].d];
           if(rsOn && !(rs>0)) continue;                        // v1.9：只做強於大盤的
+          // ─── v2.0：把「好班」和「現在回檔了沒」拆成兩軸 ───
+          //   Jasmine：「應該挑出強勢股，趁它弱勢的時候買入」。
+          //   63 日 RS 會被那段回檔自己壓下去，等於一個數字同時量了兩件事 —— 所以拆開：
+          //   rsL ＝ 126 日相對強弱（是不是好班，回檔壓不太動它）
+          //   pb  ＝ 離近 20 根最高點回落幾 %（現在回檔多深）
+          let rsL = null;
+          if(SPY126 && i>=126 && SPY126[b[i].d]!=null && b[i-126].c>0)
+            rsL = (b[i].c/b[i-126].c - 1)*100 - SPY126[b[i].d];
+          let pb = null;
+          { let h20=-Infinity;
+            for(let k=Math.max(0,i-19);k<=i;k++) if(b[k].h>h20) h20=b[k].h;
+            if(h20>0) pb = (h20 - b[i].c)/h20*100; }
           const ent = b[i+1].o * 1.001;                       // 次日開盤 + 滑價
           // 停損：至少放到 1×ATR 或 3% 之外
           const pad = Math.max(b[i].atr||0, ent*0.03);
@@ -670,7 +683,7 @@ async function run(){
                         year:b[i+1].d.slice(0,4), sec: TK2SEC[tk] || "未分類",
                         slope: b[i].ma150!=null && b[i-20].ma150!=null ? (b[i].ma150/b[i-20].ma150-1)*100 : null,
                         off52: b[i].hi52 ? (b[i].hi52-b[i].c)/b[i].hi52*100 : null,
-                        adr: b[i].adr, dvol: b[i].dvol, mom: b[i].mom, scr: passScreen(b,i), rs,
+                        adr: b[i].adr, dvol: b[i].dvol, mom: b[i].mom, scr: passScreen(b,i), rs, rsL, pb,
                         note: sig.note });
           lockUntil = r.i;                                    // 持倉鎖：這一筆結束才算下一筆
           found++;
@@ -797,6 +810,32 @@ function render(trades, rules, exits, fail){
         [bar("上升 >3%", stats(t.filter(x=>x.slope!=null&&x.slope>3))),
          bar("微升 0–3%", stats(t.filter(x=>x.slope!=null&&x.slope>=0&&x.slope<=3)))].join(""));
       // ═══ v1.8：原文的選股那一層 —— 先只切片看，不改進場 ═══
+      // ═══ v2.0：Jasmine 的原話 —— 「挑出強勢股，趁它弱勢的時候買入」 ═══
+      html += table("① 長期相對強弱 RS126（近 126 日報酬 − 同期 SPY · 是不是好班）",
+        [bar("弱於大盤（<0）", stats(t.filter(x=>x.rsL!=null&&x.rsL<0))),
+         bar("0–15", stats(t.filter(x=>x.rsL!=null&&x.rsL>=0&&x.rsL<15))),
+         bar("15–40", stats(t.filter(x=>x.rsL!=null&&x.rsL>=15&&x.rsL<40))),
+         bar("40 以上（很強）", stats(t.filter(x=>x.rsL!=null&&x.rsL>=40)))].join(""));
+      html += table("② 進場時的回檔深度（離近 20 根最高點回落幾 %）",
+        [bar("<3%（幾乎沒回）", stats(t.filter(x=>x.pb!=null&&x.pb<3))),
+         bar("3–8%", stats(t.filter(x=>x.pb!=null&&x.pb>=3&&x.pb<8))),
+         bar("8–15%", stats(t.filter(x=>x.pb!=null&&x.pb>=8&&x.pb<15))),
+         bar("15% 以上（回很深）", stats(t.filter(x=>x.pb!=null&&x.pb>=15)))].join(""));
+      {
+        const ok = x=>x.rsL!=null&&x.pb!=null;
+        const S = x=>x.rsL>0, D = x=>x.pb>=8;                 // 長期強 / 回檔深
+        html += table("③ 交叉：長期強弱 × 回檔深淺 —— 這一張才是直接回答那句話的",
+          [bar("<b>長期強 × 回檔深</b>（你要的那格）", stats(t.filter(x=>ok(x)&&S(x)&&D(x)))),
+           bar("長期強 × 回檔淺", stats(t.filter(x=>ok(x)&&S(x)&&!D(x)))),
+           bar("長期弱 × 回檔深", stats(t.filter(x=>ok(x)&&!S(x)&&D(x)))),
+           bar("長期弱 × 回檔淺", stats(t.filter(x=>ok(x)&&!S(x)&&!D(x))))].join(""));
+      }
+      html += `<div class="note" style="border-left:3px solid var(--amber);padding:8px 11px;margin:6px 0;font-size:13px">
+        上一版的 RS 是 63 日的，<b>一檔正在回檔的股票，它三個月的 RS 本來就會被那段回檔自己壓下去</b> ——
+        等於一個數字同時量了「好不好」和「回檔了沒」，兩件事混在一起，所以那張表回答不了這個問題。
+        這裡拆成兩軸：<b>RS126</b> 量好班（回檔壓不太動它）、<b>回檔深度</b> 量現在的位置。
+        判準照舊、跑之前寫死：③ 裡「長期強 × 回檔深」要比其他三格 EV 高 <b>0.3R 以上、中位數為正</b>才算成立；
+        跟其他格差不多就是不成立。筆數不到 30 的格子只能當線索。</div>`;
       // ═══ v1.9：強弱那一層 —— 先只切片看，不改進場 ═══
       html += table("進場時已經漲多少（1／3／6 個月取最大 · 絕對動能）",
         [bar("跌的（<0%）", stats(t.filter(x=>x.mom!=null&&x.mom<0))),
