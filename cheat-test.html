@@ -50,7 +50,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
 </head>
 <body>
 
-<h1>逢低買入回測 <span class="sub">冠軍版 · v1.5</span></h1>
+<h1>逢低買入回測 <span class="sub">冠軍版 · v1.6</span></h1>
 <div class="sub">三種「不等突破前高」的進場 × 六種出場。v1.1 的出場全部換成三家自己講過的原版做法。v1.3 新增兩條<b>參數來自原文</b>的進場（pocket pivot、VCP pivot 突破），跟我先前自編的三條分開跑。</div>
 
 <div class="card">
@@ -115,6 +115,7 @@ summary{cursor:pointer;color:var(--dim);font-size:13px;padding:4px 0}
   <div>
     <div class="lbl">回測長度</div>
     <select id="range">
+      <option value="5">5 年</option>
       <option value="3">3 年</option>
       <option value="2">2 年</option>
       <option value="1">1 年</option>
@@ -590,7 +591,7 @@ async function run(){
           const r = runExit(b, i+1, ent, stop, ex);
           trades.push({ tk, rule:rl, exit:ex, date:b[i+1].d, entry:ent, stop, out:null,
                         R:r.R, pct:r.pct, days:r.i-(i+1), why:r.why, live:!!r.live,
-                        year:b[i+1].d.slice(0,4),
+                        year:b[i+1].d.slice(0,4), sec: TK2SEC[tk] || "未分類",
                         slope: b[i].ma150!=null && b[i-20].ma150!=null ? (b[i].ma150/b[i-20].ma150-1)*100 : null,
                         off52: b[i].hi52 ? (b[i].hi52-b[i].c)/b[i].hi52*100 : null,
                         note: sig.note });
@@ -691,6 +692,20 @@ function render(trades, rules, exits, fail){
         <span class="pill">最大連虧 <b>${s.worst}</b></span>
         <span class="pill">平均持有 <b>${s.days.toFixed(0)}</b> 天</span></div>`;
       html += table("依進場規則拆開", rules.map(r=>bar(RULE_NAME[r], stats(t.filter(x=>x.rule===r)))).join(""));
+      // ═══ 依板塊拆開 —— Jasmine：「我大概只認識其中十檔，你拿全部去跑然後否定那十檔，這樣對嗎」
+      //   她對。而且她 8 月的九檔研究早就有結論：這套方法有板塊邊界。
+      //   所以不由 Claude 用嘴巴挑，讓每個板塊自己的數字說話。⚠ 這是切片不是改參數。
+      {
+        const secs=[...new Set(t.map(x=>x.sec))];
+        const rows = secs.map(sc=>({sc, s:stats(t.filter(x=>x.sec===sc))}))
+          .filter(r=>r.s && r.s.n>=10)
+          .sort((a,b)=> b.s.ev - a.s.ev)
+          .map(r=>bar(r.sc, r.s)).join("");
+        if(rows) html += table("依板塊拆開（只列 ≥10 筆的板塊 · 按期望值排序）", rows)
+          + `<div class="warn">板塊之間差很多是正常的 —— 這套方法本來就有邊界。
+             但<b>單一板塊的筆數通常不到 30</b>，那一列只能當線索、不能當結論；
+             要當結論得把年數拉長讓那個板塊自己的樣本夠大。</div>`;
+      }
       html += table("持有天數（三種進場都出現過同一個死亡區間，看這一版有沒有變）",
         [bar("0–2 天", stats(t.filter(x=>x.days<=2))),
          bar("3–10 天", stats(t.filter(x=>x.days>2&&x.days<=10))),
@@ -752,7 +767,7 @@ function render(trades, rules, exits, fail){
 
 /* ─────────── 從 radar 讀板塊名單（只讀不寫） ─────────── */
 const SECTOR_KEYS = ["biaoguo_sectors_v5","biaoguo_sectors_v4","gstock_radar_sectors"];
-let SECTORS = [];
+let SECTORS = [], TK2SEC = {};
 
 function grabSectors(){
   for(const k of SECTOR_KEYS){
@@ -785,6 +800,8 @@ function renderSectors(){
     return;
   }
   SECTORS = got.sectors;
+  TK2SEC = {};                                              // 代號 → 板塊（同一檔屬多個板塊時取第一個）
+  SECTORS.forEach(sc=> sc.tickers.forEach(t=>{ if(!TK2SEC[t]) TK2SEC[t]=sc.name; }));
   box.innerHTML = SECTORS.map((sc,idx)=>
     '<label style="display:inline-block;margin:3px 10px 3px 0;cursor:pointer;color:var(--txt)">'
     + '<input type="checkbox" class="secChk" data-i="'+idx+'" style="width:auto;margin-right:5px;vertical-align:middle">'
