@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finnhub 財報資料試打</title>
+<style>
+  :root{
+    --paper:#f7f5ef;
+    --ink:#1c2128;
+    --dim:#57606a;
+    --rule:#d8d2c4;
+    --ok:#1a7f37;
+    --bad:#cf222e;
+    --hit:#7d5300;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink); margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+    font-size:15px; line-height:1.7;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:22px 18px 80px}
+  h1{font-size:21px; font-weight:700; margin:0 0 2px; letter-spacing:.5px}
+  .sub{color:var(--dim); font-size:13px; margin:0 0 20px}
+  .bench{
+    border:1px solid var(--rule); border-radius:8px;
+    background:#fffdf8; padding:15px 16px; margin-bottom:20px;
+  }
+  label{display:block; font-size:13px; color:var(--dim); margin-bottom:5px}
+  input{
+    width:100%; padding:10px 11px; font-size:15px;
+    border:1px solid var(--rule); border-radius:6px; background:#fff;
+    color:var(--ink); font-family:inherit;
+  }
+  input:focus{outline:2px solid #0969da; outline-offset:1px}
+  .row{margin-bottom:13px}
+  button{
+    background:var(--ink); color:#fff; border:none; border-radius:6px;
+    padding:11px 20px; font-size:15px; font-weight:600; cursor:pointer;
+    font-family:inherit;
+  }
+  button:disabled{background:#9aa0a6; cursor:default}
+  button:focus-visible{outline:2px solid #0969da; outline-offset:2px}
+  .note{font-size:12.5px; color:var(--dim); margin-top:9px}
+
+  .sym{margin:26px 0 0; border-top:2px solid var(--ink); padding-top:9px}
+  .sym h2{font-size:18px; margin:0 0 12px; font-weight:700}
+  .ep{border:1px solid var(--rule); border-radius:7px; background:#fff; margin-bottom:13px; overflow:hidden}
+  .ep-h{padding:9px 12px; border-bottom:1px solid var(--rule); background:#faf8f2;
+        display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+  .ep-n{font-size:13px; font-weight:700}
+  .ep-u{font-size:11.5px; color:var(--dim); font-family:ui-monospace,Menlo,monospace; word-break:break-all}
+  .st{font-size:12.5px; font-weight:700; margin-left:auto}
+  .st.ok{color:var(--ok)} .st.bad{color:var(--bad)}
+  .hits{padding:10px 12px; border-bottom:1px dashed var(--rule); background:#fffbef}
+  .hits div{font-size:13.5px; font-family:ui-monospace,Menlo,monospace}
+  .hits b{color:var(--hit)}
+  .hits .cap{font-family:inherit; font-size:12.5px; color:var(--dim); margin-bottom:5px}
+  pre{
+    margin:0; padding:11px 12px; font-size:11.5px; line-height:1.55;
+    font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; word-break:break-word;
+    max-height:340px; overflow:auto; color:#2b3137;
+  }
+  details summary{cursor:pointer; padding:8px 12px; font-size:12.5px; color:var(--dim)}
+  .empty{padding:11px 12px; font-size:13.5px; color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Finnhub 財報資料試打</h1>
+<p class="sub">這一頁只做一件事：把三個 endpoint 的原始回傳印出來，看免費層到底給不給。看完就可以丟掉。</p>
+
+<div class="bench">
+  <div class="row">
+    <label for="key">Finnhub API key</label>
+    <input id="key" type="text" placeholder="貼上你的 key（存在這台裝置，不會寫進檔案）" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="row">
+    <label for="syms">股票代號（逗號或空白分隔）</label>
+    <input id="syms" type="text" value="MU, BE, GLW" autocomplete="off" spellcheck="false">
+  </div>
+  <button id="run">開始試打</button>
+  <div class="note" id="note">每檔打三個 endpoint，中間間隔 400 毫秒避開限流。</div>
+</div>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+/* 這一頁刻意不內嵌 key ------------------------------------------------------
+   news.html 第 107 行把 key 明文寫死在 Public repo 裡，任何人都讀得到。
+   這一頁改成輸入框 + localStorage，檔案本身不含任何祕密，
+   所以就算傳上 GitHub 也不會再洩一次。                                      */
+var KEYSTORE = 'finprobe_key';
+
+var kEl = document.getElementById('key');
+var sEl = document.getElementById('syms');
+var btn = document.getElementById('run');
+var out = document.getElementById('out');
+var note= document.getElementById('note');
+
+try{ var saved = localStorage.getItem(KEYSTORE); if(saved) kEl.value = saved; }catch(e){}
+
+/* 我們要找的東西 ---------------------------------------------------------
+   CANSLIM 的 C（當季 EPS／營收 YoY）、A（近三年 EPS 年成長、ROE）。
+   Finnhub 的欄位命名各版本不一樣，所以不寫死欄位名,
+   改成【比對關鍵字】把疑似相關的欄位撈出來 —— 找不到就誠實說找不到。   */
+var WANT = ['roe','epsgrowth','revenuegrowth','salesgrowth','epsbasic','netmargin','grossmargin'];
+
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){
+  return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;'); }); }
+
+function flatten(obj, prefix, bag){
+  if(obj===null || typeof obj!=='object') return bag;
+  for(var k in obj){
+    if(!Object.prototype.hasOwnProperty.call(obj,k)) continue;
+    var path = prefix ? prefix+'.'+k : k;
+    var v = obj[k];
+    if(v!==null && typeof v==='object' && !Array.isArray(v)) flatten(v, path, bag);
+    else bag.push([path, v]);
+  }
+  return bag;
+}
+
+function hits(json){
+  var bag = flatten(json, '', []);
+  var found = [];
+  for(var i=0;i<bag.length;i++){
+    var name = String(bag[i][0]).toLowerCase();
+    for(var j=0;j<WANT.length;j++){
+      if(name.indexOf(WANT[j])>=0){ found.push(bag[i]); break; }
+    }
+  }
+  return found;
+}
+
+function block(name, url, res){
+  var h = '<div class="ep"><div class="ep-h">'
+        + '<span class="ep-n">'+esc(name)+'</span>'
+        + '<span class="ep-u">'+esc(url.replace(/&token=.*$/,'&token=...'))+'</span>'
+        + '<span class="st '+(res.ok?'ok':'bad')+'">'+esc(res.status)+'</span>'
+        + '</div>';
+
+  if(!res.ok){
+    h += '<div class="empty">'+esc(res.msg||'沒有回傳內容')+'</div></div>';
+    return h;
+  }
+
+  var body = res.json;
+  var isEmpty = (body===null) || (Array.isArray(body) && body.length===0)
+             || (typeof body==='object' && !Array.isArray(body) && Object.keys(body).length===0);
+
+  if(isEmpty){
+    h += '<div class="empty">HTTP 200，但回傳是空的 —— 這個代號在免費層沒有資料。</div>';
+  }else{
+    var f = hits(body);
+    if(f.length){
+      h += '<div class="hits"><div class="cap">疑似我們要的欄位</div>';
+      for(var i=0;i<f.length && i<28;i++){
+        h += '<div><b>'+esc(f[i][0])+'</b> = '+esc(JSON.stringify(f[i][1]))+'</div>';
+      }
+      if(f.length>28) h += '<div class="cap">另有 '+(f.length-28)+' 個，見下方原始回傳</div>';
+      h += '</div>';
+    }else{
+      h += '<div class="hits"><div class="cap">沒有比對到 ROE／EPS 成長／營收成長之類的欄位 —— 看下面原始回傳確認</div></div>';
+    }
+    h += '<details><summary>原始回傳（點開）</summary><pre>'
+       + esc(JSON.stringify(body, null, 2)) + '</pre></details>';
+  }
+  return h + '</div>';
+}
+
+async function hit(url){
+  try{
+    var r = await fetch(url, {cache:'no-store'});
+    var txt = await r.text();
+    var j = null;
+    try{ j = JSON.parse(txt); }catch(e){}
+    if(!r.ok){
+      return {ok:false, status:'HTTP '+r.status,
+              msg:'HTTP '+r.status+(txt?(' — '+txt.slice(0,300)):'')};
+    }
+    return {ok:true, status:'HTTP 200', json:(j===null?txt:j)};
+  }catch(e){
+    return {ok:false, status:'連不上', msg:'請求失敗：'+e.message
+            +'（可能是 key 錯、被擋、或網路問題）'};
+  }
+}
+
+function ymd(d){ return d.toISOString().split('T')[0]; }
+
+btn.addEventListener('click', async function(){
+  var key = kEl.value.trim();
+  if(!key){ note.textContent = '先貼上 API key 才能試打。'; kEl.focus(); return; }
+  try{ localStorage.setItem(KEYSTORE, key); }catch(e){}
+
+  var list = sEl.value.split(/[,\s]+/).map(function(s){return s.trim().toUpperCase();})
+                     .filter(Boolean).slice(0,6);
+  if(!list.length){ note.textContent = '至少要一個股票代號。'; sEl.focus(); return; }
+
+  btn.disabled = true;
+  out.innerHTML = '';
+  var from = ymd(new Date());
+  var to   = ymd(new Date(Date.now() + 120*86400000));
+
+  for(var i=0;i<list.length;i++){
+    var sym = list[i];
+    note.textContent = '試打中：' + sym + '（' + (i+1) + '/' + list.length + '）';
+
+    var eps = [
+      ['基本財務指標（ROE、成長率）', 'https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+key],
+      ['歷史季度 EPS（實際 vs 預估）', 'https://finnhub.io/api/v1/stock/earnings?symbol='+sym+'&token='+key],
+      ['下次財報日期', 'https://finnhub.io/api/v1/calendar/earnings?from='+from+'&to='+to+'&symbol='+sym+'&token='+key]
+    ];
+
+    var html = '<div class="sym"><h2>' + esc(sym) + '</h2>';
+    for(var e=0;e<eps.length;e++){
+      var res = await hit(eps[e][1]);
+      html += block(eps[e][0], eps[e][1], res);
+      await new Promise(function(r){ setTimeout(r, 400); });
+    }
+    out.innerHTML += html + '</div>';
+  }
+
+  note.textContent = '跑完了。把畫面截圖回報，或直接看「疑似我們要的欄位」那幾行。';
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
