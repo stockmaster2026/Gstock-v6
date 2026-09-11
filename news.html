@@ -75,6 +75,17 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .fdate{font-size:14px;font-weight:700;color:#1a202c;}
 .fana{font-size:13.5px;color:#2d3748;line-height:1.8;}
 .fana b{font-variant-numeric:tabular-nums;}
+.fsum{margin:10px 16px 0;padding:12px 14px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;font-size:13px;color:#2d3748;line-height:1.85;}
+.fsum b{color:#1a202c;}
+.fsum .fsline{margin-top:4px;}
+.fsum .fsalert{color:#9b2c2c;font-weight:700;}
+.fstamp{font-size:11px;color:#718096;margin-top:6px;}
+.ftab{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+.ftab th{font-size:11px;color:#718096;font-weight:400;text-align:right;padding:3px 0 5px;}
+.ftab th:first-child{text-align:left;}
+.ftab td{padding:5px 0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;border-top:1px solid #edf2f7;}
+.ftab td:first-child{text-align:left;font-weight:400;color:#2d3748;}
+.fq{color:#0066bb;}
 .fdis{font-size:11.5px;color:#4a5568;line-height:1.7;padding:12px 16px;}
 .tr-status{font-size:11px;color:#4a5568;padding:8px 16px;text-align:center;}
 </style>
@@ -140,6 +151,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     <input class="wi" id="fi" placeholder="股票代碼，逗號分開（最多15支）…">
     <button class="fb" onclick="loadFund()">跑財報體檢</button>
   </div>
+  <div id="fsum"></div>
   <div id="fc" style="margin-top:8px;"><div class="empty">貼上 key、按「跑財報體檢」開始</div></div>
   <div class="fdis">
     這一塊只回答 <b>這家公司的生意有沒有在成長</b>，不回答今天能不能買 —— 買價與停損一律看 dna.html 的 pivot。<br>
@@ -163,7 +175,14 @@ function KEY(){
   try{ return localStorage.getItem(KEYSTORE)||''; }catch(e){ return ''; }
 }
 const DW=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
-document.getElementById('wi').value='AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL';
+/* ═══ 持股輸入記住, 不再每次開頁面就蓋掉 ═══════════════════════
+   舊版這一行寫死 8 檔, 每次重新整理都把使用者打的清單覆蓋掉 ——
+   所以「試著要增加也都不行」。上限本來就不是 8, 是這一行在蓋。   */
+(function(){
+  var el=document.getElementById('wi'), saved='';
+  try{ saved=localStorage.getItem('watch_syms')||''; }catch(e){}
+  el.value = saved || 'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL';
+})();
 document.getElementById('rc').textContent=DW.length;
 
 function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+'分前';if(d<86400)return Math.floor(d/3600)+'小時前';return Math.floor(d/86400)+'天前';}
@@ -172,7 +191,9 @@ function spn(id,on){const b=document.getElementById(id);if(b)on?b.classList.add(
 async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
   const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+k,{cache:'no-store'});
   if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
-function syms(){return document.getElementById('wi').value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
+function syms(){var v=document.getElementById('wi').value;
+  try{ localStorage.setItem('watch_syms', v); }catch(e){}
+  return v.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
 function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')loadMarket();if(t==='radar')loadRadar();}
 
 async function tr(text){
@@ -358,6 +379,7 @@ function fRow(label, val, thr, unit){
 }
 
 function fundCard(sym, m, cal, rec){
+  var card_state='mix', card_days=null;
   var h = '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
 
   /* ── 下次財報日期 ── 她自己的規則: 兩三週內有財報就連縮小部位都不做 ── */
@@ -367,6 +389,7 @@ function fundCard(sym, m, cal, rec){
       return (a.date<b.date?-1:1); });
     nd = arr[0].date;
     dleft = Math.round((new Date(nd+'T00:00:00') - new Date())/86400000);
+    card_days = dleft;
   }
   if(nd) h += '<span class="fsub">下次財報 <span class="fdate">'+nd+'</span>'
             + (dleft!==null?('（還有 '+dleft+' 天）'):'')+'</span>';
@@ -393,31 +416,50 @@ function fundCard(sym, m, cal, rec){
     h += fRow('股東權益報酬率 ROE（近 12 個月）', m.roeTTM, TH.roe);
   }
 
-  /* ── 加速度 ── Minervini Code 33: 營收/獲利/毛利率三個同時在加速 ── */
+  /* ── 轉折 ── 三個窗口都是「跟一年前比」, 只是往回看多久 ──────────
+     Jasmine 9/11 問:「12 個月增長 131, 平均一個月 11, 這一季 17.8,
+     不是超過去年的平均嗎?」—— 不能除以 12: 兩個數字【都已經是年增率】,
+     131.2% 是近 12 個月 vs 再前面 12 個月; 17.8% 是最近一季 vs 去年同一季。
+     所以正確的讀法是【同一個問題、三個窗口】, 看它往後推會不會變小。
+     ⚠ 這裡只描述、不下判決 —— 一季不算趨勢, 要連續兩三季才算。          */
   if(m){
-    var gA=num(m.grossMarginAnnual), gT=num(m.grossMarginTTM);
-    var e3=num(m.epsGrowth3Y),       eT=num(m.epsGrowthTTMYoy);
-    var r3=num(m.revenueGrowth3Y),   rT=num(m.revenueGrowthTTMYoy);
-    var up=[];
-    if(gA!==null&&gT!==null&&gT>gA+2) up.push('毛利率 '+gA.toFixed(1)+'% → '+gT.toFixed(1)+'%');
-    if(e3!==null&&eT!==null&&eT>e3)   up.push('EPS 成長 '+e3.toFixed(1)+'% → '+eT.toFixed(1)+'%');
-    if(r3!==null&&rT!==null&&rT>r3)   up.push('營收成長 '+r3.toFixed(1)+'% → '+rT.toFixed(1)+'%');
+    var e3=num(m.epsGrowth3Y),     eT=num(m.epsGrowthTTMYoy),     eQ=num(m.epsGrowthQuarterlyYoy);
+    var r3=num(m.revenueGrowth3Y), rT=num(m.revenueGrowthTTMYoy), rQ=num(m.revenueGrowthQuarterlyYoy);
+    var gA=num(m.grossMarginAnnual), gT=num(m.grossMarginTTM),    gQ=num(m._gmQ);
 
-    h += '<div class="fsect">轉折 · 年度 vs 近 12 個月</div>';
-    h += '<div class="frow"><span class="flab">毛利率</span><span class="fval">'
-       + (gA===null?'—':gA.toFixed(1)+'%')+' → '+(gT===null?'—':gT.toFixed(1)+'%')+'</span></div>';
-    h += '<div class="frow"><span class="flab">EPS 成長</span><span class="fval">'
-       + (e3===null?'—':e3.toFixed(1)+'%')+' → '+(eT===null?'—':eT.toFixed(1)+'%')+'</span></div>';
-    h += '<div class="frow"><span class="flab">營收成長</span><span class="fval">'
-       + (r3===null?'—':r3.toFixed(1)+'%')+' → '+(rT===null?'—':rT.toFixed(1)+'%')+'</span></div>';
+    /* 成長率要帶正負號; 毛利率是【水準值】不是成長率, 帶 + 號會被誤讀成「成長 39.8%」 */
+    function cell(v,cls,lvl){ return '<td'+(cls?' class="'+cls+'"':'')+'>'
+      + (v===null?'—':((!lvl&&v>0?'+':'')+v.toFixed(1)+'%'))+'</td>'; }
 
-    if(up.length>=2){
-      h += '<div class="fnote faccel"><b>'+up.length+' 項同時在加速</b>：'+up.join('、')
-         + '<br>轉折已經發生，但年報還沒反映出來 —— 這正是 Minervini 要的那個形狀。</div>';
+    h += '<div class="fsect">轉折 · 成長率是在放大還是在收斂</div>';
+    h += '<table class="ftab"><tr><th>EPS 與營收＝跟一年前比</th>'
+       + '<th>近三年</th><th>近 12 個月</th><th>最近一季</th></tr>'
+       + '<tr><td>EPS</td>'   +cell(e3)+cell(eT)+cell(eQ,'fq')+'</tr>'
+       + '<tr><td>營收</td>'  +cell(r3)+cell(rT)+cell(rQ,'fq')+'</tr>'
+       + '<tr><td>毛利率 <span style="font-size:10.5px;color:#718096">水準值</span></td>'
+       + cell(gA,'',1)+cell(gT,'',1)+cell(gQ,'fq',1)+'</tr></table>';
+
+    /* 最近一季跟近 12 個月比, 只描述大小, 不說好壞 */
+    var up=[], dn=[];
+    if(eQ!==null&&eT!==null){ (eQ>=eT?up:dn).push('EPS '+eQ.toFixed(1)+'% vs '+eT.toFixed(1)+'%'); }
+    if(rQ!==null&&rT!==null){ (rQ>=rT?up:dn).push('營收 '+rQ.toFixed(1)+'% vs '+rT.toFixed(1)+'%'); }
+
+    if(up.length && !dn.length){
+      h += '<div class="fnote faccel"><b>最近一季還在放大</b>（'+up.join('、')
+         + '）—— 成長率一季比一季高，這正是 O&#39;Neil 的 C 在找的形狀。</div>';
+    }else if(dn.length && !up.length){
+      h += '<div class="fnote"><b>最近一季比近 12 個月小</b>（'+dn.join('、')
+         + '）—— 爆發的那幾季已經滾出窗口。<b>成長還在，只是加速停了</b>，不是衰退。'
+         + '<br>⚠ 一季不算趨勢，要連續兩三季都在降才算數。</div>';
+    }else if(up.length && dn.length){
+      h += '<div class="fnote">放大的：'+up.join('、')+'<br>收斂的：'+dn.join('、')
+         + '<br>⚠ 兩邊不同向，一季不算趨勢，再看一兩季。</div>';
     }else{
-      h += '<div class="fnote">年報是過去一整年的平均，近 12 個月才是現在。'
-         + '兩個數字拉開，代表生意在變 —— 現在 '+(up.length?'只有 1 項':'沒有一項')+'在加速。</div>';
+      h += '<div class="fnote">最近一季的成長率算不出來，沒辦法跟前面比。</div>';
     }
+
+    /* 摘要給總結列用 */
+    card_state = (up.length && !dn.length) ? 'up' : (dn.length && !up.length ? 'dn' : 'mix');
   }
 
   /* ── 分析師風向 ── 免費層只有家數, 但有歷史 → 可以算變化 ── */
@@ -444,7 +486,7 @@ function fundCard(sym, m, cal, rec){
     h += '<div class="frow"><span class="fnone">沒有分析師資料</span></div>';
   }
 
-  return h + '</div>';
+  return {html:h+'</div>', state:card_state, days:card_days, date:nd};
 }
 
 async function loadFund(){
@@ -464,14 +506,22 @@ async function loadFund(){
   try{ localStorage.setItem('fund_syms', list.join(', ')); }catch(e){}
 
   spn('rf',true);
+  document.getElementById('fsum').innerHTML='';
   box.innerHTML='<span class="sp"></span>';
   var from=new Date().toISOString().split('T')[0];
   var to=new Date(Date.now()+120*86400000).toISOString().split('T')[0];
-  var html='';
+  var html='', results=[];
 
   for(var i=0;i<list.length;i++){
     var sym=list[i], m=null, cal=null, rec=null, bad=[];
-    try{ var d=await api('/stock/metric?symbol='+sym+'&metric=all'); m=d&&d.metric?d.metric:null; }
+    try{ var d=await api('/stock/metric?symbol='+sym+'&metric=all');
+         m=d&&d.metric?d.metric:null;
+         /* 最近一季毛利率在 series 裡, 不在 metric 裡 —— 掛上去給三段表用 */
+         if(m && d.series && d.series.quarterly && d.series.quarterly.grossMargin
+            && d.series.quarterly.grossMargin.length){
+           var g0=d.series.quarterly.grossMargin[0];
+           if(g0 && g0.v!=null) m._gmQ = g0.v*100;
+         } }
     catch(e){ bad.push('基本財務指標（'+e.message+'）'); }
     await new Promise(function(r){setTimeout(r,350);});
     try{ cal=await api('/calendar/earnings?from='+from+'&to='+to+'&symbol='+sym); }
@@ -481,14 +531,45 @@ async function loadFund(){
     catch(e){ bad.push('分析師（'+e.message+'）'); }
     await new Promise(function(r){setTimeout(r,350);});
 
-    html += fundCard(sym, m, cal, rec);
+    var R = fundCard(sym, m, cal, rec);
+    var one = R.html;
     if(bad.length){
-      html = html.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
+      one = one.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
              + bad.join('、')+'</div></div>');
     }
+    results.push({sym:sym, state:R.state, days:R.days, date:R.date});
+    html += one;
     box.innerHTML = html;
   }
   if(!html) box.innerHTML='<div class="empty">沒有結果</div>';
+
+  /* ══ 總結列 ══ 五檔要全部滑完才知道誰有財報要來, 那個警告會被漏掉 ══ */
+  var soon = results.filter(function(r){ return r.days!==null && r.days<=21; })
+                    .sort(function(a,b){ return a.days-b.days; });
+  var up   = results.filter(function(r){ return r.state==='up'; }).map(function(r){return r.sym;});
+  var dn   = results.filter(function(r){ return r.state==='dn'; }).map(function(r){return r.sym;});
+
+  var sm='<div class="fsum">跑了 <b>'+results.length+'</b> 檔';
+  sm += '<div class="fsline">'
+      + (soon.length
+          ? '<span class="fsalert">⚠ 21 天內有財報：'
+            + soon.map(function(r){return r.sym+'（'+r.days+' 天）';}).join('、')
+            + '</span> —— 你自己訂的規則是這幾檔先放著，不管技術面。'
+          : '21 天內沒有任何一檔要出財報。')
+      + '</div>';
+  sm += '<div class="fsline">最近一季還在放大：<b>'+(up.length?up.join('、'):'—')+'</b></div>';
+  sm += '<div class="fsline">最近一季比近 12 個月小：<b>'+(dn.length?dn.join('、'):'—')+'</b>'
+      + '　<span style="color:#718096">（成長還在，只是加速停了）</span></div>';
+
+  var now=new Date();
+  var stamp = String(now.getFullYear()).slice(2)+'/'
+            + String(now.getMonth()+1).padStart(2,'0')+'/'
+            + String(now.getDate()).padStart(2,'0')+' '
+            + String(now.getHours()).padStart(2,'0')+':'
+            + String(now.getMinutes()).padStart(2,'0');
+  sm += '<div class="fstamp">資料抓取時間 '+stamp+'　·　財報數字每季才更新一次，不用每天跑</div>';
+  document.getElementById('fsum').innerHTML = sm + '</div>';
+
   spn('rf',false);
 }
 
