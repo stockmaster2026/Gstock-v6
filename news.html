@@ -54,6 +54,28 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mc.up{color:#22543d;background:rgba(34,84,61,0.12);}
 .mc.dn{color:#9b2c2c;background:rgba(155,44,44,0.12);}
 .mp{font-size:11px;color:#4a5568;margin-bottom:8px;}
+.kbar{padding:10px 16px;background:#f0f4f8;border-bottom:1px solid #c8d0dc;font-size:11px;color:#4a5568;}
+.kbar input{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;color:#1a202c;font-size:12px;outline:none;box-sizing:border-box;margin-top:5px;}
+.kbar input:focus{border-color:#0066bb;}
+.kbar .kmsg{margin-top:5px;color:#9b2c2c;}
+.fcard{background:#ffffff;border:1px solid #c8d0dc;border-radius:12px;padding:15px 16px;margin:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+.fhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+.fsym{font-size:19px;font-weight:700;color:#1a202c;}
+.fsub{font-size:11px;color:#4a5568;}
+.fsect{font-size:11px;color:#4a5568;margin:13px 0 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;}
+.frow{display:flex;align-items:baseline;gap:8px;font-size:13.5px;padding:5px 0;flex-wrap:wrap;}
+.fmark{font-weight:700;width:17px;flex:none;}
+.fpass{color:#22543d;} .ffail{color:#9b2c2c;} .fnone{color:#718096;}
+.flab{color:#2d3748;flex:1;min-width:150px;}
+.fval{font-weight:700;font-variant-numeric:tabular-nums;}
+.fthr{font-size:11px;color:#718096;}
+.fnote{font-size:11.5px;color:#4a5568;line-height:1.65;margin-top:9px;padding:8px 11px;background:#edf2f7;border-left:3px solid #90cdf4;border-radius:0 6px 6px 0;}
+.fwarn{background:#fff5f5;border-left-color:#fc8181;color:#742a2a;}
+.faccel{background:#f0fff4;border-left-color:#68d391;color:#22543d;}
+.fdate{font-size:14px;font-weight:700;color:#1a202c;}
+.fana{font-size:13.5px;color:#2d3748;line-height:1.8;}
+.fana b{font-variant-numeric:tabular-nums;}
+.fdis{font-size:11.5px;color:#4a5568;line-height:1.7;padding:12px 16px;}
 .tr-status{font-size:11px;color:#4a5568;padding:8px 16px;text-align:center;}
 </style>
 </head>
@@ -66,6 +88,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <button class="tab active" onclick="go('market')" id="tab-market">📡 今日市場</button>
   <button class="tab" onclick="go('watchlist')" id="tab-watchlist">👁 我的持倉</button>
   <button class="tab" onclick="go('radar')" id="tab-radar">⚡ 異動雷達</button>
+  <button class="tab" onclick="go('fund')" id="tab-fund">📊 財報體檢</button>
 </div>
 <div class="panel active" id="panel-market">
   <div class="ph">
@@ -79,14 +102,14 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </div>
 <div class="panel" id="panel-watchlist">
   <div class="ph">
-    <div class="ph-left"><div class="pt">MY WATCHLIST</div><div class="pm">個股最新動態（每次最多8支）</div></div>
+    <div class="ph-left"><div class="pt">MY WATCHLIST</div><div class="pm">個股最新動態（每次最多15支）</div></div>
     <div class="ph-btns">
       <button class="tr-btn" id="tr-watchlist" onclick="translatePanel('watchlist')" style="display:none">🌐 翻譯標題</button>
       <button class="rb" id="rw" onclick="loadWatch()">↻</button>
     </div>
   </div>
   <div style="padding:12px 16px 0;">
-    <input class="wi" id="wi" placeholder="股票代碼，逗號分開（最多8支）…">
+    <input class="wi" id="wi" placeholder="股票代碼，逗號分開（最多15支）…">
     <button class="fb" onclick="loadWatch()">抓取個股新聞</button>
   </div>
   <div id="wc" style="margin-top:8px;"><div class="empty">點「抓取個股新聞」開始</div></div>
@@ -103,8 +126,42 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <div id="radc"><div class="empty">點右上角 ↻ 開始掃描</div></div>
 </div>
 
+<div class="panel" id="panel-fund">
+  <div class="ph">
+    <div class="ph-left"><div class="pt">FUNDAMENTALS</div><div class="pm">CANSLIM 的 C 與 A —— 引擎看不到的那一塊</div></div>
+    <div class="ph-btns"><button class="rb" id="rf" onclick="loadFund()">↻</button></div>
+  </div>
+  <div class="kbar">
+    Finnhub API key（只存在這台裝置，不會寫進檔案）
+    <input id="fkey" type="text" placeholder="貼上你的 key" autocomplete="off" spellcheck="false">
+    <div class="kmsg" id="kmsg"></div>
+  </div>
+  <div style="padding:12px 16px 0;">
+    <input class="wi" id="fi" placeholder="股票代碼，逗號分開（最多15支）…">
+    <button class="fb" onclick="loadFund()">跑財報體檢</button>
+  </div>
+  <div id="fc" style="margin-top:8px;"><div class="empty">貼上 key、按「跑財報體檢」開始</div></div>
+  <div class="fdis">
+    這一塊只回答 <b>這家公司的生意有沒有在成長</b>，不回答今天能不能買 —— 買價與停損一律看 dna.html 的 pivot。<br>
+    門檻用 O&#39;Neil CANSLIM 原版：當季 EPS 與營收年增 ≥25%、近三年 EPS 年成長 ≥25%、ROE ≥17%。<br>
+    <b>算不出來（灰色）不等於不及格</b> —— 前幾年虧損的公司成長率本來就算不出百分比。<br>
+    ⚠ 分析師家數是 Finnhub 免費層唯一給的分析師資料，目標價與個別調升調降是付費項目，這裡沒有。
+  </div>
+</div>
+
 <script>
-const K='d745a41r01qno4q0h68gd745a41r01qno4q0h690';
+/* ═══ key 不再明文寫死 ═══════════════════════════════════════════
+   舊版把 key 寫在這一行, 而這個 repo 是 Public —— 任何人打開
+   news.html 都拿得到。改成輸入框 + localStorage:
+   檔案本身不含任何祕密, 上傳幾次都不會再洩一次。
+   ⚠ 舊的那把已經公開過了, 去 Finnhub 後台換一把新的再貼進來。   */
+var KEYSTORE='finprobe_key';
+function KEY(){
+  var el=document.getElementById('fkey');
+  var v=el?el.value.trim():'';
+  if(v) return v;
+  try{ return localStorage.getItem(KEYSTORE)||''; }catch(e){ return ''; }
+}
 const DW=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
 document.getElementById('wi').value='AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL';
 document.getElementById('rc').textContent=DW.length;
@@ -112,8 +169,10 @@ document.getElementById('rc').textContent=DW.length;
 function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+'分前';if(d<86400)return Math.floor(d/3600)+'小時前';return Math.floor(d/86400)+'天前';}
 function src(s){if(!s)return'NEWS';return s.replace(/^https?:\/\/(www\.)?/,'').split('/')[0].toUpperCase().slice(0,12);}
 function spn(id,on){const b=document.getElementById(id);if(b)on?b.classList.add('spin'):b.classList.remove('spin');}
-async function api(ep){const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+K);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
-function syms(){return document.getElementById('wi').value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,8);}
+async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
+  const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+k,{cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+function syms(){return document.getElementById('wi').value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
 function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')loadMarket();if(t==='radar')loadRadar();}
 
 async function tr(text){
@@ -269,6 +328,181 @@ async function loadRadar(){
   document.getElementById('tr-radar').textContent='🌐 翻譯標題';
   spn('rr',false);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   財報體檢 —— CANSLIM 的 C（當季）與 A（年度）
+   資料來源全部實測過 (9/11): /stock/metric、/calendar/earnings、
+   /stock/recommendation 三個免費層都回 HTTP 200。
+   ⚠ /stock/price-target 與 /stock/upgrade-downgrade 是 403 付費, 不做。
+   ⚠ 訂單／合約新聞也不做 —— company-news 會把別家公司的新聞算進來
+      (COHR 那批混進 GLW 的 Verizon 大單), 關鍵字分類會騙人。
+   ══════════════════════════════════════════════════════════════════ */
+
+/* O'Neil CANSLIM 原版門檻 */
+var TH = { epsQ:25, revQ:25, eps3Y:25, roe:17 };
+
+function num(v){ return (v===null||v===undefined||v==='') ? null : (isNaN(+v)?null:+v); }
+function pctTxt(v){ return v===null ? '算不出來' : ((v>0?'+':'')+v.toFixed(1)+'%'); }
+
+/* 一列檢查: 過 / 沒過 / 算不出來。null 一律走「算不出來」不給紅叉 */
+function fRow(label, val, thr, unit){
+  var v = num(val);
+  var mark, cls, shown;
+  if(v===null){ mark='—'; cls='fnone'; shown='算不出來'; }
+  else if(v>=thr){ mark='✓'; cls='fpass'; shown=(v>0?'+':'')+v.toFixed(1)+(unit||'%'); }
+  else { mark='✗'; cls='ffail'; shown=(v>0?'+':'')+v.toFixed(1)+(unit||'%'); }
+  return '<div class="frow"><span class="fmark '+cls+'">'+mark+'</span>'
+       + '<span class="flab">'+label+'</span>'
+       + '<span class="fval '+cls+'">'+shown+'</span>'
+       + '<span class="fthr">門檻 '+thr+(unit||'%')+'</span></div>';
+}
+
+function fundCard(sym, m, cal, rec){
+  var h = '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
+
+  /* ── 下次財報日期 ── 她自己的規則: 兩三週內有財報就連縮小部位都不做 ── */
+  var nd=null, dleft=null;
+  if(cal && cal.earningsCalendar && cal.earningsCalendar.length){
+    var arr = cal.earningsCalendar.slice().sort(function(a,b){
+      return (a.date<b.date?-1:1); });
+    nd = arr[0].date;
+    dleft = Math.round((new Date(nd+'T00:00:00') - new Date())/86400000);
+  }
+  if(nd) h += '<span class="fsub">下次財報 <span class="fdate">'+nd+'</span>'
+            + (dleft!==null?('（還有 '+dleft+' 天）'):'')+'</span>';
+  else   h += '<span class="fsub">未來 120 天沒有排定財報</span>';
+  h += '</div>';
+
+  if(nd && dleft!==null && dleft<=21){
+    h += '<div class="fnote fwarn">⚠ <b>'+dleft+' 天後就是財報</b> —— 你自己訂的規則是兩三週內有財報'
+       + '就連縮小部位都不做。這一檔今天不管技術面多好，先放著。</div>';
+  }
+
+  /* ── C：當季 ── */
+  h += '<div class="fsect">C · 當季（跟去年同一季比）</div>';
+  if(!m){ h += '<div class="frow"><span class="fnone">抓不到基本財務指標</span></div>'; }
+  else{
+    h += fRow('每股盈餘 EPS 年增', m.epsGrowthQuarterlyYoy, TH.epsQ);
+    h += fRow('營收年增',           m.revenueGrowthQuarterlyYoy, TH.revQ);
+  }
+
+  /* ── A：年度 ── */
+  h += '<div class="fsect">A · 年度</div>';
+  if(m){
+    h += fRow('近三年 EPS 年成長', m.epsGrowth3Y, TH.eps3Y);
+    h += fRow('股東權益報酬率 ROE（近 12 個月）', m.roeTTM, TH.roe);
+  }
+
+  /* ── 加速度 ── Minervini Code 33: 營收/獲利/毛利率三個同時在加速 ── */
+  if(m){
+    var gA=num(m.grossMarginAnnual), gT=num(m.grossMarginTTM);
+    var e3=num(m.epsGrowth3Y),       eT=num(m.epsGrowthTTMYoy);
+    var r3=num(m.revenueGrowth3Y),   rT=num(m.revenueGrowthTTMYoy);
+    var up=[];
+    if(gA!==null&&gT!==null&&gT>gA+2) up.push('毛利率 '+gA.toFixed(1)+'% → '+gT.toFixed(1)+'%');
+    if(e3!==null&&eT!==null&&eT>e3)   up.push('EPS 成長 '+e3.toFixed(1)+'% → '+eT.toFixed(1)+'%');
+    if(r3!==null&&rT!==null&&rT>r3)   up.push('營收成長 '+r3.toFixed(1)+'% → '+rT.toFixed(1)+'%');
+
+    h += '<div class="fsect">轉折 · 年度 vs 近 12 個月</div>';
+    h += '<div class="frow"><span class="flab">毛利率</span><span class="fval">'
+       + (gA===null?'—':gA.toFixed(1)+'%')+' → '+(gT===null?'—':gT.toFixed(1)+'%')+'</span></div>';
+    h += '<div class="frow"><span class="flab">EPS 成長</span><span class="fval">'
+       + (e3===null?'—':e3.toFixed(1)+'%')+' → '+(eT===null?'—':eT.toFixed(1)+'%')+'</span></div>';
+    h += '<div class="frow"><span class="flab">營收成長</span><span class="fval">'
+       + (r3===null?'—':r3.toFixed(1)+'%')+' → '+(rT===null?'—':rT.toFixed(1)+'%')+'</span></div>';
+
+    if(up.length>=2){
+      h += '<div class="fnote faccel"><b>'+up.length+' 項同時在加速</b>：'+up.join('、')
+         + '<br>轉折已經發生，但年報還沒反映出來 —— 這正是 Minervini 要的那個形狀。</div>';
+    }else{
+      h += '<div class="fnote">年報是過去一整年的平均，近 12 個月才是現在。'
+         + '兩個數字拉開，代表生意在變 —— 現在 '+(up.length?'只有 1 項':'沒有一項')+'在加速。</div>';
+    }
+  }
+
+  /* ── 分析師風向 ── 免費層只有家數, 但有歷史 → 可以算變化 ── */
+  h += '<div class="fsect">分析師家數（免費層沒有目標價）</div>';
+  if(Array.isArray(rec) && rec.length){
+    var a=rec[0];
+    var tot=(a.strongBuy||0)+(a.buy||0)+(a.hold||0)+(a.sell||0)+(a.strongSell||0);
+    h += '<div class="fana">'+a.period+'　'
+       + '看多 <b>'+((a.strongBuy||0)+(a.buy||0))+'</b>　·　'
+       + '持有 <b>'+(a.hold||0)+'</b>　·　'
+       + '看空 <b>'+((a.sell||0)+(a.strongSell||0))+'</b>　（共 '+tot+' 家）';
+    if(rec.length>1){
+      var b=rec[1];
+      var dB=((a.strongBuy||0)+(a.buy||0))-((b.strongBuy||0)+(b.buy||0));
+      var dS=((a.sell||0)+(a.strongSell||0))-((b.sell||0)+(b.strongSell||0));
+      var parts=[];
+      if(dB!==0) parts.push('看多 '+(dB>0?'+':'')+dB+' 家');
+      if(dS!==0) parts.push('看空 '+(dS>0?'+':'')+dS+' 家');
+      h += '<br><span class="fthr">跟上個月（'+b.period+'）比：'
+         + (parts.length?parts.join('、'):'沒有變動')+'</span>';
+    }
+    h += '</div>';
+  }else{
+    h += '<div class="frow"><span class="fnone">沒有分析師資料</span></div>';
+  }
+
+  return h + '</div>';
+}
+
+async function loadFund(){
+  var box=document.getElementById('fc');
+  var msg=document.getElementById('kmsg');
+  msg.textContent='';
+
+  var k=KEY();
+  if(!k){ msg.textContent='先貼上 API key 才能跑。';
+          document.getElementById('fkey').focus(); return; }
+  try{ localStorage.setItem(KEYSTORE,k); }catch(e){}
+
+  var list=document.getElementById('fi').value.split(/[,\s]+/)
+           .map(function(s){return s.trim().toUpperCase();})
+           .filter(Boolean).slice(0,15);
+  if(!list.length){ msg.textContent='至少要一個股票代號。'; return; }
+  try{ localStorage.setItem('fund_syms', list.join(', ')); }catch(e){}
+
+  spn('rf',true);
+  box.innerHTML='<span class="sp"></span>';
+  var from=new Date().toISOString().split('T')[0];
+  var to=new Date(Date.now()+120*86400000).toISOString().split('T')[0];
+  var html='';
+
+  for(var i=0;i<list.length;i++){
+    var sym=list[i], m=null, cal=null, rec=null, bad=[];
+    try{ var d=await api('/stock/metric?symbol='+sym+'&metric=all'); m=d&&d.metric?d.metric:null; }
+    catch(e){ bad.push('基本財務指標（'+e.message+'）'); }
+    await new Promise(function(r){setTimeout(r,350);});
+    try{ cal=await api('/calendar/earnings?from='+from+'&to='+to+'&symbol='+sym); }
+    catch(e){ bad.push('財報日期（'+e.message+'）'); }
+    await new Promise(function(r){setTimeout(r,350);});
+    try{ rec=await api('/stock/recommendation?symbol='+sym); }
+    catch(e){ bad.push('分析師（'+e.message+'）'); }
+    await new Promise(function(r){setTimeout(r,350);});
+
+    html += fundCard(sym, m, cal, rec);
+    if(bad.length){
+      html = html.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
+             + bad.join('、')+'</div></div>');
+    }
+    box.innerHTML = html;
+  }
+  if(!html) box.innerHTML='<div class="empty">沒有結果</div>';
+  spn('rf',false);
+}
+
+/* 記住上次輸入的代號與 key */
+(function(){
+  try{
+    var sk=localStorage.getItem(KEYSTORE);
+    if(sk) document.getElementById('fkey').value=sk;
+    var ss=localStorage.getItem('fund_syms');
+    document.getElementById('fi').value = ss || 'MU, BE, COHR, GLW, MRVL';
+  }catch(e){
+    document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL';
+  }
+})();
 
 loadMarket();
 </script>
