@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分析師與訂單新聞試打</title>
+<style>
+  :root{
+    --paper:#f7f5ef; --ink:#1c2128; --dim:#57606a; --rule:#d8d2c4;
+    --ok:#1a7f37; --bad:#cf222e; --hit:#7d5300;
+    --tOrder:#0550ae; --tAnalyst:#8250df; --tEarn:#1a7f37;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper); color:var(--ink); margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+    font-size:15px; line-height:1.7;}
+  .wrap{max-width:880px; margin:0 auto; padding:22px 18px 80px}
+  h1{font-size:21px; font-weight:700; margin:0 0 2px; letter-spacing:.5px}
+  .sub{color:var(--dim); font-size:13px; margin:0 0 20px}
+  .bench{border:1px solid var(--rule); border-radius:8px; background:#fffdf8;
+    padding:15px 16px; margin-bottom:20px;}
+  label{display:block; font-size:13px; color:var(--dim); margin-bottom:5px}
+  input{width:100%; padding:10px 11px; font-size:15px; border:1px solid var(--rule);
+    border-radius:6px; background:#fff; color:var(--ink); font-family:inherit;}
+  input:focus{outline:2px solid #0969da; outline-offset:1px}
+  .row{margin-bottom:13px}
+  button{background:var(--ink); color:#fff; border:none; border-radius:6px;
+    padding:11px 20px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;}
+  button:disabled{background:#9aa0a6; cursor:default}
+  button:focus-visible{outline:2px solid #0969da; outline-offset:2px}
+  .note{font-size:12.5px; color:var(--dim); margin-top:9px}
+
+  .sym{margin:26px 0 0; border-top:2px solid var(--ink); padding-top:9px}
+  .sym h2{font-size:18px; margin:0 0 12px; font-weight:700}
+  .ep{border:1px solid var(--rule); border-radius:7px; background:#fff;
+    margin-bottom:13px; overflow:hidden}
+  .ep-h{padding:9px 12px; border-bottom:1px solid var(--rule); background:#faf8f2;
+    display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+  .ep-n{font-size:13px; font-weight:700}
+  .ep-u{font-size:11.5px; color:var(--dim); font-family:ui-monospace,Menlo,monospace;
+    word-break:break-all}
+  .st{font-size:12.5px; font-weight:700; margin-left:auto}
+  .st.ok{color:var(--ok)} .st.bad{color:var(--bad)}
+  .verdict{padding:10px 12px; font-size:13.5px; border-bottom:1px dashed var(--rule);
+    background:#fffbef}
+  .verdict b{color:var(--hit)}
+  pre{margin:0; padding:11px 12px; font-size:11.5px; line-height:1.55;
+    font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; word-break:break-word;
+    max-height:320px; overflow:auto; color:#2b3137;}
+  details summary{cursor:pointer; padding:8px 12px; font-size:12.5px; color:var(--dim)}
+  .empty{padding:11px 12px; font-size:13.5px; color:var(--bad)}
+
+  .tally{padding:10px 12px; font-size:13.5px; border-bottom:1px dashed var(--rule)}
+  .hl{padding:4px 12px 11px}
+  .hl li{font-size:13px; margin:7px 0; list-style:none}
+  .hl ul{padding:0; margin:0}
+  .tag{display:inline-block; font-size:11px; font-weight:700; padding:1px 7px;
+    border-radius:10px; margin-right:7px; color:#fff; vertical-align:1px}
+  .t-order{background:var(--tOrder)} .t-analyst{background:var(--tAnalyst)}
+  .t-earn{background:var(--tEarn)} .t-none{background:#9aa0a6}
+  .hd{color:#2b3137}
+  .why{color:var(--dim); font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>分析師與訂單新聞試打</h1>
+<p class="sub">驗三件事：目標價拿不拿得到、分析師評等拿不拿得到、還有在現有新聞標題上做關鍵字分類抓不抓得到訂單消息。看完就可以丟掉。</p>
+
+<div class="bench">
+  <div class="row">
+    <label for="key">Finnhub API key</label>
+    <input id="key" type="text" placeholder="貼上你的 key（存在這台裝置，不會寫進檔案）" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="row">
+    <label for="syms">股票代號（逗號或空白分隔）</label>
+    <input id="syms" type="text" value="MU, BE, COHR" autocomplete="off" spellcheck="false">
+  </div>
+  <button id="run">開始試打</button>
+  <div class="note" id="note">每檔打四個 endpoint，中間間隔 400 毫秒避開限流。</div>
+</div>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+var KEYSTORE = 'finprobe_key';   /* 跟 probe 第一版共用, 貼過一次就不用再貼 */
+
+var kEl = document.getElementById('key');
+var sEl = document.getElementById('syms');
+var btn = document.getElementById('run');
+var out = document.getElementById('out');
+var note= document.getElementById('note');
+
+try{ var saved = localStorage.getItem(KEYSTORE); if(saved) kEl.value = saved; }catch(e){}
+
+/* ── 關鍵字分類 ─────────────────────────────────────────────
+   訂單／合約這一類【沒有任何 API 會給】, 只能在標題上比對關鍵字。
+   這裡刻意寫得寬一點, 先看它抓到什麼、漏掉什麼 ——
+   正式版的字典要等這次跑完、看實際標題再定。                        */
+var DICT = {
+  order: ['design win','contract','awarded','award','order','orders','backlog',
+          'supply agreement','long-term agreement','multi-year','multiyear',
+          'selected by','partners with','partnership','qualified','qualification',
+          'sold out','capacity','prepayment','deal with','wins','secures','signs'],
+  analyst:['price target','target price','raises','raised','lowers','lowered',
+          'upgrade','upgrades','downgrade','downgrades','initiated','initiates',
+          'coverage','overweight','outperform','buy rating','neutral','analyst'],
+  earn:  ['earnings','results','guidance','quarter','q1','q2','q3','q4',
+          'revenue','eps','beats','misses','forecast','outlook']
+};
+
+function classify(title){
+  var t = String(title||'').toLowerCase();
+  var got = [];
+  for(var k in DICT){
+    for(var i=0;i<DICT[k].length;i++){
+      if(t.indexOf(DICT[k][i])>=0){ got.push([k, DICT[k][i]]); break; }
+    }
+  }
+  return got;
+}
+
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){
+  return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;'); }); }
+
+function head(name,url,res){
+  return '<div class="ep-h">'
+       + '<span class="ep-n">'+esc(name)+'</span>'
+       + '<span class="ep-u">'+esc(url.replace(/&token=.*$/,'&token=...')
+                                    .replace(/\?token=.*$/,'?token=...'))+'</span>'
+       + '<span class="st '+(res.ok?'ok':'bad')+'">'+esc(res.status)+'</span></div>';
+}
+
+function isEmpty(b){
+  return (b===null) || (Array.isArray(b) && b.length===0)
+      || (typeof b==='object' && !Array.isArray(b) && Object.keys(b).length===0);
+}
+
+/* 一般 endpoint: 印狀態 + 原始回傳 */
+function block(name,url,res,verdict){
+  var h='<div class="ep">'+head(name,url,res);
+  if(!res.ok){ return h+'<div class="empty">'+esc(res.msg||'沒有回傳內容')+'</div></div>'; }
+  if(isEmpty(res.json)){
+    return h+'<div class="empty">HTTP 200，但回傳是空的 —— 這個代號在免費層沒有資料。</div></div>';
+  }
+  if(verdict) h += '<div class="verdict">'+verdict(res.json)+'</div>';
+  h += '<details><summary>原始回傳（點開）</summary><pre>'
+     + esc(JSON.stringify(res.json,null,2))+'</pre></details>';
+  return h+'</div>';
+}
+
+/* 新聞: 逐則分類, 並統計各類抓到幾則 */
+function newsBlock(name,url,res){
+  var h='<div class="ep">'+head(name,url,res);
+  if(!res.ok){ return h+'<div class="empty">'+esc(res.msg||'沒有回傳內容')+'</div></div>'; }
+  var arr = Array.isArray(res.json)?res.json:[];
+  if(!arr.length){ return h+'<div class="empty">近 30 天沒有新聞。</div></div>'; }
+
+  var n={order:0,analyst:0,earn:0,none:0};
+  var rows=[];
+  for(var i=0;i<arr.length;i++){
+    var got = classify(arr[i].headline);
+    if(!got.length){ n.none++; }
+    else { for(var g=0;g<got.length;g++) n[got[g][0]]++; }
+    rows.push([arr[i].headline||'', got]);
+  }
+
+  h += '<div class="tally">共 <b>'+arr.length+'</b> 則　·　'
+     + '訂單類 <b>'+n.order+'</b>　·　分析師類 <b>'+n.analyst+'</b>　·　'
+     + '財報類 <b>'+n.earn+'</b>　·　沒分到 <b>'+n.none+'</b></div>';
+
+  h += '<div class="hl"><ul>';
+  for(var i=0;i<rows.length && i<30;i++){
+    var tags='';
+    if(!rows[i][1].length){
+      tags = '<span class="tag t-none">沒分到</span>';
+    }else{
+      for(var g=0;g<rows[i][1].length;g++){
+        var k=rows[i][1][g][0];
+        var lbl = k==='order'?'訂單':(k==='analyst'?'分析師':'財報');
+        tags += '<span class="tag t-'+k+'">'+lbl+'</span>';
+      }
+    }
+    var why = rows[i][1].length
+      ? '<div class="why">命中：'+esc(rows[i][1].map(function(x){return x[1];}).join('、'))+'</div>'
+      : '';
+    h += '<li>'+tags+'<span class="hd">'+esc(rows[i][0])+'</span>'+why+'</li>';
+  }
+  h += '</ul></div>';
+  if(rows.length>30) h += '<div class="note" style="padding:0 12px 10px">只列前 30 則。</div>';
+  return h+'</div>';
+}
+
+async function hit(url){
+  try{
+    var r = await fetch(url,{cache:'no-store'});
+    var txt = await r.text();
+    var j=null; try{ j=JSON.parse(txt); }catch(e){}
+    if(!r.ok) return {ok:false, status:'HTTP '+r.status,
+      msg:'HTTP '+r.status+(txt?(' — '+txt.slice(0,300)):'')};
+    return {ok:true, status:'HTTP 200', json:(j===null?txt:j)};
+  }catch(e){
+    return {ok:false, status:'連不上', msg:'請求失敗：'+e.message};
+  }
+}
+
+function ymd(d){ return d.toISOString().split('T')[0]; }
+
+btn.addEventListener('click', async function(){
+  var key = kEl.value.trim();
+  if(!key){ note.textContent='先貼上 API key 才能試打。'; kEl.focus(); return; }
+  try{ localStorage.setItem(KEYSTORE,key); }catch(e){}
+
+  var list = sEl.value.split(/[,\s]+/).map(function(s){return s.trim().toUpperCase();})
+                     .filter(Boolean).slice(0,6);
+  if(!list.length){ note.textContent='至少要一個股票代號。'; sEl.focus(); return; }
+
+  btn.disabled=true; out.innerHTML='';
+  var to=ymd(new Date());
+  var from=ymd(new Date(Date.now()-30*86400000));
+
+  for(var i=0;i<list.length;i++){
+    var sym=list[i];
+    note.textContent='試打中：'+sym+'（'+(i+1)+'/'+list.length+'）';
+    var html='<div class="sym"><h2>'+esc(sym)+'</h2>';
+
+    var uT='https://finnhub.io/api/v1/stock/price-target?symbol='+sym+'&token='+key;
+    var rT=await hit(uT);
+    html += block('分析師目標價', uT, rT, function(j){
+      return '目標價中位數 <b>'+esc(j.targetMedian)+'</b>　·　'
+           + '最高 <b>'+esc(j.targetHigh)+'</b>　·　最低 <b>'+esc(j.targetLow)+'</b>'
+           + '　·　更新於 '+esc(j.lastUpdated||'—');
+    });
+    await new Promise(function(r){setTimeout(r,400);});
+
+    var uR='https://finnhub.io/api/v1/stock/recommendation?symbol='+sym+'&token='+key;
+    var rR=await hit(uR);
+    html += block('分析師評等趨勢', uR, rR, function(j){
+      if(!Array.isArray(j)||!j.length) return '沒有資料';
+      var a=j[0];
+      return esc(a.period)+'：強力買進 <b>'+esc(a.strongBuy)+'</b>　·　買進 <b>'+esc(a.buy)
+           + '</b>　·　持有 <b>'+esc(a.hold)+'</b>　·　賣出 <b>'+esc(a.sell)
+           + '</b>　·　強力賣出 <b>'+esc(a.strongSell)+'</b>'
+           + '（共 '+j.length+' 個月的紀錄）';
+    });
+    await new Promise(function(r){setTimeout(r,400);});
+
+    var uU='https://finnhub.io/api/v1/stock/upgrade-downgrade?symbol='+sym
+          +'&from='+from+'&to='+to+'&token='+key;
+    var rU=await hit(uU);
+    html += block('近 30 天調升／調降', uU, rU, function(j){
+      if(!Array.isArray(j)||!j.length) return '近 30 天沒有調整';
+      return '近 30 天有 <b>'+j.length+'</b> 筆，最近一筆：'
+           + esc(j[0].company||'—')+' 把評等改成 <b>'+esc(j[0].toGrade||'—')
+           + '</b>（原本 '+esc(j[0].fromGrade||'—')+'）於 '+esc(j[0].gradeTime||'—');
+    });
+    await new Promise(function(r){setTimeout(r,400);});
+
+    var uN='https://finnhub.io/api/v1/company-news?symbol='+sym
+          +'&from='+from+'&to='+to+'&token='+key;
+    var rN=await hit(uN);
+    html += newsBlock('近 30 天新聞（關鍵字分類測試）', uN, rN);
+    await new Promise(function(r){setTimeout(r,400);});
+
+    out.innerHTML += html+'</div>';
+  }
+
+  note.textContent='跑完了。截圖回報，我要看的是每檔的 HTTP 狀態，以及新聞那格分類對不對。';
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>
