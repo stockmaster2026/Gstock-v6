@@ -66,8 +66,9 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qbar{height:5px;background:#dde4ec;border-radius:3px;overflow:hidden;margin-top:4px;}
 .qfill{height:100%;background:#48bb78;}
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
-.pf{margin:0 0 14px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
+.pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+.pf-sym{font-size:17px;font-weight:700;color:#1a202c;margin-right:3px;}
 .pf-t{font-size:11px;color:#7d5300;flex:1;font-weight:700;}
 .pf-e{font-size:11px;color:#0066bb;cursor:pointer;text-decoration:none;}
 .pf-r{font-size:13px;line-height:1.8;color:#2d3748;margin:3px 0;}
@@ -98,7 +99,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .kbar input{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;color:#1a202c;font-size:12px;outline:none;box-sizing:border-box;margin-top:5px;}
 .kbar input:focus{border-color:#0066bb;}
 .kbar .kmsg{margin-top:5px;color:#9b2c2c;}
-.fcard{background:#ffffff;border:1px solid #c8d0dc;border-radius:12px;padding:15px 16px;margin:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+.fcard{background:#ffffff;border:1px solid #c8d0dc;border-radius:12px;padding:15px 16px;margin:8px 16px 0;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
 .fhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
 .fsym{font-size:19px;font-weight:700;color:#1a202c;}
 .fpx{font-size:17px;font-weight:700;color:#1a202c;font-variant-numeric:tabular-nums;}
@@ -136,7 +137,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.6</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.7</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -731,6 +732,7 @@ function profEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
 function profBlock(sym){
   var p=profLoad()[sym];
   var h='<div class="pf" id="pf-'+sym+'"><div class="pf-h">'
+      + '<span class="pf-sym">'+sym+'</span>'
       + '<span class="pf-t">公司速寫　·　自己填的，不是抓來的</span>'
       + '<span class="pf-e" onclick="profEdit(\'' +sym+ '\')">✏ 編輯</span></div>';
   if(!p){
