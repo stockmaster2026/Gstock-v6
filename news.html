@@ -68,6 +68,21 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+.qt{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:10px;overflow-x:auto;background:#fff;}
+.qt table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
+.qt th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;padding:9px 10px;
+  background:#f0f4f8;border-bottom:1px solid #c8d0dc;cursor:pointer;white-space:nowrap;}
+.qt th:first-child{text-align:left;}
+.qt th.on{color:#0066bb;}
+.qt td{padding:9px 10px;text-align:right;border-bottom:1px solid #edf2f7;
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+.qt td:first-child{text-align:left;font-weight:700;}
+.qt tr.soon td{background:#fff5f5;}
+.qt a{color:#1a202c;text-decoration:none;border-bottom:1px dotted #a0aec0;}
+.qt .g{color:#22543d;font-weight:700;} .qt .r{color:#9b2c2c;font-weight:700;}
+.qt .d{color:#a0aec0;} .qt .warn{color:#9b2c2c;font-weight:700;}
+.qt-cap{padding:9px 12px;font-size:11.5px;color:#4a5568;line-height:1.7;background:#f7fafc;
+  border-top:1px solid #edf2f7;}
 .pf-sym{font-size:17px;font-weight:700;color:#1a202c;margin-right:3px;}
 .pf-t{font-size:11px;color:#7d5300;flex:1;font-weight:700;}
 .pf-e{font-size:11px;color:#0066bb;cursor:pointer;text-decoration:none;}
@@ -137,7 +152,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.9</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.1</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -219,6 +234,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     <button class="fb" onclick="loadFund()">跑財報體檢</button>
   </div>
   <div id="fsum"></div>
+  <div id="ftab"></div>
   <div id="fc" style="margin-top:8px;"><div class="empty">貼上 key、按「跑財報體檢」開始</div></div>
   <div class="fdis">
     這一塊只回答 <b>這家公司的生意有沒有在成長</b>，不回答今天能不能買 —— 買價與停損一律看 dna.html 的 pivot。<br>
@@ -828,7 +844,7 @@ function fRow(label, val, thr, unit){
 function fundCard(sym, m, cal, rec, sup, q){
   var card_state='mix', card_days=null;
   /* 速寫放在最上面: 先知道這家公司是誰, 再看下面的數字 */
-  var h = profBlock(sym) + '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
+  var h = profBlock(sym) + '<div class="fcard" id="fc-'+sym+'"><div class="fhead"><span class="fsym">'+sym+'</span>';
 
   /* 最新股價 + 今天日期 —— 看基本面時才知道現在價格在哪 */
   var px = (q && q.c!=null) ? num(q.c) : null;
@@ -857,9 +873,20 @@ function fundCard(sym, m, cal, rec, sup, q){
   else   h += '<span class="fsub">未來 120 天沒有排定財報</span>';
   h += '</div>';
 
+  /* ── 財報前的處理 ── Jasmine 9/12 問「舊倉怎麼辦」, 之前只寫了新倉 ──
+     新倉不進場的理由是【停損會失效】: 跳空的時候停損單會被跳過去,
+     掛 5% 停損卻開在 -18%, 賠的是 18%。
+     舊倉的重點不是「要不要賣」, 而是【這個決定只能在財報前做】——
+     開出來之後就沒得選了。所以三句都要印, 少印第三句是最危險的。   */
   if(nd && dleft!==null && dleft<=21){
-    h += '<div class="fnote fwarn">⚠ <b>'+dleft+' 天後就是財報</b> —— 你自己訂的規則是兩三週內有財報'
-       + '就連縮小部位都不做。這一檔今天不管技術面多好，先放著。</div>';
+    h += '<div class="fnote fwarn">⚠ <b>'+dleft+' 天後就是財報</b><br>'
+       + '<b>① 新倉</b>　今天不進場、也不加碼 —— 財報跳空的時候<b>停損單會被跳過去</b>，'
+       + '掛 5% 卻開在 −18% 是常態。等財報開完再說。<br>'
+       + '<b>② 舊倉</b>　照原本的失效點管，<b>不要因為財報快到了就臨時改規則</b>。'
+       + '臨時調停損或提前獲利了結，是用沒有依據的理由取代有依據的理由。<br>'
+       + '<b>③ 但現在先問自己</b>　<b>這一檔明天開盤 −25%，我撐不撐得住？</b>'
+       + '撐得住就抱著什麼都不用做；撐不住就<b>現在</b>減一部分 —— '
+       + '這個決定只能在財報前做，開出來之後只剩接受。</div>';
   }
 
   /* ── C：當季 ── */
@@ -992,6 +1019,75 @@ function fundCard(sym, m, cal, rec, sup, q){
   return {html:h+'</div>', state:card_state, days:card_days, date:nd};
 }
 
+
+/* ═══ 速查表 ══════════════════════════════════════════════════
+   Jasmine 9/12:「用一張紙把重要數據記下來」。
+   ⚠ 她原本問的是【排行榜】, 我建議不要 ——
+     排名要把不同的東西壓成一個分數, 那個權重是我編的, 不是 O'Neil
+     或 Minervini 給的; 而且她自己在 dna 就定過規則:
+     四項【不加總、不給分數、而且不同重】。
+     更實際的是: 基本面第一名不等於今天能買 —— MU 數字最漂亮,
+     但 18 天後有財報, 照她自己的規則是「先放著」。
+   → 所以做成【可自己排序的表】: 權重由她當下點哪一欄決定, 不寫死。   */
+var QROWS=[], QSORT={k:'days', asc:true};
+
+function qcell(v, thr, unit){
+  if(v===null||v===undefined) return '<td class="d">—</td>';
+  var cls = (thr===null) ? '' : (v>=thr ? 'g' : 'r');
+  return '<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(1)+(unit||'%')+'</td>';
+}
+
+function qtab(){
+  var box=document.getElementById('ftab');
+  if(!box) return;
+  if(!QROWS.length){ box.innerHTML=''; return; }
+
+  var k=QSORT.k, asc=QSORT.asc;
+  var rows=QROWS.slice().sort(function(a,b){
+    var x=a[k], y=b[k];
+    /* 沒有數字的一律排最後, 不管升冪降冪 —— 算不出來不是最差 */
+    if(x===null||x===undefined) return 1;
+    if(y===null||y===undefined) return -1;
+    if(typeof x==='string') return asc ? (x<y?-1:1) : (x<y?1:-1);
+    return asc ? x-y : y-x;
+  });
+
+  function th(key,label){
+    return '<th class="'+(k===key?'on':'')+'" onclick="qsort(\''+key+'\')">'
+         + label + (k===key ? (asc?' ▲':' ▼') : '') + '</th>';
+  }
+
+  var h='<div class="qt"><table><tr>'
+      + th('sym','代號') + th('px','價格') + th('epsQ','當季 EPS')
+      + th('revQ','當季營收') + th('roe','ROE') + th('accel','最近一季')
+      + th('beat','超預期') + th('days','財報') + '</tr>';
+
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    h += '<tr class="'+((r.days!==null&&r.days<=21)?'soon':'')+'">'
+       + '<td><a href="#fc-'+r.sym+'">'+r.sym+'</a></td>'
+       + '<td>'+(r.px===null?'—':'$'+r.px.toFixed(2))+'</td>'
+       + qcell(r.epsQ, 25) + qcell(r.revQ, 25) + qcell(r.roe, 17)
+       + '<td class="'+(r.accel===1?'g':(r.accel===-1?'':'d'))+'">'
+       + (r.accel===1?'放大':(r.accel===-1?'收斂':'—'))+'</td>'
+       + '<td class="'+(r.cnt?(r.beat===r.cnt?'g':(r.beat===0?'r':'')):'d')+'">'
+       + (r.cnt? (r.beat+'/'+r.cnt) : '—')+'</td>'
+       + '<td class="'+((r.days!==null&&r.days<=21)?'warn':'')+'">'
+       + (r.days===null?'—':(r.days+' 天'))+'</td></tr>';
+  }
+  h += '</table><div class="qt-cap">點欄位標題可以換排序 —— '
+     + '<b>要用哪個當標準，由你當下決定，這裡不給總分也不排名次</b>。<br>'
+     + '綠＝過門檻（EPS／營收 25%、ROE 17%）·　紅＝沒過　·　灰＝算不出來，不是不及格。'
+     + '　整列淡紅＝21 天內有財報。</div></div>';
+  box.innerHTML=h;
+}
+
+function qsort(key){
+  if(QSORT.k===key) QSORT.asc=!QSORT.asc;
+  else { QSORT.k=key; QSORT.asc=(key==='sym'); }
+  qtab();
+}
+
 async function loadFund(){
   var box=document.getElementById('fc');
   var msg=document.getElementById('kmsg');
@@ -1010,10 +1106,12 @@ async function loadFund(){
 
   spn('rf',true);
   document.getElementById('fsum').innerHTML='';
+  document.getElementById('ftab').innerHTML='';
   box.innerHTML='<span class="sp"></span>';
   var from=new Date().toISOString().split('T')[0];
   var to=new Date(Date.now()+120*86400000).toISOString().split('T')[0];
   var html='', results=[];
+  QROWS=[];
 
   for(var i=0;i<list.length;i++){
     var sym=list[i], m=null, cal=null, rec=null, bad=[];
@@ -1048,6 +1146,24 @@ async function loadFund(){
       one = one.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
              + bad.join('、')+'</div></div>');
     }
+    var _b=0,_c=0;
+    if(Array.isArray(sup)){
+      for(var si=0; si<Math.min(4,sup.length); si++){
+        var _a=num(sup[si].actual), _e=num(sup[si].estimate);
+        if(_a!==null && _e!==null && _e!==0){ _c++; if(_a>=_e) _b++; }
+      }
+    }
+    QROWS.push({
+      sym:  sym,
+      px:   (q && q.c!=null) ? num(q.c) : null,
+      epsQ: m ? num(m.epsGrowthQuarterlyYoy) : null,
+      revQ: m ? num(m.revenueGrowthQuarterlyYoy) : null,
+      roe:  m ? num(m.roeTTM) : null,
+      accel: R.state==='up' ? 1 : (R.state==='dn' ? -1 : 0),
+      beat: _b, cnt: _c,
+      days: R.days
+    });
+    qtab();
     results.push({sym:sym, state:R.state, days:R.days, date:R.date});
     html += one;
     box.innerHTML = html;
@@ -1065,7 +1181,10 @@ async function loadFund(){
       + (soon.length
           ? '<span class="fsalert">⚠ 21 天內有財報：'
             + soon.map(function(r){return r.sym+'（'+r.days+' 天）';}).join('、')
-            + '</span> —— 你自己訂的規則是這幾檔先放著，不管技術面。'
+            + '</span><br>這幾檔<b>不新進、不加碼</b>（跳空會讓停損失效）；'
+            + '<b>舊倉照原本的失效點管</b>，不要臨時改規則。<br>'
+            + '⚠ 但現在先問：<b>明天開盤 −25% 撐不撐得住？</b>撐不住就現在減，'
+            + '不要等 —— 開出來就沒得選了。'
           : '21 天內沒有任何一檔要出財報。')
       + '</div>';
   sm += '<div class="fsline">最近一季還在放大：<b>'+(up.length?up.join('、'):'—')+'</b></div>';
