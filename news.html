@@ -54,6 +54,11 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mc.up{color:#22543d;background:rgba(34,84,61,0.12);}
 .mc.dn{color:#9b2c2c;background:rgba(155,44,44,0.12);}
 .mp{font-size:11px;color:#4a5568;margin-bottom:8px;}
+.trmsg{margin:0 16px 10px;padding:10px 13px;border-radius:9px;font-size:13px;line-height:1.75;}
+.trmsg.ok{background:#f0fff4;border:1px solid #9ae6b4;color:#22543d;}
+.trmsg.part{background:#fffbeb;border:1px solid #e0c986;color:#7d5300;}
+.trmsg.none{background:#fff5f5;border:1px solid #fc8181;color:#9b2c2c;}
+.trmsg b{font-variant-numeric:tabular-nums;}
 .kbar{padding:10px 16px;background:#f0f4f8;border-bottom:1px solid #c8d0dc;font-size:11px;color:#4a5568;}
 .kbar input{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;color:#1a202c;font-size:12px;outline:none;box-sizing:border-box;margin-top:5px;}
 .kbar input:focus{border-color:#0066bb;}
@@ -92,7 +97,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.2</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -196,59 +201,149 @@ function syms(){var v=document.getElementById('wi').value;
   return v.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
 function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')loadMarket();if(t==='radar')loadRadar();}
 
+/* ═══ 翻譯失敗必須【回報失敗】════════════════════════════════
+   Jasmine 9/11 發現: 異動雷達按鈕寫「✅ 已翻譯」, 實際上一個字都沒翻。
+   原因就在這個函式的舊版 —— 出錯時 return '' (空字串),
+   呼叫端的 if(zhTitle && ...) 遇到空字串直接跳過, 不報錯、不中斷,
+   跑完照樣蓋上「✅ 已翻譯」。【畫面在說謊】, 那比沒有功能更糟。
+   → 改成失敗回 null, 呼叫端才分得出「翻譯失敗」與「翻出來一樣」。
+   ⚠ 這個 Google endpoint 是未公開的, 打太快會被擋 ——
+     所以加上退避重試, 並記錄連續失敗次數讓呼叫端自動放慢。       */
+var TR_STREAK = 0;   /* 連續失敗幾次 */
+
+function trSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
 async function tr(text){
-  if(!text)return'';
-  try{
-    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q='+encodeURIComponent(text.slice(0,400)));
-    const d=await r.json();
-    return d[0].map(function(x){return x[0];}).join('');
-  }catch(e){return'';}
+  if(!text) return null;
+  var q = text.slice(0,400);
+  for(var attempt=0; attempt<3; attempt++){
+    try{
+      var r=await fetch('https://translate.googleapis.com/translate_a/single'
+            +'?client=gtx&sl=en&tl=zh-TW&dt=t&q='+encodeURIComponent(q));
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var d=await r.json();
+      if(!d || !d[0] || !d[0].length) throw new Error('回傳格式不符');
+      var outText=d[0].map(function(x){return x[0];}).join('');
+      if(!outText) throw new Error('翻出來是空的');
+      TR_STREAK=0;
+      return outText;
+    }catch(e){
+      TR_STREAK++;
+      /* 600ms → 2.4s → 放棄。被擋住時硬打只會被擋更久 */
+      if(attempt<2) await trSleep(600*(attempt+1)*(attempt+1));
+    }
+  }
+  return null;
+}
+
+/* ═══ 翻譯面板 —— 按鈕只能印【真實數字】════════════════════════
+   舊版跑完無條件寫「✅ 已翻譯」, 不管成功幾則。現在:
+     全成功  → ✅ 已翻譯 41/41
+     部分    → ⚠ 只翻了 12/41
+     全失敗  → ⚠ 翻譯失敗
+   而且面板上方另外印一條橫幅說明 —— 按鈕字太小, 你不會盯著它看。
+   ⚠ 已經翻好的卡片會【跳過】, 所以再按一次只補沒翻到的, 很便宜。   */
+var TR_BOX={market:'ml', watchlist:'wc', radar:'radc'};
+
+function trBanner(panelName, cls, html){
+  var box=document.getElementById(TR_BOX[panelName]);
+  if(!box) return;
+  var el=document.getElementById('trmsg-'+panelName);
+  if(!el){
+    el=document.createElement('div');
+    el.id='trmsg-'+panelName;
+    box.parentNode.insertBefore(el, box);
+  }
+  el.className='trmsg '+cls;
+  el.innerHTML=html;
 }
 
 async function translatePanel(panelName){
   var btn=document.getElementById('tr-'+panelName);
   if(!btn)return;
   btn.disabled=true;
-  btn.textContent='⏳ 翻譯中…';
   var panel=document.getElementById('panel-'+panelName);
   var cards=panel.querySelectorAll('.card');
   var total=cards.length;
+  if(!total){ btn.disabled=false; btn.textContent='🌐 翻譯標題'; return; }
+
+  TR_STREAK=0;
+  var okN=0, failN=0, skipN=0;
+
   for(var i=0;i<cards.length;i++){
     var c=cards[i];
     var enEl=c.querySelector('.title');
     var zhEl=c.querySelector('.zh-title');
+
+    /* 已經翻好的跳過 —— 再按一次只補漏的 */
+    if(zhEl && zhEl.style.display==='block' && zhEl.textContent){
+      skipN++; okN++;
+      btn.textContent='⏳ '+(i+1)+'/'+total;
+      continue;
+    }
+
+    var titleOK=false;
     if(enEl&&zhEl){
       var enText=enEl.textContent;
       if(enText&&enText.trim()!==''){
         var zhTitle=await tr(enText);
-        if(zhTitle&&zhTitle!==enText){
-          zhEl.textContent=zhTitle;
-          zhEl.href=enEl.href;
-          zhEl.style.display='block';
-          zhEl.style.color='#1a202c';
-          zhEl.style.fontSize='16px';
-          enEl.style.color='#a0aec0';
-          enEl.style.fontSize='12px';
+        if(zhTitle===null){
+          failN++;                     /* 真的失敗, 不再假裝沒事 */
+        }else{
+          titleOK=true; okN++;
+          if(zhTitle!==enText){
+            zhEl.textContent=zhTitle;
+            zhEl.href=enEl.href;
+            zhEl.style.display='block';
+            zhEl.style.color='#1a202c';
+            zhEl.style.fontSize='16px';
+            enEl.style.color='#a0aec0';
+            enEl.style.fontSize='12px';
+          }
+        }
+      }else{ skipN++; }
+    }
+
+    /* 標題都翻不動就別浪費一次請求去翻摘要 */
+    if(titleOK){
+      var sumEl=c.querySelector('.summary');
+      var zhSumEl=c.querySelector('.zh-summary');
+      if(sumEl&&zhSumEl){
+        var sumText=sumEl.textContent;
+        if(sumText&&sumText.trim()!==''){
+          var zhSum=await tr(sumText);
+          if(zhSum!==null && zhSum!==sumText){
+            zhSumEl.textContent=zhSum;
+            zhSumEl.style.display='block';
+            sumEl.style.display='none';
+          }
         }
       }
     }
-    var sumEl=c.querySelector('.summary');
-    var zhSumEl=c.querySelector('.zh-summary');
-    if(sumEl&&zhSumEl){
-      var sumText=sumEl.textContent;
-      if(sumText&&sumText.trim()!==''){
-        var zhSum=await tr(sumText);
-        if(zhSum&&zhSum!==sumText){
-          zhSumEl.textContent=zhSum;
-          zhSumEl.style.display='block';
-          sumEl.style.display='none';
-        }
-      }
-    }
+
     btn.textContent='⏳ '+(i+1)+'/'+total;
-    await new Promise(function(r){setTimeout(r,200);});
+    /* 連續失敗代表被擋了, 自動放慢 —— 硬打只會被擋更久 */
+    await trSleep(TR_STREAK>=3 ? 1500 : 200);
   }
-  btn.textContent='✅ 已翻譯';
+
+  btn.disabled=false;
+
+  if(failN===0){
+    btn.textContent='✅ 已翻譯 '+okN+'/'+total;
+    trBanner(panelName,'ok','✅ <b>'+okN+'/'+total+'</b> 則全部翻好了。');
+  }else if(okN===0){
+    btn.textContent='⚠ 翻譯失敗';
+    trBanner(panelName,'none',
+      '⚠ <b>一則都沒翻成功</b>（'+total+' 則全失敗）—— 下面看到的都還是原文。<br>'
+      +'翻譯走的是 Google 未公開的介面，短時間打太多次會被擋。'
+      +'<b>等一兩分鐘再按一次</b>，已翻好的會跳過，只補沒翻到的。');
+  }else{
+    btn.textContent='⚠ 只翻了 '+okN+'/'+total;
+    trBanner(panelName,'part',
+      '⚠ <b>'+okN+'/'+total+'</b> 則翻好，<b>'+failN+'</b> 則沒翻到 —— '
+      +'沒翻到的那幾則下面顯示的是<b>原文</b>，不是翻譯後的。<br>'
+      +'再按一次會只補那幾則。');
+  }
 }
 
 let cardIdx=0;
@@ -271,6 +366,7 @@ async function loadMarket(){
   spn('rm',true);cardIdx=0;
   document.getElementById('ml').innerHTML='<span class="sp"></span>';
   document.getElementById('tr-market').style.display='none';
+  var _tb=document.getElementById('trmsg-market'); if(_tb) _tb.remove();
   try{
     var news=await api('/news?category=general&minId=0');
     var items=(news||[]).slice(0,20);
@@ -290,6 +386,7 @@ async function loadWatch(){
   if(!s.length)return;
   spn('rw',true);cardIdx=0;
   document.getElementById('tr-watchlist').style.display='none';
+  var _tw=document.getElementById('trmsg-watchlist'); if(_tw) _tw.remove();
   var to=new Date().toISOString().split('T')[0];
   var from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
   var res=[];
@@ -318,6 +415,7 @@ async function loadRadar(){
   spn('rr',true);cardIdx=0;
   document.getElementById('radc').innerHTML='<span class="sp"></span>';
   document.getElementById('tr-radar').style.display='none';
+  var _tb=document.getElementById('trmsg-radar'); if(_tb) _tb.remove();
   var to=new Date().toISOString().split('T')[0];
   var from=new Date(Date.now()-86400000).toISOString().split('T')[0];
   var res=[];
