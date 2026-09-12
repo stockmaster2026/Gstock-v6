@@ -153,7 +153,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.2</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.3</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -906,7 +906,10 @@ function fundCard(sym, m, cal, rec, sup, q){
     var lastQ=sup[0], la=num(lastQ.actual), le=num(lastQ.estimate);
     var lastDate = lastQ.period ? new Date(lastQ.period+'T00:00:00') : null;
     var ago = lastDate ? Math.round((new Date()-lastDate)/86400000) : null;
-    if(la!==null && le!==null && le!==0 && la>le && ago!==null && ago>=0 && ago<=45){
+    /* ⚠ 同一個坑: 虧損季或獲利衰退時的「超預期」不是利多, 不給綠框 */
+    var epsQ0 = m ? num(m.epsGrowthQuarterlyYoy) : null;
+    var okBase = (la!==null && la>=0) && !(epsQ0!==null && epsQ0<0);
+    if(okBase && le!==null && le!==0 && la>le && ago!==null && ago>=0 && ago<=45){
       var sp=(la-le)/Math.abs(le)*100;
       h += '<div class="fnote fpead">✅ <b>'+ago+' 天前剛開完財報，比分析師預估高 '
          + sp.toFixed(1)+'%</b><br>'
@@ -995,7 +998,7 @@ function fundCard(sym, m, cal, rec, sup, q){
      但前幾版完全沒用到它。                                        */
   h += '<div class="fsect">財報超預期紀錄（近幾季實際 vs 預估）</div>';
   if(Array.isArray(sup) && sup.length){
-    var rows=sup.slice(0,4), beat=0, cnt=0;
+    var rows=sup.slice(0,4), beat=0, cnt=0, negN=0;
     var tb='<div class="surp"><table><tr><th>季別</th><th>實際</th><th>預估</th><th>差距</th></tr>';
     for(var si=0; si<rows.length; si++){
       var e=rows[si];
@@ -1004,28 +1007,60 @@ function fundCard(sym, m, cal, rec, sup, q){
       if(a!==null && q!==null && q!==0){
         var pc=(a-q)/Math.abs(q)*100;
         cnt++; if(a>=q) beat++;
+        if(a<0) negN++;
         cls=(a>=q)?'beat':'miss';
         diff=(pc>0?'+':'')+pc.toFixed(1)+'%';
       }
-      tb += '<tr><td>'+(e.period||('Q'+e.quarter+' '+e.year))+'</td>'
+      /* 實際值是負的 = 那一季本來就在虧。「贏過預估」在這裡的意思是
+         【虧得比預期少】, 不是【賺得比預期多】—— 不標出來會被讀成利多 */
+      var neg = (a!==null && a<0);
+      tb += '<tr><td>'+(e.period||('Q'+e.quarter+' '+e.year))
+          + (neg ? ' <span style="font-size:10.5px;color:#9b2c2c">虧損季</span>' : '')+'</td>'
           + '<td>'+(a===null?'&mdash;':a)+'</td>'
           + '<td>'+(q===null?'&mdash;':q)+'</td>'
           + '<td class="'+cls+'">'+diff+'</td></tr>';
     }
     h += tb+'</table></div>';
     if(cnt){
-      if(beat===cnt){
+      /* ⚠ 9/12 Jasmine 的截圖抓到我寫錯的地方:
+         NOK 當季 EPS 年增 −98.6%(獲利幾乎歸零), 但超預期 4/4 全贏 ——
+         舊版照樣印「代表公司財測偏保守、手上還有東西沒放出來」。那是錯的:
+         它贏的是 0.07 vs 0.0554, 分析師本來就猜它會很慘, 它只是【沒有更慘】。
+         AEHR 更直接: 實際 −0.01 vs 預估 −0.0469, 兩個都是負的,
+         「贏」的意思是【虧得比預期少】。
+         → 先看【獲利本身在不在成長】, 再決定這句話怎麼寫。
+           說明在誤導, 比缺功能嚴重。                                    */
+      var epsQnow = m ? num(m.epsGrowthQuarterlyYoy) : null;
+      var lowBar  = (negN>0) || (epsQnow!==null && epsQnow<0);
+
+      if(beat===cnt && !lowBar){
         h += '<div class="fnote faccel"><b>近 '+cnt+' 季 '+beat+'/'+cnt+' 都贏過預估</b><br>'
            + '「預估」是分析師事先猜的數字，「實際」是公司真的交出來的。'
            + '<b>連續好幾季都比人家猜的高</b>，通常代表公司給的財測偏保守、手上還有東西沒放出來。<br>'
            + 'Minervini 特別看這個<b>持續性</b> —— 一次超預期可能是運氣，連續四次就是習慣。</div>';
+      }else if(beat===cnt && lowBar){
+        h += '<div class="fnote fwarn"><b>近 '+cnt+' 季雖然 '+beat+'/'+cnt+' 都贏過預估，'
+           + '但這是贏在一個很低的標準上</b><br>'
+           + (negN>0
+              ? '這 '+cnt+' 季裡有 <b>'+negN+' 季本來就是虧的</b>。'
+                + '「贏過預估」在虧損季的意思是<b>虧得比預期少</b>，不是賺得比預期多。<br>'
+              : '')
+           + (epsQnow!==null && epsQnow<0
+              ? '而且最近一季的 EPS 年增是 <b>'+epsQnow.toFixed(1)+'%</b> —— '
+                + '<b>獲利本身在衰退</b>。分析師早就把預估調得很低，公司只是沒有更差。<br>'
+              : '')
+           + '⚠ <b>這一項在這種情況下不能當加分。</b>'
+           + '要等獲利轉正、而且還能超預期，才是 Minervini 說的那種持續性。</div>';
       }else if(beat===0){
         h += '<div class="fnote fwarn"><b>近 '+cnt+' 季一次都沒贏過預估</b><br>'
            + '每一季都比分析師猜的低。成長率再漂亮，如果<b>市場早就預期到了</b>，'
            + '股價也很難再往上 —— 因為沒有新的好消息把新的買盤吸進來。</div>';
       }else{
         h += '<div class="fnote"><b>近 '+cnt+' 季贏了 '+beat+' 次</b>　·　'
-           + '⚠ 有輸有贏，這一項不算加分也不算扣分。</div>';
+           + '⚠ 有輸有贏，這一項不算加分也不算扣分。'
+           + (negN>0 ? '<br>⚠ 其中有 <b>'+negN+' 季本來就是虧的</b>，'
+                     + '那幾季的「贏」是虧得比預期少，不是賺得比預期多。' : '')
+           + '</div>';
       }
     }
   }else{
