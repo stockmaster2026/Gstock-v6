@@ -131,6 +131,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .fthr{font-size:11px;color:#718096;}
 .fnote{font-size:11.5px;color:#4a5568;line-height:1.65;margin-top:9px;padding:8px 11px;background:#edf2f7;border-left:3px solid #90cdf4;border-radius:0 6px 6px 0;}
 .fwarn{background:#fff5f5;border-left-color:#fc8181;color:#742a2a;}
+.fpead{background:#f0fff4;border-left-color:#48bb78;color:#22543d;}
 .faccel{background:#f0fff4;border-left-color:#68d391;color:#22543d;}
 .fdate{font-size:14px;font-weight:700;color:#1a202c;}
 .fana{font-size:13.5px;color:#2d3748;line-height:1.8;}
@@ -152,7 +153,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.1</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.2</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -889,6 +890,38 @@ function fundCard(sym, m, cal, rec, sup, q){
        + '這個決定只能在財報前做，開出來之後只剩接受。</div>';
   }
 
+  /* ── 財報【剛開完】的窗口 ─────────────────────────────────────
+     Jasmine 9/12:「財報這塊還缺什麼?」——
+     缺的是【另外一半】: 舊版只把財報當風險, 沒有機會的那一邊。
+     PEAD(財報後漂移): 股價會朝著意外的方向持續漂移數週。
+     ⚠ 這跟分析師講了什麼【沒有關係】, 量的是【價格】不是【意見】。
+       機制很實際: 法人一檔要建幾億美元的部位, 得分好幾週慢慢買,
+       不然自己把價格買上去 —— 所以買盤是分批進來的, 價格就一直被推。
+     Minervini 明講: 找超預期的、避開沒達標的, 意外越大越好。
+     ⚠ 但他也明講【跳空當天不是買點】: 缺口的風險沒辦法定價,
+       停損位置是任意的。要等跳空後【第一個量縮的收縮回檔】——
+       那個收縮正好就是 dna 在找的平台。
+     → 所以這一格只說「值得盯」, 不說能買。買點一律只從 dna 出來。   */
+  if(!(nd && dleft!==null && dleft<=21) && Array.isArray(sup) && sup.length){
+    var lastQ=sup[0], la=num(lastQ.actual), le=num(lastQ.estimate);
+    var lastDate = lastQ.period ? new Date(lastQ.period+'T00:00:00') : null;
+    var ago = lastDate ? Math.round((new Date()-lastDate)/86400000) : null;
+    if(la!==null && le!==null && le!==0 && la>le && ago!==null && ago>=0 && ago<=45){
+      var sp=(la-le)/Math.abs(le)*100;
+      h += '<div class="fnote fpead">✅ <b>'+ago+' 天前剛開完財報，比分析師預估高 '
+         + sp.toFixed(1)+'%</b><br>'
+         + '<b>這代表什麼</b>　分析師原本猜得太低。他們要花好幾週才會把模型改過來，'
+         + '大型基金要買幾億美元也得分批慢慢買，不然自己就把價格買上去了。'
+         + '所以<b>買盤是一批一批進來的</b>，價格常常在財報後還會朝同一個方向走好幾週。<br>'
+         + '<b>那我要做什麼</b>　<b>不是現在追</b>。跳空那一根的缺口沒辦法算風險，'
+         + '停損要放哪都是隨便放的。<br>'
+         + '要等的是<b>跳空之後第一次量縮的回檔</b> —— 價格橫著整理、成交量萎縮，'
+         + '磨出一個新平台。那個平台的高點才是 pivot，才有地方放停損。<br>'
+         + '<b>去哪看</b>　看 dna 的量能與 pivot，<b>不用去找分析師講了什麼</b> —— '
+         + '要盯的是價量，不是意見。</div>';
+    }
+  }
+
   /* ── C：當季 ── */
   h += '<div class="fsect">C · 當季（跟去年同一季比）</div>';
   if(!m){ h += '<div class="frow"><span class="fnone">抓不到基本財務指標</span></div>'; }
@@ -933,15 +966,19 @@ function fundCard(sym, m, cal, rec, sup, q){
     if(rQ!==null&&rT!==null){ (rQ>=rT?up:dn).push('營收 '+rQ.toFixed(1)+'% vs '+rT.toFixed(1)+'%'); }
 
     if(up.length && !dn.length){
-      h += '<div class="fnote faccel"><b>最近一季還在放大</b>（'+up.join('、')
-         + '）—— 成長率一季比一季高，這正是 O&#39;Neil 的 C 在找的形狀。</div>';
+      h += '<div class="fnote faccel"><b>最近一季還在放大</b>（'+up.join('、')+'）<br>'
+         + '意思是：<b>不只有在成長，而且成長得愈來愈快。</b>'
+         + '最近三個月的年增率，比過去一整年的平均還要高。<br>'
+         + 'O&#39;Neil 的 C 找的就是這個形狀 —— 他要的不是「有成長」，是「成長在加速」。</div>';
     }else if(dn.length && !up.length){
-      h += '<div class="fnote"><b>最近一季比近 12 個月小</b>（'+dn.join('、')
-         + '）—— 爆發的那幾季已經滾出窗口。<b>成長還在，只是加速停了</b>，不是衰退。'
-         + '<br>⚠ 一季不算趨勢，要連續兩三季都在降才算數。</div>';
+      h += '<div class="fnote"><b>最近一季比近 12 個月小</b>（'+dn.join('、')+'）<br>'
+         + '三個數字都是<b>「跟一年前比」</b>，只是往回看的長度不同。'
+         + '最近一季比近 12 個月小，代表<b>去年那幾季爆發的部分，已經滾出計算範圍了</b>。<br>'
+         + '<b>生意還在成長，只是成長的速度慢下來</b> —— 不是衰退，是加速停了。<br>'
+         + '⚠ 一季不算趨勢，要連續兩三季都在降才算數。</div>';
     }else if(up.length && dn.length){
       h += '<div class="fnote">放大的：'+up.join('、')+'<br>收斂的：'+dn.join('、')
-         + '<br>⚠ 兩邊不同向，一季不算趨勢，再看一兩季。</div>';
+         + '<br>⚠ EPS 跟營收<b>方向不一樣</b>，這種情況判斷不了，再看一兩季。</div>';
     }else{
       h += '<div class="fnote">最近一季的成長率算不出來，沒辦法跟前面比。</div>';
     }
@@ -978,11 +1015,14 @@ function fundCard(sym, m, cal, rec, sup, q){
     h += tb+'</table></div>';
     if(cnt){
       if(beat===cnt){
-        h += '<div class="fnote faccel"><b>近 '+cnt+' 季 '+beat+'/'+cnt+' 都贏過預估</b> &mdash; '
-           + 'Minervini 看的就是這個持續性：一直超預期，代表管理層還在藏，法人會被吸進來。</div>';
+        h += '<div class="fnote faccel"><b>近 '+cnt+' 季 '+beat+'/'+cnt+' 都贏過預估</b><br>'
+           + '「預估」是分析師事先猜的數字，「實際」是公司真的交出來的。'
+           + '<b>連續好幾季都比人家猜的高</b>，通常代表公司給的財測偏保守、手上還有東西沒放出來。<br>'
+           + 'Minervini 特別看這個<b>持續性</b> —— 一次超預期可能是運氣，連續四次就是習慣。</div>';
       }else if(beat===0){
-        h += '<div class="fnote fwarn"><b>近 '+cnt+' 季一次都沒贏過預估</b> &mdash; '
-           + '成長率再漂亮，沒有超預期就很難吸引新的法人買盤。</div>';
+        h += '<div class="fnote fwarn"><b>近 '+cnt+' 季一次都沒贏過預估</b><br>'
+           + '每一季都比分析師猜的低。成長率再漂亮，如果<b>市場早就預期到了</b>，'
+           + '股價也很難再往上 —— 因為沒有新的好消息把新的買盤吸進來。</div>';
       }else{
         h += '<div class="fnote"><b>近 '+cnt+' 季贏了 '+beat+' 次</b>　·　'
            + '⚠ 有輸有贏，這一項不算加分也不算扣分。</div>';
