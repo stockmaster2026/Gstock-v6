@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章全文抓取試打</title>
+<style>
+  :root{--paper:#f7f5ef;--ink:#1c2128;--dim:#57606a;--rule:#d8d2c4;
+        --ok:#1a7f37;--bad:#cf222e;--warn:#7d5300;}
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+    font-size:15px;line-height:1.7;}
+  .wrap{max-width:880px;margin:0 auto;padding:22px 18px 80px}
+  h1{font-size:21px;font-weight:700;margin:0 0 2px;letter-spacing:.5px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 20px}
+  .bench{border:1px solid var(--rule);border-radius:8px;background:#fffdf8;
+    padding:15px 16px;margin-bottom:20px;}
+  label{display:block;font-size:13px;color:var(--dim);margin-bottom:5px}
+  input{width:100%;padding:10px 11px;font-size:15px;border:1px solid var(--rule);
+    border-radius:6px;background:#fff;color:var(--ink);font-family:inherit;}
+  input:focus{outline:2px solid #0969da;outline-offset:1px}
+  .row{margin-bottom:13px}
+  button{background:var(--ink);color:#fff;border:none;border-radius:6px;
+    padding:11px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+  button:disabled{background:#9aa0a6;cursor:default}
+  button:focus-visible{outline:2px solid #0969da;outline-offset:2px}
+  .note{font-size:12.5px;color:var(--dim);margin-top:9px}
+
+  .art{border:1px solid var(--rule);border-radius:7px;background:#fff;
+    margin-bottom:14px;overflow:hidden}
+  .ah{padding:10px 12px;border-bottom:1px solid var(--rule);background:#faf8f2}
+  .asrc{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;
+    border-radius:10px;background:#0550ae;color:#fff;margin-right:8px;vertical-align:1px}
+  .ttl{font-size:13.5px;font-weight:700}
+  .aurl{font-size:11px;color:var(--dim);font-family:ui-monospace,Menlo,monospace;
+    word-break:break-all;margin-top:4px}
+  .verdict{padding:10px 12px;font-size:13.5px;border-bottom:1px dashed var(--rule)}
+  .v-ok{background:#f0fff4;color:#22543d}
+  .v-wall{background:#fffbeb;color:#7d5300}
+  .v-bad{background:#fff5f5;color:#9b2c2c}
+  .verdict b{font-variant-numeric:tabular-nums}
+  pre{margin:0;padding:11px 12px;font-size:11.5px;line-height:1.6;
+    font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;
+    max-height:300px;overflow:auto;color:#2b3137;}
+  details summary{cursor:pointer;padding:8px 12px;font-size:12.5px;color:var(--dim)}
+  .tally{margin:18px 0 0;padding:13px 15px;background:#fffbeb;
+    border:1px solid #e0c986;border-radius:10px;font-size:13.5px;line-height:1.9}
+  .tally b{color:#1a202c}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>文章全文抓取試打</h1>
+<p class="sub">驗一件事：Worker 代理能不能把 Yahoo／Seeking Alpha 的文章<b>全文</b>抓回來。抓得到才有得談「自動歸納結論」，抓不到這條路就收掉。看完就可以丟。</p>
+
+<div class="bench">
+  <div class="row">
+    <label for="wk">Worker 代理網址</label>
+    <input id="wk" type="text" value="https://gstock-proxy.cykjas.workers.dev/?url=" spellcheck="false">
+  </div>
+  <div class="row">
+    <label for="key">Finnhub API key（用來拿到真實的文章網址）</label>
+    <input id="key" type="text" placeholder="貼上你的 key" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="row">
+    <label for="sym">股票代號（一次一檔）</label>
+    <input id="sym" type="text" value="AAOI" autocomplete="off" spellcheck="false">
+  </div>
+  <button id="run">開始試打</button>
+  <div class="note" id="note">會拉最新 5 則新聞，逐則丟進 Worker，回報抓到什麼。</div>
+</div>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+var KEYSTORE='finprobe_key';
+var kEl=document.getElementById('key');
+var wEl=document.getElementById('wk');
+var sEl=document.getElementById('sym');
+var btn=document.getElementById('run');
+var out=document.getElementById('out');
+var note=document.getElementById('note');
+
+try{ var sv=localStorage.getItem(KEYSTORE); if(sv) kEl.value=sv; }catch(e){}
+try{ var wv=localStorage.getItem('probe_worker'); if(wv) wEl.value=wv; }catch(e){}
+
+function esc(s){ return String(s).replace(/[&<>]/g,function(c){
+  return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;'); }); }
+
+/* 把 HTML 剝成純文字, 用來判斷「真的有文章內容」還是「只有導覽列」 */
+function toText(html){
+  var s=String(html);
+  s=s.replace(/<script[\s\S]*?<\/script>/gi,' ');
+  s=s.replace(/<style[\s\S]*?<\/style>/gi,' ');
+  s=s.replace(/<[^>]+>/g,' ');
+  s=s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&')
+     .replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+     .replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  return s.replace(/\s+/g,' ').trim();
+}
+
+/* 付費牆／登入牆的跡象 —— 抓得到 200 不代表拿得到內容 */
+var WALL=['subscribe to continue','sign in to continue','start your free trial',
+          'this article is for','premium subscribers','become a member',
+          'unlock this article','continue reading with','paywall',
+          'you have reached your limit','please enable javascript',
+          'access to this page has been denied','are you a robot',
+          'verify you are a human','enable cookies'];
+
+function wallHit(text){
+  var t=text.toLowerCase().slice(0,6000);
+  for(var i=0;i<WALL.length;i++){ if(t.indexOf(WALL[i])>=0) return WALL[i]; }
+  return null;
+}
+
+async function tryFetch(url, worker){
+  var full = worker + encodeURIComponent(url);
+  try{
+    var r=await fetch(full,{cache:'no-store'});
+    var body=await r.text();
+    return {ok:r.ok, status:r.status, body:body};
+  }catch(e){
+    return {ok:false, status:0, err:e.message};
+  }
+}
+
+btn.addEventListener('click', async function(){
+  var key=kEl.value.trim(), worker=wEl.value.trim(), sym=sEl.value.trim().toUpperCase();
+  if(!key){ note.textContent='先貼上 Finnhub key。'; kEl.focus(); return; }
+  if(!worker){ note.textContent='要有 Worker 網址。'; wEl.focus(); return; }
+  if(!sym){ note.textContent='要有股票代號。'; sEl.focus(); return; }
+  try{ localStorage.setItem(KEYSTORE,key);
+       localStorage.setItem('probe_worker',worker); }catch(e){}
+
+  btn.disabled=true; out.innerHTML='';
+  note.textContent='先拉新聞清單…';
+
+  var to=new Date().toISOString().split('T')[0];
+  var from=new Date(Date.now()-14*86400000).toISOString().split('T')[0];
+  var list=[];
+  try{
+    var r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym
+                      +'&from='+from+'&to='+to+'&token='+key,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var arr=await r.json();
+    if(!Array.isArray(arr)||!arr.length) throw new Error('沒有新聞');
+    /* 每個來源最多取 2 則, 才看得出不同網站的差別 */
+    var seen={};
+    for(var i=0;i<arr.length && list.length<5;i++){
+      var s=(arr[i].source||'?');
+      seen[s]=(seen[s]||0);
+      if(seen[s]>=2) continue;
+      seen[s]++;
+      list.push(arr[i]);
+    }
+  }catch(e){
+    out.innerHTML='<div class="art"><div class="verdict v-bad">拉不到新聞清單：'
+                 +esc(e.message)+'</div></div>';
+    btn.disabled=false; return;
+  }
+
+  var stat={full:0, wall:0, blocked:0};
+  var html='';
+
+  for(var i=0;i<list.length;i++){
+    var n=list[i];
+    note.textContent='試抓第 '+(i+1)+'/'+list.length+' 則…';
+
+    var h='<div class="art"><div class="ah">'
+        + '<span class="asrc">'+esc(n.source||'?')+'</span>'
+        + '<span class="ttl">'+esc(n.headline||'')+'</span>'
+        + '<div class="aurl">'+esc(n.url||'')+'</div></div>';
+
+    var res=await tryFetch(n.url, worker);
+
+    if(!res.ok){
+      stat.blocked++;
+      h += '<div class="verdict v-bad"><b>抓不到</b>　·　'
+         + (res.status? ('HTTP '+res.status) : ('請求失敗：'+esc(res.err||'')))
+         + '　—— Worker 可能沒把這個網域放進白名單，或對方擋了代理。</div>';
+    }else{
+      var txt=toText(res.body);
+      var wall=wallHit(txt);
+      var bytes=res.body.length, chars=txt.length;
+
+      if(wall){
+        stat.wall++;
+        h += '<div class="verdict v-wall">HTTP 200，但看起來是<b>牆</b>'
+           + '（命中「'+esc(wall)+'」）　·　原始 '+bytes+' 位元組，純文字 '+chars+' 字'
+           + '<br>抓得到頁面，但拿不到文章內容。</div>';
+      }else if(chars<1200){
+        stat.wall++;
+        h += '<div class="verdict v-wall">HTTP 200，但純文字只有 <b>'+chars+'</b> 字'
+           + '　·　原始 '+bytes+' 位元組<br>太短了，多半只有導覽列跟頁尾，沒有正文。</div>';
+      }else{
+        stat.full++;
+        h += '<div class="verdict v-ok"><b>抓到正文</b>　·　純文字 <b>'+chars+'</b> 字'
+           + '（原始 '+bytes+' 位元組）<br>這一則有搞頭。</div>';
+      }
+
+      h += '<details><summary>前 1200 字（點開確認是不是真的文章）</summary><pre>'
+         + esc(txt.slice(0,1200)) + '</pre></details>';
+    }
+
+    html += h+'</div>';
+    out.innerHTML=html;
+    await new Promise(function(r){setTimeout(r,500);});
+  }
+
+  var t='<div class="tally">試了 <b>'+list.length+'</b> 則<br>'
+      + '抓到正文：<b>'+stat.full+'</b>　·　'
+      + '碰到牆或內容太短：<b>'+stat.wall+'</b>　·　'
+      + '完全抓不到：<b>'+stat.blocked+'</b><br>';
+  if(stat.full===0){
+    t += '一則正文都沒拿到 —— <b>自動歸納這條路先收掉</b>，沒有內容可以歸納。';
+  }else if(stat.full<list.length/2){
+    t += '只有部分拿得到 —— 可以做，但要標清楚哪幾則<b>沒有</b>摘要，不能讓你以為每則都看過了。';
+  }else{
+    t += '大部分拿得到 —— 下一步才輪到「要不要接一個 LLM 來歸納結論」，那需要另一把 key 而且要付費。';
+  }
+  out.innerHTML = html + t + '</div>';
+
+  note.textContent='跑完了。截圖回報，我要看每一則的判定跟最下面的統計。';
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>
