@@ -66,6 +66,22 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qbar{height:5px;background:#dde4ec;border-radius:3px;overflow:hidden;margin-top:4px;}
 .qfill{height:100%;background:#48bb78;}
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
+.pf{margin:0 0 14px;padding:12px 14px;background:#f7fafc;border:1px solid #dde4ec;border-radius:10px;}
+.pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+.pf-t{font-size:11px;color:#718096;flex:1;}
+.pf-e{font-size:11px;color:#0066bb;cursor:pointer;text-decoration:none;}
+.pf-r{font-size:13px;line-height:1.8;color:#2d3748;margin:3px 0;}
+.pf-r b{color:#1a202c;}
+.pf-k{color:#718096;font-size:11.5px;margin-right:5px;}
+.pf-none{font-size:12.5px;color:#9b2c2c;line-height:1.7;}
+.pf-ed textarea{width:100%;box-sizing:border-box;border:1px solid #c8d0dc;border-radius:7px;
+  padding:7px 10px;font-size:13px;font-family:inherit;color:#1a202c;background:#fff;
+  margin:3px 0 8px;resize:vertical;min-height:48px;outline:none;}
+.pf-ed textarea:focus{border-color:#0066bb;}
+.pf-ed .lbl{font-size:11px;color:#4a5568;}
+.pf-btn{display:inline-block;padding:6px 14px;border-radius:7px;font-size:12.5px;
+  font-weight:600;cursor:pointer;border:none;margin-right:7px;font-family:inherit;}
+.pf-save{background:#1a202c;color:#fff;} .pf-cancel{background:#e2e8f0;color:#2d3748;}
 .trmsg{margin:0 16px 10px;padding:10px 13px;border-radius:9px;font-size:13px;line-height:1.75;}
 .trmsg.ok{background:#f0fff4;border:1px solid #9ae6b4;color:#22543d;}
 .trmsg.part{background:#fffbeb;border:1px solid #e0c986;color:#7d5300;}
@@ -109,7 +125,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.3</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.4</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -158,13 +174,21 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </div>
 <div class="panel" id="panel-radar">
   <div class="ph">
-    <div class="ph-left"><div class="pt">MOVE RADAR</div><div class="pm">今日異動</div></div>
+    <div class="ph-left"><div class="pt">MOVE RADAR</div><div class="pm">今日異動（每次最多25支）</div></div>
     <div class="ph-btns">
       <button class="tr-btn" id="tr-radar" onclick="translatePanel('radar')" style="display:none">🌐 翻譯標題</button>
       <button class="rb" id="rr" onclick="loadRadar()">↻</button>
     </div>
   </div>
-  <div style="padding:10px 16px;font-size:12px;color:#4a5568;background:#edf2f7;border-bottom:1px solid #c8d0dc;">掃描 <strong id="rc">42</strong> 支股票</div>
+  <div style="padding:12px 16px 0;">
+    <input class="wi" id="ri" placeholder="股票代碼，逗號分開（最多25支）…">
+    <button class="fb" onclick="loadRadar()">掃描異動</button>
+    <div style="margin-top:7px;font-size:11.5px;color:#4a5568;">
+      只掃你填的這幾檔 —— 翻譯額度會花在你真正在看的股票上。
+      <a href="javascript:void(0)" onclick="radarReset()" style="color:#0066bb;text-decoration:none;">回到預設 41 檔</a>
+    </div>
+  </div>
+  <div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#edf2f7;border-top:1px solid #c8d0dc;border-bottom:1px solid #c8d0dc;"><strong id="rm2">尚未掃描</strong></div>
   <div id="radc"><div class="empty">點右上角 ↻ 開始掃描</div></div>
 </div>
 
@@ -205,7 +229,29 @@ function KEY(){
   if(v) return v;
   try{ return localStorage.getItem(KEYSTORE)||''; }catch(e){ return ''; }
 }
-const DW=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
+const DW_DEFAULT=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CREDO','TSEM','LITE','COBRA','MU','SNDK','IONQ','RGTI','QBTS','TEM','HIMS','CRISP','PLTR','OKLO','KTOS','ASTS','CRWV','NBIS','CRCL','NVDA','AMD','GOOG','META','TMUS','SANA','PI','SOUN','RXRX','SOFI','BABI','HOOD'];
+
+/* ═══ 異動雷達改成【自己丟股票】════════════════════════════
+   Jasmine 9/11: 舊版這 41 檔寫死在程式裡, 是九個板塊的固定清單。
+   問題有兩個: ①裡面一半不是她在追的(OKLO / PI / TMUS…)
+   ②每檔要翻標題+摘要, 等於拿額度去翻她根本不看的股票 ——
+   今天 MyMemory 額度被吃掉大半就是這樣來的。
+   → 改成輸入框, 記在 localStorage, 想換一批就直接改。
+     保留「回到預設」按鈕, 想全掃的時候一鍵切回去。          */
+function radarSyms(){
+  var el=document.getElementById('ri');
+  var v=el?el.value:'';
+  try{ localStorage.setItem('radar_syms', v); }catch(e){}
+  return v.split(/[,\s]+/).map(function(x){return x.trim().toUpperCase();})
+          .filter(Boolean).slice(0,25);
+}
+function radarReset(){
+  var el=document.getElementById('ri');
+  if(!el) return;
+  el.value=DW_DEFAULT.join(', ');
+  try{ localStorage.setItem('radar_syms', el.value); }catch(e){}
+  loadRadar();
+}
 /* ═══ 持股輸入記住, 不再每次開頁面就蓋掉 ═══════════════════════
    舊版這一行寫死 8 檔, 每次重新整理都把使用者打的清單覆蓋掉 ——
    所以「試著要增加也都不行」。上限本來就不是 8, 是這一行在蓋。   */
@@ -214,7 +260,6 @@ const DW=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','GLW','CR
   try{ saved=localStorage.getItem('watch_syms')||''; }catch(e){}
   el.value = saved || 'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL';
 })();
-document.getElementById('rc').textContent=DW.length;
 
 function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+'分前';if(d<86400)return Math.floor(d/3600)+'小時前';return Math.floor(d/86400)+'天前';}
 function src(s){if(!s)return'NEWS';return s.replace(/^https?:\/\/(www\.)?/,'').split('/')[0].toUpperCase().slice(0,12);}
@@ -225,7 +270,13 @@ async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
 function syms(){var v=document.getElementById('wi').value;
   try{ localStorage.setItem('watch_syms', v); }catch(e){}
   return v.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
-function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')loadMarket();if(t==='radar')loadRadar();}
+function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')(function(){
+  var el=document.getElementById('ri'); if(!el) return;
+  var sv=''; try{ sv=localStorage.getItem('radar_syms')||''; }catch(e){}
+  el.value = sv || DW_DEFAULT.join(', ');
+})();
+
+loadMarket();if(t==='radar')loadRadar();}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
    Jasmine 9/11 晚上實測: Google 那個未公開介面【整個 IP 被封】——
@@ -529,6 +580,9 @@ async function loadRadar(){
   var to=new Date().toISOString().split('T')[0];
   var from=new Date(Date.now()-86400000).toISOString().split('T')[0];
   var res=[];
+  var DW=radarSyms();
+  if(!DW.length){ document.getElementById('radc').innerHTML='<div class="empty">先在上面填股票代碼</div>'; spn('rr',false); return; }
+  document.getElementById('rm2').textContent='掃描 '+DW.length+' 支';
   for(var i=0;i<DW.length;i+=10){
     var br=await Promise.all(DW.slice(i,i+10).map(async function(sym){
       try{
@@ -556,6 +610,127 @@ async function loadRadar(){
   document.getElementById('tr-radar').disabled=false;
   document.getElementById('tr-radar').textContent='🌐 翻譯標題';
   spn('rr',false);
+}
+
+
+/* ═══ 公司速寫 ═══════════════════════════════════════════════
+   Jasmine 9/11:「財報前面先放一段簡介 —— 他是做什麼的、主要客戶是誰」。
+   ⚠ 這三件事【沒有免費 API 給得出來】: Finnhub 免費層只有產業分類與市值,
+     簡介是付費欄位, 大客戶更是只寫在 10-K 裡, 沒有任何 API 會給。
+   → 所以改成【查好寫死 + 你可以自己改】:
+       下面這份是 2026-09-11 查證後寫的預設值,
+       你改過的存在 localStorage, 不會被之後的改版蓋掉。
+   ⚠ 一季更新一次就夠(她自己定的); 有大新聞再回來要我重查。
+   ⚠ 第三行「這一波的題材」最有用 —— 那正是 CANSLIM 的 N,
+     引擎永遠算不出來, 只能靠人填。                              */
+var PROFILE_DEFAULT = {
+  MU:{ biz:'DRAM、NAND 快閃記憶體，以及 AI 晶片要用的 HBM 高頻寬記憶體。',
+       cust:'輝達等 AI 晶片廠（HBM）、伺服器與手機 OEM。',
+       story:'2026 記憶體大缺貨。三大廠把產能大量轉去做 HBM，一般 DRAM 供給被排擠，價格暴漲；HBM 產能已賣到 2027。毛利率從年度的 39.8% 拉到近 12 個月的 72.6%。' },
+
+  SNDK:{ biz:'NAND 快閃記憶體與 SSD 固態硬碟（2025 年從 Western Digital 分拆出來）。',
+       cust:'企業級／伺服器 SSD 客戶、消費性電子廠。',
+       story:'與 Kioxia 的合資廠 2026 年產能全部售罄。AI 資料中心要存訓練資料與模型權重，NAND 跟著缺，單位售價一季翻倍以上。' },
+
+  COHR:{ biz:'光通訊元件與模組、工業雷射、化合物半導體材料（II-VI 併購 Coherent 後沿用此名）。',
+       cust:'雲端業者、光模組廠與電信設備商，另有工業與車用客戶。',
+       story:'輝達在 OFC 2026 前對 Lumentum 與 Coherent 合計策略投資約 40 億美元，被視為光互連供應鏈的背書。題材是 800G／1.6T 與共同封裝光學（CPO）。' },
+
+  LITE:{ biz:'光通訊雷射晶片與光模組，以及工業用雷射。',
+       cust:'雲端業者與光模組廠。',
+       story:'同樣拿到輝達那筆 40 億投資。AI 叢集規模變大，光互連從 800G 往 1.6T 走，雷射與光引擎需求跟著拉。' },
+
+  AAOI:{ biz:'光通訊收發模組與有線電視網通產品，從雷射晶片做到模組的垂直整合。',
+       cust:'超大規模雲端業者（公司財報不具名）、有線電視系統商。',
+       story:'2026 年拿到單一長期大客戶 1.6T 逾 2 億美元、800G 逾 1.24 億美元訂單。德州 Sugar Land 新廠加台灣擴產，目標年底 800G 與 1.6T 合計月產能超過 50 萬顆。' },
+
+  AXTI:{ biz:'化合物半導體【基板】—— 磷化銦（InP）、砷化鎵、鍺晶圓。不做晶片，做別人長晶片用的底材。',
+       cust:'光通訊雷射與模組廠（COHR、LITE 那一類）、射頻與感測元件廠。中國營收占比高。',
+       story:'AI 光模組的雷射要長在 InP 基板上，需求跟著 800G／1.6T 一起拉。公司在擴 6 吋 InP 產能。' },
+
+  GLW:{ biz:'特殊玻璃與陶瓷 —— 光纖光纜、手機蓋板玻璃（大猩猩玻璃）、顯示器玻璃、車用觸媒載體。',
+       cust:'電信商與資料中心（光纖）、Apple 等手機廠、面板廠。',
+       story:'2026 年與 Verizon 簽下多年期數十億美元光纜合約。AI 資料中心內部與資料中心互連（DCI）都要大量光纜。' },
+
+  MRVL:{ biz:'資料中心客製化晶片（ASIC／XPU）、光通訊 DSP、交換器與儲存控制晶片。',
+       cust:'雲端業者的自研晶片專案、網通設備商。',
+       story:'客製化 AI 加速器與 1.6T 光互連 DSP 出貨放量。它坐在交換器晶片與光電介面那一層，不直接做光模組。' },
+
+  BE:{ biz:'固態氧化物燃料電池（Bloom Energy Server）—— 燒天然氣直接發電，不經燃燒，也做電解產氫。',
+       cust:'【Oracle】是最大客戶：主約最高 2.8GW，已簽約 1.2GW 部署中。另有 Intel、資料中心與半導體廠。',
+       story:'AI 資料中心等不到電網接電，燃料電池是最快的替代方案 —— 給 Oracle 的一個案場 55 天就供上電。2026 年 9 月納入 S&P 500。' },
+
+  RKLB:{ biz:'小型運載火箭 Electron 的發射服務，以及衛星元件與整星製造（Space Systems 佔營收大半）。',
+       cust:'美國太空軍與 NASA、商業衛星星系業者。',
+       story:'中型火箭 Neutron 的首飛進度是主要變數；衛星製造訂單則是目前的營收主力。' },
+
+  NOK:{ biz:'電信網路設備 —— 行動基地台（RAN）、光傳輸、IP 路由，外加規模龐大的專利授權收入。',
+       cust:'全球電信商（T-Mobile 等），近年增加資料中心網路客戶。',
+       story:'輝達投資 10 億美元（每股 6.01）合作開發 AI-RAN，把 AI 運算放進基地台；T-Mobile 從 2026 年開始實地測試。' },
+
+  INTC:{ biz:'x86 處理器、資料中心晶片，以及對外接單的晶圓代工事業 Intel Foundry。',
+       cust:'PC 與伺服器 OEM；代工客戶陸續公布中。',
+       story:'輝達投資 50 億美元、美國政府入股。18A 製程產出比目標高約 25%，FY2026 第二季營收年增 25%，資料中心部門年增 59%。' }
+};
+
+function profLoad(){
+  var user={};
+  try{ user=JSON.parse(localStorage.getItem('stock_profiles')||'{}'); }catch(e){}
+  var out={};
+  for(var k in PROFILE_DEFAULT) out[k]=PROFILE_DEFAULT[k];
+  for(var k2 in user) out[k2]=user[k2];       /* 你改過的蓋過預設 */
+  return out;
+}
+function profSave(sym, o){
+  var user={};
+  try{ user=JSON.parse(localStorage.getItem('stock_profiles')||'{}'); }catch(e){}
+  user[sym]=o;
+  try{ localStorage.setItem('stock_profiles', JSON.stringify(user)); }catch(e){}
+}
+function profEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+  return c==='&'?'&amp;':(c==='<'?'&lt;':(c==='>'?'&gt;':'&quot;')); }); }
+
+function profBlock(sym){
+  var p=profLoad()[sym];
+  var h='<div class="pf" id="pf-'+sym+'"><div class="pf-h">'
+      + '<span class="pf-t">公司速寫　·　自己填的，不是抓來的</span>'
+      + '<span class="pf-e" onclick="profEdit(\'' +sym+ '\')">✏ 編輯</span></div>';
+  if(!p){
+    h += '<div class="pf-none">還沒有這一檔的速寫。'
+       + '點「✏ 編輯」自己寫三行：在做什麼、主要客戶、這一波的題材。<br>'
+       + '⚠ 這三件事沒有免費 API 給得出來，只能自己填 —— 但一季更新一次就夠了。</div>';
+  }else{
+    h += '<div class="pf-r"><span class="pf-k">在做什麼</span>'+profEsc(p.biz)+'</div>'
+       + '<div class="pf-r"><span class="pf-k">主要客戶</span>'+profEsc(p.cust)+'</div>'
+       + '<div class="pf-r"><span class="pf-k">這一波的題材</span><b>'+profEsc(p.story)+'</b></div>';
+  }
+  return h+'</div>';
+}
+
+function profEdit(sym){
+  var box=document.getElementById('pf-'+sym);
+  if(!box) return;
+  var p=profLoad()[sym]||{biz:'',cust:'',story:''};
+  box.innerHTML='<div class="pf-ed">'
+    + '<div class="lbl">在做什麼</div><textarea id="pfb-'+sym+'">'+profEsc(p.biz)+'</textarea>'
+    + '<div class="lbl">主要客戶</div><textarea id="pfc-'+sym+'">'+profEsc(p.cust)+'</textarea>'
+    + '<div class="lbl">這一波的題材（為什麼現在會動）</div>'
+    + '<textarea id="pfs-'+sym+'">'+profEsc(p.story)+'</textarea>'
+    + '<button class="pf-btn pf-save" onclick="profDone(\''+sym+'\',1)">儲存</button>'
+    + '<button class="pf-btn pf-cancel" onclick="profDone(\''+sym+'\',0)">取消</button>'
+    + '</div>';
+}
+
+function profDone(sym, save){
+  if(save){
+    profSave(sym, {
+      biz:  document.getElementById('pfb-'+sym).value.trim(),
+      cust: document.getElementById('pfc-'+sym).value.trim(),
+      story:document.getElementById('pfs-'+sym).value.trim()
+    });
+  }
+  var box=document.getElementById('pf-'+sym);
+  if(box) box.outerHTML=profBlock(sym);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -588,7 +763,8 @@ function fRow(label, val, thr, unit){
 
 function fundCard(sym, m, cal, rec){
   var card_state='mix', card_days=null;
-  var h = '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
+  /* 速寫放在最上面: 先知道這家公司是誰, 再看下面的數字 */
+  var h = profBlock(sym) + '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
 
   /* ── 下次財報日期 ── 她自己的規則: 兩三週內有財報就連縮小部位都不做 ── */
   var nd=null, dleft=null;
@@ -787,9 +963,9 @@ async function loadFund(){
     var sk=localStorage.getItem(KEYSTORE);
     if(sk) document.getElementById('fkey').value=sk;
     var ss=localStorage.getItem('fund_syms');
-    document.getElementById('fi').value = ss || 'MU, BE, COHR, GLW, MRVL';
+    document.getElementById('fi').value = ss || 'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC';
   }catch(e){
-    document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL';
+    document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC';
   }
 })();
 
