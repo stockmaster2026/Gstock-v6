@@ -66,9 +66,9 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qbar{height:5px;background:#dde4ec;border-radius:3px;overflow:hidden;margin-top:4px;}
 .qfill{height:100%;background:#48bb78;}
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
-.pf{margin:0 0 14px;padding:12px 14px;background:#f7fafc;border:1px solid #dde4ec;border-radius:10px;}
+.pf{margin:0 0 14px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
-.pf-t{font-size:11px;color:#718096;flex:1;}
+.pf-t{font-size:11px;color:#7d5300;flex:1;font-weight:700;}
 .pf-e{font-size:11px;color:#0066bb;cursor:pointer;text-decoration:none;}
 .pf-r{font-size:13px;line-height:1.8;color:#2d3748;margin:3px 0;}
 .pf-r b{color:#1a202c;}
@@ -78,8 +78,8 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .surp td{padding:5px 0;text-align:right;font-variant-numeric:tabular-nums;border-top:1px solid #edf2f7;}
 .surp td:first-child{text-align:left;color:#2d3748;}
 .beat{color:#22543d;font-weight:700;} .miss{color:#9b2c2c;font-weight:700;}
-.pf-risk{margin-top:6px;padding-top:7px;border-top:1px dashed #dde4ec;color:#742a2a;}
-.pf-k{color:#718096;font-size:11.5px;margin-right:5px;}
+.pf-risk{margin-top:7px;padding-top:8px;border-top:1px dashed #e0c986;color:#742a2a;}
+.pf-k{color:#8a6d1f;font-size:11.5px;margin-right:5px;}
 .pf-none{font-size:12.5px;color:#9b2c2c;line-height:1.7;}
 .pf-ed textarea{width:100%;box-sizing:border-box;border:1px solid #c8d0dc;border-radius:7px;
   padding:7px 10px;font-size:13px;font-family:inherit;color:#1a202c;background:#fff;
@@ -101,6 +101,10 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .fcard{background:#ffffff;border:1px solid #c8d0dc;border-radius:12px;padding:15px 16px;margin:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
 .fhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
 .fsym{font-size:19px;font-weight:700;color:#1a202c;}
+.fpx{font-size:17px;font-weight:700;color:#1a202c;font-variant-numeric:tabular-nums;}
+.fdp{font-size:13px;font-weight:700;padding:1px 7px;border-radius:9px;font-variant-numeric:tabular-nums;}
+.fdp.up{background:#e6f4ea;color:#22543d;} .fdp.dn{background:#fdeaea;color:#9b2c2c;}
+.fday{font-size:11.5px;color:#718096;}
 .fsub{font-size:11px;color:#4a5568;}
 .fsect{font-size:11px;color:#4a5568;margin:13px 0 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;}
 .frow{display:flex;align-items:baseline;gap:8px;font-size:13.5px;padding:5px 0;flex-wrap:wrap;}
@@ -132,7 +136,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.5</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.6</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -799,10 +803,23 @@ function fRow(label, val, thr, unit){
        + '<span class="fthr">門檻 '+thr+(unit||'%')+'</span></div>';
 }
 
-function fundCard(sym, m, cal, rec, sup){
+function fundCard(sym, m, cal, rec, sup, q){
   var card_state='mix', card_days=null;
   /* 速寫放在最上面: 先知道這家公司是誰, 再看下面的數字 */
   var h = profBlock(sym) + '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
+
+  /* 最新股價 + 今天日期 —— 看基本面時才知道現在價格在哪 */
+  var px = (q && q.c!=null) ? num(q.c) : null;
+  var dp = (q && q.dp!=null) ? num(q.dp) : null;
+  if(px!==null){
+    h += '<span class="fpx">$'+px.toFixed(2)+'</span>';
+    if(dp!==null){
+      h += '<span class="fdp '+(dp>=0?'up':'dn')+'">'+(dp>=0?'+':'')+dp.toFixed(2)+'%</span>';
+    }
+  }
+  /* 用報價自己帶的時間戳, 不是「今天」——盤中跑跟收盤後跑不一樣, 標錯會誤導 */
+  var _n = (q && q.t) ? new Date(q.t*1000) : new Date();
+  h += '<span class="fday">報價 '+(_n.getMonth()+1)+'/'+_n.getDate()+'</span>';
 
   /* ── 下次財報日期 ── 她自己的規則: 兩三週內有財報就連縮小部位都不做 ── */
   var nd=null, dleft=null;
@@ -998,8 +1015,12 @@ async function loadFund(){
     try{ sup=await api('/stock/earnings?symbol='+sym); }
     catch(e){ bad.push('財報超預期（'+e.message+'）'); }
     await new Promise(function(r){setTimeout(r,350);});
+    var q=null;
+    try{ q=await api('/quote?symbol='+sym); }
+    catch(e){ bad.push('報價（'+e.message+'）'); }
+    await new Promise(function(r){setTimeout(r,350);});
 
-    var R = fundCard(sym, m, cal, rec, sup);
+    var R = fundCard(sym, m, cal, rec, sup, q);
     var one = R.html;
     if(bad.length){
       one = one.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
