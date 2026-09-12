@@ -54,6 +54,18 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mc.up{color:#22543d;background:rgba(34,84,61,0.12);}
 .mc.dn{color:#9b2c2c;background:rgba(155,44,44,0.12);}
 .mp{font-size:11px;color:#4a5568;margin-bottom:8px;}
+.tset{margin:0;border-bottom:1px solid #c8d0dc;background:#f0f4f8;}
+.tset summary{cursor:pointer;padding:8px 16px;font-size:11.5px;color:#4a5568;list-style:none;}
+.tset summary::-webkit-details-marker{display:none}
+.tset .tbody{padding:0 16px 12px;font-size:11.5px;color:#4a5568;line-height:1.8;}
+.tset input{width:100%;background:#fff;border:1px solid #c8d0dc;border-radius:8px;
+  padding:8px 12px;color:#1a202c;font-size:12px;outline:none;box-sizing:border-box;margin-top:5px;}
+.tset input:focus{border-color:#0066bb;}
+.quota{margin-top:7px;font-variant-numeric:tabular-nums;}
+.quota b{color:#1a202c}
+.qbar{height:5px;background:#dde4ec;border-radius:3px;overflow:hidden;margin-top:4px;}
+.qfill{height:100%;background:#48bb78;}
+.qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .trmsg{margin:0 16px 10px;padding:10px 13px;border-radius:9px;font-size:13px;line-height:1.75;}
 .trmsg.ok{background:#f0fff4;border:1px solid #9ae6b4;color:#22543d;}
 .trmsg.part{background:#fffbeb;border:1px solid #e0c986;color:#7d5300;}
@@ -97,7 +109,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.2</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.3</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -106,6 +118,20 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <button class="tab" onclick="go('radar')" id="tab-radar">⚡ 異動雷達</button>
   <button class="tab" onclick="go('fund')" id="tab-fund">📊 財報體檢</button>
 </div>
+<details class="tset" id="tset">
+  <summary>⚙ 翻譯設定與今日額度</summary>
+  <div class="tbody">
+    翻譯有兩層：<b>先打 Google</b>（品質好，但那是未公開介面，打太多會被整個擋掉）；
+    <b>被擋就自動改用 MyMemory</b>（正當的公開 API，但翻譯比較生硬）。
+    <div style="margin-top:8px">
+      MyMemory 免費額度：<b>匿名每天 5000 字</b>。
+      填一個有效 email 可以提高到 <b>50000 字</b>（email 只送給 MyMemory，不會存到別的地方）。
+      <input id="mmMail" type="text" placeholder="你的 email（可留空）" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="quota" id="qtxt"></div>
+    <div class="qbar"><div class="qfill" id="qfill" style="width:0%"></div></div>
+  </div>
+</details>
 <div class="panel active" id="panel-market">
   <div class="ph">
     <div class="ph-left"><div class="pt">TODAY'S MARKET</div><div class="pm" id="mm">載入中…</div></div>
@@ -201,38 +227,111 @@ function syms(){var v=document.getElementById('wi').value;
   return v.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
 function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')loadMarket();if(t==='radar')loadRadar();}
 
-/* ═══ 翻譯失敗必須【回報失敗】════════════════════════════════
-   Jasmine 9/11 發現: 異動雷達按鈕寫「✅ 已翻譯」, 實際上一個字都沒翻。
-   原因就在這個函式的舊版 —— 出錯時 return '' (空字串),
-   呼叫端的 if(zhTitle && ...) 遇到空字串直接跳過, 不報錯、不中斷,
-   跑完照樣蓋上「✅ 已翻譯」。【畫面在說謊】, 那比沒有功能更糟。
-   → 改成失敗回 null, 呼叫端才分得出「翻譯失敗」與「翻出來一樣」。
-   ⚠ 這個 Google endpoint 是未公開的, 打太快會被擋 ——
-     所以加上退避重試, 並記錄連續失敗次數讓呼叫端自動放慢。       */
-var TR_STREAK = 0;   /* 連續失敗幾次 */
+/* ═══ 翻譯：兩層 ══════════════════════════════════════════════
+   Jasmine 9/11 晚上實測: Google 那個未公開介面【整個 IP 被封】——
+   下午 4 點持倉還翻得動, 晚上 10 點三個分頁 53 則全掛,
+   退避重試三次也沒用。它不能當正式功能的地基:
+   擋了不會告訴你要等多久, 也查不到額度。
+   → 改成兩層:
+       第一層 Google     —— 品質好, 成功就用
+       第二層 MyMemory   —— 正當的公開 API, Google 掛了自動接手
+   ⚠ 再加【當天額度保護】: MyMemory 匿名每天 5000 字(填 email 可到 50000)。
+     把用掉的字數記在 localStorage, 接近上限就停下來講清楚,
+     不要像今天這樣把自己打到被封還不知道發生什麼事。          */
+
+var TR_STREAK=0;          /* Google 連續失敗次數 */
+var TR_GOOGLE_DEAD=false; /* 這一輪已經確定 Google 不通, 不再浪費請求 */
+var TR_VIA={google:0, mymemory:0};
 
 function trSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 
-async function tr(text){
-  if(!text) return null;
-  var q = text.slice(0,400);
-  for(var attempt=0; attempt<3; attempt++){
+/* ── MyMemory 當天用量 ───────────────────────────────────── */
+function mmMail(){
+  var el=document.getElementById('mmMail');
+  var v=el?el.value.trim():'';
+  if(!v){ try{ v=localStorage.getItem('mm_mail')||''; }catch(e){} }
+  return (v.indexOf('@')>0) ? v : '';
+}
+function mmLimit(){ return mmMail() ? 50000 : 5000; }
+function mmToday(){ return new Date().toISOString().split('T')[0]; }
+function mmUsed(){
+  try{
+    var raw=localStorage.getItem('mm_usage');
+    if(!raw) return 0;
+    var o=JSON.parse(raw);
+    return (o.d===mmToday()) ? (o.n||0) : 0;   /* 換日自動歸零 */
+  }catch(e){ return 0; }
+}
+function mmAdd(n){
+  try{ localStorage.setItem('mm_usage',
+       JSON.stringify({d:mmToday(), n:mmUsed()+n})); }catch(e){}
+  paintQuota();
+}
+function paintQuota(){
+  var t=document.getElementById('qtxt'), f=document.getElementById('qfill');
+  if(!t||!f) return;
+  var used=mmUsed(), lim=mmLimit(), pct=Math.min(100, Math.round(used/lim*100));
+  t.innerHTML='今天 MyMemory 已用 <b>'+used+'</b> / '+lim+' 字（'+pct+'%）'
+            + (mmMail()?'　·　已填 email，額度 50000':'　·　匿名額度 5000');
+  f.style.width=pct+'%';
+  f.className='qfill'+(pct>=100?' full':(pct>=80?' warn':''));
+}
+
+/* ── 第一層：Google ──────────────────────────────────────── */
+async function trGoogle(q){
+  for(var attempt=0; attempt<2; attempt++){
     try{
       var r=await fetch('https://translate.googleapis.com/translate_a/single'
             +'?client=gtx&sl=en&tl=zh-TW&dt=t&q='+encodeURIComponent(q));
       if(!r.ok) throw new Error('HTTP '+r.status);
       var d=await r.json();
-      if(!d || !d[0] || !d[0].length) throw new Error('回傳格式不符');
-      var outText=d[0].map(function(x){return x[0];}).join('');
-      if(!outText) throw new Error('翻出來是空的');
+      if(!d||!d[0]||!d[0].length) throw new Error('格式不符');
+      var out=d[0].map(function(x){return x[0];}).join('');
+      if(!out) throw new Error('空');
       TR_STREAK=0;
-      return outText;
+      return out;
     }catch(e){
       TR_STREAK++;
-      /* 600ms → 2.4s → 放棄。被擋住時硬打只會被擋更久 */
-      if(attempt<2) await trSleep(600*(attempt+1)*(attempt+1));
+      if(attempt<1) await trSleep(500);
     }
   }
+  /* 連續 4 次失敗就當它整個掛了, 這一輪不再打 —— 省時間也避免打更兇 */
+  if(TR_STREAK>=4) TR_GOOGLE_DEAD=true;
+  return null;
+}
+
+/* ── 第二層：MyMemory ────────────────────────────────────── */
+async function trMyMemory(q){
+  if(mmUsed()+q.length > mmLimit()) return 'QUOTA';
+  try{
+    var u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)
+         +'&langpair=en|zh-TW';
+    var mail=mmMail();
+    if(mail) u+='&de='+encodeURIComponent(mail);
+    var r=await fetch(u);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    if(!d||!d.responseData||!d.responseData.translatedText) throw new Error('格式不符');
+    var out=d.responseData.translatedText;
+    /* 額度用完時它會把警告塞在譯文裡, 那不是翻譯結果 */
+    if(/MYMEMORY WARNING|QUOTA/i.test(out)) return 'QUOTA';
+    mmAdd(q.length);
+    return out;
+  }catch(e){ return null; }
+}
+
+/* ── 對外：先 Google, 掛了換 MyMemory ─────────────────────── */
+async function tr(text){
+  if(!text) return null;
+  var q=text.slice(0,400);
+
+  if(!TR_GOOGLE_DEAD){
+    var g=await trGoogle(q);
+    if(g!==null){ TR_VIA.google++; return {t:g, via:'google'}; }
+  }
+  var m=await trMyMemory(q);
+  if(m==='QUOTA') return {quota:true};
+  if(m!==null){ TR_VIA.mymemory++; return {t:m, via:'mymemory'}; }
   return null;
 }
 
@@ -267,32 +366,32 @@ async function translatePanel(panelName){
   var total=cards.length;
   if(!total){ btn.disabled=false; btn.textContent='🌐 翻譯標題'; return; }
 
-  TR_STREAK=0;
-  var okN=0, failN=0, skipN=0;
+  TR_STREAK=0; TR_GOOGLE_DEAD=false;
+  TR_VIA={google:0, mymemory:0};
+  var okN=0, failN=0, quotaStop=false;
 
   for(var i=0;i<cards.length;i++){
     var c=cards[i];
     var enEl=c.querySelector('.title');
     var zhEl=c.querySelector('.zh-title');
 
-    /* 已經翻好的跳過 —— 再按一次只補漏的 */
+    /* 已經翻好的跳過 —— 再按一次只補漏的, 也不重複吃額度 */
     if(zhEl && zhEl.style.display==='block' && zhEl.textContent){
-      skipN++; okN++;
-      btn.textContent='⏳ '+(i+1)+'/'+total;
-      continue;
+      okN++; btn.textContent='⏳ '+(i+1)+'/'+total; continue;
     }
 
     var titleOK=false;
     if(enEl&&zhEl){
       var enText=enEl.textContent;
       if(enText&&enText.trim()!==''){
-        var zhTitle=await tr(enText);
-        if(zhTitle===null){
-          failN++;                     /* 真的失敗, 不再假裝沒事 */
+        var R=await tr(enText);
+        if(R && R.quota){ quotaStop=true; break; }
+        if(R===null){
+          failN++;
         }else{
           titleOK=true; okN++;
-          if(zhTitle!==enText){
-            zhEl.textContent=zhTitle;
+          if(R.t!==enText){
+            zhEl.textContent=R.t;
             zhEl.href=enEl.href;
             zhEl.style.display='block';
             zhEl.style.color='#1a202c';
@@ -301,19 +400,20 @@ async function translatePanel(panelName){
             enEl.style.fontSize='12px';
           }
         }
-      }else{ skipN++; }
+      }
     }
 
-    /* 標題都翻不動就別浪費一次請求去翻摘要 */
+    /* 標題都翻不動就別浪費一次請求(和額度)去翻摘要 */
     if(titleOK){
       var sumEl=c.querySelector('.summary');
       var zhSumEl=c.querySelector('.zh-summary');
       if(sumEl&&zhSumEl){
         var sumText=sumEl.textContent;
         if(sumText&&sumText.trim()!==''){
-          var zhSum=await tr(sumText);
-          if(zhSum!==null && zhSum!==sumText){
-            zhSumEl.textContent=zhSum;
+          var S=await tr(sumText);
+          if(S && S.quota){ quotaStop=true; break; }
+          if(S && S.t && S.t!==sumText){
+            zhSumEl.textContent=S.t;
             zhSumEl.style.display='block';
             sumEl.style.display='none';
           }
@@ -322,27 +422,37 @@ async function translatePanel(panelName){
     }
 
     btn.textContent='⏳ '+(i+1)+'/'+total;
-    /* 連續失敗代表被擋了, 自動放慢 —— 硬打只會被擋更久 */
-    await trSleep(TR_STREAK>=3 ? 1500 : 200);
+    await trSleep(TR_GOOGLE_DEAD ? 400 : (TR_STREAK>=3 ? 1200 : 200));
   }
 
   btn.disabled=false;
+  paintQuota();
 
-  if(failN===0){
+  var via=[];
+  if(TR_VIA.google)   via.push('Google '+TR_VIA.google+' 則');
+  if(TR_VIA.mymemory) via.push('MyMemory '+TR_VIA.mymemory+' 則');
+  var viaTxt = via.length ? '（'+via.join('、')+'）' : '';
+
+  if(quotaStop){
+    btn.textContent='⚠ 額度用完 '+okN+'/'+total;
+    trBanner(panelName,'part',
+      '⚠ <b>MyMemory 今天的額度用完了</b>，翻到第 <b>'+okN+'/'+total+'</b> 則就停住 '+viaTxt+'。<br>'
+      +'後面那些顯示的是<b>原文</b>。額度每天會自己歸零；'
+      +'想今天就繼續，到上面「⚙ 翻譯設定」填一個 email，額度從 5000 提高到 50000 字。');
+  }else if(failN===0){
     btn.textContent='✅ 已翻譯 '+okN+'/'+total;
-    trBanner(panelName,'ok','✅ <b>'+okN+'/'+total+'</b> 則全部翻好了。');
+    trBanner(panelName,'ok','✅ <b>'+okN+'/'+total+'</b> 則全部翻好了 '+viaTxt+'。');
   }else if(okN===0){
     btn.textContent='⚠ 翻譯失敗';
     trBanner(panelName,'none',
       '⚠ <b>一則都沒翻成功</b>（'+total+' 則全失敗）—— 下面看到的都還是原文。<br>'
-      +'翻譯走的是 Google 未公開的介面，短時間打太多次會被擋。'
-      +'<b>等一兩分鐘再按一次</b>，已翻好的會跳過，只補沒翻到的。');
+      +'<b>兩層都不通</b>：Google 那個未公開介面被擋，MyMemory 也沒回應。'
+      +'網路沒問題的話，等一段時間再按一次。');
   }else{
     btn.textContent='⚠ 只翻了 '+okN+'/'+total;
     trBanner(panelName,'part',
-      '⚠ <b>'+okN+'/'+total+'</b> 則翻好，<b>'+failN+'</b> 則沒翻到 —— '
-      +'沒翻到的那幾則下面顯示的是<b>原文</b>，不是翻譯後的。<br>'
-      +'再按一次會只補那幾則。');
+      '⚠ <b>'+okN+'/'+total+'</b> 則翻好 '+viaTxt+'，<b>'+failN+'</b> 則沒翻到 —— '
+      +'沒翻到的那幾則下面顯示的是<b>原文</b>。<br>再按一次會只補那幾則。');
   }
 }
 
@@ -681,6 +791,18 @@ async function loadFund(){
   }catch(e){
     document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL';
   }
+})();
+
+/* 記住 email, 並在開頁時就把今天的額度畫出來 */
+(function(){
+  var el=document.getElementById('mmMail');
+  if(!el) return;
+  try{ el.value=localStorage.getItem('mm_mail')||''; }catch(e){}
+  el.addEventListener('change',function(){
+    try{ localStorage.setItem('mm_mail', el.value.trim()); }catch(e){}
+    paintQuota();
+  });
+  paintQuota();
 })();
 
 loadMarket();
