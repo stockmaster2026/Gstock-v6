@@ -72,6 +72,13 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .pf-e{font-size:11px;color:#0066bb;cursor:pointer;text-decoration:none;}
 .pf-r{font-size:13px;line-height:1.8;color:#2d3748;margin:3px 0;}
 .pf-r b{color:#1a202c;}
+.surp table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+.surp th{font-size:11px;color:#718096;font-weight:400;text-align:right;padding:3px 0 5px;}
+.surp th:first-child{text-align:left;}
+.surp td{padding:5px 0;text-align:right;font-variant-numeric:tabular-nums;border-top:1px solid #edf2f7;}
+.surp td:first-child{text-align:left;color:#2d3748;}
+.beat{color:#22543d;font-weight:700;} .miss{color:#9b2c2c;font-weight:700;}
+.pf-risk{margin-top:6px;padding-top:7px;border-top:1px dashed #dde4ec;color:#742a2a;}
 .pf-k{color:#718096;font-size:11.5px;margin-right:5px;}
 .pf-none{font-size:12.5px;color:#9b2c2c;line-height:1.7;}
 .pf-ed textarea{width:100%;box-sizing:border-box;border:1px solid #c8d0dc;border-radius:7px;
@@ -125,7 +132,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.4</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v2.5</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -626,51 +633,78 @@ async function loadRadar(){
 var PROFILE_DEFAULT = {
   MU:{ biz:'DRAM、NAND 快閃記憶體，以及 AI 晶片要用的 HBM 高頻寬記憶體。',
        cust:'輝達等 AI 晶片廠（HBM）、伺服器與手機 OEM。',
-       story:'2026 記憶體大缺貨。三大廠把產能大量轉去做 HBM，一般 DRAM 供給被排擠，價格暴漲；HBM 產能已賣到 2027。毛利率從年度的 39.8% 拉到近 12 個月的 72.6%。' },
+       story:'2026 記憶體大缺貨。三大廠把產能大量轉去做 HBM，一般 DRAM 供給被排擠，價格暴漲；HBM 產能已賣到 2027。毛利率從年度的 39.8% 拉到近 12 個月的 72.6%。',
+       risk:'缺貨行情的反面是週期。供給一鬆、價格就崩 —— 這是記憶體幾十年的老劇本，只是這次被 HBM 拖長了。' },
 
   SNDK:{ biz:'NAND 快閃記憶體與 SSD 固態硬碟（2025 年從 Western Digital 分拆出來）。',
        cust:'企業級／伺服器 SSD 客戶、消費性電子廠。',
-       story:'與 Kioxia 的合資廠 2026 年產能全部售罄。AI 資料中心要存訓練資料與模型權重，NAND 跟著缺，單位售價一季翻倍以上。' },
+       story:'與 Kioxia 的合資廠 2026 年產能全部售罄。AI 資料中心要存訓練資料與模型權重，NAND 跟著缺，單位售價一季翻倍以上。',
+       risk:'跟 MU 同一個風險：NAND 價格週期。而且它比 MU 更純 —— 沒有 HBM 那條腿撐著。' },
 
   COHR:{ biz:'光通訊元件與模組、工業雷射、化合物半導體材料（II-VI 併購 Coherent 後沿用此名）。',
        cust:'雲端業者、光模組廠與電信設備商，另有工業與車用客戶。',
-       story:'輝達在 OFC 2026 前對 Lumentum 與 Coherent 合計策略投資約 40 億美元，被視為光互連供應鏈的背書。題材是 800G／1.6T 與共同封裝光學（CPO）。' },
+       story:'輝達在 OFC 2026 前對 Lumentum 與 Coherent 合計策略投資約 40 億美元，被視為光互連供應鏈的背書。題材是 800G／1.6T 與共同封裝光學（CPO）。',
+       risk:'雲端業者資本支出一縮就直接打到它。另外工業雷射那一塊跟景氣連動，會稀釋 AI 的成長。' },
 
   LITE:{ biz:'光通訊雷射晶片與光模組，以及工業用雷射。',
        cust:'雲端業者與光模組廠。',
-       story:'同樣拿到輝達那筆 40 億投資。AI 叢集規模變大，光互連從 800G 往 1.6T 走，雷射與光引擎需求跟著拉。' },
+       story:'同樣拿到輝達那筆 40 億投資。AI 叢集規模變大，光互連從 800G 往 1.6T 走，雷射與光引擎需求跟著拉。',
+       risk:'客戶集中在少數幾家雲端與模組廠。輝達的投資是背書，不是保證訂單。' },
 
   AAOI:{ biz:'光通訊收發模組與有線電視網通產品，從雷射晶片做到模組的垂直整合。',
        cust:'超大規模雲端業者（公司財報不具名）、有線電視系統商。',
-       story:'2026 年拿到單一長期大客戶 1.6T 逾 2 億美元、800G 逾 1.24 億美元訂單。德州 Sugar Land 新廠加台灣擴產，目標年底 800G 與 1.6T 合計月產能超過 50 萬顆。' },
+       story:'2026 年拿到單一長期大客戶 1.6T 逾 2 億美元、800G 逾 1.24 億美元訂單。德州 Sugar Land 新廠加台灣擴產，目標年底 800G 與 1.6T 合計月產能超過 50 萬顆。',
+       risk:'【客戶高度集中】—— 那筆 1.6T 訂單的說法是「讓這個客戶回到 10% 以上」，代表單一客戶就佔一成營收以上。客戶改配置，故事就斷。' },
 
   AXTI:{ biz:'化合物半導體【基板】—— 磷化銦（InP）、砷化鎵、鍺晶圓。不做晶片，做別人長晶片用的底材。',
        cust:'光通訊雷射與模組廠（COHR、LITE 那一類）、射頻與感測元件廠。中國營收占比高。',
-       story:'AI 光模組的雷射要長在 InP 基板上，需求跟著 800G／1.6T 一起拉。公司在擴 6 吋 InP 產能。' },
+       story:'AI 光模組的雷射要長在 InP 基板上，需求跟著 800G／1.6T 一起拉。公司在擴 6 吋 InP 產能。',
+       risk:'它在光模組的上游第二層，訂單反應比 COHR／LITE 更慢也更放大。中國營收占比高，地緣政策是額外變數。' },
 
   GLW:{ biz:'特殊玻璃與陶瓷 —— 光纖光纜、手機蓋板玻璃（大猩猩玻璃）、顯示器玻璃、車用觸媒載體。',
        cust:'電信商與資料中心（光纖）、Apple 等手機廠、面板廠。',
-       story:'2026 年與 Verizon 簽下多年期數十億美元光纜合約。AI 資料中心內部與資料中心互連（DCI）都要大量光纜。' },
+       story:'2026 年與 Verizon 簽下多年期數十億美元光纜合約。AI 資料中心內部與資料中心互連（DCI）都要大量光纜。',
+       risk:'光纖只是它的一部分，手機蓋板與顯示器玻璃跟著消費性電子景氣走，會稀釋 AI 那條線的成長。' },
 
   MRVL:{ biz:'資料中心客製化晶片（ASIC／XPU）、光通訊 DSP、交換器與儲存控制晶片。',
        cust:'雲端業者的自研晶片專案、網通設備商。',
-       story:'客製化 AI 加速器與 1.6T 光互連 DSP 出貨放量。它坐在交換器晶片與光電介面那一層，不直接做光模組。' },
+       story:'客製化 AI 加速器與 1.6T 光互連 DSP 出貨放量。它坐在交換器晶片與光電介面那一層，不直接做光模組。',
+       risk:'客製化晶片專案綁在少數幾個雲端客戶身上，一個專案延後或轉單，影響是整季的。' },
 
   BE:{ biz:'固態氧化物燃料電池（Bloom Energy Server）—— 燒天然氣直接發電，不經燃燒，也做電解產氫。',
        cust:'【Oracle】是最大客戶：主約最高 2.8GW，已簽約 1.2GW 部署中。另有 Intel、資料中心與半導體廠。',
-       story:'AI 資料中心等不到電網接電，燃料電池是最快的替代方案 —— 給 Oracle 的一個案場 55 天就供上電。2026 年 9 月納入 S&P 500。' },
+       story:'AI 資料中心等不到電網接電，燃料電池是最快的替代方案 —— 給 Oracle 的一個案場 55 天就供上電。2026 年 9 月納入 S&P 500。',
+       risk:'【Oracle 佔比極高】—— Oracle 的資本支出一縮就直接打到它。而且燃料電池燒天然氣，天然氣價格與環評都是變數。' },
 
   RKLB:{ biz:'小型運載火箭 Electron 的發射服務，以及衛星元件與整星製造（Space Systems 佔營收大半）。',
        cust:'美國太空軍與 NASA、商業衛星星系業者。',
-       story:'中型火箭 Neutron 的首飛進度是主要變數；衛星製造訂單則是目前的營收主力。' },
+       story:'中型火箭 Neutron 的首飛進度是主要變數；衛星製造訂單則是目前的營收主力。',
+       risk:'Neutron 首飛是二元事件 —— 成功與失敗的股價反應完全不同。發射業務本身毛利低，獲利靠衛星製造。' },
 
   NOK:{ biz:'電信網路設備 —— 行動基地台（RAN）、光傳輸、IP 路由，外加規模龐大的專利授權收入。',
        cust:'全球電信商（T-Mobile 等），近年增加資料中心網路客戶。',
-       story:'輝達投資 10 億美元（每股 6.01）合作開發 AI-RAN，把 AI 運算放進基地台；T-Mobile 從 2026 年開始實地測試。' },
+       story:'輝達投資 10 億美元（每股 6.01）合作開發 AI-RAN，把 AI 運算放進基地台；T-Mobile 從 2026 年開始實地測試。',
+       risk:'電信商的資本支出週期很長很慢，AI-RAN 目前還在測試階段，離放量有距離。專利授權收入穩定但不成長。' },
 
   INTC:{ biz:'x86 處理器、資料中心晶片，以及對外接單的晶圓代工事業 Intel Foundry。',
        cust:'PC 與伺服器 OEM；代工客戶陸續公布中。',
-       story:'輝達投資 50 億美元、美國政府入股。18A 製程產出比目標高約 25%，FY2026 第二季營收年增 25%，資料中心部門年增 59%。' }
+       story:'輝達投資 50 億美元、美國政府入股。18A 製程產出比目標高約 25%，FY2026 第二季營收年增 25%，資料中心部門年增 59%。',
+       risk:'代工要真正成功，關鍵是有沒有拿到【外部大客戶】的量產訂單，不是製程良率數字。政府持股是雙面刃。' },
+
+  AEHR:{ biz:'晶圓級燒機與測試設備（wafer-level burn-in）—— 在切割前就把整片晶圓做高溫老化測試，篩掉早夭的晶片。',
+       cust:'碳化矽功率元件廠為主，近年往 AI 晶片與矽光子測試擴。',
+       story:'客戶結構從車用碳化矽轉向 AI 相關測試需求。',
+       risk:'⚠ 這一檔我這輪沒有深入查證，上面兩行是產業常識、第三行偏籠統 —— 要準確的請叫我單獨重查。營收規模小，單一客戶訂單就能左右整季。' },
+
+  AMKR:{ biz:'半導體封裝與測試代工（OSAT）—— 晶圓廠做完晶片之後的封裝、測試那一段。',
+       cust:'蘋果供應鏈、高通等 IC 設計廠，以及先進封裝客戶。',
+       story:'先進封裝需求跟著 AI 晶片一起拉。',
+       risk:'⚠ 這一檔我這輪沒有深入查證 —— 要準確的請叫我單獨重查。OSAT 是代工，毛利率結構性偏低，價格談判權在客戶手上。' },
+
+  DELL:{ biz:'伺服器、儲存設備與 PC。AI 伺服器是近年的成長主力。',
+       cust:'企業客戶與雲端業者。',
+       story:'AI 伺服器出貨放量。',
+       risk:'⚠ 這一檔我這輪沒有深入查證 —— 要準確的請叫我單獨重查。AI 伺服器毛利率遠低於晶片廠，營收大不等於獲利大；PC 那一塊還受記憶體漲價擠壓。' }
 };
 
 function profLoad(){
@@ -702,7 +736,8 @@ function profBlock(sym){
   }else{
     h += '<div class="pf-r"><span class="pf-k">在做什麼</span>'+profEsc(p.biz)+'</div>'
        + '<div class="pf-r"><span class="pf-k">主要客戶</span>'+profEsc(p.cust)+'</div>'
-       + '<div class="pf-r"><span class="pf-k">這一波的題材</span><b>'+profEsc(p.story)+'</b></div>';
+       + '<div class="pf-r"><span class="pf-k">這一波的題材</span><b>'+profEsc(p.story)+'</b></div>'
+       + (p.risk ? '<div class="pf-r pf-risk"><span class="pf-k">什麼會打破它</span>'+profEsc(p.risk)+'</div>' : '');
   }
   return h+'</div>';
 }
@@ -710,12 +745,14 @@ function profBlock(sym){
 function profEdit(sym){
   var box=document.getElementById('pf-'+sym);
   if(!box) return;
-  var p=profLoad()[sym]||{biz:'',cust:'',story:''};
+  var p=profLoad()[sym]||{biz:'',cust:'',story:'',risk:''};
   box.innerHTML='<div class="pf-ed">'
     + '<div class="lbl">在做什麼</div><textarea id="pfb-'+sym+'">'+profEsc(p.biz)+'</textarea>'
     + '<div class="lbl">主要客戶</div><textarea id="pfc-'+sym+'">'+profEsc(p.cust)+'</textarea>'
     + '<div class="lbl">這一波的題材（為什麼現在會動）</div>'
     + '<textarea id="pfs-'+sym+'">'+profEsc(p.story)+'</textarea>'
+    + '<div class="lbl">什麼會打破它（賣出的理由會從哪裡來）</div>'
+    + '<textarea id="pfr-'+sym+'">'+profEsc(p.risk)+'</textarea>'
     + '<button class="pf-btn pf-save" onclick="profDone(\''+sym+'\',1)">儲存</button>'
     + '<button class="pf-btn pf-cancel" onclick="profDone(\''+sym+'\',0)">取消</button>'
     + '</div>';
@@ -726,7 +763,8 @@ function profDone(sym, save){
     profSave(sym, {
       biz:  document.getElementById('pfb-'+sym).value.trim(),
       cust: document.getElementById('pfc-'+sym).value.trim(),
-      story:document.getElementById('pfs-'+sym).value.trim()
+      story:document.getElementById('pfs-'+sym).value.trim(),
+      risk: document.getElementById('pfr-'+sym).value.trim()
     });
   }
   var box=document.getElementById('pf-'+sym);
@@ -761,7 +799,7 @@ function fRow(label, val, thr, unit){
        + '<span class="fthr">門檻 '+thr+(unit||'%')+'</span></div>';
 }
 
-function fundCard(sym, m, cal, rec){
+function fundCard(sym, m, cal, rec, sup){
   var card_state='mix', card_days=null;
   /* 速寫放在最上面: 先知道這家公司是誰, 再看下面的數字 */
   var h = profBlock(sym) + '<div class="fcard"><div class="fhead"><span class="fsym">'+sym+'</span>';
@@ -846,6 +884,48 @@ function fundCard(sym, m, cal, rec){
     card_state = (up.length && !dn.length) ? 'up' : (dn.length && !up.length ? 'dn' : 'mix');
   }
 
+  /* ── 財報超預期紀錄 ──────────────────────────────────────────
+     Minervini 的 E 不只看成長率, 更看【有沒有一直贏過預期】——
+     他認為 earnings surprise 有持續性, 超預期會把法人吸進來。
+     成長率是過去式; 連續超預期代表管理層還在藏。
+     /stock/earnings 在 probe 第一輪就驗過 HTTP 200 免費層有給,
+     但前幾版完全沒用到它。                                        */
+  h += '<div class="fsect">財報超預期紀錄（近幾季實際 vs 預估）</div>';
+  if(Array.isArray(sup) && sup.length){
+    var rows=sup.slice(0,4), beat=0, cnt=0;
+    var tb='<div class="surp"><table><tr><th>季別</th><th>實際</th><th>預估</th><th>差距</th></tr>';
+    for(var si=0; si<rows.length; si++){
+      var e=rows[si];
+      var a=num(e.actual), q=num(e.estimate);
+      var cls='', diff='&mdash;';
+      if(a!==null && q!==null && q!==0){
+        var pc=(a-q)/Math.abs(q)*100;
+        cnt++; if(a>=q) beat++;
+        cls=(a>=q)?'beat':'miss';
+        diff=(pc>0?'+':'')+pc.toFixed(1)+'%';
+      }
+      tb += '<tr><td>'+(e.period||('Q'+e.quarter+' '+e.year))+'</td>'
+          + '<td>'+(a===null?'&mdash;':a)+'</td>'
+          + '<td>'+(q===null?'&mdash;':q)+'</td>'
+          + '<td class="'+cls+'">'+diff+'</td></tr>';
+    }
+    h += tb+'</table></div>';
+    if(cnt){
+      if(beat===cnt){
+        h += '<div class="fnote faccel"><b>近 '+cnt+' 季 '+beat+'/'+cnt+' 都贏過預估</b> &mdash; '
+           + 'Minervini 看的就是這個持續性：一直超預期，代表管理層還在藏，法人會被吸進來。</div>';
+      }else if(beat===0){
+        h += '<div class="fnote fwarn"><b>近 '+cnt+' 季一次都沒贏過預估</b> &mdash; '
+           + '成長率再漂亮，沒有超預期就很難吸引新的法人買盤。</div>';
+      }else{
+        h += '<div class="fnote"><b>近 '+cnt+' 季贏了 '+beat+' 次</b>　·　'
+           + '⚠ 有輸有贏，這一項不算加分也不算扣分。</div>';
+      }
+    }
+  }else{
+    h += '<div class="frow"><span class="fnone">抓不到財報實際 vs 預估的紀錄</span></div>';
+  }
+
   /* ── 分析師風向 ── 免費層只有家數, 但有歷史 → 可以算變化 ── */
   h += '<div class="fsect">分析師家數（免費層沒有目標價）</div>';
   if(Array.isArray(rec) && rec.length){
@@ -914,8 +994,12 @@ async function loadFund(){
     try{ rec=await api('/stock/recommendation?symbol='+sym); }
     catch(e){ bad.push('分析師（'+e.message+'）'); }
     await new Promise(function(r){setTimeout(r,350);});
+    var sup=null;
+    try{ sup=await api('/stock/earnings?symbol='+sym); }
+    catch(e){ bad.push('財報超預期（'+e.message+'）'); }
+    await new Promise(function(r){setTimeout(r,350);});
 
-    var R = fundCard(sym, m, cal, rec);
+    var R = fundCard(sym, m, cal, rec, sup);
     var one = R.html;
     if(bad.length){
       one = one.replace(/<\/div>$/, '<div class="fnote fwarn">⚠ 這幾項沒抓到：'
@@ -963,9 +1047,9 @@ async function loadFund(){
     var sk=localStorage.getItem(KEYSTORE);
     if(sk) document.getElementById('fkey').value=sk;
     var ss=localStorage.getItem('fund_syms');
-    document.getElementById('fi').value = ss || 'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC';
+    document.getElementById('fi').value = ss || 'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC, AEHR, AMKR, DELL';
   }catch(e){
-    document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC';
+    document.getElementById('fi').value='MU, BE, COHR, GLW, MRVL, AAOI, AXTI, LITE, SNDK, RKLB, NOK, INTC, AEHR, AMKR, DELL';
   }
 })();
 
