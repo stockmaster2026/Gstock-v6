@@ -68,6 +68,27 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+.mkt{margin:12px 16px 0;padding:0;border:1px solid #c8d0dc;border-radius:14px;
+  overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.mkt-h{padding:13px 16px 11px;background:#f0f4f8;border-bottom:1px solid #c8d0dc;}
+.mkt-h .t{font-size:13px;font-weight:700;color:#12385e;letter-spacing:1.2px;}
+.mkt-h .s{font-size:11.5px;color:#4a5568;margin-top:3px;line-height:1.7;}
+.mkt-v{padding:14px 16px;font-size:15px;font-weight:700;line-height:1.75;}
+.mkt-v.g{background:#f0fff4;color:#22543d;}
+.mkt-v.y{background:#fffbeb;color:#7d5300;}
+.mkt-v.r{background:#fff5f5;color:#9b2c2c;}
+.mkt-v .sub{font-size:12.5px;font-weight:400;margin-top:6px;line-height:1.85;}
+.mkt-t{width:100%;border-collapse:collapse;font-size:13px;}
+.mkt-t th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;
+  padding:8px 12px;background:#f7fafc;border-bottom:1px solid #edf2f7;white-space:nowrap;}
+.mkt-t th:first-child{text-align:left;}
+.mkt-t td{padding:9px 12px;text-align:right;border-bottom:1px solid #edf2f7;
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+.mkt-t td:first-child{text-align:left;}
+.mkt-t .nm{font-weight:700;color:#1a202c;}
+.mkt-t .nm span{font-weight:400;color:#718096;font-size:11px;margin-left:5px;}
+.mkt-ok{color:#22543d;font-weight:700;} .mkt-no{color:#9b2c2c;font-weight:700;}
+.mkt-f{padding:10px 14px;font-size:11.5px;color:#4a5568;line-height:1.8;background:#f7fafc;}
 .sec{margin:12px 16px 0;padding:15px 16px 16px;
   background:linear-gradient(180deg,#e8f0fa 0%,#dfeaf7 100%);
   border:1px solid #b6cce5;border-radius:14px;
@@ -177,7 +198,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.6</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.7</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -208,6 +229,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
       <button class="rb" id="rm" onclick="loadMarket()">↻</button>
     </div>
   </div>
+  <div id="mkt"></div>
   <div class="nl" id="ml"><span class="sp"></span></div>
 </div>
 <div class="panel" id="panel-watchlist">
@@ -338,6 +360,7 @@ function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove
   el.value = sv || DW_DEFAULT.join(', ');
 })();
 
+loadMkt();
 loadMarket();if(t==='radar')loadRadar();}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
@@ -583,6 +606,119 @@ function card(n){
       :'')
     +(tks?'<div class="trow">'+tks+'</div>':'')
     +'</div>';
+}
+
+
+/* ═══ 大盤方向 ══════════════════════════════════════════════
+   Jasmine 9/15:「冠軍課程好像說指數不好就不要買入」—— 對, 那是
+   O'Neil CANSLIM 的 【M = Market Direction】: 四檔股票有三檔跟著
+   大盤走, 所以大盤轉空的時候, 再漂亮的個股型態也會失敗。
+   Minervini 講得更直接: 空頭市場不進場。
+   這是她整套方法裡【唯一還完全沒做】的一個字母。
+   ⚠ 只回答三件事, 不預測: 在不在均線上方、離高點多遠、趨勢方向。
+     判決直接對到【動作】, 不是給分數。
+   ⚠ 走自建 Worker 抓 Yahoo 日線, 不吃 Finnhub 額度。             */
+var MKT_PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
+var MKT_LIST=[
+  {t:'SPY', n:'S&P 500',   d:'美國大盤'},
+  {t:'QQQ', n:'納斯達克100', d:'科技股'},
+  {t:'DIA', n:'道瓊',      d:'傳統權值'},
+  {t:'IWM', n:'羅素2000',  d:'中小型股'}
+];
+
+function sma(a,n){ if(!a||a.length<n) return null;
+  var s=0; for(var i=a.length-n;i<a.length;i++) s+=a[i]; return s/n; }
+
+async function mktOne(t){
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1y';
+  var r=await fetch(MKT_PROXY+encodeURIComponent(base),{cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json();
+  var res=d.chart && d.chart.result && d.chart.result[0];
+  if(!res) throw new Error('沒有資料');
+  var q=res.indicators.quote[0];
+  var c=(q.close||[]).filter(function(x){return x!=null;});
+  if(c.length<200) throw new Error('資料不足 200 天');
+  var px=c[c.length-1];
+  var m50=sma(c,50), m200=sma(c,200);
+  var m50p=sma(c.slice(0,-20),50);          /* 20 天前的 50MA, 看斜率 */
+  var hi=Math.max.apply(null, c.slice(-252));
+  return {
+    t:t, px:px, m50:m50, m200:m200,
+    a50:px>=m50, a200:px>=m200,
+    slope: (m50p!=null) ? (m50-m50p)/m50p*100 : null,
+    fromHi: (px/hi-1)*100
+  };
+}
+
+function mktRender(rows, err){
+  var box=document.getElementById('mkt');
+  if(!box) return;
+
+  var h='<div class="mkt"><div class="mkt-h"><div class="t">🧭 大盤方向　·　CANSLIM 的 M</div>'
+      + '<div class="s">四檔股票有三檔跟著大盤走 —— 大盤轉空的時候，再漂亮的個股型態也會失敗。'
+      + '這一塊<b>不預測</b>，只回答「現在在哪裡」。</div></div>';
+
+  if(err){
+    h += '<div class="mkt-v r">抓不到指數資料<div class="sub">'+err
+       + '<br>⚠ 抓不到就是抓不到 —— <b>不要當成「大盤沒事」</b>。</div></div></div>';
+    box.innerHTML=h; return;
+  }
+
+  var ok200=0, ok50=0, up=0;
+  for(var i=0;i<rows.length;i++){
+    if(rows[i].a200) ok200++;
+    if(rows[i].a50) ok50++;
+    if(rows[i].slope!=null && rows[i].slope>0) up++;
+  }
+  var n=rows.length, cls, big, sub;
+  if(ok200>=n && ok50>=n-1){
+    cls='g'; big='🟢 可以照常找買點';
+    sub='四個指數都站在 200 日線上方，50 日線也幾乎都守住 —— 順風。'
+       + '<br>個股買點照 dna 的 pivot 走，這裡不改變任何東西。';
+  }else if(ok200<=Math.floor(n/2)){
+    cls='r'; big='🔴 不進新倉';
+    sub='<b>'+(n-ok200)+'/'+n+' 個指數跌破 200 日線</b> —— 這是 O&#39;Neil 說的那種環境：'
+       + '型態再漂亮，失敗率也會大幅上升。<br>'
+       + '⚠ 這是<b>進場</b>的規則。手上部位照原本的失效點管，不要因為這一格就恐慌出清。';
+  }else{
+    cls='y'; big='🟡 縮小部位，只做最強的';
+    sub=(n-ok50)+'/'+n+' 個指數跌破 50 日線，但 '+ok200+'/'+n+' 還在 200 日線上方 —— '
+       + '中期還在、短期轉弱。<br>買點還算數，但<b>部位要縮</b>，而且只做四項都最漂亮的那一兩檔。';
+  }
+  h += '<div class="mkt-v '+cls+'">'+big+'<div class="sub">'+sub+'</div></div>';
+
+  h += '<table class="mkt-t"><tr><th>指數</th><th>現價</th><th>50 日線</th>'
+     + '<th>200 日線</th><th>50 日線斜率</th><th>離一年高點</th></tr>';
+  for(var j=0;j<rows.length;j++){
+    var r2=rows[j], meta=MKT_LIST[j];
+    h += '<tr><td class="nm">'+meta.n+'<span>'+meta.d+'</span></td>'
+       + '<td>'+r2.px.toFixed(2)+'</td>'
+       + '<td class="'+(r2.a50?'mkt-ok':'mkt-no')+'">'+(r2.a50?'在上方':'跌破')+'</td>'
+       + '<td class="'+(r2.a200?'mkt-ok':'mkt-no')+'">'+(r2.a200?'在上方':'跌破')+'</td>'
+       + '<td class="'+(r2.slope==null?'':(r2.slope>0?'mkt-ok':'mkt-no'))+'">'
+       + (r2.slope==null?'—':((r2.slope>0?'+':'')+r2.slope.toFixed(1)+'%'))+'</td>'
+       + '<td class="'+(r2.fromHi>-5?'mkt-ok':'')+'">'+r2.fromHi.toFixed(1)+'%</td></tr>';
+  }
+  h += '</table><div class="mkt-f">'
+     + '<b>50 日線</b>＝中期趨勢　·　<b>200 日線</b>＝長期趨勢（跌破它是 O&#39;Neil 最在意的那條線）<br>'
+     + '<b>50 日線斜率</b>＝這條線本身近 20 天是往上還往下 —— 價格在線上方但線本身在下彎，那是剛反彈不是趨勢<br>'
+     + '⚠ 這一格<b>只管要不要新進場</b>。手上的部位一律看 dna 的失效點，不看這裡。</div></div>';
+  box.innerHTML=h;
+}
+
+async function loadMkt(){
+  var box=document.getElementById('mkt');
+  if(box) box.innerHTML='<div class="mkt"><div class="mkt-h"><div class="t">🧭 大盤方向</div>'
+                      + '<div class="s">抓取指數中…</div></div></div>';
+  var rows=[];
+  try{
+    for(var i=0;i<MKT_LIST.length;i++){
+      rows.push(await mktOne(MKT_LIST[i].t));
+      await new Promise(function(r){setTimeout(r,250);});
+    }
+  }catch(e){ mktRender(null, e.message); return; }
+  mktRender(rows, null);
 }
 
 async function loadMarket(){
