@@ -51,8 +51,8 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mt{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .ms{font-size:18px;font-weight:700;color:#1a202c;}
 .mc{font-size:13px;font-weight:700;padding:3px 9px;border-radius:6px;}
-.mc.up{color:#22543d;background:rgba(34,84,61,0.12);}
-.mc.dn{color:#9b2c2c;background:rgba(155,44,44,0.12);}
+.mc.up{color:#16a34a;background:rgba(22,163,74,0.14);}
+.mc.dn{color:#d92d2d;background:rgba(217,45,45,0.14);}
 .mp{font-size:11px;color:#4a5568;margin-bottom:8px;}
 .tset{margin:0;border-bottom:1px solid #c8d0dc;background:#f0f4f8;}
 .tset summary{cursor:pointer;padding:8px 16px;font-size:11.5px;color:#4a5568;list-style:none;}
@@ -74,9 +74,9 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mkt-h .t{font-size:13px;font-weight:700;color:#12385e;letter-spacing:1.2px;}
 .mkt-h .s{font-size:11.5px;color:#4a5568;margin-top:3px;line-height:1.7;}
 .mkt-v{padding:14px 16px;font-size:15px;font-weight:700;line-height:1.75;}
-.mkt-v.g{background:#f0fff4;color:#22543d;}
+.mkt-v.g{background:#f0fff4;color:#16a34a;}
 .mkt-v.y{background:#fffbeb;color:#7d5300;}
-.mkt-v.r{background:#fff5f5;color:#9b2c2c;}
+.mkt-v.r{background:#fff5f5;color:#d92d2d;}
 .mkt-v .sub{font-size:12.5px;font-weight:400;margin-top:6px;line-height:1.85;}
 .mkt-t{width:100%;border-collapse:collapse;font-size:13px;}
 .mkt-t th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;
@@ -87,7 +87,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mkt-t td:first-child{text-align:left;}
 .mkt-t .nm{font-weight:700;color:#1a202c;}
 .mkt-t .nm span{font-weight:400;color:#718096;font-size:11px;margin-left:5px;}
-.mkt-ok{color:#22543d;font-weight:700;} .mkt-no{color:#9b2c2c;font-weight:700;}
+.mkt-ok{color:#16a34a;font-weight:700;} .mkt-no{color:#d92d2d;font-weight:700;}
 .mkt-f{padding:10px 14px;font-size:11.5px;color:#4a5568;line-height:1.8;background:#f7fafc;}
 .sec{margin:12px 16px 0;padding:15px 16px 16px;
   background:linear-gradient(180deg,#e8f0fa 0%,#dfeaf7 100%);
@@ -96,10 +96,11 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .sec-h{font-size:13px;font-weight:700;color:#12385e;letter-spacing:1.5px;margin-bottom:5px;}
 .sec-t{font-size:12px;color:#3d4d5f;margin-bottom:13px;line-height:1.8;font-weight:500;}
 .sec-w{display:flex;flex-wrap:wrap;gap:9px;}
-.sec-b{background:#fff;border:1.5px solid #a8c0da;border-radius:20px;padding:9px 17px;
+/* ⚠ 9/15 Jasmine:「那個橢圓是白底，看不出那一塊是板塊區域」→ 給底色 */
+.sec-b{background:#d7e6f7;border:1.5px solid #8fb4d8;border-radius:20px;padding:9px 17px;
   font-size:14px;font-weight:700;color:#12385e;cursor:pointer;font-family:inherit;
   white-space:nowrap;box-shadow:0 1px 3px rgba(26,58,92,.10);}
-.sec-b:active{background:#dde9f6;}
+.sec-b:active{background:#bcd6ef;}
 .sec-b:disabled{opacity:.4;cursor:default;}
 .sec-b.on{background:#12385e;color:#fff;border-color:#12385e;
   box-shadow:0 3px 9px rgba(18,56,94,.32);}
@@ -107,7 +108,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
    → 改成有底色的小徽章, 而且顏色拉亮。靠字色分辨太吃力。 */
 .sec-b .vf,.sec-b .uv{font-size:10.5px;font-weight:700;margin-left:7px;
   padding:2px 7px;border-radius:9px;vertical-align:1px;}
-.sec-b .vf{background:#d7f5e3;color:#0f7a3d;}
+.sec-b .vf{background:#d7f5e3;color:#0d8a3f;}
 .sec-b .uv{background:#fdefd0;color:#a06a08;}
 .sec-b.on .vf{background:#2f9e58;color:#fff;}
 .sec-b.on .uv{background:#c98a0e;color:#fff;}
@@ -124,8 +125,8 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qt td:first-child{text-align:left;font-weight:700;}
 .qt tr.soon td{background:#fff5f5;}
 .qt a{color:#1a202c;text-decoration:none;border-bottom:1px dotted #a0aec0;}
-.qt .g{color:#22543d;font-weight:700;} .qt .r{color:#9b2c2c;font-weight:700;}
-.qt .d{color:#a0aec0;} .qt .warn{color:#9b2c2c;font-weight:700;}
+.qt .g{color:#16a34a;font-weight:700;} .qt .r{color:#d92d2d;font-weight:700;}
+.qt .d{color:#a0aec0;} .qt .warn{color:#d92d2d;font-weight:700;}
 .qt-cap{padding:9px 12px;font-size:11.5px;color:#4a5568;line-height:1.7;background:#f7fafc;
   border-top:1px solid #edf2f7;}
 .pf-sym{font-size:17px;font-weight:700;color:#1a202c;margin-right:3px;}
@@ -138,10 +139,10 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .surp th:first-child{text-align:left;}
 .surp td{padding:5px 0;text-align:right;font-variant-numeric:tabular-nums;border-top:1px solid #edf2f7;}
 .surp td:first-child{text-align:left;color:#2d3748;}
-.beat{color:#22543d;font-weight:700;} .miss{color:#9b2c2c;font-weight:700;}
+.beat{color:#16a34a;font-weight:700;} .miss{color:#d92d2d;font-weight:700;}
 .pf-risk{margin-top:7px;padding-top:8px;border-top:1px dashed #e0c986;color:#742a2a;}
 .pf-k{color:#8a6d1f;font-size:11.5px;margin-right:5px;}
-.pf-none{font-size:12.5px;color:#9b2c2c;line-height:1.7;}
+.pf-none{font-size:12.5px;color:#d92d2d;line-height:1.7;}
 .pf-ed textarea{width:100%;box-sizing:border-box;border:1px solid #c8d0dc;border-radius:7px;
   padding:7px 10px;font-size:13px;font-family:inherit;color:#1a202c;background:#fff;
   margin:3px 0 8px;resize:vertical;min-height:48px;outline:none;}
@@ -151,40 +152,40 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   font-weight:600;cursor:pointer;border:none;margin-right:7px;font-family:inherit;}
 .pf-save{background:#1a202c;color:#fff;} .pf-cancel{background:#e2e8f0;color:#2d3748;}
 .trmsg{margin:0 16px 10px;padding:10px 13px;border-radius:9px;font-size:13px;line-height:1.75;}
-.trmsg.ok{background:#f0fff4;border:1px solid #9ae6b4;color:#22543d;}
+.trmsg.ok{background:#f0fff4;border:1px solid #9ae6b4;color:#16a34a;}
 .trmsg.part{background:#fffbeb;border:1px solid #e0c986;color:#7d5300;}
-.trmsg.none{background:#fff5f5;border:1px solid #fc8181;color:#9b2c2c;}
+.trmsg.none{background:#fff5f5;border:1px solid #fc8181;color:#d92d2d;}
 .trmsg b{font-variant-numeric:tabular-nums;}
 .kbar{padding:10px 16px;background:#f0f4f8;border-bottom:1px solid #c8d0dc;font-size:11px;color:#4a5568;}
 .kbar input{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;color:#1a202c;font-size:12px;outline:none;box-sizing:border-box;margin-top:5px;}
 .kbar input:focus{border-color:#0066bb;}
-.kbar .kmsg{margin-top:5px;color:#9b2c2c;}
+.kbar .kmsg{margin-top:5px;color:#d92d2d;}
 .fcard{background:#ffffff;border:1px solid #c8d0dc;border-radius:12px;padding:15px 16px;margin:8px 16px 0;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
 .fhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
 .fsym{font-size:19px;font-weight:700;color:#1a202c;}
 .fpx{font-size:17px;font-weight:700;color:#1a202c;font-variant-numeric:tabular-nums;}
 .fdp{font-size:13px;font-weight:700;padding:1px 7px;border-radius:9px;font-variant-numeric:tabular-nums;}
-.fdp.up{background:#e6f4ea;color:#22543d;} .fdp.dn{background:#fdeaea;color:#9b2c2c;}
+.fdp.up{background:#e6f4ea;color:#16a34a;} .fdp.dn{background:#fdeaea;color:#d92d2d;}
 .fday{font-size:11.5px;color:#718096;}
 .fsub{font-size:11px;color:#4a5568;}
 .fsect{font-size:11px;color:#4a5568;margin:13px 0 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;}
 .frow{display:flex;align-items:baseline;gap:8px;font-size:13.5px;padding:5px 0;flex-wrap:wrap;}
 .fmark{font-weight:700;width:17px;flex:none;}
-.fpass{color:#22543d;} .ffail{color:#9b2c2c;} .fnone{color:#718096;}
+.fpass{color:#16a34a;} .ffail{color:#d92d2d;} .fnone{color:#718096;}
 .flab{color:#2d3748;flex:1;min-width:150px;}
 .fval{font-weight:700;font-variant-numeric:tabular-nums;}
 .fthr{font-size:11px;color:#718096;}
 .fnote{font-size:11.5px;color:#4a5568;line-height:1.65;margin-top:9px;padding:8px 11px;background:#edf2f7;border-left:3px solid #90cdf4;border-radius:0 6px 6px 0;}
 .fwarn{background:#fff5f5;border-left-color:#fc8181;color:#742a2a;}
-.fpead{background:#f0fff4;border-left-color:#48bb78;color:#22543d;}
-.faccel{background:#f0fff4;border-left-color:#68d391;color:#22543d;}
+.fpead{background:#f0fff4;border-left-color:#48bb78;color:#16a34a;}
+.faccel{background:#f0fff4;border-left-color:#68d391;color:#16a34a;}
 .fdate{font-size:14px;font-weight:700;color:#1a202c;}
 .fana{font-size:13.5px;color:#2d3748;line-height:1.8;}
 .fana b{font-variant-numeric:tabular-nums;}
 .fsum{margin:10px 16px 0;padding:12px 14px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;font-size:13px;color:#2d3748;line-height:1.85;}
 .fsum b{color:#1a202c;}
 .fsum .fsline{margin-top:4px;}
-.fsum .fsalert{color:#9b2c2c;font-weight:700;}
+.fsum .fsalert{color:#d92d2d;font-weight:700;}
 .fstamp{font-size:11px;color:#718096;margin-top:6px;}
 .ftab{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
 .ftab th{font-size:11px;color:#718096;font-weight:400;text-align:right;padding:3px 0 5px;}
@@ -198,7 +199,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.7</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.8</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -280,8 +281,9 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     <div class="sec-h">📁 板塊速掃</div>
     <div class="sec-t">點一下換一整組去跑。<b>這不是全市場篩選</b> —— 清單是寫死的，
       只找得到「有放進去、但你沒在追」的股票。<br>
-      <span style="background:#d7f5e3;color:#0f7a3d;font-weight:700;padding:2px 8px;border-radius:9px">已查證</span>＝ 9/12 確認過當期狀況　·　
-      <span style="background:#fdefd0;color:#a06a08;font-weight:700;padding:2px 8px;border-radius:9px">未查證</span>＝ 只是常見名字，沒查當期近況。</div>
+      <span style="background:#d7f5e3;color:#0d8a3f;font-weight:700;padding:2px 8px;border-radius:9px">名單已核對</span>＝ 9/12 逐檔確認過這個板塊現在該有誰。　
+      <span style="background:#fdefd0;color:#a06a08;font-weight:700;padding:2px 8px;border-radius:9px">名單未核對</span>＝ 只是憑常見名字寫的，可能漏掉現在真正在跑的主流，也可能留著已改名／被併購／下市的代號。<br>
+      ⚠ 這兩個標籤只在講<b>名單準不準</b>，不是在講數字 —— 財報數字兩種都是當場抓回來的，可信度一樣。</div>
     <div class="sec-w" id="secW"></div>
     <div class="sec-n" id="secNote"></div>
   </div>
@@ -360,8 +362,10 @@ function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove
   el.value = sv || DW_DEFAULT.join(', ');
 })();
 
-loadMkt();
-loadMarket();if(t==='radar')loadRadar();}
+/* ⚠ 9/15 修：原本 loadMkt()/loadMarket() 沒有被 if 包住，
+   點任何一個分頁都會重抓一次 Finnhub 新聞＋四檔指數，白白燒額度。 */
+if(t==='market'){ loadMkt(); loadMarket(); }
+if(t==='radar')loadRadar();}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
    Jasmine 9/11 晚上實測: Google 那個未公開介面【整個 IP 被封】——
@@ -1307,7 +1311,7 @@ function fundCard(sym, m, cal, rec, sup, q){
          【虧得比預期少】, 不是【賺得比預期多】—— 不標出來會被讀成利多 */
       var neg = (a!==null && a<0);
       tb += '<tr><td>'+(e.period||('Q'+e.quarter+' '+e.year))
-          + (neg ? ' <span style="font-size:10.5px;color:#9b2c2c">虧損季</span>' : '')+'</td>'
+          + (neg ? ' <span style="font-size:10.5px;color:#d92d2d">虧損季</span>' : '')+'</td>'
           + '<td>'+(a===null?'&mdash;':a)+'</td>'
           + '<td>'+(q===null?'&mdash;':q)+'</td>'
           + '<td class="'+cls+'">'+diff+'</td></tr>';
@@ -1516,7 +1520,7 @@ function secInit(){
   for(var i=0;i<SECTORS.length;i++){
     var o=SECTORS[i];
     h += '<button class="sec-b" data-k="'+o.k+'" onclick="secPick(\''+o.k+'\')">'
-       + o.n + (o.v ? '<span class="vf">已查證</span>' : '<span class="uv">未查證</span>') + '</button>';
+       + o.n + (o.v ? '<span class="vf">名單已核對</span>' : '<span class="uv">名單未核對</span>') + '</button>';
   }
   w.innerHTML=h;
 }
@@ -1686,6 +1690,10 @@ async function loadFund(){
 })();
 secInit();
 
+/* ⚠ 9/15 修：開頁時預設就停在「今日市場」這一頁，但 go() 不會被呼叫，
+   所以原本只跑了 loadMarket()（新聞），loadMkt()（大盤方向）從來沒被叫過
+   —— 這就是「大盤判斷沒出現」的真正原因，程式碼一直都在。 */
+loadMkt();
 loadMarket();
 </script>
 
