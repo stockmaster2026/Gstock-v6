@@ -68,6 +68,19 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+.sec{padding:12px 16px 0;}
+.sec-t{font-size:11.5px;color:#4a5568;margin-bottom:7px;line-height:1.7;}
+.sec-w{display:flex;flex-wrap:wrap;gap:7px;}
+.sec-b{background:#fff;border:1px solid #c8d0dc;border-radius:16px;padding:7px 14px;
+  font-size:13px;color:#1a202c;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.sec-b:active{background:#edf2f7;}
+.sec-b.on{background:#1a202c;color:#fff;border-color:#1a202c;}
+.sec-b .vf{font-size:10px;color:#22543d;margin-left:4px;}
+.sec-b.on .vf{color:#9ae6b4;}
+.sec-b .uv{font-size:10px;color:#b7791f;margin-left:4px;}
+.sec-b.on .uv{color:#f6e05e;}
+.sec-n{font-size:11.5px;color:#7d5300;background:#fffbeb;border:1px solid #e0c986;
+  border-radius:8px;padding:9px 12px;margin-top:9px;line-height:1.8;display:none;}
 .qt{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:10px;overflow-x:auto;background:#fff;}
 .qt table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
 .qt th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;padding:9px 10px;
@@ -153,7 +166,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.3</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.4</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -229,6 +242,13 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     Finnhub API key（只存在這台裝置，不會寫進檔案）
     <input id="fkey" type="text" placeholder="貼上你的 key" autocomplete="off" spellcheck="false">
     <div class="kmsg" id="kmsg"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-t">一鍵換一整組去跑 —— <b>這不是全市場篩選</b>，清單是寫死的，
+      只找得到「有放進去、但你沒在追」的股票。<br>
+      <b>已查證</b>＝ 9/12 確認過當期狀況　·　<b>未查證</b>＝ 只是常見名字，沒查當期近況。</div>
+    <div class="sec-w" id="secW"></div>
+    <div class="sec-n" id="secNote"></div>
   </div>
   <div style="padding:12px 16px 0;">
     <input class="wi" id="fi" placeholder="股票代碼，逗號分開（最多15支）…">
@@ -1163,6 +1183,72 @@ function qsort(key){
   qtab();
 }
 
+
+/* ═══ 板塊清單 ══════════════════════════════════════════════
+   Jasmine 9/12:「只盯這十幾檔, 其他板塊已經很強我卻渾然不知」。
+   → 把八個板塊做成按鈕, 一鍵換一整組去跑。
+   ⚠ 這【不是全市場篩選】: 清單是我寫死的, 只找得到「我放進去、
+     但你沒在追」的股票 —— 找不到我也沒想到的。
+     真正的全市場掃描要 screener API, Finnhub 免費層沒有。
+     不講清楚, 你會以為跑完就等於掃過全市場了。
+   ⚠ verified 標記: true = 2026-09-12 有查證過當期狀況;
+     false = 只是從既有知識整理的常見名字, 沒查當期 —— 誠實標出來, 不假裝。 */
+var SECTORS = [
+ {k:'cyber', n:'資安', v:true,
+  s:'CRWD, PANW, ZS, S, FTNT, NET, OKTA, RBRK, TENB, QLYS',
+  note:'2026 主軸是「AI 讓攻擊變便宜，防守預算跟著加」。CRWD 與 PANW 規模與獲利都穩，ZS／S／NET 波動大但彈性也大。<br>⚠ 整個板塊本益比很貴（CRWD 約 90 倍），<b>任何一家不如預期，會整片一起重評價</b>。'},
+ {k:'saas', n:'軟體 SaaS', v:true,
+  s:'PLTR, NOW, SNOW, DDOG, MDB, CRM, WDAY, ADBE, TEAM, HUBS',
+  note:'⚠ 這個板塊 2026 是<b>分裂的</b> —— IGV 指數上半年跌超過 20%，但 PLTR／SNOW／DDOG 這類「資料底層」反而在漲，純應用軟體被 AI 擠壓。<br>放進來是<b>為了讓你看到差異</b>，不是因為整個板塊都好。'},
+ {k:'chip', n:'AI 晶片與設備', v:false,
+  s:'NVDA, AVGO, AMD, TSM, ASML, AMAT, LRCX, KLAC, ARM, MPWR',
+  note:''},
+ {k:'optic', n:'光通訊', v:false,
+  s:'COHR, LITE, AAOI, CIEN, FN, AXTI, MRVL, GLW, ANET, POET',
+  note:'你最熟的板塊，當<b>對照組</b>用 —— 拿它去對別的板塊，才知道別人的數字算好還算普通。'},
+ {k:'mem', n:'記憶體與儲存', v:false,
+  s:'MU, SNDK, WDC, STX, NTAP, PSTG, SMCI, DELL, HPE, AMKR',
+  note:'⚠ 這一組裡面<b>方向是相反的</b>：MU／SNDK 漲價是獲利，DELL／HPE／SMCI 漲價是成本。'},
+ {k:'power', n:'AI 電力與散熱', v:false,
+  s:'VRT, BE, OKLO, GEV, PWR, ETN, CEG, TLN, SMR, NNE',
+  note:''},
+ {k:'space', n:'太空與國防', v:false,
+  s:'RKLB, LUNR, ASTS, PL, KTOS, AVAV, LDOS, RCAT, LMT, RTX',
+  note:''},
+ {k:'bio', n:'生技與醫材', v:false,
+  s:'LLY, NVO, ISRG, TEM, CRSP, NTRA, HIMS, RXRX, VKTX, ALNY',
+  note:'⚠ <b>這一組我最不熟</b>，只是把常見的大名字放進去，不保證它們真的是同一個題材。<br>跑完如果覺得不像一個板塊，<b>跟我說我重查</b>。'},
+ {k:'mine', n:'我的持股', v:true,
+  s:'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, AEHR, LITE, INTC, AMKR, RKLB, NBIS, DELL',
+  note:'你原本那幾檔。<b>只有這一組每一檔都有公司速寫</b>，別的板塊會是空白卡 —— 那是正常的，不是壞掉。'}
+];
+
+function secPick(k){
+  var o=null;
+  for(var i=0;i<SECTORS.length;i++) if(SECTORS[i].k===k) o=SECTORS[i];
+  if(!o) return;
+  document.getElementById('fi').value=o.s;
+  try{ localStorage.setItem('fund_syms', o.s); }catch(e){}
+  var btns=document.querySelectorAll('.sec-b');
+  for(var j=0;j<btns.length;j++) btns[j].classList.toggle('on', btns[j].dataset.k===k);
+  var nb=document.getElementById('secNote');
+  if(o.note){ nb.innerHTML=o.note; nb.style.display='block'; }
+  else { nb.innerHTML=''; nb.style.display='none'; }
+  loadFund();
+}
+
+function secInit(){
+  var w=document.getElementById('secW');
+  if(!w) return;
+  var h='';
+  for(var i=0;i<SECTORS.length;i++){
+    var o=SECTORS[i];
+    h += '<button class="sec-b" data-k="'+o.k+'" onclick="secPick(\''+o.k+'\')">'
+       + o.n + (o.v ? '<span class="vf">已查證</span>' : '<span class="uv">未查證</span>') + '</button>';
+  }
+  w.innerHTML=h;
+}
+
 async function loadFund(){
   var box=document.getElementById('fc');
   var msg=document.getElementById('kmsg');
@@ -1301,6 +1387,7 @@ async function loadFund(){
   });
   paintQuota();
 })();
+secInit();
 
 loadMarket();
 </script>
