@@ -68,24 +68,30 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
-.sec{margin:12px 16px 0;padding:14px 15px 15px;background:#eef3f9;
-  border:1px solid #c5d3e3;border-radius:12px;}
-.sec-h{font-size:12px;font-weight:700;color:#1a3a5c;letter-spacing:1px;margin-bottom:3px;}
-.sec-t{font-size:11.5px;color:#4a5568;margin-bottom:11px;line-height:1.75;}
-.sec-w{display:flex;flex-wrap:wrap;gap:8px;}
-.sec-b{background:#fff;border:1px solid #b9c9db;border-radius:18px;padding:8px 15px;
-  font-size:13.5px;color:#1a202c;cursor:pointer;font-family:inherit;white-space:nowrap;
-  box-shadow:0 1px 2px rgba(26,58,92,.07);transition:none;}
-.sec-b:active{background:#e3ebf4;}
-.sec-b:disabled{opacity:.45;cursor:default;}
-.sec-b.on{background:#1a3a5c;color:#fff;border-color:#1a3a5c;
-  box-shadow:0 2px 6px rgba(26,58,92,.25);}
-.sec-b .vf{font-size:10px;color:#1a7f37;margin-left:5px;}
-.sec-b.on .vf{color:#9ae6b4;}
-.sec-b .uv{font-size:10px;color:#b7791f;margin-left:5px;}
-.sec-b.on .uv{color:#f6e05e;}
-.sec-n{font-size:12px;color:#7d5300;background:#fffbeb;border:1px solid #e0c986;
-  border-radius:9px;padding:10px 13px;margin-top:11px;line-height:1.85;display:none;}
+.sec{margin:12px 16px 0;padding:15px 16px 16px;
+  background:linear-gradient(180deg,#e8f0fa 0%,#dfeaf7 100%);
+  border:1px solid #b6cce5;border-radius:14px;
+  box-shadow:0 1px 3px rgba(26,58,92,.08);}
+.sec-h{font-size:13px;font-weight:700;color:#12385e;letter-spacing:1.5px;margin-bottom:5px;}
+.sec-t{font-size:12px;color:#3d4d5f;margin-bottom:13px;line-height:1.8;font-weight:500;}
+.sec-w{display:flex;flex-wrap:wrap;gap:9px;}
+.sec-b{background:#fff;border:1.5px solid #a8c0da;border-radius:20px;padding:9px 17px;
+  font-size:14px;font-weight:700;color:#12385e;cursor:pointer;font-family:inherit;
+  white-space:nowrap;box-shadow:0 1px 3px rgba(26,58,92,.10);}
+.sec-b:active{background:#dde9f6;}
+.sec-b:disabled{opacity:.4;cursor:default;}
+.sec-b.on{background:#12385e;color:#fff;border-color:#12385e;
+  box-shadow:0 3px 9px rgba(18,56,94,.32);}
+/* ⚠ 9/15 Jasmine:「綠色太深，看起來像黑色，看很久才發現」
+   → 改成有底色的小徽章, 而且顏色拉亮。靠字色分辨太吃力。 */
+.sec-b .vf,.sec-b .uv{font-size:10.5px;font-weight:700;margin-left:7px;
+  padding:2px 7px;border-radius:9px;vertical-align:1px;}
+.sec-b .vf{background:#d7f5e3;color:#0f7a3d;}
+.sec-b .uv{background:#fdefd0;color:#a06a08;}
+.sec-b.on .vf{background:#2f9e58;color:#fff;}
+.sec-b.on .uv{background:#c98a0e;color:#fff;}
+.sec-n{font-size:12.5px;color:#7d5300;background:#fffbeb;border:1px solid #e0c986;
+  border-radius:10px;padding:11px 14px;margin-top:13px;line-height:1.9;display:none;}
 .qt{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:10px;overflow-x:auto;background:#fff;}
 .qt table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
 .qt th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;padding:9px 10px;
@@ -171,7 +177,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.5</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.6</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -252,8 +258,8 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     <div class="sec-h">📁 板塊速掃</div>
     <div class="sec-t">點一下換一整組去跑。<b>這不是全市場篩選</b> —— 清單是寫死的，
       只找得到「有放進去、但你沒在追」的股票。<br>
-      <span style="color:#1a7f37;font-weight:700">已查證</span>＝ 9/12 確認過當期狀況　·　
-      <span style="color:#b7791f;font-weight:700">未查證</span>＝ 只是常見名字，沒查當期近況。</div>
+      <span style="background:#d7f5e3;color:#0f7a3d;font-weight:700;padding:2px 8px;border-radius:9px">已查證</span>＝ 9/12 確認過當期狀況　·　
+      <span style="background:#fdefd0;color:#a06a08;font-weight:700;padding:2px 8px;border-radius:9px">未查證</span>＝ 只是常見名字，沒查當期近況。</div>
     <div class="sec-w" id="secW"></div>
     <div class="sec-n" id="secNote"></div>
   </div>
@@ -770,7 +776,130 @@ var PROFILE_DEFAULT = {
        pos:'【算力的房東】輝達最下游的客戶之一，同時是 Meta 與 Microsoft 的上游。買 GPU 的錢先付、租金後收，所以【現金流跟損益要分開看】。',
        cust:'【Microsoft】五年最高 194 億美元、【Meta】五年最高 270 億美元（含 120 億專屬產能）。輝達直接投資 20 億美元入股。',
        story:'在手合約總額接近 500 億美元（2027~2031），對比 2025 全年營收才 5.3 億。2026 Q1 營收 3.99 億、年增 684%。公司財測全年 30~34 億、調整後 EBITDA 利潤率約 40%。產能要從 2025 年底的 170MW 拉到 2026 年底 800MW~1GW。',
-       risk:'【資本支出遠遠跑在營收前面】2026 年要花 160~250 億美元建置，靠舉債與客戶預付撐（7 月才做第一筆 7.75 億擔保債）。風險不在需求，在【執行】—— 機房沒按時上線、或利用率與租金掉下來，故事就裂。而且同時對 Meta 與 Microsoft 高度集中。' }
+       risk:'【資本支出遠遠跑在營收前面】2026 年要花 160~250 億美元建置，靠舉債與客戶預付撐（7 月才做第一筆 7.75 億擔保債）。風險不在需求，在【執行】—— 機房沒按時上線、或利用率與租金掉下來，故事就裂。而且同時對 Meta 與 Microsoft 高度集中。' },
+
+  /* ── 資安 ── 2026-09-12／15 查證 ────────────────────────── */
+  CRWD:{ biz:'Falcon 平台 —— 用一個輕量代理程式裝在每台電腦與伺服器上，做端點防護、雲端安全與資安事件分析。全部走訂閱制。',
+       pos:'【端點這一層的龍頭】競爭對手是 Microsoft Defender（免費綁在 Windows 授權裡）與 SentinelOne。它的護城河是【換掉很麻煩】 —— 總續約率 97%。',
+       cust:'大型企業與政府，客戶數與單客金額都在成長。',
+       story:'FY26 第三季新增年經常性收入（Net New ARR）年增 73%。新的 Falcon Flex 訂閱制讓客戶一次買一整包，Flex 的 ARR 年增 200%、已佔總 ARR 的 27%。全年 ARR 成長指引調高到 23%。',
+       risk:'【最貴的一檔】約 90 倍預估本益比，ROE 只有 1.3% —— 獲利還沒跟上估值。Microsoft 把資安綁進既有訂閱賣，中型客戶最容易被吃掉。另外 2024 年那次全球當機的信任成本還在。' },
+
+  PANW:{ biz:'防火牆起家，現在是把網路、雲端、資安維運三塊包成一個平台賣（Strata／Prisma／Cortex）。',
+       pos:'【平台整併者】策略叫 platformization —— 給折扣要客戶把零散的工具全換成它一家。這直接吃的是 ZS、OKTA 這種單點專家的生意。',
+       cust:'大型企業與政府。近期收購 CyberArk（身分安全）與 Chronosphere（可觀測性）。',
+       story:'目標 FY2030 次世代安全 ARR 做到 200 億美元。最近一季營收年增 34.5%，最近一季還在放大。',
+       risk:'【平台是靠收購堆起來的】CyberArk 與 Chronosphere 都要整合，整合不順就是商譽減損。ROE 只有 1.7%。而且 platformization 的折扣策略會壓自己的毛利。' },
+
+  ZS:{ biz:'零信任網路存取（SASE）—— 不再用 VPN 把人接進公司內網，而是每一次連線都重新驗證。純雲端、純訂閱。',
+       pos:'【零信任這一層的專家】不做端點、不做防火牆硬體。專精的好處是做得深，壞處是【容易被 PANW 那種平台一起打包吃掉】。',
+       cust:'大型企業，特別是遠距辦公比例高的。',
+       story:'ARR 超過 30 億美元且還在 25% 以上成長 —— 全球只有五家企業級 SaaS 做得到。Rule of 40 分數 78（成長率＋利潤率），自由現金流利潤率 52%。收購 Red Canary 補上資安維運。',
+       risk:'⚠ 最近一季營收 24.9%，已經比近 12 個月小 —— 【加速停了】。ROE 仍是負的（−2.8%）。而且它是 platformization 最直接的受害者。' },
+
+  S:{ biz:'SentinelOne —— 端點防護，主打用 AI 自動判斷與自動回復，不需要人盯。另有 AI SIEM 與 Purple AI。',
+       pos:'【CRWD 的直接對手，但規模小很多】股價二十幾塊、市值遠小於 CRWD。【彈性最大，風險也最大】。',
+       cust:'中大型企業，價格敏感的那一塊。',
+       story:'如果 AI SIEM 與 Purple AI 真的變成主流採用，它的成長空間是這一組裡最大的。',
+       risk:'【正面對打規模大十倍的對手】ROE −23.2%，虧損還很深。最近一季成長也在收斂。這一檔本質上是【賭它能不能追上】，不是賭它現在的體質。' },
+
+  FTNT:{ biz:'Fortinet —— 防火牆與網路安全，【軟體硬體都自己做】，而且自研 ASIC 晶片跑加密。',
+       pos:'【這一組裡唯一的硬體廠】自己做晶片讓它毛利率與獲利能力遠勝同業，但也讓它綁在【硬體換機週期】上。',
+       cust:'中型企業與電信商，海外比重高。',
+       story:'最近一季 EPS 年增 43.9%、營收 25.6%、ROE 187.9% —— 【這一組裡唯一四項全綠的】，而且最近一季還在放大。',
+       risk:'【硬體是雙面刃】換機週期一到，營收就會出現空窗，跟純訂閱制的 CRWD／ZS 不一樣。而且它在雲端原生那一塊起步比別人晚。' },
+
+  NET:{ biz:'Cloudflare —— CDN 與 DDoS 防護起家，現在是「邊緣運算平台」：把運算放到離使用者最近的節點，也做零信任與 AI 推論。',
+       pos:'【資安只是它的一半】另一半是 AI 基礎設施。所以它不完全算資安股 —— 放進來是因為【它是這組裡唯一有 AI infra 角度的】。',
+       cust:'從個人網站到大型企業都有，客戶數極多但單客金額小。',
+       story:'最近一季營收年增 35.9%，是這一組成長最快的，而且最近一季還在放大。AI 推論放到邊緣是新的成長故事。',
+       risk:'ROE −13.9%，長期投入換成長、獲利還沒來。而且它同時在跟 AWS、Akamai、資安廠三個方向的對手打。' },
+
+  OKTA:{ biz:'身分與存取管理（IAM）—— 管「誰可以登入什麼」。企業單一登入與多因素驗證的標準品之一。',
+       pos:'【身分這一層】零信任的地基 —— 每次連線都要驗證，就得先有身分系統。【但 PANW 剛收購 CyberArk，直接殺進這一層】。',
+       cust:'大型企業的 IT 部門。',
+       story:'最近一季 EPS 年增 75.2%，獲利轉正的斜率很陡。',
+       risk:'⚠ 營收只成長 10.6%，最近一季在收斂 —— 【獲利改善是靠省成本，不是靠成長】。而且 PANW 與 Microsoft Entra 兩邊夾擊。' },
+
+  RBRK:{ biz:'Rubrik —— 資料備份與復原，主打勒索軟體攻擊後能把資料乾淨地救回來。',
+       pos:'【最後一道防線】前面全被突破之後才輪到它。這讓它跟其他資安股【不是競爭關係，是互補的】。',
+       cust:'大型企業，特別是被法規要求要有復原能力的產業。',
+       story:'最近一季營收年增 37.9%，是這一組裡最高的。勒索軟體的威脅只增不減。',
+       risk:'⚠ 上市時間還短，沒有長期紀錄可以看。ROE 算不出來（還在虧）。最近一季已經在收斂。【這一檔我沒有像 CRWD／PANW 那樣深入查證。】' },
+
+  TENB:{ biz:'Tenable —— 漏洞管理，掃描企業有哪些系統沒修補、哪裡有洞。',
+       pos:'【防禦前的健檢】不擋攻擊，是告訴你哪裡沒關窗。這門生意很穩定但【天花板比較低】。',
+       cust:'企業 IT 與資安維運團隊。',
+       story:'—',
+       risk:'⚠ 【這一組裡成長最慢的】：最近一季營收只有 8.6%，而且在收斂，ROE 2.4%。放進來是當對照組 —— 讓你看到同一個板塊裡差距有多大。' },
+
+  QLYS:{ biz:'Qualys —— 雲端漏洞掃描與合規管理，跟 TENB 是同一門生意的對手。',
+       pos:'【跟 TENB 同一層】但它的獲利能力好很多。',
+       cust:'企業 IT 與合規部門。',
+       story:'ROE 37.2% 是這一組最高的，而且最近一季還在放大。',
+       risk:'⚠ 營收只成長 11.0%、EPS 15.5%，兩項都沒過 25% 門檻 —— 【賺錢但不成長】。Minervini 要的是成長在加速，這一檔是穩定型，跟你的方法不完全對盤。' },
+
+  /* ── 軟體 SaaS ── 2026-09-12／15 查證 ────────────────── */
+  PLTR:{ biz:'Palantir —— 把分散的資料整合起來、讓 AI 在上面做決策的平台。政府端叫 Gotham，商用端叫 Foundry，AI 那層叫 AIP。',
+       pos:'【AI 應用層的最上面】不做模型、不做基礎設施，做【讓 AI 真的進到企業流程】的那一層。這門生意最貴、也最難複製。',
+       cust:'美國國防部與情報機構（起家）、近年大量擴到商用企業。',
+       story:'2026 Q1 營收 16.3 億美元、【年增 85%】，美國商用年增 133%。淨收入留存率 150%，是大型軟體公司史上最高。調整後自由現金流利潤率 57%。全年營收指引成長 71%。',
+       risk:'【估值是這組最極端的】約 55~67 倍【營收】（不是本益比），高於輝達、ServiceNow、Salesforce 任何一家。這種估值要求【每一季都完美執行】，一次不如預期的修正會很猛。' },
+
+  NOW:{ biz:'ServiceNow —— 企業工作流程平台。IT 服務、HR、客服的流程都跑在上面，現在把 AI agent 嵌進每一個流程。',
+       pos:'【流程的中樞】一旦企業把流程建在上面就很難搬走。8400 家以上的企業客戶是它的護城河。',
+       cust:'大型企業的 IT、HR、客服部門。',
+       story:'營收超過 133 億美元、年增 23%。AI agent 是新的加價理由。',
+       risk:'23% 的成長對這個估值來說不算快 —— 它是【穩健型】，不是 Minervini 要的加速型。' },
+
+  SNOW:{ biz:'Snowflake —— 資料雲：企業把所有資料存進去、在上面查詢與分析，AI 那層叫 Cortex。按用量計費。',
+       pos:'【AI 的資料底層】模型要吃資料，資料在誰手上誰就有位置。【按用量計費代表 AI 用得越兇它賺越多】。',
+       cust:'超過 9100 家企業帳戶。',
+       story:'產品營收重新加速到 29% 成長，淨收入留存率 125%。估值約 21 倍營收，【比 PLTR 的 71 倍便宜非常多】，今年股價漲了 53%。',
+       risk:'還沒達到 GAAP 獲利。FY2027 自由現金流利潤率指引約 23%，因為要投 AI 運算 —— 【先花錢才有成長】。' },
+
+  DDOG:{ biz:'Datadog —— 可觀測性（observability）：監控伺服器、程式、日誌，出問題時告訴你哪裡壞了。',
+       pos:'【AI 應用的儀表板】AI 工作負載變多，要監控的東西也變多。它跟 SNOW 一樣是【按用量計費】。',
+       cust:'雲端原生的軟體公司與大型企業 IT。',
+       story:'營收成長 29% 超出自家指引，管理層說 AI 相關工作負載在加速。【已經跨過 GAAP 獲利】（SNOW 還沒）。預估本益比 53~56，以 29% 成長來說是這一組相對最便宜的。',
+       risk:'可觀測性的競爭者很多（Splunk、New Relic、Grafana、各家雲的內建工具），差異化不如資料層那麼硬。' },
+
+  MDB:{ biz:'MongoDB —— 文件型資料庫，雲端託管版叫 Atlas，內建向量搜尋（AI 應用要用的）。',
+       pos:'【開發者選型的那一層】新的 AI 應用要挑資料庫時的選項之一。【比 SNOW 更前端】 —— SNOW 是分析既有資料，MDB 是新應用產生資料的地方。',
+       cust:'軟體開發團隊。',
+       story:'FY2026 自由現金流 4.93 億美元、營收 24.6 億。Atlas 規模放大後營運槓桿會開始顯現。',
+       risk:'自由現金流利潤率約 20%，是這幾家裡最低的。而且資料庫的替代品極多（Postgres 免費）。' },
+
+  CRM:{ biz:'Salesforce —— 客戶關係管理（CRM）的標準品，近年主推 AI agent（Agentforce）。',
+       pos:'【應用軟體的代表】不是基礎設施，是終端應用 —— 也就是【最容易被 AI 原生新創挑戰的那一層】。',
+       cust:'各行各業的業務與行銷部門。',
+       story:'AI ARR 開始有實際數字。估值在多年低點。',
+       risk:'⚠ 成長已經降到十幾趴。放進來是【對照組】 —— 讓你看到「資料底層」跟「終端應用」在 2026 的差距。' },
+
+  WDAY:{ biz:'Workday —— 人資與財務的企業系統。',
+       pos:'【應用軟體】跟 CRM 同一層的問題。',
+       cust:'大型企業的 HR 與財務部門。',
+       story:'AI ARR 與合約成長開始超出市場預期，估值在多年低點。',
+       risk:'⚠ 同 CRM —— 對照組性質。' },
+
+  ADBE:{ biz:'Adobe —— 創意軟體（Photoshop、Premiere）與行銷雲，AI 那塊叫 Firefly。',
+       pos:'【最直接被生成式 AI 衝擊的一家】它的核心生意是「幫人做圖做影片」，而那正是生成式 AI 最強的地方。',
+       cust:'設計師、行銷部門、內容產業。',
+       story:'估值在多年低點，Firefly 的 AI 訂閱開始有貢獻。',
+       risk:'⚠ 【這是整個 AI 主題裡最矛盾的一檔】：AI 可能是它最大的機會，也可能是最大的威脅。放進來是為了讓你看到這種「AI 兩面刃」的形狀。' },
+
+  TEAM:{ biz:'Atlassian —— Jira、Confluence，軟體團隊的協作工具。',
+       pos:'【開發者工作流】應用層。',
+       cust:'軟體開發團隊。',
+       story:'—',
+       risk:'⚠ 【這一檔我沒有深入查證。】協作工具是 AI 原生新創最密集攻擊的領域之一。' },
+
+  HUBS:{ biz:'HubSpot —— 中小企業版的行銷與銷售平台。',
+       pos:'【應用層 · 中小企業市場】',
+       cust:'中小企業的行銷與業務。',
+       story:'—',
+       risk:'⚠ 【這一檔我沒有深入查證。】中小企業客戶對景氣與價格最敏感，而且是 AI 原生工具最容易切入的一塊。' }
+
 };
 
 function profLoad(){
