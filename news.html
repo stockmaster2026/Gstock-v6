@@ -68,19 +68,24 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .qfill.warn{background:#d69e2e} .qfill.full{background:#e53e3e}
 .pf{margin:26px 0 -4px;padding:13px 15px;background:#fffbeb;border:1px solid #e0c986;border-radius:10px;}
 .pf-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
-.sec{padding:12px 16px 0;}
-.sec-t{font-size:11.5px;color:#4a5568;margin-bottom:7px;line-height:1.7;}
-.sec-w{display:flex;flex-wrap:wrap;gap:7px;}
-.sec-b{background:#fff;border:1px solid #c8d0dc;border-radius:16px;padding:7px 14px;
-  font-size:13px;color:#1a202c;cursor:pointer;font-family:inherit;white-space:nowrap;}
-.sec-b:active{background:#edf2f7;}
-.sec-b.on{background:#1a202c;color:#fff;border-color:#1a202c;}
-.sec-b .vf{font-size:10px;color:#22543d;margin-left:4px;}
+.sec{margin:12px 16px 0;padding:14px 15px 15px;background:#eef3f9;
+  border:1px solid #c5d3e3;border-radius:12px;}
+.sec-h{font-size:12px;font-weight:700;color:#1a3a5c;letter-spacing:1px;margin-bottom:3px;}
+.sec-t{font-size:11.5px;color:#4a5568;margin-bottom:11px;line-height:1.75;}
+.sec-w{display:flex;flex-wrap:wrap;gap:8px;}
+.sec-b{background:#fff;border:1px solid #b9c9db;border-radius:18px;padding:8px 15px;
+  font-size:13.5px;color:#1a202c;cursor:pointer;font-family:inherit;white-space:nowrap;
+  box-shadow:0 1px 2px rgba(26,58,92,.07);transition:none;}
+.sec-b:active{background:#e3ebf4;}
+.sec-b:disabled{opacity:.45;cursor:default;}
+.sec-b.on{background:#1a3a5c;color:#fff;border-color:#1a3a5c;
+  box-shadow:0 2px 6px rgba(26,58,92,.25);}
+.sec-b .vf{font-size:10px;color:#1a7f37;margin-left:5px;}
 .sec-b.on .vf{color:#9ae6b4;}
-.sec-b .uv{font-size:10px;color:#b7791f;margin-left:4px;}
+.sec-b .uv{font-size:10px;color:#b7791f;margin-left:5px;}
 .sec-b.on .uv{color:#f6e05e;}
-.sec-n{font-size:11.5px;color:#7d5300;background:#fffbeb;border:1px solid #e0c986;
-  border-radius:8px;padding:9px 12px;margin-top:9px;line-height:1.8;display:none;}
+.sec-n{font-size:12px;color:#7d5300;background:#fffbeb;border:1px solid #e0c986;
+  border-radius:9px;padding:10px 13px;margin-top:11px;line-height:1.85;display:none;}
 .qt{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:10px;overflow-x:auto;background:#fff;}
 .qt table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
 .qt th{font-size:11px;color:#4a5568;font-weight:600;text-align:right;padding:9px 10px;
@@ -166,7 +171,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.4</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.5</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -244,15 +249,17 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     <div class="kmsg" id="kmsg"></div>
   </div>
   <div class="sec">
-    <div class="sec-t">一鍵換一整組去跑 —— <b>這不是全市場篩選</b>，清單是寫死的，
+    <div class="sec-h">📁 板塊速掃</div>
+    <div class="sec-t">點一下換一整組去跑。<b>這不是全市場篩選</b> —— 清單是寫死的，
       只找得到「有放進去、但你沒在追」的股票。<br>
-      <b>已查證</b>＝ 9/12 確認過當期狀況　·　<b>未查證</b>＝ 只是常見名字，沒查當期近況。</div>
+      <span style="color:#1a7f37;font-weight:700">已查證</span>＝ 9/12 確認過當期狀況　·　
+      <span style="color:#b7791f;font-weight:700">未查證</span>＝ 只是常見名字，沒查當期近況。</div>
     <div class="sec-w" id="secW"></div>
     <div class="sec-n" id="secNote"></div>
   </div>
   <div style="padding:12px 16px 0;">
     <input class="wi" id="fi" placeholder="股票代碼，逗號分開（最多15支）…">
-    <button class="fb" onclick="loadFund()">跑財報體檢</button>
+    <button class="fb" id="fbRun" onclick="loadFund()">跑財報體檢</button>
   </div>
   <div id="fsum"></div>
   <div id="ftab"></div>
@@ -1249,20 +1256,44 @@ function secInit(){
   w.innerHTML=h;
 }
 
+/* ═══ 防重入 ══════════════════════════════════════════════════
+   Jasmine 9/15: 表格每一列都出現兩次。
+   原因: 點板塊按鈕會呼叫 loadFund(), 但【跑財報體檢】那顆按鈕
+   從來沒被 disable —— 第一輪還在跑的時候再按一次, 就有兩個迴圈
+   同時往 QROWS 塞資料, 於是每檔被推兩次。
+   (舊版只 disable 了右上角的 ↻, 沒管另外那顆。)
+   → 加一個全域旗標, 跑的時候兩顆按鈕都關掉。                      */
+var FUND_RUNNING=false;
+
+function fundBtns(on){
+  var b=document.getElementById('fbRun');
+  if(b){ b.disabled=!on; b.textContent = on ? '跑財報體檢' : '跑財報體檢中…'; }
+  var ss=document.querySelectorAll('.sec-b');
+  for(var i=0;i<ss.length;i++) ss[i].disabled=!on;
+}
+
 async function loadFund(){
+  if(FUND_RUNNING) return;      /* 還在跑就不要再開一輪 */
+  FUND_RUNNING=true;
+  fundBtns(false);
   var box=document.getElementById('fc');
   var msg=document.getElementById('kmsg');
   msg.textContent='';
 
   var k=KEY();
   if(!k){ msg.textContent='先貼上 API key 才能跑。';
-          document.getElementById('fkey').focus(); return; }
+          document.getElementById('fkey').focus();
+          FUND_RUNNING=false; fundBtns(true); return; }
   try{ localStorage.setItem(KEYSTORE,k); }catch(e){}
 
   var list=document.getElementById('fi').value.split(/[,\s]+/)
            .map(function(s){return s.trim().toUpperCase();})
-           .filter(Boolean).slice(0,15);
-  if(!list.length){ msg.textContent='至少要一個股票代號。'; return; }
+           .filter(Boolean);
+  /* 去重: 她 9/11 那次自己打了兩次 COHR, 跑了 14 檔其實是 13 檔 */
+  var seenSym={}; list=list.filter(function(x){
+    if(seenSym[x]) return false; seenSym[x]=1; return true; }).slice(0,20);
+  if(!list.length){ msg.textContent='至少要一個股票代號。';
+                    FUND_RUNNING=false; fundBtns(true); return; }
   try{ localStorage.setItem('fund_syms', list.join(', ')); }catch(e){}
 
   spn('rf',true);
@@ -1361,6 +1392,7 @@ async function loadFund(){
   sm += '<div class="fstamp">資料抓取時間 '+stamp+'　·　財報數字每季才更新一次，不用每天跑</div>';
   document.getElementById('fsum').innerHTML = sm + '</div>';
 
+  FUND_RUNNING=false; fundBtns(true);
   spn('rf',false);
 }
 
