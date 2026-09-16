@@ -227,12 +227,21 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .ev-t td:first-child{width:104px;font-weight:700;color:#12385e;white-space:nowrap;}
 .ev-end{margin:14px 16px 20px;padding:14px 16px;background:#f7fafc;border:1px solid #c8d0dc;
   border-radius:12px;font-size:12.5px;color:#4a5568;line-height:2.0;}
+.qt-plain{padding:13px 15px;background:#fbfdff;border-top:1px solid #e2e8f0;
+  font-size:12.5px;color:#2d3748;line-height:1.95;}
+.qt-plain .ph2{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:9px;}
+.qt-plain .row{margin-bottom:11px;}
+.qt-plain .nm{font-weight:700;color:#12385e;}
+.qt-plain .eg{display:block;margin-top:3px;padding:6px 10px;background:#eef4fb;
+  border-left:3px solid #7aa7d4;border-radius:0 7px 7px 0;font-size:12px;color:#2d3748;}
+.qt-plain .cau{display:block;margin-top:3px;padding:6px 10px;background:#fffbeb;
+  border-left:3px solid #e0c986;border-radius:0 7px 7px 0;font-size:12px;color:#7d5300;}
 .tr-status{font-size:11px;color:#4a5568;padding:8px 16px;text-align:center;}
 </style>
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.0</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.1</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1666,11 +1675,83 @@ function qtab(){
        + '<td class="'+((r.days!==null&&r.days<=21)?'warn':'')+'">'
        + (r.days===null?'—':(r.days+' 天'))+'</td></tr>';
   }
-  h += '</table><div class="qt-cap">點欄位標題可以換排序 —— '
+  h += '</table>' + qplain(rows) + '<div class="qt-cap">點欄位標題可以換排序 —— '
      + '<b>要用哪個當標準，由你當下決定，這裡不給總分也不排名次</b>。<br>'
      + '綠＝過門檻（EPS／營收 25%、ROE 17%）·　紅＝沒過　·　灰＝算不出來，不是不及格。'
      + '　整列淡紅＝21 天內有財報。</div></div>';
   box.innerHTML=h;
+}
+
+/* ═══ 欄位白話（9/15 Jasmine）══════════════════════════════════
+   她的原話:「單獨拉一頁只是在解釋名詞，很難跟著那種數據立刻
+   有印象」。所以解釋要貼在表格正下方, 而且要用這一次真正跑出來
+   的數字當例子, 不要寫死的範例。                              */
+function qplain(rows){
+  function pick(f, want){
+    var best=null;
+    for(var i=0;i<rows.length;i++){
+      var v=rows[i][f];
+      if(v===null||v===undefined) continue;
+      if(best===null) { best=rows[i]; continue; }
+      if(want==='max' ? v>best[f] : v<best[f]) best=rows[i];
+    }
+    return best;
+  }
+  function eg(t){ return '<span class="eg">'+t+'</span>'; }
+  function cau(t){ return '<span class="cau">'+t+'</span>'; }
+
+  var h='<div class="qt-plain"><div class="ph2">這幾欄到底在說什麼</div>';
+
+  var e=pick('epsQ','max');
+  h += '<div class="row"><span class="nm">當季 EPS</span> —— '
+     + '把公司這一季賺的錢除以總股數，再跟<b>去年同一季</b>比。跟上一季比沒意義，因為生意有淡旺季。'
+     + (e ? eg('這次跑出來：<b>'+e.sym+' '+e.epsQ.toFixed(1)+'%</b> ＝ 這一季每股賺的錢，比去年同一季多了 '+e.epsQ.toFixed(1)+'%。') : '')
+     + '</div>';
+
+  var r=pick('revQ','max'), rl=pick('revQ','min');
+  h += '<div class="row"><span class="nm">當季營收</span> —— '
+     + '公司這一季<b>收到多少錢</b>（還沒扣成本），一樣跟去年同一季比。'
+     + 'EPS 可以靠省成本、買回庫藏股做出來，<b>營收做不了假</b> —— 所以營收成長比 EPS 成長誠實。'
+     + (r&&rl&&r.sym!==rl.sym ? eg('這次最高 <b>'+r.sym+' '+r.revQ.toFixed(1)+'%</b>、最低 <b>'+rl.sym+' '+rl.revQ.toFixed(1)+'%</b> —— 同一個板塊裡差距可以這麼大，這就是為什麼不能「看好這個板塊」就隨便挑一檔。') : '')
+     + '</div>';
+
+  var o=pick('roe','max');
+  h += '<div class="row"><span class="nm">ROE</span> —— '
+     + '股東每放 100 元在這家公司裡，公司<b>一年用它賺回幾元</b>。它量的是<b>效率</b>，不是賺多少。'
+     + '兩家都賺 10 億，用 50 億本錢賺到的那家比用 500 億賺到的強。'
+     + (o ? eg('這次最高：<b>'+o.sym+' '+o.roe.toFixed(1)+'%</b>。') : '')
+     + cau('⚠ ROE 高得誇張（超過 100%）通常<b>不是效率神</b>，而是公司一直買回自家股票、把「股東權益」這個分母做小了。分母越小，算出來越漂亮。看到這種數字要去看它的負債。')
+     + cau('⚠ 負 ROE ＝ 還在虧錢，不是效率差。成長期的軟體公司虧錢很常見，要看的是虧損有沒有在收斂。')
+     + '</div>';
+
+  h += '<div class="row"><span class="nm">最近一季（放大／收斂）</span> —— '
+     + '拿<b>最近這一季</b>的成長率，去比<b>過去 12 個月平均</b>的成長率。<br>'
+     + '<b>放大</b> ＝ 最近這一季比過去一年的平均還快，<b>還在加速</b>。<br>'
+     + '<b>收斂</b> ＝ 最近這一季比平均慢了。'
+     + cau('⚠ 收斂<b>不等於衰退</b>。生意還在長，只是<b>加速度停了</b>。O&#39;Neil 在意的正是加速度 —— 股價通常跟著「變化的速度」走，不是跟著「有沒有成長」走。')
+     + '</div>';
+
+  h += '<div class="row"><span class="nm">超預期（4/4）</span> —— '
+     + '過去四季財報，有幾季<b>實際賺的比分析師預估的多</b>。4/4 ＝ 四季全贏。'
+     + '重點是<b>連續性</b>：一次超預期可能是運氣，連續四次代表管理層一直在保守給預估、實際做得更好。'
+     + eg('<b>這是這張表上證據最硬的一欄。</b>學術上叫 PEAD —— 財報超預期的股票，之後兩三個月還會繼續往上漂。詳見「📚 白話字典」。')
+     + cau('⚠ 但不是「超預期就買」：<b>財報當天就一次噴滿的，後面通常沒得漲了</b>。當天反應越冷淡，後面才漂得越久。')
+     + '</div>';
+
+  var d=pick('days','min');
+  h += '<div class="row"><span class="nm">財報（還有幾天）</span> —— '
+     + '距離<b>下一次</b>財報還有幾天。'
+     + (d ? eg('這次最近的是 <b>'+d.sym+'，'+d.days+' 天</b>後。') : '')
+     + cau('⚠ 21 天內會整列變淡紅，因為<b>財報是擲骰子</b> —— 再漂亮的型態遇到財報都可能一夜跳空。財報前不建立新部位，這跟看好不看好無關，是<b>不拿賭局當進場理由</b>。')
+     + '</div>';
+
+  h += '<div class="row"><span class="nm">綠色和紅色</span> —— '
+     + '<b>綠不等於「好」，只是「過了 O&#39;Neil 原版的門檻」</b>（EPS／營收 +25%、ROE 17%）。'
+     + '紅是沒過那條線，不是這家公司爛。灰色是<b>算不出來</b>（前幾年虧損就算不出成長率），不是不及格。'
+     + cau('⚠ 這張表<b>不給總分、不排名次</b>，因為要用哪一欄當標準，取決於你當下在找什麼。<br>而且它<b>完全不回答今天能不能買</b> —— 買價與停損一律看 dna.html 的 pivot。')
+     + '</div>';
+
+  return h + '</div>';
 }
 
 function qsort(key){
