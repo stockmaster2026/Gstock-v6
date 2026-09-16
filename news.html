@@ -227,6 +227,15 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .ev-t td:first-child{width:104px;font-weight:700;color:#12385e;white-space:nowrap;}
 .ev-end{margin:14px 16px 20px;padding:14px 16px;background:#f7fafc;border:1px solid #c8d0dc;
   border-radius:12px;font-size:12.5px;color:#4a5568;line-height:2.0;}
+.qt-sum{padding:14px 16px;background:#eef4fb;border-top:1px solid #c5daf0;
+  font-size:13px;color:#2d3748;line-height:2.0;}
+.qt-sum .ph3{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:8px;}
+.qt-sum .li{margin-bottom:7px;padding-left:20px;text-indent:-20px;}
+.qt-sum b{color:#12385e;}
+.qt-sum .sy{font-weight:700;color:#0d8a3f;}
+.qt-sum .sw{font-weight:700;color:#d92d2d;}
+.qt-sum .tail{margin-top:10px;padding-top:9px;border-top:1px solid #c5daf0;
+  font-size:12px;color:#5a6b7d;line-height:1.9;}
 .qt-plain{padding:13px 15px;background:#fbfdff;border-top:1px solid #e2e8f0;
   font-size:12.5px;color:#2d3748;line-height:1.95;}
 .qt-plain .ph2{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:9px;}
@@ -241,7 +250,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.1</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.2</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1147,6 +1156,60 @@ var PROFILE_DEFAULT = {
        story:'在手合約總額接近 500 億美元（2027~2031），對比 2025 全年營收才 5.3 億。2026 Q1 營收 3.99 億、年增 684%。公司財測全年 30~34 億、調整後 EBITDA 利潤率約 40%。產能要從 2025 年底的 170MW 拉到 2026 年底 800MW~1GW。',
        risk:'【資本支出遠遠跑在營收前面】2026 年要花 160~250 億美元建置，靠舉債與客戶預付撐（7 月才做第一筆 7.75 億擔保債）。風險不在需求，在【執行】—— 機房沒按時上線、或利用率與租金掉下來，故事就裂。而且同時對 Meta 與 Microsoft 高度集中。' },
 
+  /* ── AI 電力與散熱 ── 2026-09-15 查證 ──────────────────────
+     ⚠ 這一組的關鍵不是個股, 是「設備端 vs 發電端」的分裂,
+        看 SECTORS 裡 power 那一則的 note。                    */
+  VRT:{ biz:'資料中心的電與散熱硬體 —— UPS 不斷電系統、配電盤、匯流排、機櫃，以及冰水主機、機房空調、液冷分配單元。【不是晶片股，是機房裡的鐵件】。',
+       pos:'【液冷這一層純度最高的一檔】AI 機櫃功率密度拉高之後，液冷變成新機房的預設設計。與 NVIDIA 有矽晶合作，能提前看到下一代機櫃的散熱規格。',
+       cust:'超大規模雲端業者與資料中心營運商。',
+       story:'2025 年底在手訂單 150 億美元、年增 109%，Q4 有機訂單年增 252%、book-to-bill 約 2.9 倍。2026 Q1 營收 26.5 億、調整後 EPS 年增 83%，調整後營業利益率擴張 430 個基點到 20.8%。全年指引調高到 135~140 億（約 30% 有機成長）。訂單能見度約 12~18 個月。',
+       risk:'【約 49 倍預估本益比，指引只要一次沒到就會重評價】beta 約 2.04，總經一有風吹草動就被放大。EMEA 2026 Q1 營收年減 20.3%，管理層指引全年持平、下半年才回。而且零件都是別人的 —— <b>上游漲價直接吃毛利</b>。' },
+
+  ETN:{ biz:'電力管理 —— 開關設備、斷路器、變壓器、配電盤。把電從電網送進機櫃的那一段。',
+       pos:'【北美資料中心既有安裝基礎最大】正在用 Fibrebond（14.5 億）與 Boyd Thermal（95 億）兩筆收購，把產品線從「電」延伸到「電＋冷」，直接對上 VRT。',
+       cust:'資料中心、公用事業、工業。',
+       story:'2026 Q1 營收 74.5 億、年增 17%，資料中心訂單年增 240%、資料中心營收年增 50%，在手訂單 228 億。CEO 說在手訂單相當於 2025 年建置量的十一年。',
+       risk:'⚠【獲利成長 +2% 遠遠落後營收成長 +17%】—— 擴產的成本正在壓毛利。這是「訂單很漂亮但賺不到錢」的典型長相，也是這張表用 EPS 當門檻會抓到的東西。' },
+
+  GEV:{ biz:'從 GE 分拆的能源事業 —— 燃氣渦輪機（發電）、變壓器與開關設備（電網）、以及核能 BWRX-300 小型模組反應爐。',
+       pos:'【從發電到配電整條都做的全棧玩家】別人只做一層，它三層都在。',
+       cust:'公用事業、獨立發電商與工業客戶約佔合約的 80%，資料中心直接相關約 20%。',
+       story:'2026 Q1 資料中心相關的電氣化訂單 24 億美元，<b>一季就超過 2025 一整年</b>。電氣化總訂單年增約一倍到 71 億，北美與亞洲的設備訂單約成長三倍。合約總量從 83 GW 升到 100 GW。在手訂單約 1630~1760 億美元。燃氣渦輪機報價 2026 上半年比 2025 Q4 每千瓦高 10~20%。',
+       risk:'【好消息也是壞消息】2029 年之前的產能幾乎賣完 —— 再多的需求也沒有產能可以接，成長會被產能而不是需求決定。股價過去一年漲近 165%，已接近分析師共識目標價，且有內部人賣股。' },
+
+  PWR:{ biz:'Quanta Services —— 電網工程承包商。蓋輸電線路、變電站、併網工程。',
+       pos:'【資料中心要併網就得找它這種人】它不生產電也不生產設備，它是把兩者接起來的工班。',
+       cust:'公用事業、獨立發電商、資料中心開發商。',
+       story:'2026 Q1 營收 78.7 億、年增 26%，在手訂單 485 億。',
+       risk:'⚠ 工程承包商的毛利率天生低，而且風險在<b>能不能照報價與時程交付</b>。成本超支自己吞。' },
+
+  CEG:{ biz:'Constellation Energy —— 美國最大的核電機隊營運商。它<b>賣的是電本身</b>，不是設備。',
+       pos:'【核電最適合資料中心】無碳、而且 24 小時穩定 —— 這是太陽能與風電給不了的。',
+       cust:'投資等級的企業客戶（含超大規模雲端業者）。',
+       story:'宣布與投資等級客戶簽下 920 MW 的新購電協議，15~20 年期。全年調整後 EPS 指引調高到 11.50~12.50 美元。',
+       risk:'⚠【合約 2029~2032 才開始生效】—— 錢在很遠的地方。到 2026/8/25 為止股價跌了 20.8%，<b>指引調高也沒有救起來</b>。這正是發電端整體的問題：訂單是真的，現金流很晚才到。' },
+
+  TLN:{ biz:'Talen Energy —— 獨立發電商，擁有靠近主要資料中心市場的核電廠。',
+       pos:'跟 CEG 同一類：賣電，不賣設備。',
+       story:'資料中心長約是主要題材。',
+       risk:'⚠ 跟 CEG 同一個結構問題（現金流很晚才到），而且規模小、槓桿高，波動更大。2025 年 10/3 見頂後就進入修正。<b>這一檔我沒有深入查證，上面偏籠統。</b>' },
+
+  OKLO:{ biz:'Aurora 小型鈉冷快中子反應爐（15~75 MWe），可燒新的 HALEU 燃料，也可燒核廢料。【不賣反應爐，賣電】—— 自己蓋、自己營運、跟客戶簽長約賣電。',
+       pos:'【AI 缺電敘事最純的一檔】垂直整合讓它不必等公用事業的採購週期。',
+       cust:'14 GW 的意向管線：Switch 12 GW 主約、Equinix 500 MW 意向書（附 2500 萬美元預付）、2026 年 1 月與 Meta 的俄亥俄 1.2 GW 園區。持有 DOE 反應爐試點計畫三個名額，比任何一家都多。',
+       story:'首座 Aurora 在愛達荷國家實驗室動工，2026 年 5 月 NRC 核准 Aurora 的主要設計準則，目標 2028 年前後供電。',
+       risk:'⚠【幾乎沒有營收 —— 第一筆營收只有約 120 萬美元的服務收入】現在的市值買的是 2028 年之後才開始的賣電收入。<b>14 GW 是意向不是合約。</b><br>⚠ 首座工程（FOAK）成本超支是這個產業的頭號殺手 —— NuScale 2023 年的猶他案就是因為預估電價暴漲而整案取消。' },
+
+  SMR:{ biz:'NuScale Power —— 小型模組化反應爐設計商。賣的是<b>模組</b>給電力公司，不是自己發電。',
+       pos:'【唯一拿到 NRC 設計認證的 SMR】監管進度全場最前面，流動資金約 19 億美元。',
+       story:'2026 Q2 營收因為專案階段完成而大幅衰退；流動性反而上升。',
+       risk:'⚠【真正的反應爐營收可能要等到 2030 年代初】而且 2023 年旗艦的猶他 UAMPS 案被取消，是整個 SMR 論述最大的反例。目前美國部署案<b>還沒有簽定的施工時程</b>。' },
+
+  NNE:{ biz:'Nano Nuclear Energy —— 微型反應爐開發商。',
+       pos:'SMR 三檔裡規模最小的一檔（市值約 12 億）。',
+       risk:'⚠【前期中的前期】沒有營收、設計還沒過監管，本質上是一張選擇權，不是一家公司。<br>⚠ <b>這一檔我查到的公開資訊最少，放進來只是讓板塊完整</b>，不是因為我查證過它。' },
+
+
   /* ── 資安 ── 2026-09-12／15 查證 ────────────────────────── */
   CRWD:{ biz:'Falcon 平台 —— 用一個輕量代理程式裝在每台電腦與伺服器上，做端點防護、雲端安全與資安事件分析。全部走訂閱制。',
        pos:'【端點這一層的龍頭】競爭對手是 Microsoft Defender（免費綁在 Windows 授權裡）與 SentinelOne。它的護城河是【換掉很麻煩】 —— 總續約率 97%。',
@@ -1675,7 +1738,7 @@ function qtab(){
        + '<td class="'+((r.days!==null&&r.days<=21)?'warn':'')+'">'
        + (r.days===null?'—':(r.days+' 天'))+'</td></tr>';
   }
-  h += '</table>' + qplain(rows) + '<div class="qt-cap">點欄位標題可以換排序 —— '
+  h += '</table>' + qplain(rows) + qsummary(rows) + '<div class="qt-cap">點欄位標題可以換排序 —— '
      + '<b>要用哪個當標準，由你當下決定，這裡不給總分也不排名次</b>。<br>'
      + '綠＝過門檻（EPS／營收 25%、ROE 17%）·　紅＝沒過　·　灰＝算不出來，不是不及格。'
      + '　整列淡紅＝21 天內有財報。</div></div>';
@@ -1686,6 +1749,85 @@ function qtab(){
    她的原話:「單獨拉一頁只是在解釋名詞，很難跟著那種數據立刻
    有印象」。所以解釋要貼在表格正下方, 而且要用這一次真正跑出來
    的數字當例子, 不要寫死的範例。                              */
+/* ═══ 一句話總結（9/15 Jasmine）═════════════════════════════
+   她的原話:「不要把資訊分散讓我花時間去整合」。
+   ⚠ 這裡只做「誰在哪一欄特別突出」的事實陳述,
+      不排名次、不給總分、不講該不該買 —— 那是 dna 的工作。 */
+function qsummary(rows){
+  function nm(a){ var o=[]; for(var i=0;i<a.length;i++) o.push(a[i].sym); return o.join('、'); }
+  function best(f){
+    var b=null;
+    for(var i=0;i<rows.length;i++){
+      var v=rows[i][f]; if(v===null||v===undefined) continue;
+      if(b===null||v>b[f]) b=rows[i];
+    }
+    return b;
+  }
+  function worst(f){
+    var b=null;
+    for(var i=0;i<rows.length;i++){
+      var v=rows[i][f]; if(v===null||v===undefined) continue;
+      if(b===null||v<b[f]) b=rows[i];
+    }
+    return b;
+  }
+
+  var allGreen=[], hardest=[], accelUp=[], accelDn=[], soon=[];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(r.epsQ!==null&&r.epsQ>=25 && r.revQ!==null&&r.revQ>=25 && r.roe!==null&&r.roe>=17) allGreen.push(r);
+    if(r.cnt && r.beat===r.cnt && r.accel===1) hardest.push(r);
+    if(r.accel===1) accelUp.push(r);
+    if(r.accel===-1) accelDn.push(r);
+    if(r.days!==null && r.days<=21) soon.push(r);
+  }
+
+  var h='<div class="qt-sum"><div class="ph3">這一批裡，誰突出</div>';
+
+  if(allGreen.length)
+    h += '<div class="li">✅ <b>三項門檻全過</b>（EPS、營收、ROE）：<span class="sy">'+nm(allGreen)+'</span></div>';
+  else
+    h += '<div class="li">⚪ <b>沒有任何一檔三項門檻全過。</b>這很常見 —— 成長股通常會在某一項上犧牲（多半是 ROE，因為還在燒錢擴張）。</div>';
+
+  if(hardest.length)
+    h += '<div class="li">⭐ <b>最值得多看一眼</b>：<span class="sy">'+nm(hardest)+'</span> —— 同時滿足<b>連續全部超預期</b>＋<b>最近一季還在放大</b>。'
+       + '這兩件事是這張表上證據最硬的兩欄，交集的名單通常最短。</div>';
+  else
+    h += '<div class="li">⚪ <b>沒有一檔同時做到「連續全超預期」＋「最近一季放大」。</b>這一組現在缺的是加速度。</div>';
+
+  var g=best('revQ'), w=worst('revQ');
+  if(g&&w&&g.sym!==w.sym)
+    h += '<div class="li">📈 <b>營收成長最快</b>：<span class="sy">'+g.sym+' '+g.revQ.toFixed(1)+'%</span>　·　'
+       + '<b>最慢</b>：<span class="sw">'+w.sym+' '+w.revQ.toFixed(1)+'%</span>（差 '
+       + (g.revQ-w.revQ).toFixed(1)+' 個百分點）</div>';
+
+  var o=best('roe');
+  if(o){
+    h += '<div class="li">💰 <b>ROE 最高</b>：<span class="sy">'+o.sym+' '+o.roe.toFixed(1)+'%</span>';
+    if(o.roe>100) h += '　⚠ 超過 100% 多半是買回庫藏股把分母做小了，<b>先去看它的負債再說</b>';
+    h += '</div>';
+  }
+  var ol=worst('roe');
+  if(ol&&ol.roe<0)
+    h += '<div class="li">🩸 <b>還在虧錢</b>（ROE 為負）：<span class="sw">'+ol.sym+' '+ol.roe.toFixed(1)+'%</span> 是最深的。'
+       + '成長期軟體股虧錢常見，要看的是<b>虧損有沒有在收斂</b>，不是有沒有虧。</div>';
+
+  if(accelDn.length)
+    h += '<div class="li">🐢 <b>加速度停了</b>（最近一季比近 12 個月小）：<span class="sw">'+nm(accelDn)+'</span><br>'
+       + '⚠ 生意還在長，只是<b>變快的速度慢下來</b>。一季不算趨勢，連兩三季才算。</div>';
+
+  if(soon.length)
+    h += '<div class="li">📅 <b>21 天內要出財報</b>：<span class="sw">'+nm(soon)+'</span> —— 財報是擲骰子，<b>這幾檔現在不建新倉</b>。</div>';
+  else
+    h += '<div class="li">📅 21 天內沒有任何一檔要出財報 —— <b>這段時間型態不會被財報打斷。</b></div>';
+
+  h += '<div class="tail">⚠ 上面只講「這張表上誰的數字突出」，<b>完全沒有講誰可以買</b>。'
+     + '基本面只決定「有沒有資格進名單」；買價、停損、部位大小一律看 dna.html 的 pivot。<br>'
+     + '⚠ 還有一件這張表看不到的事：這幾檔的<b>價格位置</b>。基本面漂亮但股價已經離高點很遠的，跟基本面漂亮又貼著高點的，是完全不同的兩件事。</div>';
+
+  return h+'</div>';
+}
+
 function qplain(rows){
   function pick(f, want){
     var best=null;
@@ -1786,9 +1928,16 @@ var SECTORS = [
  {k:'mem', n:'記憶體與儲存', v:false,
   s:'MU, SNDK, WDC, STX, NTAP, PSTG, SMCI, DELL, HPE, AMKR',
   note:'⚠ 這一組裡面<b>方向是相反的</b>：MU／SNDK 漲價是獲利，DELL／HPE／SMCI 漲價是成本。'},
- {k:'power', n:'AI 電力與散熱', v:false,
+ {k:'power', n:'AI 電力與散熱', v:true,
   s:'VRT, BE, OKLO, GEV, PWR, ETN, CEG, TLN, SMR, NNE',
-  note:''},
+  note:'⚠ <b>這個板塊 2026 年內部已經分裂了，而且順序很清楚 —— 設備端賺到錢，發電端沒有。</b><br>'
+     + '見頂的先後：Vistra 2025/9/22、Talen 10/3、Constellation 10/15 先倒；'
+     + '設備端晚了七到十個月才見頂 —— Quanta 2026/5/6、GE Vernova 7/6、Eaton 8/12。<br>'
+     + '到 2026/8/25 為止的分組平均報酬：<b>設備與服務 +29.1%</b>、轉做 AI 代管的礦工 +32.0%，'
+     + '而<b>獨立發電商 −20.1%、核能開發商與鈾礦 −18.5%</b>。<br>'
+     + '原因很實際：<b>設備商的錢先到手</b>（客戶預付、一年內完工收款、出貨即認列）；'
+     + '發電端要等 2029~2032 年的合約才開始收錢，中間那幾年股東只能空等。<br>'
+     + '⚠ 但注意：設備三檔<b>都已經在 2026 年見過頂了</b>。這個順序是已經發生的事，不保證會重複。'},
  {k:'space', n:'太空與國防', v:false,
   s:'RKLB, LUNR, ASTS, PL, KTOS, AVAV, LDOS, RCAT, LMT, RTX',
   note:''},
