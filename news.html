@@ -227,6 +227,23 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .ev-t td:first-child{width:104px;font-weight:700;color:#12385e;white-space:nowrap;}
 .ev-end{margin:14px 16px 20px;padding:14px 16px;background:#f7fafc;border:1px solid #c8d0dc;
   border-radius:12px;font-size:12.5px;color:#4a5568;line-height:2.0;}
+.dig{margin:12px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;overflow:hidden;}
+.dig .dh{padding:12px 15px;background:#eef4fb;border-bottom:1px solid #c5daf0;}
+.dig .dh .t1{font-size:14px;font-weight:700;color:#12385e;}
+.dig .dh .t2{font-size:11.5px;color:#5a6b7d;margin-top:3px;line-height:1.7;}
+.dig .tp{padding:11px 15px;border-bottom:1px solid #edf2f7;}
+.dig .tp:last-child{border-bottom:none;}
+.dig .tn{font-size:13px;font-weight:700;color:#12385e;}
+.dig .tc{display:inline-block;font-size:10.5px;font-weight:700;background:#d7e6f7;color:#12385e;
+  padding:1px 7px;border-radius:9px;margin-left:6px;vertical-align:1px;}
+.dig .tw{font-size:12px;color:#5a6b7d;line-height:1.85;margin-top:3px;}
+.dig .hl{font-size:12.5px;color:#2d3748;line-height:1.8;margin-top:6px;padding-left:14px;
+  text-indent:-14px;}
+.dig .miss{padding:11px 15px;background:#fbfdff;border-bottom:1px solid #edf2f7;
+  font-size:12.5px;color:#4a5568;line-height:1.9;}
+.dig .noise{padding:10px 15px;background:#f7fafc;font-size:12px;color:#8a94a6;line-height:1.8;}
+.dig .join{padding:12px 15px;background:#fffbeb;border-top:1px solid #e0c986;
+  font-size:13px;color:#7d5300;line-height:1.95;}
 .qt-sum{padding:14px 16px;background:#eef4fb;border-top:1px solid #c5daf0;
   font-size:13px;color:#2d3748;line-height:2.0;}
 .qt-sum .ph3{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:8px;}
@@ -250,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.2</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.3</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -283,6 +300,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     </div>
   </div>
   <div id="mkt"></div>
+  <div id="mdig"></div>
   <div class="nl" id="ml"><span class="sp"></span></div>
 </div>
 <div class="panel" id="panel-watchlist">
@@ -865,6 +883,10 @@ function mktRender(rows, err){
     sub=(n-ok50)+'/'+n+' 個指數跌破 50 日線，但 '+ok200+'/'+n+' 還在 200 日線上方 —— '
        + '中期還在、短期轉弱。<br>買點還算數，但<b>部位要縮</b>，而且只做四項都最漂亮的那一兩檔。';
   }
+  /* 給「今日重點」用 —— 讓新聞那一塊可以接上大盤結論 */
+  MKT_STATE={cls:cls, title:big.replace(/^[^ ]+ /,'')};
+  if(typeof digMkt==='function') digMkt();
+
   h += '<div class="mkt-v '+cls+'">'+big+'<div class="sub">'+sub+'</div></div>';
 
   h += '<table class="mkt-t"><tr><th>指數</th><th>現價</th><th>50 日線</th>'
@@ -963,6 +985,99 @@ async function loadMkt(){
   mktRender(rows, null);
 }
 
+/* ═══ 今日重點（9/15 Jasmine）═══════════════════════════════
+   她的原話:「都是一般的新聞…很難看出有什麼特別值得關注的」。
+   ⚠ 這是【關鍵字比對】, 不是理解語意。它只做兩件事:
+      ① 把 20 則分到你真的在追的主題下面
+      ② 指出今天「哪些主題沒有出現」—— 沒消息本身也是資訊
+   它【不判斷利多利空】。那個我不讓程式猜。            */
+var MKT_STATE=null;
+
+var DIG_TOPICS=[
+ {k:'mem', n:'記憶體與儲存', w:'你有 MU、AMKR。⚠ 記憶體漲價對 MU 是獲利、對 DELL 是成本 —— 同一則新聞在你持股裡是相反的。',
+  re:/\b(HBM|DRAM|NAND|SSD|flash memory|memory chip|Micron|Hynix|Kioxia|Sandisk|Western Digital)\b/i},
+ {k:'optic', n:'光通訊', w:'你最熟的板塊：COHR、AAOI、LITE、AXTI、GLW、MRVL。CPO 與 800G/1.6T 的進度直接對到它們的訂單。',
+  re:/\b(optical|photonic|photonics|co-packaged|CPO|transceiver|800G|1\.6T|fiber|Coherent|Lumentum|Ciena|Arista)\b/i},
+ {k:'chip', n:'AI 晶片與代工', w:'整條鏈的上游。晶片端的資本支出與產能決定你下游那幾檔有沒有單可接。',
+  re:/\b(Nvidia|NVDA|AMD|TSMC|Broadcom|semiconductor|chipmaker|foundry|GPU|wafer|ASML|lithograph)\b/i},
+ {k:'power', n:'資料中心電力與散熱', w:'VRT／GEV／ETN／CEG 那一組。⚠ 記得板塊說明那件事：設備端賺到錢，發電端沒有。',
+  re:/\b(data cent|nuclear|reactor|SMR|power grid|electricity|megawatt|gigawatt|utility|cooling|Vertiv|turbine)\b/i},
+ {k:'capex', n:'雲端業者資本支出', w:'這是整個 AI 鏈的水龍頭。<b>超大規模業者一喊要省錢，你整串持股會一起被重評價</b>。',
+  re:/\b(capex|capital expenditure|hyperscaler|AI spending|OpenAI|Anthropic|Microsoft|Meta Platforms|Amazon|Alphabet|Google|Oracle)\b/i},
+ {k:'policy', n:'關稅與出口管制', w:'⚠ 對你殺傷力最大的一類。半導體出口管制與關稅可以一夜改變 MU、INTC、AMKR 的市場範圍，而且<b>跟公司做得好不好無關</b>。',
+  re:/\b(tariff|export control|sanction|Commerce Department|entity list|trade war|chip curb|restriction|ban on)\b/i},
+ {k:'macro', n:'利率與通膨', w:'成長股對利率最敏感。<b>你的池子都是長天期現金流的公司</b> —— 利率預期一動，估值先動，跟財報無關。',
+  re:/\b(Federal Reserve|the Fed|rate cut|rate hike|inflation|CPI|PPI|payroll|jobs report|Treasury yield|Powell|FOMC)\b/i},
+ {k:'oil', n:'油價與能源成本', w:'油價是通膨的前置指標，也直接影響電價 —— 而電價現在是 AI 資料中心的成本結構核心。',
+  re:/\b(oil|crude|OPEC|Brent|WTI|natural gas|energy price|gasoline)\b/i},
+ {k:'geo', n:'地緣政治', w:'⚠ 它<b>不預測方向</b>，但它會放大波動。波動放大的時候，停損被掃到的機率跟著上升 —— 這是部位大小要考慮的事。',
+  re:/\b(Iran|Israel|Russia|Ukraine|Taiwan|war|military strike|conflict|missile|ceasefire)\b/i},
+ {k:'cyber', n:'資安事件', w:'你追的資安十檔（CRWD、PANW…）。⚠ 大型資安事件通常是這個板塊的<b>短期利多</b>，但受害公司那邊是利空。',
+  re:/\b(cyber|cyberattack|hack|hacked|ransomware|data breach|CrowdStrike|Palo Alto Networks|Fortinet|zero-day)\b/i}
+];
+
+function digMkt(){
+  var el=document.getElementById('dig-mkt');
+  if(!el) return;
+  if(!MKT_STATE){ el.innerHTML='大盤那一格還在載入 —— 載完這裡會補上今天的合併結論。'; return; }
+  el.innerHTML='<b>把大盤和新聞合起來看：</b>大盤現在是「'+MKT_STATE.title+'」。'
+    + (MKT_STATE.cls==='g'
+        ? '順風的時候，上面那些主題比較容易真的推動股價。'
+        : (MKT_STATE.cls==='r'
+            ? '⚠ 逆風的時候，<b>再好的個股消息也常常推不動</b> —— 這時候新聞的參考價值會下降，不要拿利多去對抗大盤。'
+            : '⚠ 中間地帶：消息有用，但<b>部位要縮</b>。好消息不是加碼的理由，大盤還沒站回去。'));
+}
+
+function newsDigest(items){
+  var box=document.getElementById('mdig');
+  if(!box) return;
+  var hits={}, used={}, n=items.length;
+  for(var t=0;t<DIG_TOPICS.length;t++) hits[DIG_TOPICS[t].k]=[];
+
+  for(var i=0;i<n;i++){
+    var txt=(items[i].headline||'')+' '+(items[i].summary||'');
+    for(var j=0;j<DIG_TOPICS.length;j++){
+      if(DIG_TOPICS[j].re.test(txt)){ hits[DIG_TOPICS[j].k].push(items[i]); used[i]=1; }
+    }
+  }
+  var nUsed=0; for(var u in used) nUsed++;
+
+  var h='<div class="dig"><div class="dh">'
+      + '<div class="t1">📌 今日重點</div>'
+      + '<div class="t2">'+n+' 則裡有 <b>'+nUsed+' 則</b>對得上你在追的主題。'
+      + '這是關鍵字比對，<b>不是理解語意</b> —— 會漏也會誤判，而且<b>它不判斷利多利空</b>。</div></div>';
+
+  var shown=0, missing=[];
+  for(var k=0;k<DIG_TOPICS.length;k++){
+    var tp=DIG_TOPICS[k], arr=hits[tp.k];
+    if(!arr.length){ missing.push(tp.n); continue; }
+    shown++;
+    h += '<div class="tp"><div class="tn">'+tp.n+'<span class="tc">'+arr.length+' 則</span></div>'
+       + '<div class="tw">'+tp.w+'</div>';
+    for(var m=0;m<arr.length && m<3;m++)
+      h += '<div class="hl">· '+(arr[m].headline||'').replace(/</g,'&lt;')+'</div>';
+    if(arr.length>3) h += '<div class="hl" style="color:#8a94a6">· 還有 '+(arr.length-3)+' 則，往下捲</div>';
+    h += '</div>';
+  }
+
+  if(!shown)
+    h += '<div class="miss">今天這 '+n+' 則<b>沒有一則對得上你在追的主題</b>。'
+       + '這不是壞事 —— 代表今天沒有需要你反應的外部事件，<b>可以專心看型態</b>。</div>';
+
+  if(missing.length)
+    h += '<div class="miss">🔇 <b>今天沒出現的主題</b>：'+missing.join('、')+'<br>'
+       + '⚠ <b>沒消息本身也是資訊。</b>例如關稅與出口管制連續多天沒動靜，代表那個風險暫時沒有在發酵；'
+       + '一旦它突然出現，那才是要立刻停下來看的。</div>';
+
+  if(n-nUsed>0)
+    h += '<div class="noise">其餘 '+(n-nUsed)+' 則跟你的池子對不上（體育、娛樂、一般企業消息那類）—— '
+       + '不是不重要，是<b>跟你今天的決定無關</b>。</div>';
+
+  h += '<div class="join" id="dig-mkt"></div></div>';
+  box.innerHTML=h;
+  digMkt();
+}
+
 async function loadMarket(){
   spn('rm',true);cardIdx=0;
   document.getElementById('ml').innerHTML='<span class="sp"></span>';
@@ -972,6 +1087,7 @@ async function loadMarket(){
     var news=await api('/news?category=general&minId=0');
     var items=(news||[]).slice(0,20);
     document.getElementById('mm').textContent='共 '+items.length+' 則 · '+new Date().toLocaleTimeString('zh-TW');
+    newsDigest(items);
     document.getElementById('ml').innerHTML=items.map(function(n){return card(n);}).join('');
     document.getElementById('tr-market').style.display='inline-block';
     document.getElementById('tr-market').disabled=false;
