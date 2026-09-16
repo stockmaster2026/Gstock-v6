@@ -89,6 +89,13 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .mkt-t .nm span{font-weight:400;color:#718096;font-size:11px;margin-left:5px;}
 .mkt-ok{color:#16a34a;font-weight:700;} .mkt-no{color:#d92d2d;font-weight:700;}
 .mkt-f{padding:10px 14px;font-size:11.5px;color:#4a5568;line-height:1.8;background:#f7fafc;}
+.mkt-p{padding:13px 16px;background:#fbfdff;border-top:1px solid #e2e8f0;font-size:12.5px;
+  color:#2d3748;line-height:2.0;}
+.mkt-p .ph{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:7px;}
+.mkt-p .pq{font-weight:700;color:#12385e;}
+.mkt-p .pline{margin-bottom:9px;}
+.mkt-p .pnow{margin-top:11px;padding:11px 13px;background:#eef4fb;border:1px solid #c5daf0;
+  border-radius:9px;line-height:2.0;}
 .sec{margin:12px 16px 0;padding:15px 16px 16px;
   background:linear-gradient(180deg,#e8f0fa 0%,#dfeaf7 100%);
   border:1px solid #b6cce5;border-radius:14px;
@@ -194,12 +201,38 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .ftab td:first-child{text-align:left;font-weight:400;color:#2d3748;}
 .fq{color:#0066bb;}
 .fdis{font-size:11.5px;color:#4a5568;line-height:1.7;padding:12px 16px;}
+.ev-top{margin:12px 16px 0;padding:14px 16px;background:#eef4fb;border:1px solid #c5daf0;
+  border-radius:12px;font-size:13px;color:#2d3748;line-height:2.0;}
+.ev-top b{color:#12385e;}
+.ev-sec{margin:18px 16px 0;font-size:13px;font-weight:700;color:#12385e;letter-spacing:1px;}
+.ev-sub{margin:3px 16px 0;font-size:12px;color:#5a6b7d;line-height:1.8;}
+.ev-c{margin:10px 16px 0;padding:14px 16px;background:#fff;border:1px solid #c8d0dc;
+  border-radius:12px;}
+.ev-c .tt{font-size:15px;font-weight:700;color:#1a202c;line-height:1.6;margin-bottom:9px;}
+.ev-c .bg{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;
+  border-radius:9px;margin-left:7px;vertical-align:2px;}
+.bg-a{background:#d7f5e3;color:#0d8a3f;}
+.bg-b{background:#fdefd0;color:#a06a08;}
+.bg-c{background:#eceff3;color:#5a6b7d;}
+.ev-c .k{font-size:11.5px;font-weight:700;color:#12385e;margin-top:10px;}
+.ev-c .v{font-size:13px;color:#2d3748;line-height:1.95;margin-top:2px;}
+.ev-c .src{margin-top:11px;padding-top:9px;border-top:1px solid #edf2f7;
+  font-size:11px;color:#8a94a6;line-height:1.7;}
+.ev-c .warn{background:#fffbeb;border:1px solid #e0c986;border-radius:9px;
+  padding:9px 12px;margin-top:10px;font-size:12.5px;color:#7d5300;line-height:1.9;}
+.ev-t{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;overflow:hidden;background:#fff;}
+.ev-t table{width:100%;border-collapse:collapse;font-size:13px;}
+.ev-t td{padding:10px 12px;border-bottom:1px solid #edf2f7;vertical-align:top;line-height:1.85;}
+.ev-t tr:last-child td{border-bottom:none;}
+.ev-t td:first-child{width:104px;font-weight:700;color:#12385e;white-space:nowrap;}
+.ev-end{margin:14px 16px 20px;padding:14px 16px;background:#f7fafc;border:1px solid #c8d0dc;
+  border-radius:12px;font-size:12.5px;color:#4a5568;line-height:2.0;}
 .tr-status{font-size:11px;color:#4a5568;padding:8px 16px;text-align:center;}
 </style>
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v3.8</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.0</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -207,6 +240,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <button class="tab" onclick="go('watchlist')" id="tab-watchlist">👁 我的持倉</button>
   <button class="tab" onclick="go('radar')" id="tab-radar">⚡ 異動雷達</button>
   <button class="tab" onclick="go('fund')" id="tab-fund">📊 財報體檢</button>
+  <button class="tab" onclick="go('evid')" id="tab-evid">📚 白話字典</button>
 </div>
 <details class="tset" id="tset">
   <summary>⚙ 翻譯設定與今日額度</summary>
@@ -299,6 +333,129 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
     門檻用 O&#39;Neil CANSLIM 原版：當季 EPS 與營收年增 ≥25%、近三年 EPS 年成長 ≥25%、ROE ≥17%。<br>
     <b>算不出來（灰色）不等於不及格</b> —— 前幾年虧損的公司成長率本來就算不出百分比。<br>
     ⚠ 分析師家數是 Finnhub 免費層唯一給的分析師資料，目標價與個別調升調降是付費項目，這裡沒有。
+  </div>
+</div>
+
+<div class="panel" id="panel-evid">
+  <div class="ph">
+    <div class="ph-left"><div class="pt">白話字典 · 證據等級</div>
+      <div class="pm">這一頁不抓資料、不會變，也不給買賣訊號</div></div>
+  </div>
+
+  <div class="ev-top">
+    這一頁回答兩件事：<b>①你每天看的那些數字，白話到底在講什麼</b>；
+    <b>②哪幾件事背後有真的研究撐著，哪幾件只是習慣。</b><br>
+    分級的意思很簡單 —— <b>A ＝很多人重複驗證過</b>、<b>B ＝有證據但效果小或條件多</b>、
+    <b>C ＝沒有統計證據，但那不代表沒用</b>（看最下面）。
+  </div>
+
+  <div class="ev-sec">第一部分 · 每個數字的白話翻譯</div>
+  <div class="ev-sub">看不懂就翻這裡。每一條只講「它到底在量什麼」。</div>
+  <div class="ev-t"><table>
+    <tr><td>50 日線</td><td>最近 50 天買進的人，<b>平均買在哪個價格</b>。股價在它上面＝這兩個多月進場的人整體是賺的。</td></tr>
+    <tr><td>200 日線</td><td>同樣的東西，但拉長到一年。跌破它＝<b>過去一年進場的人多數被套住</b>，所以這條線一破，市場氣氛會整個變。</td></tr>
+    <tr><td>50 日線斜率</td><td>那條平均成本線<b>本身</b>在往上還往下（跟 20 天前比）。<br>往上＝越晚買的人買得越貴，而且還是願意買。<br>往下＝越晚買的人買得越便宜，賣的人在讓價。<br>⚠ 價格剛彈回線上、但線本身還在下彎 ＝ 那是反彈，不是趨勢。</td></tr>
+    <tr><td>30 週線</td><td>週線版的長期成本線（約等於日線 150 天）。Weinstein 拿它分多空：在它上面且線在上揚＝Stage 2。</td></tr>
+    <tr><td>離一年高點</td><td>現在的價格，比過去一年最高價低幾 %。<b>量的是這一波已經跌多深。</b><br>0 ~ −5% 高檔區　·　−5 ~ −10% 正常回檔　·　−10 ~ −20% 修正　·　−20% 以上 空頭。</td></tr>
+    <tr><td>離長均線 +X%</td><td>現在比長期平均成本高出多少。<b>數字越大＝漲得越急</b>，真要回到那條線要跌掉的幅度就是那個數字。+43% 代表回均線＝ −30%。</td></tr>
+    <tr><td>量倍數 1.5×</td><td>今天的成交量是平常的 1.5 倍。<b>量＝有多少人真的掏錢</b>，不是有多少人看好。</td></tr>
+    <tr><td>風險 %</td><td>如果照這個價買、停損被打到，你會<b>賠掉幾 %</b>。它決定你能買幾股 —— 風險越大、同樣的錢只能買越少。</td></tr>
+    <tr><td>失效點</td><td>這一波回檔的最低點。跌破它代表「還在往上」這個假設<b>被推翻了</b>。<br>⚠ 它是假設的證偽點，<b>不是建議停損</b>（通常離太遠，拿來當停損會賠太多）。</td></tr>
+    <tr><td>pivot</td><td>型態裡最後一道壓力。<b>站上去才代表買方贏了這一局</b>，在那之前都還在盤整。</td></tr>
+    <tr><td>ROE</td><td>公司用股東的錢，一年賺回幾 %。<b>量的是賺錢效率</b>，不是賺多少。</td></tr>
+    <tr><td>EPS 成長</td><td>每股賺的錢，比去年同一季多幾 %。</td></tr>
+    <tr><td>超預期 4/4</td><td>過去四季財報，<b>四季都比分析師預期好</b>。連續性比單季幅度更有意義。</td></tr>
+  </table></div>
+
+  <div class="ev-sec">第二部分 · 哪些事有研究撐著</div>
+  <div class="ev-sub">下面四條不是我的意見，是學術期刊上被重複測過的東西。</div>
+
+  <div class="ev-c">
+    <div class="tt">1. 離一年高點越近，之後表現越好<span class="bg bg-a">A 級</span></div>
+    <div class="k">白話</div>
+    <div class="v">一群股票裡，<b>離自己一年最高價越近的那些，接下來幾個月平均表現越好</b>；跌得越深的那些，之後平均越差。</div>
+    <div class="k">反直覺在哪</div>
+    <div class="v">一般人想的是「跌很多所以便宜、該買」。<b>資料是反過來的。</b></div>
+    <div class="k">為什麼會這樣</div>
+    <div class="v">大家把「一年最高價」當成心裡的天花板。股票越靠近它，越多人覺得太貴不敢追 —— 所以好消息沒有一次反映完，價格是分好幾次慢慢補上去的。</div>
+    <div class="k">你哪裡在用它</div>
+    <div class="v">radar 與 dna 的「離高點 %」、這個工具大盤那一格的「離一年高點」。也是 O&#39;Neil 和 Minervini 說「要買在高點附近」的來源。</div>
+    <div class="warn">⚠ 它是<b>排序工具</b>，不是單檔的預測。意思是「這一群比那一群好」，不是「這一檔會漲」。</div>
+    <div class="src">George &amp; Hwang, The 52-Week High and Momentum Investing, Journal of Finance, 2004</div>
+  </div>
+
+  <div class="ev-c">
+    <div class="tt">2. 財報超預期之後，還會再漲一段<span class="bg bg-a">A 級</span></div>
+    <div class="k">白話</div>
+    <div class="v">財報比預期好的公司，股價在<b>接下來兩到三個月會繼續慢慢往上漂</b>；比預期差的繼續往下。這叫 PEAD。</div>
+    <div class="k">為什麼會這樣</div>
+    <div class="v">大家知道這一季好，但<b>低估了「好會延續幾季」</b>。所以不是一次反映完，是一季一季慢慢承認。</div>
+    <div class="k">有多硬</div>
+    <div class="v">1974–1985 那 48 個季度裡，有 41 季成立。而且<b>大盤是跌的那 16 季裡，仍有 11 季成立</b> —— 這是少數在空頭裡也站得住的。被公開幾十年、被量化基金大量使用之後，到今天還在。</div>
+    <div class="k">你哪裡在用它</div>
+    <div class="v">財報體檢的「超預期 4/4」那一欄。<b>這是你工具裡證據最硬的一格。</b></div>
+    <div class="warn">⚠ 重要的用法修正：<b>不是「超預期就買」。</b>研究發現<b>財報當天反應越冷淡，後面漂得越久</b>；當天就一次噴滿的，後面通常沒得漲了。<br>
+    ⚠ 在最大、最多人盯的股票上，短天期的效應已經被磨平甚至反轉。你做的正是大型科技股。</div>
+    <div class="src">Ball &amp; Brown 1968；Bernard &amp; Thomas, Journal of Accounting Research, 1989</div>
+  </div>
+
+  <div class="ev-c">
+    <div class="tt">3. 突然爆量，本身就是訊號<span class="bg bg-b">B 級</span></div>
+    <div class="k">白話</div>
+    <div class="v">一天或一週成交量<b>突然遠大於平常</b>的股票，接下來一個月傾向上漲；量突然特別低的傾向下跌。</div>
+    <div class="k">為什麼會這樣</div>
+    <div class="v">爆量 ＝ <b>被看見</b>。交易暴增讓更多人注意到這檔股票，後續的買盤才跟著進來。研究排除了流動性、公司公告、市場風險等其他解釋。</div>
+    <div class="k">你哪裡在用它</div>
+    <div class="v">pivot 突破要求「量 ≥1.5 倍」。</div>
+    <div class="warn">⚠ 範圍不一樣：研究講的是<b>爆量本身</b>，你用的是<b>「突破 ＋ 爆量」的組合</b>。那是更窄的東西，研究沒有直接背書 —— 別把它當成 A 級。</div>
+    <div class="src">Gervais, Kaniel &amp; Mingelgrin, The High-Volume Return Premium, Journal of Finance, 2001</div>
+  </div>
+
+  <div class="ev-c">
+    <div class="tt">4. 買強勢股會崩，而且崩的時機有跡可循<span class="bg bg-a">A 級</span></div>
+    <div class="k">白話</div>
+    <div class="v">長期來看，買強勢股是報酬最高的做法。<b>但它偶爾會連續大賠</b>，而且時機很固定：<b>大盤已經跌了一段、波動很大，然後突然 V 型反彈的時候。</b></div>
+    <div class="k">為什麼會這樣</div>
+    <div class="v">大跌之後，跌最慘的那些爛股票變得非常敏感，市場一反彈它們彈最兇；而強勢股反而不太動。所以「買強賣弱」在那個時點會被反向輾過。</div>
+    <div class="k">對你的意義</div>
+    <div class="v">這就是<b>大盤那一格存在的理由</b>，也是為什麼大盤轉弱時正確的動作是<b>縮部位</b>，而不是換去買跌深的股票。</div>
+    <div class="warn">✅ 一個對你有利的細節：崩盤主要是<b>放空那一邊</b>造成的。你只做多，受傷輕很多。</div>
+    <div class="src">Daniel &amp; Moskowitz, Momentum Crashes, Journal of Financial Economics, 2016</div>
+  </div>
+
+  <div class="ev-c">
+    <div class="tt">C 級：平台寬度、pivot 怎麼畫、停損放哪、部位多大<span class="bg bg-c">C 級</span></div>
+    <div class="k">現況</div>
+    <div class="v">這些<b>幾乎沒有橫斷面的統計證據</b>。學術上沒人證明「平台要 15 根以內」或「停損放 8%」比別的數字好。</div>
+    <div class="k">但這不代表它們沒用</div>
+    <div class="v"><b>它們根本不是預測工具，是控制賠多少的工具。</b>它們不需要「準」。<br>
+    停損不是在預測會不會跌，是在規定你最多賠多少。部位大小不是在預測會不會漲，是在決定你賭多大。</div>
+    <div class="warn">⚠ 所以：<b>不要再花時間去優化這些數字想讓它們變準</b> —— 那是用錯了工具。它們的價值在於你有沒有照著做。</div>
+  </div>
+
+  <div class="ev-sec">第三部分 · 兩件對上面全部都適用的醜話</div>
+  <div class="ev-c">
+    <div class="k">① 大多數「被發表過的指標」其實過不了關</div>
+    <div class="v">有人把文獻裡 <b>452 個</b>異常現象用同一套方法重跑，<b>65% 連最低的統計門檻都過不了</b>；把門檻提高到該有的水準，失敗率升到 82%。</div>
+    <div class="k">② 就算有效，被寫出來之後也會減半</div>
+    <div class="v">97 個已發表的預測指標，<b>發表後平均報酬少了 58%</b>。因為大家看到了、開始用了。<br>
+    <b>「學術驗證過」和「現在還有效」是兩件事，而且前者會傷害後者。</b></div>
+    <div class="warn">⚠ 也有反方：另一批研究用不同方法重估，認為多數因子其實複製得出來、在 93 個國家也成立。<b>這件事學界還沒吵完</b> —— 所以上面 A 級的意思是「相對可信」，不是保證。</div>
+  </div>
+
+  <div class="ev-sec">第四部分 · 基本面和技術面到底怎麼配</div>
+  <div class="ev-end">
+    <b>不要加權成一個總分。</b>三個理由：<br>
+    ① EPS +43% 和「停損 12%」是兩種不同的東西，平均起來沒有意義。<br>
+    ② 它們不是獨立的兩票 —— 財報好和之後的股價強，本來就是<b>同一件事的兩個階段</b>，加權等於算兩次。<br>
+    ③ 最致命：<b>總分會把「不能買」變成「分數低一點」。</b><br>
+    <span style="color:#d92d2d">DELL 就是活例 —— 型態滿分、量 4.95 倍、收在當日高點附近。打總分它會是高分股。但正確答案是不做，因為停損要放到 12.2%。<b>停損距離是否決票，不是扣分項。</b></span><br><br>
+    <b>正確的結構是分層：</b><br>
+    <b>基本面</b> → 這檔有沒有資格進我的名單（<b>過／不過</b>，不打分）<br>
+    <b>方向</b>（30 週線、離高點） → 今天該不該看它<br>
+    <b>價格與停損</b>（pivot、風險 %） → <b>硬關卡，一票否決</b><br>
+    <b>品質</b>（量能、財報加速度） → <b>決定買多少</b>，這裡才打分<br><br>
+    一句話：<b>基本面決定「買哪一檔」，技術面決定「今天買不買、買多少、最多賠多少」。</b>
   </div>
 </div>
 
@@ -704,10 +861,73 @@ function mktRender(rows, err){
        + (r2.slope==null?'—':((r2.slope>0?'+':'')+r2.slope.toFixed(1)+'%'))+'</td>'
        + '<td class="'+(r2.fromHi>-5?'mkt-ok':'')+'">'+r2.fromHi.toFixed(1)+'%</td></tr>';
   }
-  h += '</table><div class="mkt-f">'
-     + '<b>50 日線</b>＝中期趨勢　·　<b>200 日線</b>＝長期趨勢（跌破它是 O&#39;Neil 最在意的那條線）<br>'
-     + '<b>50 日線斜率</b>＝這條線本身近 20 天是往上還往下 —— 價格在線上方但線本身在下彎，那是剛反彈不是趨勢<br>'
-     + '⚠ 這一格<b>只管要不要新進場</b>。手上的部位一律看 dna 的失效點，不看這裡。</div></div>';
+  h += '</table>';
+
+  /* ═══ 白話讀法（9/15 Jasmine 要求）═══════════════════════
+     兩件事：①把「50 日線斜率」「離一年高點」用生活話講一次
+             ②用當下真正的數字，講「所以現在是什麼狀況」     */
+  var dnSlope=0, worstI=0, avgHi=0;
+  for(var k2=0;k2<rows.length;k2++){
+    if(rows[k2].slope!=null && rows[k2].slope<=0) dnSlope++;
+    if(rows[k2].fromHi < rows[worstI].fromHi) worstI=k2;
+    avgHi += rows[k2].fromHi;
+  }
+  avgHi = avgHi/n;
+  var upSlope = n - dnSlope;
+
+  var depth = (avgHi>-5) ? '<b>幾乎還貼著最高點</b>，連像樣的回檔都還沒發生'
+            : (avgHi>-10) ? '<b>正常回檔的範圍</b>（一般 −5% 到 −10% 都還算健康的喘息）'
+            : (avgHi>-20) ? '<b>已經進到「修正」的範圍</b>（−10% 以上通常就叫 correction）'
+            : '<b>已經到一般定義的空頭深度</b>（−20% 以上）';
+
+  var midTxt = (n-ok50>=n) ? '四個指數<b>全部</b>跌破 50 日線'
+             : (n-ok50===0) ? '四個指數<b>全部</b>還在 50 日線上方'
+             : (n-ok50)+'/'+n+' 個指數跌破 50 日線';
+  var longTxt = (ok200>=n) ? '但<b>四個都還站在 200 日線上方</b>'
+              : (ok200===0) ? '而且<b>一個都沒站在 200 日線上方</b>'
+              : '而 200 日線上方還有 '+ok200+'/'+n+' 個';
+  var slopeTxt = (upSlope>=n) ? '四條 50 日線<b>本身都還在往上</b>'
+               : (upSlope===0) ? '四條 50 日線<b>本身全部在下彎</b>'
+               : upSlope+'/'+n+' 條 50 日線本身還在往上、'+dnSlope+' 條已經下彎';
+
+  var conclude;
+  if(ok200>=n && (n-ok50)>0 && upSlope>=Math.ceil(n/2)){
+    conclude = '把這三句連起來：<b>價格短線跌破了近期成本，但長期成本線本身還在往上</b> —— '
+             + '這是「上升途中的休息」的長相，不是「趨勢反轉」的長相。'
+             + '趨勢真的要壞，會先看到 <b>200 日線被跌破</b>、接著 <b>50 日線斜率轉負</b>，而不是只有價格掉下來。';
+  }else if(ok200<=Math.floor(n/2)){
+    conclude = '把這三句連起來：<b>連長期那條線都守不住了</b> —— 這已經不是回檔的長相。'
+             + '這種環境裡個股型態的失敗率會明顯升高，不是你選股變差。';
+  }else{
+    conclude = '把這三句連起來：<b>短期已經轉弱，長期還沒破</b> —— 中間地帶。'
+             + '這種時候不是不能做，是<b>做錯的代價變高</b>，所以部位要縮、只留最強的。';
+  }
+
+  h += '<div class="mkt-p"><div class="ph">白話讀法</div>'
+     + '<div class="pline"><span class="pq">「50 日線斜率」在講什麼？</span><br>'
+     + '50 日線＝<b>最近 50 天買進的人，平均買在哪裡</b>。斜率則是問：這條平均成本線，'
+     + '比 20 天前更高還是更低。<br>'
+     + '往上＝越晚進場的人買得越貴，而且他們還是願意買 —— 買方在主動抬價。<br>'
+     + '往下＝越晚進場的人買得越便宜 —— 賣的人在讓價求售。<br>'
+     + '⚠ 為什麼要多看這一欄：價格可能剛從谷底彈上這條線之上，但線本身還在下彎 —— '
+     + '那叫<b>反彈</b>，不叫趨勢。這跟 dna 判 Stage 2 是同一個道理。</div>'
+     + '<div class="pline"><span class="pq">「離一年高點」在講什麼？</span><br>'
+     + '從過去一年最高價往下算，現在掉了幾 %。它量的是<b>這一波已經跌了多深</b>。<br>'
+     + '0 ~ −5%＝還在高檔區　·　−5 ~ −10%＝正常回檔　·　'
+     + '−10 ~ −20%＝修正（correction）　·　−20% 以上＝一般定義的空頭。<br>'
+     + '⚠ 它<b>不預測</b>會不會再跌，只告訴你現在站在哪一格。</div>'
+     + '<div class="pnow"><b>那今天是什麼狀況？</b><br>'
+     + '四個指數平均離一年高點 <b>'+avgHi.toFixed(1)+'%</b>，最深的是'
+     + MKT_LIST[worstI].n+'（'+rows[worstI].fromHi.toFixed(1)+'%）—— '+depth+'。<br>'
+     + midTxt+'，'+longTxt+'，'+slopeTxt+'。<br>'
+     + conclude+'</div></div>';
+
+  h += '<div class="mkt-f">'
+     + '<b>50 日線</b>＝中期趨勢（約兩個半月的平均成本）　·　'
+     + '<b>200 日線</b>＝長期趨勢（約一年，跌破它是 O&#39;Neil 最在意的那條線）<br>'
+     + '⚠ 這一格<b>只管要不要新進場</b>。手上的部位一律看 dna 的失效點，不看這裡。<br>'
+     + '⚠ 燈號門檻（四個都在 200 日線上＝綠／一半以上跌破＝紅）是<b>我寫死的，沒有回測過</b> —— '
+     + '先當參考，不要拿它推翻你自己看得到的東西。</div></div>';
   box.innerHTML=h;
 }
 
@@ -1494,6 +1714,14 @@ var SECTORS = [
  {k:'bio', n:'生技與醫材', v:false,
   s:'LLY, NVO, ISRG, TEM, CRSP, NTRA, HIMS, RXRX, VKTX, ALNY',
   note:'⚠ <b>這一組我最不熟</b>，只是把常見的大名字放進去，不保證它們真的是同一個題材。<br>跑完如果覺得不像一個板塊，<b>跟我說我重查</b>。'},
+ {k:'fin', n:'金融', v:false,
+  s:'JPM, GS, MS, BLK, KKR, BX, SCHW, COIN, HOOD, V',
+  note:'⚠ <b>這一組用這張表的門檻去看幾乎會全紅，但那不代表它們爛。</b><br>'
+     + '這裡的綠燈門檻是成長股的門檻（EPS／營收 +25%、ROE 17%）—— 銀行的營收本來就不會年年成長 25%，'
+     + 'ROE 也是靠槓桿撐出來的，兩邊定義不同。<b>拿成長股的尺去量銀行，量出來的紅字沒有意義。</b><br>'
+     + '真正該看的是另一組東西（淨利差、壞帳提列、帳面價值），<b>這張表沒有在抓</b>。<br>'
+     + '那放它進來幹嘛：金融股是 <b>CANSLIM 的 M 的旁證</b> —— 銀行與券商先轉弱，通常代表信用環境在收，'
+     + '那會回頭打到你在做的科技股。<b>它是拿來看氣氛的，不是拿來挑飆股的。</b>'},
  {k:'mine', n:'我的持股', v:true,
   s:'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, AEHR, LITE, INTC, AMKR, RKLB, NBIS, DELL',
   note:'你原本那幾檔。<b>只有這一組每一檔都有公司速寫</b>，別的板塊會是空白卡 —— 那是正常的，不是壞掉。'}
