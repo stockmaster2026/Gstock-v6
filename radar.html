@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v8.3</title>
+<title>飆股雷達 v8.4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v8.3</div>
+  <div class="logo">飆股<span>RADAR</span> v8.4</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -189,25 +189,45 @@ var HKEY='biaoguo_history_v1';
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
-  {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','META','GOOGL','MSFT','AMZN']},
-  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','CRWD','SNOW']},
-  {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH']},
-  {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','ETN','GNRC','AXON']},
-  {id:'space',     icon:'🛰️', name:'太空衛星',   etf:'UFO',  tickers:['LUNR','RKLB','PL','BKSY','ASTS','IRDM','SATS','GSAT','VSAT']},
-  {id:'drone',     icon:'🚁', name:'無人機國防', etf:'ITA',  tickers:['ONDS','KTOS','PLTR','ACHR','JOBY']},
+  // ═══ v8.4:【成分股大清理 —— 依「營收主要來自哪裡」重排】═══════════════════
+  //   Jasmine 9/17:「我想知道的是資金現在重壓在哪些板塊。」
+  //   查證後改用 O'Neil／IBD 的原則, 不再用「在不在那支 ETF 裡」當唯一依據:
+  //     · IBD 分組的判準原文:「the deciding factor is where it gets most of its revenue」
+  //     · TraderLion/Deepvue: 股價變動 37% 來自【產業組】、12% 來自大板塊 → 組要切細
+  //     · 「成分股多的組才是強勢 move 的好候選, 因為那代表廣泛參與」→ 每組補到 8~12 檔
+  //   ⚠ 板塊【名稱一律不動】—— getSectors 是用名稱對應預設值的(v8.1 的教訓)。
+  //   ⚠ 新增一組【AI電力設備】: 原本 power 把發電端與設備端混在一起,
+  //     而 2026 年這兩邊<b>走相反方向</b>(發電端 −20%、設備端 +29%), 混在一組會互相抵銷成雜訊。
+  {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','MSFT','GOOGL','AMZN','META','AAPL','AVGO','ORCL','TSM']},
+  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','NTAP','P']},
+  {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH','CIEN','FN','POET','TSEM','NOK']},
+  // 發電端: 九檔全部都在 XLU 成分裡(已查證 XLU 只有 34~35 檔, 全是受監管公用事業與 IPP)
+  {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','TLN','NRG','PEG','D','EXC','AES','NEE']},
+  // 新增: 設備端。ETN/GNRC 原本掛在 XLU 底下, 但它們是工業股, 根本不在 XLU 裡
+  {id:'power_eq',  icon:'🔌', name:'AI電力設備', etf:'XLI',  tickers:['ETN','GEV','PWR','GNRC','EMR','HUBB','NVT','AME']},
+  // SATS 移除(EchoStar, backtest 曾 404); BKSY 保留
+  {id:'space',     icon:'🛰️', name:'太空衛星',   etf:'UFO',  tickers:['LUNR','RKLB','PL','BKSY','ASTS','IRDM','GSAT','VSAT']},
+  // ACHR/JOBY(eVTOL 空中計程車)、ONDS、PLTR 移出 —— 都不在 ITA; AXON 從 power 搬進來(它在 ITA 裡)
+  {id:'drone',     icon:'🚁', name:'無人機國防', etf:'ITA',  tickers:['KTOS','AVAV','LDOS','LMT','RTX','NOC','GD','AXON','HII']},
+  // ⚠ 只有 4 檔, 全市場就這幾家 —— 樣本太小, breadth 判不準, 看的時候要打折
   {id:'quantum',   icon:'⚛️', name:'量子運算',   etf:'QTUM', tickers:['IONQ','RGTI','QBTS','QUBT']},
-  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','NTAP','STX','SNDK','P']},
-  {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['TEM','HIMS','RXRX','NVAX','CRSP']},
-  {id:'metals',    icon:'💰', name:'貴金屬礦業', etf:'GDX',  tickers:['GLD','SLV','NEM','AEM','WPM']},
-  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['TSLA','SYM','SERV','ISRG','CGNX','AMBA','OUST','TEL']},
-  {id:'ai_compute',icon:'☁️', name:'AI算力雲',   etf:'SKYY', tickers:['NBIS','CRWV','IREN']},
+  // NTAP/P 移到 AI基礎設施(它們是系統廠不是半導體, 不在 SMH); 補進上游設備與封裝
+  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO']},
+  // TEM(醫療資料 AI)、HIMS(遠距醫療通路)移出 —— 不在 XBI; 補進同族基因編輯與罕病
+  {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['CRSP','NTRA','NVAX','RXRX','BEAM','NTLA','EDIT','ALNY','VKTX','SRPT']},
+  // GLD/SLV 移除 —— 那是金屬本身不是礦股, 會把板塊分數拉成金價走勢
+  {id:'metals',    icon:'💰', name:'貴金屬礦業', etf:'GDX',  tickers:['NEM','AEM','WPM','GOLD','KGC','AU','FNV','RGLD']},
+  // TSLA/TEL 移除 —— 都不在 BOTZ
+  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['ISRG','CGNX','SYM','SERV','OUST','AMBA','PATH','IRBT']},
+  // ⚠ 基準從 SKYY 改 XLK: SKYY 是雲端【軟體】, 這一組是礦工轉 AI 代管的算力商, 性質不同
+  {id:'ai_compute',icon:'☁️', name:'AI算力雲',   etf:'XLK',  tickers:['NBIS','CRWV','IREN','APLD','CORZ','WULF','HUT','GLXY']},
   // ═══ v7.8 新增：應用層原本一個都沒有 ═══════════════════════════
   // 舊的 14 個板塊全是硬體與基礎設施。名單裡沒有的東西，radar 永遠不會告訴你它在漲，
   // 所以「軟體在走強但我沒看到」不是漏看，是結構上看不到。
   // 基準用 XSW（等權重軟體）而不是 IGV —— IGV 前三大就佔 30%，它漲往往只是三檔在漲。
-  {id:'ai_soft',   icon:'🧠', name:'AI軟體應用', etf:'XSW',  tickers:['NOW','CRM','SNOW','DDOG','WDAY','TEAM','APP','MDB','PLTR']},
+  {id:'ai_soft',   icon:'🧠', name:'AI軟體應用', etf:'XSW',  tickers:['NOW','CRM','SNOW','DDOG','WDAY','TEAM','APP','MDB','PLTR','INTU']},
   // 資安獨立：IGV 裡 PANW+CRWD+FTNT+ZS 約佔 22%，跟應用軟體混在一起會互相污染
-  {id:'cyber',     icon:'🔒', name:'資安',       etf:'CIBR', tickers:['PANW','CRWD','FTNT','ZS','S']},
+  {id:'cyber',     icon:'🔒', name:'資安',       etf:'CIBR', tickers:['PANW','CRWD','FTNT','ZS','S','OKTA','TENB','QLYS','RBRK','NET']},
   {id:'custom',    icon:'⭐', name:'自訂',       etf:null,   tickers:[]},
 ];
 
@@ -661,7 +681,7 @@ function clickTriage(a, price){
   var d150=a.dist150, o52=a.off52;
   // 現價離支撐帶的距離：在帶內＝0，帶上＝正，帶下＝負
   var band = price>a.cH ? ((price/a.cH-1)*100) : (price<a.cL ? ((price/a.cL-1)*100) : 0);
-  // ═══ v8.3:【新上市／資料不足不該拿到綠燈】════════════════════════
+  // ═══ v8.4:【新上市／資料不足不該拿到綠燈】════════════════════════
   // 原本 d150===null 時，前面兩道 ⛔ 與 🔺 全部因為 !==null 而被跳過，
   // 只剩下「離支撐帶多遠」在把關 —— 一檔剛上市 40 根的股票（例如 2026/7/10
   // 掛牌的 SKHY）可以在完全沒有週線結構可驗的情況下直接拿到 🟢。
@@ -1309,7 +1329,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1664,7 +1684,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1780,7 +1800,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.3</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
