@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v8.4</title>
+<title>飆股雷達 v8.6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -142,7 +142,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v8.4</div>
+  <div class="logo">飆股<span>RADAR</span> v8.6</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -158,6 +158,50 @@ transition:all 0.2s;width:78px;position:relative;
 <div id="dailyObserve" style="background:#fff8e0;padding:10px 14px;border-bottom:2px solid #d4b800;font-size:12px;line-height:1.6;color:#1a1a2e;display:none;"></div>
 
 <div class="heat-strip" id="heatStrip"></div>
+<!-- ═══ v8.6:【白話說明貼在數字旁邊, 不是另開一頁】════════════════════
+     Jasmine 昨天教過的原則:「單獨拉一頁只是在解釋名詞, 很難跟著那種數據
+     立刻有印象」—— news.html 照做了, radar 這邊 v8.6 卻只丟了數字。補上。
+     ⚠ 順序刻意是 RS → 50線 → 高低家數 → 分數, 那是查證出來的確認階層:
+       相對強弱(誰領先) → breadth(領先普不普遍) → 分數(舊的, 已降級)。 -->
+<details id="bdHelp" style="margin:6px 10px 0;background:#f7f9fc;border:1px solid #d8e0ea;
+  border-radius:10px;font-size:12.5px;line-height:1.9;color:#2d3748">
+  <summary style="cursor:pointer;padding:8px 12px;font-weight:700;color:#12385e;list-style:none">
+    ❓ 這幾個數字在說什麼　<span style="font-weight:400;color:#8b949e">（點開）</span>
+  </summary>
+  <div style="padding:2px 14px 12px">
+    <div style="margin-bottom:9px">
+      <b style="color:#0d8a3f">RS 65%</b> —— <b>這是「資金動能」那一欄，先看它。</b><br>
+      過去 20 天裡，這一組的股票平均每 10 天有幾天<b>漲得比大盤（SPY）多</b>。
+      65% 就是 20 天裡約 13 天跑贏。<br>
+      <span style="color:#5a6b7d">為什麼重要：機構要建一個部位得買好幾週，
+      所以「持續一點一點跑贏」比「某一天大漲」更像資金在進來。
+      <b>同一組冒出多檔這種股票，那一組就是正在成形的領導組。</b><br>
+      綠 ≥60%　·　黃 45~60%　·　紅 &lt;45%</span>
+    </div>
+    <div style="margin-bottom:9px">
+      <b>50線 8/10</b> —— 這一組 10 檔裡有 <b>8 檔股價站在 50 日均線上方</b>。<br>
+      <span style="color:#5a6b7d">50 日線 ≈ 最近兩個半月買進的人的平均成本。站在上面
+      ＝ 這段時間進場的人整體是賺的。<br>
+      ⚠ <b>這一欄是用來抓假強勢的</b>：分數很高但這裡只有 3/10，代表那個強是
+      <b>兩三檔權值股拉起來的</b>，不是整組在漲 —— 那種強撐不久。</span>
+    </div>
+    <div style="margin-bottom:9px">
+      <b>高4／低0</b> —— 4 檔貼著<b>52 週新高</b>（1% 以內）、0 檔貼著 52 週低點。<br>
+      <span style="color:#5a6b7d">創新高的家數是最直接的「誰在被買」。
+      綠＝新高比新低多、紅＝反過來。</span>
+    </div>
+    <div style="margin-bottom:9px">
+      <b>10/10 檔</b> —— 這一組成功抓到資料的檔數。⚠ 分母小的時候（例如量子只有 4 檔）
+      <b>上面那些比例都要打折看</b>，一檔就能翻掉整組。
+    </div>
+    <div style="padding-top:8px;border-top:1px solid #d8e0ea;color:#7d5300">
+      ⚠ <b>分數與「1日變化」已經降級</b>，不要當主角。那一欄比的是
+      <b>「上一次你打開這個頁面那天」</b>，不是昨天 —— 你沒有每天開，它就是假的。<br>
+      上面四個數字<b>每次跑都重算</b>，不依賴歷史，所以它們才可信。<br>
+      <b>看的順序：RS% → 50線比例 → 高低家數 → 最後才看分數。</b>
+    </div>
+  </div>
+</details>
 
 <div class="page active" id="stockListPage">
   <div class="search-wrap" id="searchWrap">
@@ -189,7 +233,7 @@ var HKEY='biaoguo_history_v1';
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
-  // ═══ v8.4:【成分股大清理 —— 依「營收主要來自哪裡」重排】═══════════════════
+  // ═══ v8.6:【成分股大清理 —— 依「營收主要來自哪裡」重排】═══════════════════
   //   Jasmine 9/17:「我想知道的是資金現在重壓在哪些板塊。」
   //   查證後改用 O'Neil／IBD 的原則, 不再用「在不在那支 ETF 裡」當唯一依據:
   //     · IBD 分組的判準原文:「the deciding factor is where it gets most of its revenue」
@@ -550,6 +594,17 @@ function analyzeYahoo(result, floatShares){
     var hi52 = valid[0].h;
     for(var hj=1;hj<m;hj++){ if(valid[hj].h>hi52) hi52=valid[hj].h; }
     var off52 = hi52>0 ? (price/hi52-1)*100 : null;
+    // ═══ v8.6:【breadth 需要的三樣東西】═══════════════════════════════════
+    //   查證後的方向(O'Neil／Minervini／Deepvue): 板塊輪動不是靠「一個分數」,
+    //   是靠【家數】—— 這一組有幾檔創新高、幾檔站上均線、有沒有集體累積 RS days。
+    //   Minervini 原話: 逐板塊、每週統計 52 週新高與新低的家數。
+    //   EBC 的確認階層: 相對強弱(誰領先) → <b>breadth(領先普不普遍)</b> → 資金流 → 成交量(最弱)。
+    var ma200 = (m>=200) ? valid.slice(-200).reduce(function(s2,d){return s2+d.c;},0)/200 : null;
+    var lo52 = valid[0].l;
+    for(var lj=1;lj<m;lj++){ if(valid[lj].l<lo52) lo52=valid[lj].l; }
+    var off52lo = lo52>0 ? (price/lo52-1)*100 : null;
+    // 最近 21 根收盤 —— 留著給 RS Days 用(要跟 SPY 逐日比, 所以不能在這裡算)
+    var c21 = valid.slice(-21).map(function(d){return d.c;});
     var chip=0;
     chip+=phase*15;
     if(obvRising) chip+=20;
@@ -605,6 +660,7 @@ function analyzeYahoo(result, floatShares){
       maUpTrend:maUpTrend,maBearish:maBearish,aboveMA20:aboveMA20,
       botP:botP,botD:botD,chip:chip,chipParts:chipParts,chipLit:chipLit,
       ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,asOf:asOf,
+      ma200:ma200,lo52:lo52,off52lo:off52lo,c21:c21,
       dev30:dev30,dev50:dev50,dev80:dev80,mainCostMid:mainCostMid};
   }catch(e){return null;}
 }
@@ -681,7 +737,7 @@ function clickTriage(a, price){
   var d150=a.dist150, o52=a.off52;
   // 現價離支撐帶的距離：在帶內＝0，帶上＝正，帶下＝負
   var band = price>a.cH ? ((price/a.cH-1)*100) : (price<a.cL ? ((price/a.cL-1)*100) : 0);
-  // ═══ v8.4:【新上市／資料不足不該拿到綠燈】════════════════════════
+  // ═══ v8.6:【新上市／資料不足不該拿到綠燈】════════════════════════
   // 原本 d150===null 時，前面兩道 ⛔ 與 🔺 全部因為 !==null 而被跳過，
   // 只剩下「離支撐帶多遠」在把關 —— 一檔剛上市 40 根的股票（例如 2026/7/10
   // 掛牌的 SKHY）可以在完全沒有週線結構可驗的情況下直接拿到 🟢。
@@ -786,6 +842,53 @@ function heatScore(tickers, etfTicker){
   }
   return Math.round(stockScore);
 }
+// ═══ v8.6:【板塊 breadth —— 取代單一分數】════════════════════════════════
+//   ⚠ 這裡<b>不給總分、不排名次</b>。理由跟 dna 那張財報表一樣:
+//     要用哪一欄當標準, 取決於你當下在找什麼。
+//   四個數字各自回答一件事:
+//     新高家數   = 這一組有幾檔在創(或貼著)52 週新高  ← Minervini 的週統計
+//     新低家數   = 幾檔貼著 52 週低點                  ← 同一把尺的反面
+//     站上 50/200 = 參與度: 領先是不是普遍的, 還是兩檔權值股拉起來的
+//     RS Days    = 過去 20 天裡跑贏 SPY 的天數(組內<b>中位數</b>)
+//   ⚠ 用中位數不用平均 —— 一檔飆股會把整組平均墊高(量能門檻那次的教訓)。
+//   ⚠ Deepvue 的原話:「同一個產業冒出多檔 RS Day 數最高的股票,
+//     那一組就是潛在的新領導組。」這是 RRG 給不了的一層。
+function median(arr){
+  if(!arr.length) return null;
+  var a=arr.slice().sort(function(x,y){return x-y;}), n=a.length, h=Math.floor(n/2);
+  return n%2 ? a[h] : (a[h-1]+a[h])/2;
+}
+function rsDays(c21, spy21){
+  // 逐日比較日報酬: 這檔漲得比 SPY 多的天數。兩邊長度要一樣才比得準。
+  if(!c21||!spy21) return null;
+  var n=Math.min(c21.length, spy21.length);
+  if(n<6) return null;
+  var a=c21.slice(-n), b=spy21.slice(-n), win=0, tot=0;
+  for(var i=1;i<n;i++){
+    if(!(a[i-1]>0)||!(b[i-1]>0)) continue;
+    tot++;
+    if((a[i]/a[i-1]-1) > (b[i]/b[i-1]-1)) win++;
+  }
+  return tot? {win:win, tot:tot} : null;
+}
+function breadth(tickers){
+  var spy = (cache['SPY']&&!cache['SPY'].err&&cache['SPY'].a)?cache['SPY'].a.c21:null;
+  var have=0, nHi=0, nLo=0, a50=0, a200=0, n50=0, n200=0, rs=[];
+  (tickers||[]).forEach(function(t){
+    var d=cache[t]; if(!d||d.err||!d.a) return;
+    have++;
+    var A=d.a, px=d.price;
+    if(A.off52!=null   && A.off52   >= -1) nHi++;   // 離 52 週高點 1% 以內
+    if(A.off52lo!=null && A.off52lo <=  1) nLo++;   // 離 52 週低點 1% 以內
+    if(A.ma50!=null){  n50++;  if(px>A.ma50)  a50++;  }
+    if(A.ma200!=null){ n200++; if(px>A.ma200) a200++; }
+    var r=rsDays(A.c21, spy); if(r) rs.push(r.win/r.tot*100);
+  });
+  return {have:have, total:(tickers||[]).length,
+          nHi:nHi, nLo:nLo, net:(nHi-nLo),
+          a50:a50, n50:n50, a200:a200, n200:n200,
+          rsMed:median(rs)};
+}
 function avgChg(tickers){
   var v=tickers.map(function(t){return cache[t]&&!cache[t].err?cache[t].q.dp:null;}).filter(function(x){return x!==null;});
   return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:null;
@@ -827,10 +930,27 @@ function renderHeatStrip(selId){
       var ecol=edp>=0?'#009944':'#cc1133';
       etfChgHtml='<div style="font-size:8px;color:'+ecol+';font-weight:700;margin-top:1px;">'+sec.etf+' '+(edp>=0?'+':'')+edp.toFixed(1)+'%</div>';
     }
+    // ═══ v8.6:【breadth 直接印在板塊卡上】════════════════════════════════
+    //   ⚠ 分數(sc)與「1日變化」<b>保留但降級</b> —— 那一欄比的是「上次開啟那天」不是昨天,
+    //     不每天開就是假的。breadth 是每次跑都重算的, 不依賴歷史, 所以它才是主角。
+    var B=breadth(sec.tickers);
+    var bHtml='';
+    if(B.have>0){
+      var netCol = B.net>0?'#009944':(B.net<0?'#cc1133':'#888');
+      var rsTxt  = (B.rsMed!=null)? Math.round(B.rsMed)+'%' : '--';
+      var rsCol  = (B.rsMed==null)?'#888':(B.rsMed>=60?'#009944':(B.rsMed>=45?'#aa8800':'#cc1133'));
+      bHtml = '<div style="font-size:9px;line-height:1.5;margin-top:2px;font-weight:700">'
+            + '<span style="color:'+netCol+'">高'+B.nHi+'／低'+B.nLo+'</span>'
+            + '<span style="color:#666"> · </span>'
+            + '<span style="color:#444">50線 '+B.a50+'/'+B.n50+'</span><br>'
+            + '<span style="color:'+rsCol+'">RS '+rsTxt+'</span>'
+            + '<span style="color:#999;font-weight:400"> · '+B.have+'/'+B.total+' 檔</span>'
+            + '</div>';
+    }
     chip.innerHTML='<div class="hc-icon">'+sec.icon+'</div>'+
       '<div class="hc-name">'+sec.name+'</div>'+
       '<div class="hc-score" style="color:'+hi.col+'">'+sc+'</div>'+
-      etfChgHtml+changeHtml+trendHtml+
+      etfChgHtml+bHtml+changeHtml+trendHtml+
       '<div class="hc-bar"><div class="hc-fill '+hi.cls+'" style="width:0" data-w="'+sc+'%"></div></div>';
     chip.onclick=(function(id){return function(){showSector(id);};})(sec.id);
     strip.appendChild(chip);
@@ -1329,7 +1449,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1684,7 +1804,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1800,7 +1920,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.4</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
