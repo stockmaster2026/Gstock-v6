@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v8.6</title>
+<title>飆股雷達 v8.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -24,7 +24,8 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-seri
 
 .heat-strip{
 background:#fff8e0;border-bottom:3px solid #d4b800;
-padding:10px 8px;display:flex;gap:6px;overflow-x:auto;
+/* v8.7: 由橫向捲改成【換行成兩排】—— 卡片要放得下針對自己數字的白話結論 */
+padding:10px 8px;display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
 -webkit-overflow-scrolling:touch;
 }
 .heat-strip::-webkit-scrollbar{display:none;}
@@ -32,7 +33,7 @@ padding:10px 8px;display:flex;gap:6px;overflow-x:auto;
 flex-shrink:0;display:flex;flex-direction:column;align-items:center;
 padding:6px 8px;border-radius:10px;cursor:pointer;
 border:2px solid #d4b800;background:#fffde0;
-transition:all 0.2s;width:78px;position:relative;
+transition:all 0.2s;width:152px;position:relative;
 }
 .heat-chip:active{transform:scale(0.95);}
 .heat-chip.sel{border-color:var(--orange);background:rgba(221,102,0,0.12);}
@@ -142,7 +143,7 @@ transition:all 0.2s;width:78px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v8.6</div>
+  <div class="logo">飆股<span>RADAR</span> v8.7</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -158,15 +159,15 @@ transition:all 0.2s;width:78px;position:relative;
 <div id="dailyObserve" style="background:#fff8e0;padding:10px 14px;border-bottom:2px solid #d4b800;font-size:12px;line-height:1.6;color:#1a1a2e;display:none;"></div>
 
 <div class="heat-strip" id="heatStrip"></div>
-<!-- ═══ v8.6:【白話說明貼在數字旁邊, 不是另開一頁】════════════════════
+<!-- ═══ v8.7:【白話說明貼在數字旁邊, 不是另開一頁】════════════════════
      Jasmine 昨天教過的原則:「單獨拉一頁只是在解釋名詞, 很難跟著那種數據
-     立刻有印象」—— news.html 照做了, radar 這邊 v8.6 卻只丟了數字。補上。
+     立刻有印象」—— news.html 照做了, radar 這邊 v8.7 卻只丟了數字。補上。
      ⚠ 順序刻意是 RS → 50線 → 高低家數 → 分數, 那是查證出來的確認階層:
        相對強弱(誰領先) → breadth(領先普不普遍) → 分數(舊的, 已降級)。 -->
 <details id="bdHelp" style="margin:6px 10px 0;background:#f7f9fc;border:1px solid #d8e0ea;
   border-radius:10px;font-size:12.5px;line-height:1.9;color:#2d3748">
   <summary style="cursor:pointer;padding:8px 12px;font-weight:700;color:#12385e;list-style:none">
-    ❓ 這幾個數字在說什麼　<span style="font-weight:400;color:#8b949e">（點開）</span>
+    ❓ 上面那幾句話是怎麼算出來的　<span style="font-weight:400;color:#8b949e">（平常不用點開）</span>
   </summary>
   <div style="padding:2px 14px 12px">
     <div style="margin-bottom:9px">
@@ -233,7 +234,7 @@ var HKEY='biaoguo_history_v1';
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 
 var SECTORS_DEFAULT=[
-  // ═══ v8.6:【成分股大清理 —— 依「營收主要來自哪裡」重排】═══════════════════
+  // ═══ v8.7:【成分股大清理 —— 依「營收主要來自哪裡」重排】═══════════════════
   //   Jasmine 9/17:「我想知道的是資金現在重壓在哪些板塊。」
   //   查證後改用 O'Neil／IBD 的原則, 不再用「在不在那支 ETF 裡」當唯一依據:
   //     · IBD 分組的判準原文:「the deciding factor is where it gets most of its revenue」
@@ -594,7 +595,7 @@ function analyzeYahoo(result, floatShares){
     var hi52 = valid[0].h;
     for(var hj=1;hj<m;hj++){ if(valid[hj].h>hi52) hi52=valid[hj].h; }
     var off52 = hi52>0 ? (price/hi52-1)*100 : null;
-    // ═══ v8.6:【breadth 需要的三樣東西】═══════════════════════════════════
+    // ═══ v8.7:【breadth 需要的三樣東西】═══════════════════════════════════
     //   查證後的方向(O'Neil／Minervini／Deepvue): 板塊輪動不是靠「一個分數」,
     //   是靠【家數】—— 這一組有幾檔創新高、幾檔站上均線、有沒有集體累積 RS days。
     //   Minervini 原話: 逐板塊、每週統計 52 週新高與新低的家數。
@@ -737,7 +738,7 @@ function clickTriage(a, price){
   var d150=a.dist150, o52=a.off52;
   // 現價離支撐帶的距離：在帶內＝0，帶上＝正，帶下＝負
   var band = price>a.cH ? ((price/a.cH-1)*100) : (price<a.cL ? ((price/a.cL-1)*100) : 0);
-  // ═══ v8.6:【新上市／資料不足不該拿到綠燈】════════════════════════
+  // ═══ v8.7:【新上市／資料不足不該拿到綠燈】════════════════════════
   // 原本 d150===null 時，前面兩道 ⛔ 與 🔺 全部因為 !==null 而被跳過，
   // 只剩下「離支撐帶多遠」在把關 —— 一檔剛上市 40 根的股票（例如 2026/7/10
   // 掛牌的 SKHY）可以在完全沒有週線結構可驗的情況下直接拿到 🟢。
@@ -842,7 +843,7 @@ function heatScore(tickers, etfTicker){
   }
   return Math.round(stockScore);
 }
-// ═══ v8.6:【板塊 breadth —— 取代單一分數】════════════════════════════════
+// ═══ v8.7:【板塊 breadth —— 取代單一分數】════════════════════════════════
 //   ⚠ 這裡<b>不給總分、不排名次</b>。理由跟 dna 那張財報表一樣:
 //     要用哪一欄當標準, 取決於你當下在找什麼。
 //   四個數字各自回答一件事:
@@ -870,6 +871,38 @@ function rsDays(c21, spy21){
     if((a[i]/a[i-1]-1) > (b[i]/b[i-1]-1)) win++;
   }
   return tot? {win:win, tot:tot} : null;
+}
+// ═══ v8.7:【每張卡自己講自己的數字】════════════════════════════════════
+//   Jasmine:「下面拉一個獨立的教科書式解釋, 還要上去對照這個符合哪一條,
+//   可讀性太低。」—— 對。所以改成: 用這一組<b>當下算出來的數字</b>直接講一句結論。
+//   ⚠ 只陳述事實, 不說「可以買」—— 板塊層回答的是「錢在哪」, 不是「買什麼」。
+function bdSay(B){
+  if(!B || !B.have) return {t:'資料抓不到', c:'#8b949e'};
+  var r  = B.rsMed;
+  var p  = B.n50 ? (B.a50/B.n50) : null;     // 站上 50 線的比例
+  var pct= p!=null ? Math.round(p*100) : null;
+  if(r==null) return {t:'RS 算不出來', c:'#8b949e'};
+
+  // 先講 RS(資金動能), 再用 50 線比例修正「這個強是不是普遍的」
+  if(r>=60){
+    if(p!=null && p>=0.7)  return {t:'錢在進來，而且'+B.a50+'/'+B.n50+' 檔都在動', c:'#0d8a3f'};
+    if(p!=null && p<0.5)   return {t:'跑贏大盤，但只有 '+B.a50+'/'+B.n50+' 檔撐著', c:'#a06a08'};
+    return {t:'錢在進來（'+Math.round(r)+'% 的日子跑贏）', c:'#0d8a3f'};
+  }
+  if(r>=45){
+    if(p!=null && p>=0.8)  return {t:'沒跑贏大盤，但 '+B.a50+'/'+B.n50+' 檔都還在 50 線上', c:'#a06a08'};
+    if(p!=null && p<=0.3)  return {t:'跟大盤差不多，而且只剩 '+B.a50+'/'+B.n50+' 檔站著', c:'#cc1133'};
+    return {t:'跟大盤差不多，沒有明顯資金流入', c:'#a06a08'};
+  }
+  if(p!=null && p<=0.3)    return {t:'跑輸大盤，'+B.n50+' 檔裡只剩 '+B.a50+' 檔站著', c:'#cc1133'};
+  return {t:'跑輸大盤（'+Math.round(r)+'% 的日子）', c:'#cc1133'};
+}
+function bdHi(B){
+  if(!B||!B.have) return '';
+  if(B.nHi>0 && B.nLo>0) return '⚠ '+B.nHi+' 檔貼新高、'+B.nLo+' 檔貼新低 —— 組內分歧';
+  if(B.nHi>0)  return '🔼 '+B.nHi+' 檔貼著 52 週新高';
+  if(B.nLo>0)  return '🔻 '+B.nLo+' 檔貼著 52 週低點';
+  return '沒有人創新高，也沒有人破底';
 }
 function breadth(tickers){
   var spy = (cache['SPY']&&!cache['SPY'].err&&cache['SPY'].a)?cache['SPY'].a.c21:null;
@@ -930,22 +963,22 @@ function renderHeatStrip(selId){
       var ecol=edp>=0?'#009944':'#cc1133';
       etfChgHtml='<div style="font-size:8px;color:'+ecol+';font-weight:700;margin-top:1px;">'+sec.etf+' '+(edp>=0?'+':'')+edp.toFixed(1)+'%</div>';
     }
-    // ═══ v8.6:【breadth 直接印在板塊卡上】════════════════════════════════
+    // ═══ v8.7:【breadth 直接印在板塊卡上】════════════════════════════════
     //   ⚠ 分數(sc)與「1日變化」<b>保留但降級</b> —— 那一欄比的是「上次開啟那天」不是昨天,
     //     不每天開就是假的。breadth 是每次跑都重算的, 不依賴歷史, 所以它才是主角。
     var B=breadth(sec.tickers);
     var bHtml='';
     if(B.have>0){
-      var netCol = B.net>0?'#009944':(B.net<0?'#cc1133':'#888');
-      var rsTxt  = (B.rsMed!=null)? Math.round(B.rsMed)+'%' : '--';
-      var rsCol  = (B.rsMed==null)?'#888':(B.rsMed>=60?'#009944':(B.rsMed>=45?'#aa8800':'#cc1133'));
-      bHtml = '<div style="font-size:9px;line-height:1.5;margin-top:2px;font-weight:700">'
-            + '<span style="color:'+netCol+'">高'+B.nHi+'／低'+B.nLo+'</span>'
-            + '<span style="color:#666"> · </span>'
-            + '<span style="color:#444">50線 '+B.a50+'/'+B.n50+'</span><br>'
-            + '<span style="color:'+rsCol+'">RS '+rsTxt+'</span>'
-            + '<span style="color:#999;font-weight:400"> · '+B.have+'/'+B.total+' 檔</span>'
-            + '</div>';
+      var say=bdSay(B), hiTxt=bdHi(B);
+      var rsTxt=(B.rsMed!=null)?Math.round(B.rsMed)+'%':'--';
+      var rsCol=(B.rsMed==null)?'#888':(B.rsMed>=60?'#009944':(B.rsMed>=45?'#aa8800':'#cc1133'));
+      bHtml = '<div style="font-size:11px;line-height:1.45;margin-top:4px;font-weight:700;'
+            + 'color:'+say.c+';text-align:center">'+say.t+'</div>'
+            + '<div style="font-size:9.5px;line-height:1.45;margin-top:3px;color:#5a6b7d;text-align:center">'
+            + hiTxt+'</div>'
+            + '<div style="font-size:9px;line-height:1.4;margin-top:3px;color:#8b949e;text-align:center">'
+            + '<span style="color:'+rsCol+';font-weight:700">RS '+rsTxt+'</span>'
+            + ' · 50線 '+B.a50+'/'+B.n50+' · '+B.have+'/'+B.total+' 檔</div>';
     }
     chip.innerHTML='<div class="hc-icon">'+sec.icon+'</div>'+
       '<div class="hc-name">'+sec.name+'</div>'+
@@ -1449,7 +1482,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1804,7 +1837,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -1920,7 +1953,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v8.6</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v8.7</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
