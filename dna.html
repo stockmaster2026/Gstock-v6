@@ -1966,14 +1966,19 @@ function baseCountLine(o){
 }
 // 清單用的一行標籤: 買價來自 Minervini 的 cheat 時標出來(不是 O'Neil 的 pivot)
 function cheatTag(P){
-  const q=pvPos(P); if(!q || q.kind!=='cheat') return '';
+  const q=pvPos(P);
+  // V96.99a: 走「見底後的新 base」那條路過關的也標出來 —— 不標的話, 清單上看不出它為什麼沒被擋
+  if(q && q.kind==='oneil' && q.viaNew && q.nb)
+    return '<br><b style="color:#0550ae">△ 見底後的新 base（'+q.nb.type+'：左側高點 '+q.nb.pk+'、深 '+q.nb.depth+'%、'+q.nb.weeks+' 週）'
+         + ' —— 大 base 深 '+q.depth+'% 不合格，這是 IBD 說的「見底後的第一個 base」</b>';
+  if(!q || q.kind!=='cheat') return '';
   return '<br><b style="color:#7d5300">△ Minervini 的 '+pvCheatName(q)+' —— 不是 O\'Neil 的 pivot，確認最少的一種進場</b>';
 }
 // V96.99a: 「要等的是什麼」—— 兩條路都是 IBD 原文(上半部的 handle／見底後的新 base)
 function pvWaitTxt(q){
   if(!q) return '';
   return '兩條路擇一 —— ① 股價回到 base 上半部（<b>'+q.baseMid+'</b> 以上）再磨出平台；'
-       + '② 見底之後長出一個<b>新的 base</b>（從它自己的左側高點算，至少 5~6 週，平台在它的上半部）。'
+       + '② 見底之後長出一個<b>新的 base</b>（先從底部漲 30% 以上，再從那個高點磨至少 5~6 週，平台在它的上半部）。'
        + '<span style="opacity:.8">IBD：深 base 之後要買「見底後形成的第一或第二個 base」。</span>';
 }
 // 一行短理由(清單用)
@@ -1991,7 +1996,7 @@ function pvPosHTML(P){
   if(q.kind==='oneil' && q.viaNew && q.nb)
     return '<div class="lk" style="margin-top:6px;font-size:12.5px;color:#3fb950">✓ 型態：<b>見底後的新 base（'+q.nb.type+'）</b>'
          + ' —— 大 base 深 '+q.depth+'% 不合格，但見底後長出了新的 base：左側高點 '+q.nb.pk+'、深 '+q.nb.depth+'%、'
-         + q.nb.weeks+' 週，平台在它的上半部。IBD：深 base 之後買「見底後的第一或第二個 base」。'+bits+'</div>';
+         + q.nb.weeks+' 週，見底後先漲了 +'+q.nb.priorUp+'%，平台在它的上半部。IBD：深 base 之後買「見底後的第一或第二個 base」。'+bits+'</div>';
   if(q.kind==='oneil')
     return '<div class="lk" style="margin-top:6px;font-size:12.5px;color:#3fb950">✓ 型態：<b>O\'Neil 的 handle</b>'
          + ' —— 平台在 base 上半部（離舊高 '+q.offHi+'%）'+bits+'</div>';
@@ -3511,9 +3516,25 @@ function personaCard(res,cfg){
           const nLen=endI-nPkI, nDep=(1-nLo/nPk)*100, nMid=(nPk+nLo)/2;
           const isFlat=(nDep<=15 && nLen>=25), isCup=(nDep>12 && nDep<=33 && nLen>=30);
           const nUpper=(platMid>=nMid);
-          nb={ pk:+nPk.toFixed(2), lo:+nLo.toFixed(2), depth:+nDep.toFixed(1), bars:nLen,
-               weeks:+(nLen/5).toFixed(1), mid:+nMid.toFixed(2), upper:nUpper,
-               ok:((isFlat||isCup) && nUpper), type:(isFlat?'flat base':(isCup?'cup':null)) };
+          // V96.99a-2(ARM 9/18 實跑抓到): 再補兩條 IBD 原文
+          //   ③ base 前面要先有一段上漲: "look for periods of sideways movement or mild declines
+          //      following a prior uptrend of at least 30% in price" —— 見底後的新 base,
+          //      那段上漲就是「底部 → 新 base 左側高點」。ARM 219.39 → 約 275 只有 +25%。
+          //   ④ flat base 的買點是整個型態的最高點: "finding the highest price in the pattern"
+          //      → pivot 要在新 base 盤中最高點 3% 內(3% 跟觸頂判定同一把尺), 不能是型態中間的小平台。
+          let nHi=-Infinity; for(let i=nPkI;i<endI;i++){ if(b[i].h>nHi) nHi=b[i].h; }
+          const priorUp=(nPk/baseLo-1)*100;
+          const upOK=(priorUp>=30);
+          const topOK=!isFlat || (pivot.px>=nHi*0.97);
+          const fails=[];
+          if(!(isFlat||isCup)) fails.push('只磨了 '+(+(nLen/5).toFixed(1))+' 週'+(nDep>33?'、深 '+nDep.toFixed(1)+'%':'')+'（IBD：flat base 至少 5 週、cup 至少 6~7 週）');
+          if(!upOK)  fails.push('見底後只漲了 +'+priorUp.toFixed(0)+'%（'+baseLo.toFixed(2)+' → '+nPk.toFixed(2)+'；IBD：base 前面要有至少 30% 的上漲）');
+          if((isFlat||isCup) && !nUpper) fails.push('平台不在新 base 的上半部');
+          if(isFlat && !topOK) fails.push('pivot 不在新 base 的最高點（型態最高 '+nHi.toFixed(2)+'；IBD：flat base 的買點是型態的最高價）');
+          nb={ pk:+nPk.toFixed(2), lo:+nLo.toFixed(2), hi:+nHi.toFixed(2), depth:+nDep.toFixed(1), bars:nLen,
+               weeks:+(nLen/5).toFixed(1), mid:+nMid.toFixed(2), upper:nUpper, priorUp:+priorUp.toFixed(0),
+               ok:((isFlat||isCup) && nUpper && upOK && topOK), fails:fails,
+               type:(isFlat?'flat base':(isCup?'cup':null)) };
         }
       }
       const oneil = oneilBig || !!(nb && nb.ok);
@@ -3524,8 +3545,7 @@ function personaCard(res,cfg){
       if(!upper)    why.push('平台在 base 的下半部（平台中點 '+platMid.toFixed(2)+' 低於 base 中點 '+baseMid.toFixed(2)+'）');
       if(dep>33)    why.push('base 從 '+basePk.toFixed(2)+' 跌到 '+baseLo.toFixed(2)+'，深 '+dep.toFixed(1)+'%（IBD 上限 30~33%）');
       if(nb && !nb.ok)
-        why.push('見底後還沒有長出新的 base（見底後的高點 '+nb.pk+' 到現在只有 '+nb.weeks+' 週'
-                 +(nb.depth>33?'、深 '+nb.depth+'%':'')+'；IBD：flat base 至少 5 週、cup 至少 6~7 週）');
+        why.push('見底後還沒有長出合格的新 base（左側高點 '+nb.pk+'）：'+nb.fails.join('；'));
       if(!flat10)   why.push('平台寬 '+pivotPlat.width+'%（Minervini 的 cheat 平台要在 10% 內）');
       if(dep>35 && !(ratio!=null && ratio<=3))
         why.push(spyDD!=null
@@ -4713,7 +4733,10 @@ function tblRender(){
       //   可以在 TradingView 畫線)。掛單表與啟動清單當時都沒接上。
       const w30Line = (r)=>{
         if(r.w30val==null) return '';
-        const e = (r.extW30==null? null : r.extW30);
+        // V96.99a: extW30 是四捨五入的整數 —— COHR 317.36 vs 316.48(其實在上方 0.3%)被存成 0,
+        //   落進「下方 0%・要漲 -0.3%」那一支。有現價就直接用現價比, 不用四捨五入過的數字判上下。
+        const e = (r.px!=null && r.w30val>0) ? +(((r.px/r.w30val)-1)*100).toFixed(1)
+                : (r.extW30==null? null : r.extW30);
         return '<div class="lk" style="font-size:12.5px;margin-top:4px;padding:4px 7px;border-radius:5px;'
              + 'background:rgba(9,105,218,.09);border-left:3px solid rgba(9,105,218,.45);color:#1c2128">'
              + '要盯的門檻：<b style="font-size:14px">30週線 '+r.w30val+'</b>'
@@ -4958,8 +4981,9 @@ function tblRender(){
                         // V96.80: 這一塊在 brkRows.map(({r,K,P})) 裡, 變數是 r —— 自己寫一份, 不跨 scope 借 w30Line
                         + (r.w30val==null ? ''
                             : ('<br><span class="lk" style="color:#1c2128">要盯的門檻：<b>30週線 '+r.w30val+'</b>'
-                               + (r.extW30!=null && r.extW30<=0
-                                   ? '（現價在它下方 '+Math.abs(r.extW30)+'%，要漲 '
+                               // V96.99a: 同掛單表 —— 有現價就用現價判上下, 不用四捨五入過的 extW30
+                               + ((r.px!=null && r.w30val>0) ? (r.px<r.w30val) : (r.extW30!=null && r.extW30<=0)
+                                   ? '（現價在它下方 '+(r.px!=null&&r.w30val>0 ? (+(((1-r.px/r.w30val))*100).toFixed(1)) : Math.abs(r.extW30))+'%，要漲 '
                                      + (r.px!=null? (+(((r.w30val/r.px)-1)*100).toFixed(1))+'%' : '—')+' 才站得回去）'
                                    : '')
                                + ' —— 設一個價格提醒放著。</span>'))
