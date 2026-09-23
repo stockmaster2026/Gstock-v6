@@ -267,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.7</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.8</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1244,6 +1244,18 @@ var PROFILE_DEFAULT = {
        story:'客製化 AI 加速器與 1.6T 光互連 DSP 出貨放量。它坐在交換器晶片與光電介面那一層，不直接做光模組。',
        risk:'客製化晶片專案綁在少數幾個雲端客戶身上，一個專案延後或轉單，影響是整季的。' },
 
+  ALAB:{ biz:'AI 機櫃<b>裡面</b>的連接晶片 —— 不做算力，做讓 GPU／CPU／記憶體之間資料跑得動的那一層。四條線：<b>Aries</b>（PCIe 6 retimer，把訊號放大整形）、<b>Scorpio</b>（AI fabric 交換晶片）、<b>Taurus</b>（800G／3.2T 智慧線纜模組）、<b>Leo</b>（CXL 記憶體控制器，2027 才出貨）。',
+       pos:'【機櫃內互連】位置在 MRVL 的隔壁但不重疊：MRVL 做的是光模組<b>裡面那顆 DSP</b>（機櫃<b>之間</b>），ALAB 做的是機櫃<b>之內</b>的 PCIe／fabric。它的防線是<b>不挑邊站</b> —— AMD／Intel／NVIDIA 平台都能接。<b>Scorpio 在 2026 Q2 超車成為最大產品線，比公司自己的預期早一季。</b>',
+       cust:'超大規模雲端業者與 AI 基礎建設廠（不具名）。Leo 近期拿到一家美國超大型雲端客戶的設計導入。',
+       story:'2026 Q2（8/4）營收 <b>3.924 億美元、年增 104%</b>，non-GAAP EPS $0.80，毛利率 73.3%。<b>Q3 指引 5.40~5.60 億 —— 中位數比 Q2 再跳約 +40%</b>。新的 3.2T Taurus 對應約 40 億美元市場。',
+       risk:'⚠⚠ <b>客戶集中度是這一檔最大的變數</b>：Scorpio 的爆發押在<b>少數幾家</b>超大型雲端客戶上，任何一家改設計或延後，影響是整季的。<br>⚠ 競爭來自 <b>Broadcom、Marvell</b>，以及<b>輝達自己做的 fabric</b> —— 這是「中立供應商 vs 平台自研」那個老問題。<br>⚠ 成長股的估值全押在 Q3 那個 +40% 兌不兌現。' },
+
+  TSEM:{ biz:'以色列的<b>特殊製程晶圓代工廠</b> —— 類比、射頻（RF SOI）、<b>矽光子</b>、電源管理、影像感測。<b>不做先進邏輯製程</b>。',
+       pos:'【跟 TSM 是兩種生意】TSM 比的是製程節點（3nm、2nm），TSEM 比的是<b>製程種類</b> —— 射頻、矽光子、高壓這些先進節點做不好也不划算的東西。AI 那條線的入口是<b>矽光子</b>：光模組裡的矽光子晶片要有人代工，它就是那個人。Q2 業務佔比：RF 基礎建設 49%、電源管理 14%、RF 行動 12%、感測/顯示 12%。',
+       cust:'ON Semi、Intel、Broadcom、Samsung、Skyworks。廠區：以色列 Migdal Haemek（Fab 1/2）、加州 Newport Beach、德州 San Antonio、義大利 Agrate（與 ST 共用 300mm）、日本 TPSCo（持股 51%）。',
+       story:'2026 Q2（8/4）營收 <b>4.60 億美元、年增 24%</b>，EPS $0.79（近乎翻倍），毛利率 <b>30%、歷史新高</b>；Q3 指引 5.20 億，年化超過 20 億。<b>真正的題材是矽光子：年增超過 270%</b>，年化跑到 6.8 億；管理層揭露 <b>2027 年已簽約 13 億美元</b>矽光子訂單、<b>已收 2.9 億客戶預付款</b>，合約延伸到 2028。<br>歷史要知道一件事：Intel 2022 年出價 <b>54 億美元</b>要併購，2023/8/16 因中國審批未過終止，Intel 付了 3.53 億分手費。',
+       risk:'⚠ <b>一半營收（RF 基礎建設 49%）跟 AI 無關</b> —— 那一塊跟著一般景氣走，會稀釋矽光子的成長。RF 行動 Q2 還年減 14%。<br>⚠ 代工廠的毛利率靠產能利用率，訂單一鬆就掉；30% 已經是它的歷史新高，再往上空間有限。<br>⚠ <b>地緣政治</b>：主力廠區在以色列。這是跟財報無關的風險，跟 TSM 的台海問題同一類。' },
+
   BE:{ biz:'固態氧化物燃料電池（Bloom Energy Server）—— 燒天然氣直接發電，不經燃燒，也做電解產氫。',
        cust:'【Oracle】是最大客戶：主約最高 2.8GW，已簽約 1.2GW 部署中。另有 Intel、資料中心與半導體廠。',
        story:'AI 資料中心等不到電網接電，燃料電池是最快的替代方案 —— 給 Oracle 的一個案場 55 天就供上電。2026 年 9 月納入 S&P 500。',
@@ -1699,6 +1711,17 @@ function profSave(sym, o){
 }
 function profEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){
   return c==='&'?'&amp;':(c==='<'?'&lt;':(c==='>'?'&gt;':'&quot;')); }); }
+/* ═══ v65:【速寫裡的 <b> 被當成文字印出來 —— 96 檔裡有 59 檔中獎】═══
+   病根: 顯示跟編輯共用 profEsc()。編輯框【必須】完整跳脫(不然原文改一次就壞),
+   但顯示那一路跳脫之後, 寫在預設值裡的 <b>…</b> 就變成畫面上的「&lt;b&gt;」。
+   → 顯示改用 profFmt(): 先照樣全部跳脫(localStorage 裡是使用者自己打的字,
+     安全性不能放掉), 再【只】把 <b> </b> <br> 三個還原回去。
+   ⚠ 只開這三個標籤; 其他一律維持跳脫, 所以貼進奇怪的東西也不會執行。       */
+function profFmt(x){
+  return profEsc(x)
+    .replace(/&lt;b&gt;/g,'<b>').replace(/&lt;\/b&gt;/g,'</b>')
+    .replace(/&lt;br\s*\/?&gt;/g,'<br>');
+}
 
 function profBlock(sym){
   var p=profLoad()[sym];
@@ -1711,11 +1734,12 @@ function profBlock(sym){
        + '點「✏ 編輯」自己寫三行：在做什麼、主要客戶、這一波的題材。<br>'
        + '⚠ 這三件事沒有免費 API 給得出來，只能自己填 —— 但一季更新一次就夠了。</div>';
   }else{
-    h += '<div class="pf-r"><span class="pf-k">在做什麼</span>'+profEsc(p.biz)+'</div>'
-       + (p.pos ? '<div class="pf-r"><span class="pf-k">產業鏈位置</span>'+profEsc(p.pos)+'</div>' : '')
-       + '<div class="pf-r"><span class="pf-k">主要客戶</span>'+profEsc(p.cust)+'</div>'
-       + '<div class="pf-r"><span class="pf-k">這一波的題材</span><b>'+profEsc(p.story)+'</b></div>'
-       + (p.risk ? '<div class="pf-r pf-risk"><span class="pf-k">什麼會打破它</span>'+profEsc(p.risk)+'</div>' : '');
+    /* v65: 顯示用 profFmt(允許 <b>/<br>); 編輯框仍用 profEsc(要看得到原文) */
+    h += '<div class="pf-r"><span class="pf-k">在做什麼</span>'+profFmt(p.biz)+'</div>'
+       + (p.pos ? '<div class="pf-r"><span class="pf-k">產業鏈位置</span>'+profFmt(p.pos)+'</div>' : '')
+       + '<div class="pf-r"><span class="pf-k">主要客戶</span>'+profFmt(p.cust)+'</div>'
+       + '<div class="pf-r"><span class="pf-k">這一波的題材</span><b>'+profFmt(p.story)+'</b></div>'
+       + (p.risk ? '<div class="pf-r pf-risk"><span class="pf-k">什麼會打破它</span>'+profFmt(p.risk)+'</div>' : '');
   }
   return h+'</div>';
 }
