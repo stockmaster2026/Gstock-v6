@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.7.1</title>
+<title>RRG 板塊輪動圖 v2.7.2</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.7.1 · 修抓不到資料＋加入自己的 Worker 代理</div>
+<div class="sub">v2.7.2 · 快照加上引擎版本標記，跨版本不再亂比</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.7.1 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.7.2 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -337,6 +337,12 @@ window.onerror = function(msg, src, line, col, err) {
   var CACHE_TTL = 4 * 60 * 60 * 1000;
   var STORAGE_KEY_RADAR = 'biaoguo_sectors_v5';
   var SNAPSHOT_KEY = 'rrg_snapshots_v1';
+  // v2.7.2：快照要記錄「是哪一代引擎算出來的」。
+  //   舊快照存的是純數值，沒有版本標記，所以 v2.6.6 的快照（RS 擠在 100 附近）
+  //   會被直接拿來跟 v2.7.x 的數值（RS 攤到 95~135）相減 ——
+  //   跑出 AXTI「+68.8」這種數字，那幾乎全是公式換代造成的，不是市場變化。
+  //   只要換公式就要把這個字串往上跳，跨代的比較一律不顯示。
+  var ENGINE_VER = '2.7';
   var SNAPSHOT_LIMIT = 20;
   // v2.7.1：把妳自己的 Worker 放第一順位。
   //   dna.html 一直用它而且是通的，rrg.html 卻只靠三個公用 proxy
@@ -1851,7 +1857,7 @@ window.onerror = function(msg, src, line, col, err) {
       allInfos.push(info);
     }
     for(var key in groups) groups[key].sort(function(a,b){ return b.dist-a.dist; });
-    var lastSnapMap=null,lastSnapDate=null;
+    var lastSnapMap=null,lastSnapDate=null,lastSnapEng=null,lastSnapSameEng=false;
     try {
       var snapshots=loadSnapshots();
       if (snapshots&&snapshots.length>0){
@@ -1860,6 +1866,8 @@ window.onerror = function(msg, src, line, col, err) {
         for(var si=0;si<snapshots.length;si++){
           if (snapshots[si].date!==todayStr){
             lastSnapDate=snapshots[si].date;
+            lastSnapEng=snapshots[si].eng||null;          // 舊快照沒有這個欄位 → null
+            lastSnapSameEng=(lastSnapEng===ENGINE_VER);
             lastSnapMap={};
             for(var sj=0;sj<snapshots[si].stocks.length;sj++){ var st=snapshots[si].stocks[sj]; lastSnapMap[st.ticker]=st; }
             break;
@@ -1869,6 +1877,7 @@ window.onerror = function(msg, src, line, col, err) {
     } catch(e){ lastSnapMap=null; }
     function weekDeltaHTML(info){
       if (!lastSnapMap) return '';
+      if (!lastSnapSameEng) return '';   // v2.7.2：跨引擎版本不做相減，那個差值沒有意義
       var old=lastSnapMap[info.ticker];
       if (!old) return '';
       var dRS=info.ratio-old.ratio,dMom=info.mom-old.mom;
@@ -1928,7 +1937,18 @@ window.onerror = function(msg, src, line, col, err) {
     html+=renderGroup('watch','🟡','觀察中', groups.watch);
     html+=renderGroup('warn','🟠','警戒', groups.warn);
     html+=renderGroup('danger','🔴','危險', groups.danger);
-    if (lastSnapMap&&lastSnapDate){
+    // v2.7.2：跨引擎版本的快照不能拿來相減 —— 那個差值是公式換代，不是市場變化
+    if (lastSnapMap&&lastSnapDate&&!lastSnapSameEng){
+      html+='<div class="weekly-summary">';
+      html+='<div class="weekly-summary-title">📈 vs 上次（'+lastSnapDate+'）變化</div>';
+      html+='<div class="weekly-summary-content"><div class="weekly-summary-row">'
+        + '<span style="color:#f7c948">⚠ 這份舊快照是用<strong>不同版本的公式</strong>算的（'
+        + (lastSnapEng? ('引擎 '+lastSnapEng) : '沒有版本標記，屬 v2.7 之前')
+        + '），兩邊數字的尺度不一樣，相減出來的「變化」幾乎全是換公式造成的，不是市場在動。'
+        + '<br>按上面的「📸 存本週快照」重建一個基準，之後就會正常顯示。</span>'
+        + '</div></div></div>';
+    }
+    else if (lastSnapMap&&lastSnapDate){
       var winners=[],losers=[];
       for(var wi=0;wi<allInfos.length;wi++){
         var info=allInfos[wi];
@@ -1936,8 +1956,13 @@ window.onerror = function(msg, src, line, col, err) {
         if (!old) continue;
         var dRS=info.ratio-old.ratio,dMom=info.mom-old.mom;
         var score=dRS+dMom;
-        if (score>1.5) winners.push({t:info.ticker, s:score});
-        if (score<-1.5) losers.push({t:info.ticker, s:score});
+        // v2.7.2：門檻改成按該檔自己的振幅走。寫死的 ±1.5 是配舊公式振幅訂的，
+        //   新公式下幾乎每一檔都會超過，等於全部都被列進「加速／減速」。
+        var _sdR=(info.buf&&info.buf.sdR)?info.buf.sdR:1;
+        var _sdM=(info.buf&&info.buf.sdM)?info.buf.sdM:1;
+        var _th=Math.max(0.5*(_sdR+_sdM), 1.5);
+        if (score>_th) winners.push({t:info.ticker, s:score});
+        if (score<-_th) losers.push({t:info.ticker, s:score});
       }
       winners.sort(function(a,b){ return b.s-a.s; });
       losers.sort(function(a,b){ return a.s-b.s; });
@@ -2063,7 +2088,7 @@ window.onerror = function(msg, src, line, col, err) {
       stocks.push({ticker:s.ticker||s.name, name:s.name, sectorName:s.sectorName||s.name, ratio:parseFloat(s.current.ratio.toFixed(2)), mom:parseFloat(s.current.mom.toFixed(2)), quadrant:q.key});
     }
     stocks.sort(function(a,b){ return b.ratio-a.ratio; });
-    var snapshot={id:'snap_'+Date.now(), date:dateStr, timestamp:date.getTime(), mode:mode, sectorNames:lastRenderData.selectedSectorNames||null, stocks:stocks};
+    var snapshot={id:'snap_'+Date.now(), date:dateStr, timestamp:date.getTime(), mode:mode, eng:ENGINE_VER, sectorNames:lastRenderData.selectedSectorNames||null, stocks:stocks};
     var snapshots=loadSnapshots();
     var sameDay=-1;
     for(var k=0;k<snapshots.length;k++){
@@ -2177,7 +2202,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.7.1 (代理修正)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.7.2 (快照版本標記)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
