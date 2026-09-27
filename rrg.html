@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.7.0</title>
+<title>RRG 板塊輪動圖 v2.7.1</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.7.0 · RRG 引擎重寫（對齊 de Kempenaer 公開性質）</div>
+<div class="sub">v2.7.1 · 修抓不到資料＋加入自己的 Worker 代理</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.7.0 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.7.1 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -338,7 +338,14 @@ window.onerror = function(msg, src, line, col, err) {
   var STORAGE_KEY_RADAR = 'biaoguo_sectors_v5';
   var SNAPSHOT_KEY = 'rrg_snapshots_v1';
   var SNAPSHOT_LIMIT = 20;
-  var PROXIES = ['https://corsproxy.io/?key=00bcaf2a&url=','https://api.allorigins.win/raw?url=','https://api.codetabs.com/v1/proxy/?quest='];
+  // v2.7.1：把妳自己的 Worker 放第一順位。
+  //   dna.html 一直用它而且是通的，rrg.html 卻只靠三個公用 proxy
+  //   （corsproxy.io 還帶一把可能過期的 key）。自己的 Worker 沒有額度與金鑰問題。
+  //   呼叫方式跟 dna.html 完全相同（後面接 encodeURIComponent 的網址），可直接沿用。
+  var PROXIES = ['https://gstock-proxy.cykjas.workers.dev/?url=',
+                 'https://corsproxy.io/?key=00bcaf2a&url=',
+                 'https://api.allorigins.win/raw?url=',
+                 'https://api.codetabs.com/v1/proxy/?quest='];
   var SECTOR_COLORS = {'AI巨頭':'#76b900','AI基礎設施':'#ff6b35','光通信':'#00d4a8','封測設備':'#06d4f0','AI電力散熱':'#ffd166','儲存硬體':'#ef476f','太空衛星':'#4ea5ff','無人機國防':'#a78bfa','量子運算':'#22c55e','AI生技':'#f97316','貴金屬礦業':'#eab308','機器人製造':'#6366f1','感測視覺':'#06b6d4','AI雲端基建':'#8b5cf6','自訂':'#ec4899'};
   var BUILTIN_WATCHLIST = [
     {name:'AI巨頭',stocks:['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL']},
@@ -386,8 +393,14 @@ window.onerror = function(msg, src, line, col, err) {
   }
   function getSectorList() { var fromRadar=readRadarSectors(); return fromRadar||BUILTIN_WATCHLIST; }
   function buildYahooURL(ticker) { var range=rrgInterval==='1wk'?'5y':'2y'; return 'https://query1.finance.yahoo.com/v8/finance/chart/'+ticker+'?range='+range+'&interval='+rrgInterval; }
-  function tryProxy(proxyIndex, ticker) {
-    if (proxyIndex>=PROXIES.length) return Promise.reject(new Error('all_proxies_failed'));
+  // v2.7.1：舊版（含 v2.7.0）的 .catch 把「解析失敗」和「網路失敗」全部吞掉，
+  //   最後一律報 all_proxies_failed —— 所以看到那個訊息完全無法判斷是誰壞了。
+  //   現在把每個 proxy 的真正死因帶出來。失敗必須會說話。
+  function tryProxy(proxyIndex, ticker, errs) {
+    errs = errs || [];
+    if (proxyIndex>=PROXIES.length) {
+      return Promise.reject(new Error('all_proxies_failed ｜ ' + errs.join('  /  ')));
+    }
     var yahooUrl=buildYahooURL(ticker);
     var proxiedUrl=PROXIES[proxyIndex]+encodeURIComponent(yahooUrl);
     return fetch(proxiedUrl).then(function(r){ if(!r.ok) throw new Error('HTTP_'+r.status); return r.json(); })
@@ -396,26 +409,42 @@ window.onerror = function(msg, src, line, col, err) {
         var result=j.chart.result[0];
         if(!result.indicators||!result.indicators.quote||!result.indicators.quote[0].close) throw new Error('no_close');
         var closes=result.indicators.quote[0].close;
-        var stamps=result.timestamp||[];
-        // v2.7.0：連 timestamp 一起收。舊版只回收盤價陣列，把 null 剔掉之後
-        // 直接按 index 跟 SPY 對齊 —— 只要有一天缺值（停牌、資料源漏），
-        // 那一天之前的每一根都相對 SPY 位移一格，而且不會有任何錯誤訊息。
+        // v2.7.1：timestamp 不再是硬性依賴。
+        //   v2.7.0 只要 result.timestamp 缺了，每一根都會被 continue 跳過 →
+        //   vc.length=0 → throw → 跳下一個 proxy → 三個都這樣 → 誤報成網路失敗。
+        //   缺日期就退回「按尾端 index 對齊」（＝ v2.6.6 的行為），只是少了日期校正。
+        var stamps=result.timestamp;
+        var noStamp=!stamps||!stamps.length;
         var vd=[], vc=[];
         for(var i=0;i<closes.length;i++){
           if(closes[i]===null||isNaN(closes[i])) continue;
-          if(stamps[i]===null||stamps[i]===undefined) continue;
-          vd.push(stamps[i]); vc.push(closes[i]);
+          if(!noStamp){
+            var t=stamps[i];
+            if(t===null||t===undefined) continue;
+            vd.push(t);
+          }
+          vc.push(closes[i]);
         }
-        if(vc.length<WARMUP+2) throw new Error('insufficient_'+vc.length);
-        return { dates:vd.slice(-DAYS_NEEDED), closes:vc.slice(-DAYS_NEEDED) };
-      }).catch(function(e){ return tryProxy(proxyIndex+1, ticker); });
+        if(vc.length<WARMUP+2) throw new Error('bars_'+vc.length+'_need_'+(WARMUP+2));
+        return { dates: noStamp ? null : vd.slice(-DAYS_NEEDED),
+                 closes: vc.slice(-DAYS_NEEDED) };
+      }).catch(function(e){
+        errs.push('P'+(proxyIndex+1)+'='+((e&&e.message)||e));
+        return tryProxy(proxyIndex+1, ticker, errs);
+      });
   }
-  function fetchPrice(ticker) { return tryProxy(0, ticker); }
+  function fetchPrice(ticker) { return tryProxy(0, ticker, []); }
 
   // v2.7.0：用日期 join 對齊兩條序列，不用 index。
   // 只保留兩邊「同一天都有收盤價」的日子，所以任何一邊缺值都不會造成整段位移。
   function dayKey(ts){ return Math.floor(ts/86400); }
   function alignSeries(secPx, benchPx) {
+    // v2.7.1：任一邊沒有日期就退回「取兩邊最後 N 根」——
+    //   那是 v2.6.6 的行為，會有缺值位移的風險，但至少能跑，不會整個掛掉。
+    if(!secPx.dates || !benchPx.dates){
+      var n=Math.min(secPx.closes.length, benchPx.closes.length);
+      return { sec:secPx.closes.slice(-n), bench:benchPx.closes.slice(-n), byIndex:true };
+    }
     var map={};
     for(var i=0;i<benchPx.dates.length;i++) map[dayKey(benchPx.dates[i])]=benchPx.closes[i];
     var A=[], B=[];
@@ -424,7 +453,12 @@ window.onerror = function(msg, src, line, col, err) {
       if(v===undefined) continue;
       A.push(secPx.closes[j]); B.push(v);
     }
-    return { sec:A, bench:B };
+    // 交集少得不合理（例如兩邊日期格式不同）也退回 index 對齊，不要讓它變成 0
+    if(A.length < WARMUP+2){
+      var n2=Math.min(secPx.closes.length, benchPx.closes.length);
+      return { sec:secPx.closes.slice(-n2), bench:benchPx.closes.slice(-n2), byIndex:true };
+    }
+    return { sec:A, bench:B, byIndex:false };
   }
 
   // arr[i-n+1 .. i] 的平均；範圍不足或有 null 就回 null
@@ -813,7 +847,7 @@ window.onerror = function(msg, src, line, col, err) {
         }).catch(function(e){ data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:e.message}); sleep(300).then(function(){ fetchNext(i+1); }); });
       }
       fetchNext(0);
-    }).catch(function(e){ setStatus('<div class="error">❌ 無法抓取 '+currentBenchmark+'：'+e.message+'<br>3 個 CORS 代理都失敗，過幾分鐘再試</div>'); });
+    }).catch(function(e){ setStatus('<div class="error">❌ 無法抓取 '+currentBenchmark+'：'+e.message+'<br>上面每個 P 後面就是各代理的真正死因：HTTP_xxx＝網路／代理問題，bars_xx＝抓到的資料太短</div>'); });
   }
 
   function loadDeepscan() {
@@ -2143,7 +2177,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.7.0 (RRG 引擎重寫)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.7.1 (代理修正)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
