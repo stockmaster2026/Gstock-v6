@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.7.2</title>
+<title>RRG 板塊輪動圖 v2.8.0</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.7.2 · 快照加上引擎版本標記，跨版本不再亂比</div>
+<div class="sub">v2.8.0 · RRG 改成排名分數（證據加權），10 天軌跡不計分</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.7.2 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.8.0 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -421,7 +421,12 @@ window.onerror = function(msg, src, line, col, err) {
         //   缺日期就退回「按尾端 index 對齊」（＝ v2.6.6 的行為），只是少了日期校正。
         var stamps=result.timestamp;
         var noStamp=!stamps||!stamps.length;
-        var vd=[], vc=[];
+        // v2.8：一併收成交量。Medhat & Schmeling (RFS 2022, 1963-2018) 發現
+        //   一個月尺度的相對強度延續「只存在於高 turnover 的股票」
+        //   （高 turnover +1.37%/月 t=4.74；低 turnover 反轉 −1.41%/月 t=−7.13）。
+        //   量能不是裝飾，是決定訊號符號的條件變數。缺量不致命，只是那一項不計分。
+        var vols=(result.indicators.quote[0].volume)||[];
+        var vd=[], vc=[], vv=[];
         for(var i=0;i<closes.length;i++){
           if(closes[i]===null||isNaN(closes[i])) continue;
           if(!noStamp){
@@ -430,10 +435,13 @@ window.onerror = function(msg, src, line, col, err) {
             vd.push(t);
           }
           vc.push(closes[i]);
+          var vol=vols[i];
+          vv.push((vol===null||vol===undefined||isNaN(vol))?null:vol);
         }
         if(vc.length<WARMUP+2) throw new Error('bars_'+vc.length+'_need_'+(WARMUP+2));
         return { dates: noStamp ? null : vd.slice(-DAYS_NEEDED),
-                 closes: vc.slice(-DAYS_NEEDED) };
+                 closes: vc.slice(-DAYS_NEEDED),
+                 vols:   vv.slice(-DAYS_NEEDED) };
       }).catch(function(e){
         errs.push('P'+(proxyIndex+1)+'='+((e&&e.message)||e));
         return tryProxy(proxyIndex+1, ticker, errs);
@@ -449,22 +457,25 @@ window.onerror = function(msg, src, line, col, err) {
     //   那是 v2.6.6 的行為，會有缺值位移的風險，但至少能跑，不會整個掛掉。
     if(!secPx.dates || !benchPx.dates){
       var n=Math.min(secPx.closes.length, benchPx.closes.length);
-      return { sec:secPx.closes.slice(-n), bench:benchPx.closes.slice(-n), byIndex:true };
+      return { sec:secPx.closes.slice(-n), bench:benchPx.closes.slice(-n),
+               vols:(secPx.vols||[]).slice(-n), byIndex:true };
     }
     var map={};
     for(var i=0;i<benchPx.dates.length;i++) map[dayKey(benchPx.dates[i])]=benchPx.closes[i];
-    var A=[], B=[];
+    var A=[], B=[], V=[];
     for(var j=0;j<secPx.dates.length;j++){
       var v=map[dayKey(secPx.dates[j])];
       if(v===undefined) continue;
       A.push(secPx.closes[j]); B.push(v);
+      V.push(secPx.vols ? secPx.vols[j] : null);
     }
     // 交集少得不合理（例如兩邊日期格式不同）也退回 index 對齊，不要讓它變成 0
     if(A.length < WARMUP+2){
       var n2=Math.min(secPx.closes.length, benchPx.closes.length);
-      return { sec:secPx.closes.slice(-n2), bench:benchPx.closes.slice(-n2), byIndex:true };
+      return { sec:secPx.closes.slice(-n2), bench:benchPx.closes.slice(-n2),
+               vols:(secPx.vols||[]).slice(-n2), byIndex:true };
     }
-    return { sec:A, bench:B, byIndex:false };
+    return { sec:A, bench:B, vols:V, byIndex:false };
   }
 
   // arr[i-n+1 .. i] 的平均；範圍不足或有 null 就回 null
@@ -492,7 +503,128 @@ window.onerror = function(msg, src, line, col, err) {
     return v;
   }
 
-  function calculateRRG(sectorCloses, spyCloses) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // v2.8 RS 排名分數 —— RRG 的正確角色是「排序」，不是「進場」或「加碼」
+  //
+  // 供應商自己的定位（兩邊原文）：
+  //   de Kempenaer：「RRGs are primarily a visualization tool and not necessarily
+  //     a trading system with 'rules'. So there is no defined track record.」
+  //   StockCharts：「RRGs are not a trading system, and there are no predefined
+  //     trading rules or signals.」
+  // IBD 用 RS Rating 也是同一種用法：「it alone is not a buy signal, but simply
+  //   one element helping you increase the odds」。
+  //
+  // 權重按「證據強度」分配，不是按直覺：
+  //   ① RS 水位  40 分 —— Jegadeesh-Titman 以降三十年文獻，最硬的一項
+  //   ② 絕對趨勢 30 分 —— 防 benchmark-relative 陷阱（見下）
+  //   ③ 走勢形狀 20 分 —— Frog in the Pan，三因子 alpha 價差 8.77% (t=8.76)
+  //   ④ 量能     10 分 —— Medhat-Schmeling，但我用「相對自己的量」代替 turnover
+  //
+  // ⚠ 10 天軌跡長度（舊版拿來判「加碼點」的那個量）權重是 0，理由三條：
+  //   · Jegadeesh-Titman 原表：3個月/3個月 月報酬 0.32%，t=1.10，不顯著
+  //   · Novy-Marx (JFE 2012)：momentum 主要來自 t-12~t-7，最近期的價格行為
+  //     是整個動能裡資訊量最低的一段，而且在大型流動股上最弱
+  //   · 加速度研究（Gettleman-Marks、Ardila et al.）全部在 6 個月尺度，
+  //     沒有任何一篇測過 10 天。把它搬到 10 天是無證據的外推。
+  //   它仍然畫在圖上、仍然寫在文字裡，只是不進分數。
+  // ═══════════════════════════════════════════════════════════════════════════
+  var FIP_FORM = 252, FIP_SKIP = 21;   // 跟 dna.html 的漲勢形狀同一組窗口
+  var ABS_MA   = 150;                  // Weinstein 的長均線
+  var VOL_FAST = 20, VOL_SLOW = 100;
+
+  function clamp100(v){ return (!isFinite(v)) ? 50 : Math.max(0, Math.min(100, v)); }
+
+  // ① RS 水位：實測分布 p10≈83 / p50≈100 / p90≈116，所以用 ±20 對應滿格
+  function scoreRsLevel(ratio){
+    if(ratio==null||!isFinite(ratio)) return null;
+    return clamp100(50 + (ratio-100)/20*50);
+  }
+
+  // ② 絕對趨勢：下跌市場裡 leading quadrant 可能只是「跌得比較少」——
+  //    這是 RRG 結構性的陷阱，必須用該檔自己的絕對走勢擋掉。
+  function scoreAbsTrend(closes){
+    var n=closes.length;
+    if(n < ABS_MA+21) return null;
+    function ma(endIdx){
+      var s=0,c=0;
+      for(var i=endIdx-ABS_MA+1;i<=endIdx;i++){ var v=closes[i]; if(v>0){ s+=v; c++; } }
+      return c>=ABS_MA*0.8 ? s/c : null;
+    }
+    var maNow=ma(n-1), maPrev=ma(n-1-20), px=closes[n-1];
+    if(maNow==null||maPrev==null||!(px>0)) return null;
+    var pos = clamp100(50 + (px/maNow - 1)*200);          // 站上 +25% → 100
+    var slp = clamp100(50 + (maNow/maPrev - 1)*1000);     // 20 根漲 5% → 100
+    return { score: 0.6*pos + 0.4*slp, pos:pos, slp:slp,
+             above: px>maNow, rising: maNow>maPrev, ma:maNow };
+  }
+
+  // ③ 走勢形狀（Frog in the Pan，套在 RS 線上）
+  //    Da, Gurun & Warachka (RFS 2014)，1927-2007 CRSP：
+  //      連續型 alpha +5.94%／跳躍型 −2.07%／價差 8.77% (t=8.76)
+  //    ⚠ 原論文算在「價格」上，這裡算在「相對強度線」上 —— 這是一步外推，
+  //      但 RRG 問的本來就是相對強度怎麼走到今天的位置，套在 RS 線上才對題。
+  //    dna.html 的「這一年漲勢的形狀」用同一篇、同一個方向，兩邊不會打架。
+  function scoreShape(lr){
+    var n=lr.length;
+    if(n < FIP_FORM+FIP_SKIP+1) return null;
+    var iEnd=n-1-FIP_SKIP, iBeg=iEnd-FIP_FORM;
+    if(iBeg<0||lr[iEnd]==null||lr[iBeg]==null) return null;
+    var pret=lr[iEnd]-lr[iBeg];                  // 對數，所以相減就是報酬
+    var pos=0, neg=0, tot=0;
+    for(var i=iBeg+1;i<=iEnd;i++){
+      if(lr[i]==null||lr[i-1]==null) continue;
+      var d=lr[i]-lr[i-1]; tot++;
+      if(d>0) pos++; else if(d<0) neg++;
+    }
+    if(tot<100) return null;
+    var pPos=pos/tot*100, pNeg=neg/tot*100;
+    var sgn=(pret>0)?1:((pret<0)?-1:0);
+    if(sgn===0) return null;
+    var id=sgn*(pNeg-pPos);                      // id<0 = 連續型（好）
+    return { score: clamp100(50 - id*1.6), id:+id.toFixed(1),
+             kind:(id<0?'cont':'disc'), pos:+pPos.toFixed(1), days:tot };
+  }
+
+  // ④ 量能：Medhat-Schmeling 用的是 turnover（量÷流通股數），
+  //    但免費資料源拿不到流通股數，所以改用「近 20 根均量 ÷ 近 100 根均量」。
+  //    ⚠ 這是代理變數，不是原論文的那個量，權重只給 10 分就是因為這一步。
+  function scoreVolume(vols){
+    if(!vols||!vols.length) return null;
+    function avg(k){
+      var s=0,c=0;
+      for(var i=vols.length-k;i<vols.length;i++){ var v=vols[i]; if(v>0){ s+=v; c++; } }
+      return c>=k*0.6 ? s/c : null;
+    }
+    var f=avg(VOL_FAST), sl=avg(VOL_SLOW);
+    if(f==null||sl==null||!(sl>0)) return null;
+    var x=f/sl;
+    return { score: clamp100(50 + (x-1)*100), volX:+x.toFixed(2) };
+  }
+
+  // 合成。
+  //   ⚠ 絕對趨勢不是「四票裡的一票」，是前提。
+  //   Weinstein 的框架裡，跌破下彎的長均線（Stage 4）根本不在可買名單上 ——
+  //   把它當成一個可以被其他三項補回來的加權項，等於讓一檔正在崩的股票
+  //   靠「相對強度還行」爬回中段。所以它改當乘數。
+  //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
+  //   差一點的不會直接歸零，只是被明顯壓低。
+  function rankScore(parts){
+    var W={ rs:50, shape:35, vol:15 };
+    var tot=0, acc=0;
+    ['rs','shape','vol'].forEach(function(k){
+      var v=parts[k];
+      if(v==null||!isFinite(v)) return;
+      acc += v*W[k]; tot += W[k];
+    });
+    if(tot<=0) return null;
+    var base=acc/tot;
+    var a=parts.abs;
+    var gate=(a==null||!isFinite(a)) ? 1 : (0.40 + 0.60*(a/100));
+    return { score:+(base*gate).toFixed(1), base:+base.toFixed(1),
+             gate:+gate.toFixed(2), covered:tot };
+  }
+
+  function calculateRRG(sectorCloses, spyCloses, secVols) {
     var N=Math.min(sectorCloses.length, spyCloses.length);
     if (N<WARMUP+2) return { ratios:[], moms:[] };
 
@@ -552,7 +684,19 @@ window.onerror = function(msg, src, line, col, err) {
     //    改成按這一檔自己的振幅抓比例，讓死區在每一檔身上代表同樣的「幾乎沒動」。
     var sdR=axisSd(ratios), sdM=axisSd(moms);
     var buf={ r:bufOf(sdR), m:bufOf(sdM), sdR:sdR, sdM:sdM };
-    return { ratios:ratios, moms:moms, buf:buf };
+
+    // ⑥ 排名分數（v2.8）。RRG 的角色是排序，所以這裡一併算出來。
+    var _rsNow = ratios.length ? ratios[ratios.length-1] : null;
+    var sRs    = scoreRsLevel(_rsNow);
+    var sAbs   = scoreAbsTrend(sectorCloses);
+    var sShape = scoreShape(lr);
+    var sVol   = scoreVolume(secVols);
+    var rank = rankScore({ rs:sRs,
+                           abs:(sAbs?sAbs.score:null),
+                           shape:(sShape?sShape.score:null),
+                           vol:(sVol?sVol.score:null) });
+    return { ratios:ratios, moms:moms, buf:buf,
+             rank:rank, rsPart:sRs, absPart:sAbs, shapePart:sShape, volPart:sVol };
   }
 
   var BUF_FRAC=0.30, BUF_MIN=0.30, BUF_MAX=3.0;
@@ -845,10 +989,10 @@ window.onerror = function(msg, src, line, col, err) {
         setStatus('抓取 '+s.name+' ('+s.ticker+')... '+(i+1)+'/'+OVERVIEW_REPRESENTATIVES.length);
         fetchPrice(s.ticker).then(function(px){
           var AL=alignSeries(px, spyPx);
-          var rrg=calculateRRG(AL.sec, AL.bench);
+          var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:'insufficient'});
-          else data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',sectorName:s.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',sectorName:s.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(300).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:e.message}); sleep(300).then(function(){ fetchNext(i+1); }); });
       }
@@ -879,10 +1023,10 @@ window.onerror = function(msg, src, line, col, err) {
         setStatus('深掃 '+s.ticker+' ('+s.sectorName+')... '+(i+1)+'/'+allStocks.length);
         fetchPrice(s.ticker).then(function(px){
           var AL=alignSeries(px, spyPx);
-          var rrg=calculateRRG(AL.sec, AL.bench);
+          var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:'insufficient'});
-          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(500).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:e.message}); sleep(500).then(function(){ fetchNext(i+1); }); });
       }
@@ -922,10 +1066,10 @@ window.onerror = function(msg, src, line, col, err) {
         setStatus('查詢 '+t+'... '+(i+1)+'/'+tickers.length+' (vs '+currentBenchmark+')');
         fetchPrice(t).then(function(px){
           var AL=alignSeries(px, spyPx);
-          var rrg=calculateRRG(AL.sec, AL.bench);
+          var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',error:'insufficient'});
-          else data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(500).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',error:e.message}); sleep(500).then(function(){ fetchNext(i+1); }); });
       }
@@ -1020,9 +1164,9 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<text x="'+(W-P-12)+'" y="'+(P+24)+'" fill="#00d4a8" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">★ 領先</text>';
     html+='<text x="'+(W-P-12)+'" y="'+(P+40)+'" fill="#00d4a8" opacity="0.5" text-anchor="end" font-size="10">續抱黃金區</text>';
     html+='<text x="'+(P+12)+'" y="'+(P+24)+'" fill="#4ea5ff" opacity="0.85" font-size="15" font-weight="800">↗ 改善中</text>';
-    html+='<text x="'+(P+12)+'" y="'+(P+40)+'" fill="#4ea5ff" opacity="0.5" font-size="10">最佳買進區</text>';
+    html+='<text x="'+(P+12)+'" y="'+(P+40)+'" fill="#4ea5ff" opacity="0.5" font-size="10">剛從谷底爬上來</text>';
     html+='<text x="'+(W-P-12)+'" y="'+(H-P-18)+'" fill="#f7c948" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">⚠ 走弱</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(H-P-6)+'" fill="#f7c948" opacity="0.5" text-anchor="end" font-size="10">鎖利警報</text>';
+    html+='<text x="'+(W-P-12)+'" y="'+(H-P-6)+'" fill="#f7c948" opacity="0.5" text-anchor="end" font-size="10">動能轉弱區</text>';
     html+='<text x="'+(P+12)+'" y="'+(H-P-18)+'" fill="#ef476f" opacity="0.85" font-size="15" font-weight="800">↘ 落後</text>';
     html+='<text x="'+(P+12)+'" y="'+(H-P-6)+'" fill="#ef476f" opacity="0.5" font-size="10">避開禁區</text>';
     html+='<text x="'+(cx+5)+'" y="'+(P-3)+'" fill="#6b7290" font-size="9">100</text>';
@@ -1166,9 +1310,14 @@ window.onerror = function(msg, src, line, col, err) {
     var valid=[];
     for(var i=0;i<data.sectors.length;i++) if (!data.sectors[i].error&&data.sectors[i].current) valid.push(data.sectors[i]);
     if (valid.length===0){ box.innerHTML=''; return; }
-    valid.sort(function(a,b){ return b.current.ratio-a.current.ratio; });
+    valid.sort(function(a,b){
+      var ra=(a.rank&&a.rank.score!=null)?a.rank.score:-1;
+      var rb=(b.rank&&b.rank.score!=null)?b.rank.score:-1;
+      if(rb!==ra) return rb-ra;
+      return b.current.ratio-a.current.ratio;
+    });
     var html='<div class="stock-chips">';
-    html+='<div class="stock-chips-title">📍 點選股票聚焦（共 '+valid.length+' 檔，按強度排序）</div>';
+    html+='<div class="stock-chips-title">📍 點選股票聚焦（共 '+valid.length+' 檔，按排名分數排序）</div>';
     for(var k=0;k<valid.length;k++){
       var s=valid[k];
       var ticker=s.ticker||s.name;
@@ -1290,13 +1439,13 @@ window.onerror = function(msg, src, line, col, err) {
     var ratio=s.current.ratio,mom=s.current.mom;
     if (q.key==='leading'){
       if (ratio>=105&&mom>=105){ summary='🔥 領先深處，強勢加速中，續抱'; summaryColor='#00d4a8'; }
-      else if (ratio>=105&&mom<100){ summary='⚠ 領先右下角：RS 高但動能轉弱 → 即將進走弱，警戒鎖利'; summaryColor='#f7c948'; }
-      else if (ratio>=105&&mom>=100){ summary='⚠ 領先右側：RS 高但動能減速中，留意鎖利訊號'; summaryColor='#f7c948'; }
+      else if (ratio>=105&&mom<100){ summary='⚠ 領先右下角：RS 高但動能轉弱 → 即將掉進走弱區'; summaryColor='#f7c948'; }
+      else if (ratio>=105&&mom>=100){ summary='⚠ 領先右側：RS 高但動能在減速'; summaryColor='#f7c948'; }
       else if (ratio<105&&mom>=105){ summary='🌱 領先左上：剛跳進領先區，動能加速 → 健康新進場'; summaryColor='#00d4a8'; }
       else if (ratio<105&&mom<100){ summary='⚠ 領先邊緣 + 動能弱化 → 隨時可能掉出領先'; summaryColor='#f7c948'; }
       else { summary='★ 領先中，續抱'; summaryColor='#00d4a8'; }
-    } else if (q.key==='improving'){ summary='🌱 起漲候選，最佳進場區'; summaryColor='#4ea5ff'; }
-    else if (q.key==='weakening'){ summary='⚠ 鎖利警報，不再加碼'; summaryColor='#f7c948'; }
+    } else if (q.key==='improving'){ summary='🌱 從落後爬回來，位置在改善'; summaryColor='#4ea5ff'; }
+    else if (q.key==='weakening'){ summary='⚠ 動能已經轉弱'; summaryColor='#f7c948'; }
     else if (q.key==='lagging'){ summary='↘ 避開，等真正反轉'; summaryColor='#ef476f'; }
     var sectorTag=s.sectorName?'<span style="color:var(--dim);font-size:0.78rem">（'+s.sectorName+'）</span>':'';
     var html='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
@@ -1312,7 +1461,7 @@ window.onerror = function(msg, src, line, col, err) {
       var dirArrow=FT.arrow, dirText='', dirColor='#9ca3af';
       if (FT.strength==='flat'){ dirArrow='⏸'; dirText='原地震盪（無明顯方向）'; dirColor='#9ca3af'; }
       else if (FT.arrow==='↗'){ dirText='朝領先深處（最強訊號）'; dirColor='#00d4a8'; }
-      else if (FT.arrow==='↘'){ dirText='朝走弱（鎖利警報，動能衰退）'; dirColor='#f7c948'; }
+      else if (FT.arrow==='↘'){ dirText='朝走弱（動能在衰退）'; dirColor='#f7c948'; }
       else if (FT.arrow==='↖'){ dirText='朝改善中（V 型反轉訊號）'; dirColor='#4ea5ff'; }
       else { dirText='朝落後（避開，雙弱）'; dirColor='#ef476f'; }
       var rsSign=dRS>=0?'+':'', momSign=dMom>=0?'+':'';
@@ -1393,7 +1542,7 @@ window.onerror = function(msg, src, line, col, err) {
         var sd5=deltaSd(s.ratios,5), sd20=deltaSd(s.ratios,20);
         if (v5>0&&v10<0&&v20>0) velTip='🔄 V 型反轉訊號（中期破，短期重新拉起）';
         else if (v5>Math.max(v10/2, 0.7*sd5)&&v10>0) velTip='🚀 短期加速強過中期 → 動能爆發';
-        else if (v20>1.1*sd20&&v5>0&&v5<v10/3) velTip='🎆 煙火警戒（漲幅大但短期已減速，留意鎖利）';
+        else if (v20>1.1*sd20&&v5>0&&v5<v10/3) velTip='🎆 煙火形狀（拉開很多但短期已經減速）';
         else if (v5<0&&v20>0) velTip='⚠ 長期上升但短期已轉弱 → 警戒';
         else if (v5>0&&v20<0) velTip='🌱 長期弱但短期反轉中 → 觀察';
         if (velTip) html+='<div style="font-size:0.74rem;margin-top:7px;padding:6px 8px;background:rgba(255,209,102,0.06);border-radius:5px;color:var(--accent);">'+velTip+'</div>';
@@ -1622,18 +1771,18 @@ window.onerror = function(msg, src, line, col, err) {
         else if (directionEmoji==='→'){ advice='⏸ 領先深處整理蓄力，主力洗盤'; groupKey='strong'; }
         else if (directionEmoji==='↖'){ advice='👀 領先深處方向不明，先觀察'; groupKey='watch'; }
         else if (directionEmoji==='↘'){
-          if (strength==='strong'){ advice='🚨 高位派發，減倉保利'; groupKey='danger'; }
+          if (strength==='strong'){ advice='🚨 高位動能急轉，最像派發的形狀'; groupKey='danger'; }
           else if (strength==='normal'){ advice='⚠️ 領先深處轉弱中，警戒'; groupKey='warn'; }
           else { advice='👀 領先深處動能放緩，觀察'; groupKey='watch'; }
         }
         else if (directionEmoji==='↙'){
-          if (strength==='strong'){ advice='🚨 領先深處急速崩落，立刻砍倉'; groupKey='danger'; }
+          if (strength==='strong'){ advice='🚨 領先深處急速崩落'; groupKey='danger'; }
           else { advice='⚠️ 領先深處末端轉弱，警戒'; groupKey='warn'; }
         }
       }
       else if (positionTier==='edge'){
         if (directionEmoji==='↗'){
-          if (strength==='strong'){ advice='🎯 從邊緣強勢突破往深處，最佳加碼點'; groupKey='strong'; }
+          if (strength==='strong'){ advice='🎯 從邊緣強勢推進到領先深處'; groupKey='strong'; }
           else { advice='📈 從邊緣往領先推進，續抱'; groupKey='strong'; }
         }
         else if (directionEmoji==='→'){ advice='⏸ 領先邊緣盤整，等突破'; groupKey='watch'; }
@@ -1645,7 +1794,7 @@ window.onerror = function(msg, src, line, col, err) {
       }
       else {
         if (directionEmoji==='↗'){
-          if (strength==='strong'){ advice='🚀 往深處推進，加碼點'; groupKey='strong'; }
+          if (strength==='strong'){ advice='🚀 相對強度正在加速拉開'; groupKey='strong'; }
           else if (strength==='normal'){ advice='✅ 領先區穩步上行，續抱'; groupKey='strong'; }
           else { advice='📈 領先區緩慢推升，續抱'; groupKey='strong'; }
         }
@@ -1664,26 +1813,26 @@ window.onerror = function(msg, src, line, col, err) {
       var rsMed=ratio>=105;
       if (positionTier==='deep'){
         if (directionEmoji==='↗'){
-          if (strength==='strong'){ advice='💡 走弱深處強勁反彈，等回領先區再動'; groupKey='watch'; }
+          if (strength==='strong'){ advice='💡 走弱深處出現強勁反彈'; groupKey='watch'; }
           else { advice='👀 走弱深處試圖反彈，觀察'; groupKey='watch'; }
         }
         else if (directionEmoji==='↖'){ advice='👀 走弱深處橫向偏強，觀察'; groupKey='watch'; }
         else if (directionEmoji==='→'){
-          if (rsHigh) { advice='⏸ 強勢股高位整理，鎖利不加碼'; groupKey='watch'; }
+          if (rsHigh) { advice='⏸ 強勢股在高位整理'; groupKey='watch'; }
           else { advice='⚠️ 走弱深處停滯，警戒'; groupKey='warn'; }
         }
         else if (directionEmoji==='↘'){
-          if (rsHigh&&strength==='strong'){ advice='🟡 強勢股回測，動能急殺，鎖利保護'; groupKey='warn'; }
+          if (rsHigh&&strength==='strong'){ advice='🟡 強勢股回測，動能急殺'; groupKey='warn'; }
           else if (rsHigh){ advice='🟡 強勢股回測中，動能放緩'; groupKey='warn'; }
-          else if (rsMed&&strength==='strong'){ advice='⚠️ 走弱深處急速惡化，準備減倉'; groupKey='warn'; }
-          else if (strength==='strong'){ advice='🚨 走弱深處急速惡化，立刻砍倉'; groupKey='danger'; }
-          else { advice='⚠️ 持續走弱，準備減倉'; groupKey='warn'; }
+          else if (rsMed&&strength==='strong'){ advice='⚠️ 走弱深處急速惡化'; groupKey='warn'; }
+          else if (strength==='strong'){ advice='🚨 走弱深處急速惡化'; groupKey='danger'; }
+          else { advice='⚠️ 持續走弱'; groupKey='warn'; }
         }
         else if (directionEmoji==='↙'){
-          if (rsHigh&&strength==='strong'){ advice='🟡 強勢股動能崩跌，鎖利保護不加碼'; groupKey='warn'; }
+          if (rsHigh&&strength==='strong'){ advice='🟡 強勢股動能崩跌'; groupKey='warn'; }
           else if (rsHigh){ advice='🟡 強勢股回測中，動能轉弱'; groupKey='warn'; }
-          else if (strength==='strong'){ advice='🚨 加速崩跌，立刻清倉'; groupKey='danger'; }
-          else { advice='⚠️ 往落後區滑落，考慮減倉'; groupKey='danger'; }
+          else if (strength==='strong'){ advice='🚨 相對強度加速崩落，最差的組合'; groupKey='danger'; }
+          else { advice='⚠️ 正在滑向落後區'; groupKey='danger'; }
         }
       }
       else if (positionTier==='edge'){
@@ -1706,7 +1855,7 @@ window.onerror = function(msg, src, line, col, err) {
       if (positionTier==='deep'){
         if (directionEmoji==='↗'){
           if (strength==='strong'){ advice='💎 改善深處強勁突破，往領先區衝'; groupKey='watch'; }
-          else { advice='📈 改善深處往上推進，買進候選'; groupKey='watch'; }
+          else { advice='📈 改善深處往上推進'; groupKey='watch'; }
         }
         else if (directionEmoji==='→'){ advice='👀 改善深處橫盤，等突破'; groupKey='watch'; }
         else if (directionEmoji==='↘'||directionEmoji==='↙'){ advice='⚠️ 改善動能放緩，觀察是否回落'; groupKey='warn'; }
@@ -1714,7 +1863,7 @@ window.onerror = function(msg, src, line, col, err) {
       }
       else {
         if (directionEmoji==='↗'){
-          if (strength==='strong'){ advice='🚀 改善加速，買進候選'; groupKey='watch'; }
+          if (strength==='strong'){ advice='🚀 改善區加速上行'; groupKey='watch'; }
           else { advice='📈 改善中，觀察'; groupKey='watch'; }
         }
         else if (directionEmoji==='→'){ advice='👀 改善區停滯，觀察'; groupKey='watch'; }
@@ -1796,10 +1945,10 @@ window.onerror = function(msg, src, line, col, err) {
         else sentence3='<strong style="color:#00d4a8;">慢牛走勢，續抱。</strong>慢慢漲的不容易被甩。';
       }
       else if (positionTier==='normal'&&directionEmoji==='↗'){
-        if (strength==='strong') sentence3='<strong style="color:#00d4a8;">動能正在往深處推進，是黃金加碼點。</strong>';
+        if (strength==='strong') sentence3='<strong style="color:#00d4a8;">動能正在往深處推進。</strong>這是位置在變好，不是買賣訊號。';
         else sentence3='<strong style="color:#00d4a8;">領先區穩步上行，續抱。</strong>節奏穩的不容易被洗下車。';
       }
-      else if (positionTier==='edge'&&directionEmoji==='↗') sentence3='<strong style="color:#00d4a8;">從邊緣往深處推進，方向對了。</strong>強勢突破點。';
+      else if (positionTier==='edge'&&directionEmoji==='↗') sentence3='<strong style="color:#00d4a8;">從邊緣往深處推進，方向對了。</strong>';
       else if (strength==='flat'&&positionTier==='deep') sentence3='<strong style="color:#00d4a8;">高位橫盤是好事，主力在洗盤。</strong>看起來像跌但量縮就還好。';
       else if (directionEmoji==='→') sentence3='<strong style="color:#00d4a8;">領先區整理蓄力中，持有。</strong>等突破方向再做動作。';
       else sentence3='<strong style="color:#00d4a8;">繼續抱，但密切看方向是否轉變。</strong>';
@@ -1823,8 +1972,8 @@ window.onerror = function(msg, src, line, col, err) {
     }
     else if (groupKey==='warn'){
       // v2.6.6: 強勢股回測 (RS>=110 + 走弱) 給特別文案
-      if (nowQKey==='weakening'&&rsVal>=110) sentence3='<strong style="color:#f7c948;">強勢股回測中，動能放緩很正常。</strong>RS 還是領先群，鎖利不加碼，等動能轉強再說，不要被一時的紅 K 嚇到砍掉。';
-      else if (nowQKey==='leading') sentence3='<strong style="color:#f7c948;">領先區開始轉弱，要警覺了。</strong>不要逆勢加碼，等方向確認再說。';
+      if (nowQKey==='weakening'&&rsVal>=110) sentence3='<strong style="color:#f7c948;">強勢股回測中，動能放緩很正常。</strong>RS 還是在領先群，這個形狀本身不代表結構壞掉。';
+      else if (nowQKey==='leading') sentence3='<strong style="color:#f7c948;">領先區開始轉弱，要警覺了。</strong>方向還沒確認。';
       else if (nowQKey==='weakening') sentence3='<strong style="color:#f7c948;">已經在走弱了，方向不對就認錯。</strong>不要凹。';
       else if (nowQKey==='improving') sentence3='<strong style="color:#f7c948;">改善動能放緩，可能會回落。</strong>觀察中，先別追。';
       else if (nowQKey==='lagging') sentence3='<strong style="color:#f7c948;">底部反彈但還沒確認，先觀察。</strong>';
@@ -1832,17 +1981,17 @@ window.onerror = function(msg, src, line, col, err) {
     }
     else if (groupKey==='danger'){
       if (nowQKey==='lagging') sentence3='<strong style="color:#ef476f;">在落後區，避開。</strong>不要去接刀。';
-      else if (nowQKey==='leading'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">位置還在領先區、軌跡卻反向 — 標準高位派發。</strong>減倉保利，不要凹。';
+      else if (nowQKey==='leading'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">位置還在領先區、軌跡卻反向 — 最像高位派發的形狀。</strong>';
       else if (nowQKey==='weakening'&&directionEmoji==='↙') sentence3='<strong style="color:#ef476f;">走弱深處還在加速往下，最差的組合。</strong>資金保護優先，砍了別凹。';
-      else if (nowQKey==='weakening'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">急速惡化，立刻砍倉。</strong>不要凹。';
-      else sentence3='<strong style="color:#ef476f;">立刻減倉，不要拖。保護資金優先。</strong>';
+      else if (nowQKey==='weakening'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">急速惡化。</strong>';
+      else sentence3='<strong style="color:#ef476f;">相對強度還在惡化中。</strong>';
     }
     verbose=sentence1+sentence2+' '+sentence3;
     if (reversal){
       if (reversal.type==='bullish') verbose+='<br>✨ <strong style="color:#00d4a8;">特別注意：之前一直走弱，最近突然轉強！</strong>可能有主力進場，去 test-accum.html 看看大單訊號。';
-      else verbose+='<br>🚨 <strong style="color:#ef476f;">特別注意：之前往上衝，最近開始反向。</strong>主力可能在偷出貨，警戒減倉。';
+      else verbose+='<br>🚨 <strong style="color:#ef476f;">特別注意：之前往上衝，最近開始反向。</strong>這是派發常見的形狀。';
     }
-    return { ticker:s.ticker||s.name, position:positionText, direction:directionEmoji, directionText:directionText, strength:strength, advice:advice, groupKey:groupKey, dist:dist, pathLength:pathLength, verbose:verbose, reversal:reversal, ratio:s.current.ratio, mom:s.current.mom, buf:s.buf };
+    return { ticker:s.ticker||s.name, position:positionText, direction:directionEmoji, directionText:directionText, strength:strength, advice:advice, groupKey:groupKey, dist:dist, pathLength:pathLength, verbose:verbose, reversal:reversal, ratio:s.current.ratio, mom:s.current.mom, buf:s.buf, rank:s.rank, rsPart:s.rsPart, absPart:s.absPart, shapePart:s.shapePart, volPart:s.volPart };
   }
 
   function renderHoldingsOverview(data) {
@@ -1853,10 +2002,24 @@ window.onerror = function(msg, src, line, col, err) {
       if (s.error||!s.current) continue;
       validCount++;
       var info=analyzeHolding(s);
-      groups[info.groupKey].push(info);
+      // v2.8：分組改由排名分數決定，不再由 groupKey（= 10 天軌跡強度）決定。
+      //   分數裡已經把軌跡長度拿掉了，但如果「分在哪一組」還是它說了算，
+      //   那個沒有證據的量仍然主導整個畫面的排序 —— 那就是只修一半。
+      //   ⚠ groupKey 仍保留在 info 裡供判詞用，只是不再決定分組。
+      var _rk=(info.rank&&info.rank.score!=null)?info.rank.score:null;
+      var _bucket = (_rk==null) ? 'watch'
+                  : (_rk>=70 ? 'strong' : (_rk>=50 ? 'watch' : (_rk>=35 ? 'warn' : 'danger')));
+      groups[_bucket].push(info);
       allInfos.push(info);
     }
-    for(var key in groups) groups[key].sort(function(a,b){ return b.dist-a.dist; });
+    // v2.8：排序改用排名分數，不再用 dist（離中心多遠）。
+    //   dist 主要由 10 天軌跡長度撐起來，而那個量在 10 天尺度沒有證據支撐。
+    for(var key in groups) groups[key].sort(function(a,b){
+      var ra=(a.rank&&a.rank.score!=null)?a.rank.score:-1;
+      var rb=(b.rank&&b.rank.score!=null)?b.rank.score:-1;
+      if(rb!==ra) return rb-ra;
+      return b.dist-a.dist;
+    });
     var lastSnapMap=null,lastSnapDate=null,lastSnapEng=null,lastSnapSameEng=false;
     try {
       var snapshots=loadSnapshots();
@@ -1875,6 +2038,38 @@ window.onerror = function(msg, src, line, col, err) {
         }
       }
     } catch(e){ lastSnapMap=null; }
+    // v2.8：排名分數徽章 + 分項拆解。
+    //   只給一個總分等於另一個黑盒子，所以四項各自的得分一定要看得到。
+    function rankHTML(info){
+      if(!info.rank||info.rank.score==null) return '';
+      var sc=info.rank.score;
+      var col = sc>=70 ? '#00d4a8' : (sc>=55 ? '#7dd3a8' : (sc>=40 ? '#9ca3af' : '#f7c948'));
+      return '<span style="margin-left:8px;padding:1px 7px;border-radius:9px;font-size:0.72rem;'
+           + 'font-family:monospace;font-weight:700;color:'+col+';border:1px solid '+col+'55;'
+           + 'background:'+col+'12">排名 '+sc.toFixed(0)+'</span>';
+    }
+    function rankBreakdownHTML(info){
+      if(!info.rank||info.rank.score==null) return '';
+      function cell(name, val, note, weight){
+        var txt = (val==null) ? '<span style="color:#6e7681">資料不足</span>'
+                : '<b style="color:'+(val>=60?'#00d4a8':(val>=40?'#9ca3af':'#f7c948'))+'">'+val.toFixed(0)+'</b>';
+        return '<span style="margin-right:14px;white-space:nowrap">'+name
+             + '<span style="color:#6e7681;font-size:0.68rem">('+weight+')</span> '+txt
+             + (note?'<span style="color:#6e7681"> '+note+'</span>':'')+'</span>';
+      }
+      var A=info.absPart, S=info.shapePart, V=info.volPart;
+      var h='<div style="margin-top:4px;font-size:0.72rem;color:var(--dim);line-height:1.7">';
+      h+= cell('RS水位', info.rsPart, '', 50);
+      h+= cell('走勢形狀', S?S.score:null, S?(S.kind==='cont'?'連續型':'跳躍型'):'', 35);
+      h+= cell('量能', V?V.score:null, V?(V.volX+'×'):'', 15);
+      if(A) h+='<span style="margin-right:14px;white-space:nowrap">絕對趨勢<span style="color:#6e7681;font-size:0.68rem">(乘數)</span> '
+             + '<b style="color:'+(info.rank.gate>=0.85?'#00d4a8':(info.rank.gate>=0.7?'#9ca3af':'#f7c948'))+'">×'+info.rank.gate+'</b>'
+             + '<span style="color:#6e7681"> '+(A.above?'站上150均':'跌破150均')+(A.rising?'·均線上揚':'·均線下彎')+'</span></span>';
+      if(info.rank.covered<100) h+='<span style="color:#6e7681">· 只算得出 '+info.rank.covered+'% 的權重</span>';
+      h+='</div>';
+      return h;
+    }
+
     function weekDeltaHTML(info){
       if (!lastSnapMap) return '';
       if (!lastSnapSameEng) return '';   // v2.7.2：跨引擎版本不做相減，那個差值沒有意義
@@ -1895,6 +2090,27 @@ window.onerror = function(msg, src, line, col, err) {
     }
     var html='<div class="holdings-overview">';
     html+='<div class="ho-header">📊 我的持倉總表 <span class="ho-count">共 '+validCount+' 檔</span></div>';
+    // ════════════════════════════════════════════════════════════════════════
+    // v2.7.3：這一整區以前會直接下買賣指示（「加碼點」「立刻砍倉」「鎖利」
+    //   「買進候選」「強勢突破點」…），但 RRG 看不到價格、停損、pivot 與部位，
+    //   沒有資格下那種指示。而且「加碼點」直接牴觸 dna.html 裡寫了兩遍的規則：
+    //     「加碼只能來自 pivot 突破，不是來自回檔品質變好。」
+    //   —— 規則實作在 dna，兄弟工具沒跟上，這是同一個缺陷的第七次發作。
+    //   ⚠ 以後在這個檔案裡寫判詞，只能描述「位置與方向」，不能寫動作。
+    //      要新增動作類文案之前，先問：這句話需要價格或停損才成立嗎？需要就不能寫。
+    // ════════════════════════════════════════════════════════════════════════
+    html+='<div style="margin:6px 0 12px;padding:9px 11px;border-left:3px solid #4ea5ff;'
+        + 'background:rgba(78,165,255,0.07);border-radius:6px;font-size:0.78rem;line-height:1.65;color:var(--dim)">'
+        + '這一區是<strong style="color:#4ea5ff">排序</strong>，不是買賣指示 —— 回答「先看哪一檔」，不回答「買不買」。'
+        + '<br><strong style="color:#4ea5ff">排名分數</strong> = '
+        + '（RS 水位 50 · 走勢形狀 35 · 量能 15）× <b>絕對趨勢乘數</b>。'
+        + '權重按證據強度分，不是按直覺；絕對趨勢當乘數而不是加權項，'
+        + '因為跌破下彎的長均線在 Weinstein 框架裡是<b>前提不成立</b>，不是輸一票。'
+        + '<br><span style="color:#8b949e">⚠ 10 天軌跡長度<b>不計分</b>：'
+        + 'Jegadeesh-Titman 3個月/3個月 t=1.10 不顯著、Novy-Marx 證明最近期價格行為是動能裡'
+        + '資訊量最低的一段、加速度研究全部在 6 個月尺度。它仍畫在圖上，只是不進分數。</span>'
+        + '<br><span style="color:#8b949e">進場、加碼、停損看 dna 的 pivot。加碼只能來自 pivot 突破。</span>'
+        + '</div>';
     var bullishReversals=allInfos.filter(function(s){ return s.reversal&&s.reversal.type==='bullish'; });
     var bearishReversals=allInfos.filter(function(s){ return s.reversal&&s.reversal.type==='bearish'; });
     if (bullishReversals.length>0){
@@ -1911,7 +2127,7 @@ window.onerror = function(msg, src, line, col, err) {
       html+='<div class="reversal-title">🚨 派發訊號警報（'+bearishReversals.length+' 檔）— 軌跡 U 形向下</div>';
       for(var ri=0;ri<bearishReversals.length;ri++){
         var r=bearishReversals[ri];
-        html+='<div class="reversal-row"><span class="reversal-ticker">'+r.ticker+'</span> ['+r.position+'] '+r.direction+' '+r.directionText+' → 主力可能在派發，警戒減倉</div>';
+        html+='<div class="reversal-row"><span class="reversal-ticker">'+r.ticker+'</span> ['+r.position+'] '+r.direction+' '+r.directionText+' → 這是派發常見的形狀</div>';
       }
       html+='</div>';
     }
@@ -1922,21 +2138,33 @@ window.onerror = function(msg, src, line, col, err) {
       for(var i=0;i<arr.length;i++){
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
-        h+='<span class="hold-ticker">'+s.ticker+'</span>';
+        h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
         h+='<span class="hold-position">['+s.position+']</span>';
         h+='<span class="hold-direction">'+s.direction+' '+s.directionText+'</span>';
         h+=weekDeltaHTML(s);
         h+='<span class="hold-advice">→ '+s.advice+'</span></div>';
+        // v2.8：乘數把排名壓低時要明講，否則「方向是對的」坐在「最弱」區裡
+        //   讀起來像自相矛盾 —— 其實是兩件不同的事實，只是沒有連起來。
+        if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
+          h+='<div style="margin-top:4px;font-size:0.73rem;color:#f7c948;line-height:1.6">'
+           + '↳ RRG 上的位置與方向沒問題，但<strong>它自己的絕對走勢還在下降</strong>（'
+           + (s.absPart.above?'站上':'跌破')+'150 均'+(s.absPart.rising?'·均線上揚':'·均線下彎')
+           + '），所以排名被乘上 ×'+s.rank.gate+' 壓到 '+s.rank.score.toFixed(0)+'。'
+           + '<span style="color:#8b949e">領先／改善是<b>相對</b>大盤，大盤在跌的時候，'
+           + '「跌得比較少」也會被畫進去。</span></div>';
+        }
+        h+=rankBreakdownHTML(s);
         if (s.verbose) h+='<div class="hold-verbose">'+s.verbose+'</div>';
         h+='</div>';
       }
       h+='</div>';
       return h;
     }
-    html+=renderGroup('strong','🟢','強勢持有', groups.strong);
-    html+=renderGroup('watch','🟡','觀察中', groups.watch);
-    html+=renderGroup('warn','🟠','警戒', groups.warn);
-    html+=renderGroup('danger','🔴','危險', groups.danger);
+    // 標題跟著改：這四組現在的意思是「排名分數的前段到後段」，不是動作分級
+    html+=renderGroup('strong','🟢','排名前段（優先看）· 70 分以上', groups.strong);
+    html+=renderGroup('watch','🟡','中段 · 50–70 分', groups.watch);
+    html+=renderGroup('warn','🟠','後段 · 35–50 分', groups.warn);
+    html+=renderGroup('danger','🔴','最弱 · 35 分以下', groups.danger);
     // v2.7.2：跨引擎版本的快照不能拿來相減 —— 那個差值是公式換代，不是市場變化
     if (lastSnapMap&&lastSnapDate&&!lastSnapSameEng){
       html+='<div class="weekly-summary">';
@@ -1981,21 +2209,21 @@ window.onerror = function(msg, src, line, col, err) {
     }
     if (bearishReversals.length>0){
       var rnames=bearishReversals.map(function(s){return s.ticker;}).join('、');
-      focusItems.push('🚨 <strong>'+rnames+'</strong> 出現派發訊號，警戒減倉');
+      focusItems.push('🚨 <strong>'+rnames+'</strong> 出現派發形狀');
     }
     if (groups.danger.length>0){
       var dnames=groups.danger.map(function(s){return s.ticker;}).join('、');
-      focusItems.push('🔴 <strong>'+dnames+'</strong> 在危險區，需要設停損或考慮減倉');
+      focusItems.push('🔴 <strong>'+dnames+'</strong> 在落後區且還在惡化');
     }
     if (groups.warn.length>0){
       var wnames=groups.warn.map(function(s){return s.ticker;}).join('、');
-      focusItems.push('🟠 警戒：<strong>'+wnames+'</strong> 動能轉弱，密切觀察軌跡變化');
+      focusItems.push('🟠 <strong>'+wnames+'</strong> 排名落在後段');
     }
     if (groups.strong.length>=2){
       var snames=groups.strong.slice(0,3).map(function(s){return s.ticker;}).join('、');
-      focusItems.push('🟢 強勢檔（<strong>'+snames+(groups.strong.length>3?' 等':'')+'</strong>）續抱，不急著賣，讓利潤奔跑');
+      focusItems.push('🟢 排名前段：<strong>'+snames+(groups.strong.length>3?' 等':'')+'</strong>');
     } else if (groups.strong.length===1){
-      focusItems.push('🟢 強勢檔（<strong>'+groups.strong[0].ticker+'</strong>）續抱，不急著賣');
+      focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
     if (focusItems.length===0) focusItems.push('✅ 整體狀況良好，沒有需要立刻處理的警訊');
     html+='<div class="today-focus"><div class="today-focus-title">💡 今日重點</div>';
@@ -2014,7 +2242,14 @@ window.onerror = function(msg, src, line, col, err) {
       var dist=distFromCenter(s.current.ratio, s.current.mom);
       groups[q.key].push({name:s.name, ticker:s.ticker||s.name, sectorName:s.sectorName, dist:dist, ratio:s.current.ratio, mom:s.current.mom});
     }
-    for(var key in groups) groups[key].sort(function(a,b){ return b.dist-a.dist; });
+    // v2.8：排序改用排名分數，不再用 dist（離中心多遠）。
+    //   dist 主要由 10 天軌跡長度撐起來，而那個量在 10 天尺度沒有證據支撐。
+    for(var key in groups) groups[key].sort(function(a,b){
+      var ra=(a.rank&&a.rank.score!=null)?a.rank.score:-1;
+      var rb=(b.rank&&b.rank.score!=null)?b.rank.score:-1;
+      if(rb!==ra) return rb-ra;
+      return b.dist-a.dist;
+    });
     function fmtList(arr, max){
       if (arr.length===0) return '<span class="narr-empty">無</span>';
       var n=Math.min(max||5, arr.length);
@@ -2035,11 +2270,11 @@ window.onerror = function(msg, src, line, col, err) {
     } else html+='<span class="narr-empty">目前沒有跑贏大盤的</span>';
     html+='</div>';
     html+='<div class="narr-section narr-improving"><span class="label">↗ 起漲候選（弱但變強）</span>';
-    if (groups.improving.length>0){ html+=fmtList(groups.improving, 6); html+='<span class="narr-tip">→ 觀察清單，最佳進場區（剛從谷底爬上來）</span>'; }
+    if (groups.improving.length>0){ html+=fmtList(groups.improving, 6); html+='<span class="narr-tip">→ 剛從谷底爬上來，位置在改善</span>'; }
     else html+='<span class="narr-empty">無</span>';
     html+='</div>';
     html+='<div class="narr-section narr-weakening"><span class="label">⚠ 警戒（強但動能轉弱）</span>';
-    if (groups.weakening.length>0){ html+=fmtList(groups.weakening, 6); html+='<span class="narr-tip">→ 已持有考慮鎖利，不再加碼</span>'; }
+    if (groups.weakening.length>0){ html+=fmtList(groups.weakening, 6); html+='<span class="narr-tip">→ 動能轉弱，位置在退</span>'; }
     else html+='<span class="narr-empty">無</span>';
     html+='</div>';
     html+='<div class="narr-section narr-lagging"><span class="label">↘ 避開（弱且持續走弱）</span>';
@@ -2202,7 +2437,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.7.2 (快照版本標記)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.0 (排名分數)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
