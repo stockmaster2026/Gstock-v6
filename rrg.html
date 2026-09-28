@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.8.0</title>
+<title>RRG 板塊輪動圖 v2.8.1</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.8.0 · RRG 改成排名分數（證據加權），10 天軌跡不計分</div>
+<div class="sub">v2.8.1 · 絕對趨勢乘數改成 Stage 判定（不再獎勵延伸）</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.8.0 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.8.1 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -552,10 +552,24 @@ window.onerror = function(msg, src, line, col, err) {
     }
     var maNow=ma(n-1), maPrev=ma(n-1-20), px=closes[n-1];
     if(maNow==null||maPrev==null||!(px>0)) return null;
-    var pos = clamp100(50 + (px/maNow - 1)*200);          // 站上 +25% → 100
-    var slp = clamp100(50 + (maNow/maPrev - 1)*1000);     // 20 根漲 5% → 100
-    return { score: 0.6*pos + 0.4*slp, pos:pos, slp:slp,
-             above: px>maNow, rising: maNow>maPrev, ma:maNow };
+    // ⚠ v2.8.1 修一個我自己在 v2.8.0 製造的錯：
+    //   原本寫成「離均線 +25% 才給滿分」，等於在獎勵延伸 ——
+    //   而 dna.html 那邊「離長均線 +43%」是判「延伸到末期·空手不要進」。
+    //   兩個工具對同一件事給相反的分數，這是補丁只補一半的另一種形態。
+    //   正確語意是 Weinstein 的 Stage 判定，問的是「在不在上升結構裡」，
+    //   不是「漲得多開」：站上一條上揚的均線就該拿滿分，不必延伸。
+    //     站上 + 上揚 → Stage 2 → ×1.00
+    //     站上 + 下彎 → Stage 3 → 約 ×0.76
+    //     跌破 + 上揚 → Stage 1 → 約 ×0.64
+    //     跌破 + 下彎 → Stage 4 → ×0.40
+    //   依 Jasmine 一貫的偏好不做硬切點：±3% 與 ±1% 之間平滑過渡。
+    var devPct  = (px/maNow - 1)*100;
+    var slpPct  = (maNow/maPrev - 1)*100;
+    var a = Math.max(0, Math.min(1, 0.5 + devPct/3/2));   // ±3% 飽和
+    var r = Math.max(0, Math.min(1, 0.5 + slpPct/1/2));   // 20 根 ±1% 飽和
+    return { score: 100*(0.6*a + 0.4*r), pos:100*a, slp:100*r,
+             above: px>maNow, rising: maNow>maPrev, ma:maNow,
+             devPct:+devPct.toFixed(1), slpPct:+slpPct.toFixed(2) };
   }
 
   // ③ 走勢形狀（Frog in the Pan，套在 RS 線上）
@@ -2106,6 +2120,8 @@ window.onerror = function(msg, src, line, col, err) {
         + '（RS 水位 50 · 走勢形狀 35 · 量能 15）× <b>絕對趨勢乘數</b>。'
         + '權重按證據強度分，不是按直覺；絕對趨勢當乘數而不是加權項，'
         + '因為跌破下彎的長均線在 Weinstein 框架裡是<b>前提不成立</b>，不是輸一票。'
+        + '<br><span style="color:#8b949e">乘數看的是 <b>Stage</b>（在不在上升結構裡），不是「漲得多開」——'
+        + '站上一條上揚的 150 均就拿滿分，延伸沒有加分。</span>'
         + '<br><span style="color:#8b949e">⚠ 10 天軌跡長度<b>不計分</b>：'
         + 'Jegadeesh-Titman 3個月/3個月 t=1.10 不顯著、Novy-Marx 證明最近期價格行為是動能裡'
         + '資訊量最低的一段、加速度研究全部在 6 個月尺度。它仍畫在圖上，只是不進分數。</span>'
@@ -2213,7 +2229,7 @@ window.onerror = function(msg, src, line, col, err) {
     }
     if (groups.danger.length>0){
       var dnames=groups.danger.map(function(s){return s.ticker;}).join('、');
-      focusItems.push('🔴 <strong>'+dnames+'</strong> 在落後區且還在惡化');
+      focusItems.push('🔴 <strong>'+dnames+'</strong> 排名最弱（35 分以下）');
     }
     if (groups.warn.length>0){
       var wnames=groups.warn.map(function(s){return s.ticker;}).join('、');
@@ -2437,7 +2453,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.0 (排名分數)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.1 (Stage 乘數修正)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
