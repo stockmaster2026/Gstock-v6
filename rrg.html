@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.8.2</title>
+<title>RRG 板塊輪動圖 v2.8.3</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.8.2 · 量縮不再扣分（VCP 打底是加分）＋印出實際離均線距離</div>
+<div class="sub">v2.8.3 · 接上 dna 自己的末期門檻 70%（延伸不再無感）</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -290,7 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.8.2 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.8.3 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -530,6 +530,12 @@ window.onerror = function(msg, src, line, col, err) {
   // ═══════════════════════════════════════════════════════════════════════════
   var FIP_FORM = 252, FIP_SKIP = 21;   // 跟 dna.html 的漲勢形狀同一組窗口
   var ABS_MA   = 150;                  // Weinstein 的長均線
+  // dna.html 自己的常數：lateExtW30 = 70（第 529 行輸入框「末期起點 離30週線>%」，
+  //   第 2276 行判詞寫「Minervini 末期門檻 70%」）。30 週線 ≈ 150 日線，同一條。
+  //   ⚠ 這個數字是抄 dna 的，不是我另外訂的 —— 兩個工具要用同一條線。
+  //   70% 以下不扣分（沒有證據說 +40% 比 +5% 差）；過了 70% 才跟著 dna 的規則降權。
+  var EXT_LATE = 70;
+  var EXT_WARN = 40;   // 只變色提醒，不動分數
   var VOL_FAST = 20, VOL_SLOW = 100;
 
   function clamp100(v){ return (!isFinite(v)) ? 50 : Math.max(0, Math.min(100, v)); }
@@ -567,9 +573,13 @@ window.onerror = function(msg, src, line, col, err) {
     var slpPct  = (maNow/maPrev - 1)*100;
     var a = Math.max(0, Math.min(1, 0.5 + devPct/3/2));   // ±3% 飽和
     var r = Math.max(0, Math.min(1, 0.5 + slpPct/1/2));   // 20 根 ±1% 飽和
-    return { score: 100*(0.6*a + 0.4*r), pos:100*a, slp:100*r,
+    var base = 100*(0.6*a + 0.4*r);
+    // 過了 dna 的末期門檻才降權，而且是連續的（不做硬切點）
+    var extCut = (devPct>EXT_LATE) ? Math.min(0.35, (devPct-EXT_LATE)/100) : 0;
+    return { score: base*(1-extCut), pos:100*a, slp:100*r,
              above: px>maNow, rising: maNow>maPrev, ma:maNow,
-             devPct:+devPct.toFixed(1), slpPct:+slpPct.toFixed(2) };
+             devPct:+devPct.toFixed(1), slpPct:+slpPct.toFixed(2),
+             late:(devPct>EXT_LATE), warn:(devPct>EXT_WARN), extCut:+extCut.toFixed(2) };
   }
 
   // ③ 走勢形狀（Frog in the Pan，套在 RS 線上）
@@ -2089,7 +2099,8 @@ window.onerror = function(msg, src, line, col, err) {
              + '<b style="color:'+(info.rank.gate>=0.85?'#00d4a8':(info.rank.gate>=0.7?'#9ca3af':'#f7c948'))+'">×'+info.rank.gate+'</b>'
              + '<span style="color:#6e7681"> '
              + (A.above?'站上150均':'跌破150均')
-             + (A.devPct!=null? ' '+(A.devPct>0?'+':'')+A.devPct+'%' : '')
+             + (A.devPct!=null? '<b style="color:'+(A.late?'#f85149':(A.warn?'#d29922':'#6e7681'))+'"> '
+                 +(A.devPct>0?'+':'')+A.devPct+'%</b>' : '')
              + (A.rising?'·均線上揚':'·均線下彎')
              + (A.slpPct!=null? ' '+(A.slpPct>0?'+':'')+A.slpPct+'%/20根' : '')
              + '</span></span>';
@@ -2175,6 +2186,19 @@ window.onerror = function(msg, src, line, col, err) {
         h+='<span class="hold-advice">→ '+s.advice+'</span></div>';
         // v2.8：乘數把排名壓低時要明講，否則「方向是對的」坐在「最弱」區裡
         //   讀起來像自相矛盾 —— 其實是兩件不同的事實，只是沒有連起來。
+        // 過了 dna 的末期門檻要明講是哪一條規則，不要只留一個小小的百分比
+        if(s.absPart && s.absPart.late){
+          h+='<div style="margin-top:4px;font-size:0.73rem;color:#f85149;line-height:1.6">'
+           + '↳ 離 150 日均線 <b>+'+s.absPart.devPct+'%</b>，已經超過 dna 那邊的'
+           + '<b>末期門檻 '+EXT_LATE+'%</b>（Minervini）。'
+           + '<span style="color:#8b949e">位置還在上升結構裡，但結構性停損會拉得很寬 —— '
+           + '要不要碰、部位放多大，回 dna 看。</span></div>';
+        }
+        else if(s.absPart && s.absPart.warn){
+          h+='<div style="margin-top:4px;font-size:0.72rem;color:#d29922;line-height:1.6">'
+           + '↳ 離 150 日均線 +'+s.absPart.devPct+'%，離 dna 的末期門檻 '+EXT_LATE+'% 還有一段，'
+           + '<span style="color:#8b949e">但已經不是貼著均線的位置了。</span></div>';
+        }
         if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
           h+='<div style="margin-top:4px;font-size:0.73rem;color:#f7c948;line-height:1.6">'
            + '↳ RRG 上的位置與方向沒問題，但<strong>它自己的絕對走勢還在下降</strong>（'
@@ -2467,7 +2491,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.2 (量能中性化)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.3 (末期門檻)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
