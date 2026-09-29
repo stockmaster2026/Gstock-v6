@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.9.3</title>
+<title>RRG 板塊輪動圖 v2.9.5</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.9.3 · 圖上的動作字眼清乾淨 · 箭頭跟總表統一</div>
+<div class="sub">v2.9.5 · 每個分數都附一份收合的解讀</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.9.3 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.9.5 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -586,7 +586,7 @@ window.onerror = function(msg, src, line, col, err) {
     var base = 100*(0.6*a + 0.4*r);
     // 過了 dna 的末期門檻才降權，而且是連續的（不做硬切點）
     var extCut = (devPct>EXT_LATE) ? Math.min(0.35, (devPct-EXT_LATE)/100) : 0;
-    // v2.9.3：加一個「走平」帶，只用在文字標籤上，不碰分數。
+    // v2.9.5：加一個「走平」帶，只用在文字標籤上，不碰分數。
     //   分數這邊本來就是連續的（+0.17%/20根 → r=0.585，幾乎中性），
     //   binary 的只有畫面上那個「上揚／下彎」—— AMKR 的 +0.17%/20根
     //   被硬講成「均線上揚」，那其實是走平。門檻取飽和尺度（1%）的四分之一。
@@ -594,6 +594,85 @@ window.onerror = function(msg, src, line, col, err) {
              above: px>maNow, rising: maNow>maPrev, flat: Math.abs(slpPct)<ABS_FLAT, ma:maNow,
              devPct:+devPct.toFixed(1), slpPct:+slpPct.toFixed(2),
              late:(devPct>EXT_LATE), warn:(devPct>EXT_WARN), extCut:+extCut.toFixed(2) };
+  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // v2.9.5：每個數字要能自己說話。
+  //   她的原話：「你出現那些數字，如果沒有去解讀它，好像也沒有什麼意義」——
+  //   對的。只給 86 / 70 / 50 等於把黑盒子換了個位置而已。
+  //   這一區對每一項講三件事：①量的是什麼 ②這一檔的實際數字算出什麼 ③為什麼要看它。
+  //   預設收合（她的偏好：解釋收合、數字保留），而且一律只描述，不下動作。
+  //   ⚠ 數字一律沿用既有欄位，不另開平行算法 —— 兩套算法遲早會給出不同的數。
+  // ══════════════════════════════════════════════════════════════════════════
+  function metricNotes(o, unit){
+    unit = unit || '天';
+    if(!o || !o.rank || o.rank.score==null) return '';
+    var L=[];
+    function row(t, what, mine, why){
+      return '<div style="margin:7px 0 0">'
+           + '<b style="color:#c9d1d9">'+t+'</b>'
+           + '<div style="color:#8b949e;margin-top:1px">量的是：'+what+'</div>'
+           + '<div style="color:#c9d1d9;margin-top:1px">這一檔：'+mine+'</div>'
+           + (why?'<div style="color:#6e7681;margin-top:1px">為什麼看它：'+why+'</div>':'')
+           + '</div>';
+    }
+    // ① RS 水位
+    if(o.rsPart!=null && o.ratio!=null){
+      var d=o.ratio-100, dTxt=(d>0?'+':'')+d.toFixed(0);
+      L.push(row('RS水位 '+o.rsPart.toFixed(0)+' 分',
+        '相對大盤的走勢線離<b>它自己過去 3 個月平均</b>多遠 —— 不是「贏大盤多少」。',
+        '相對走勢比自己 3 個月平均 <b>'+dTxt+'%</b> → '+o.rsPart.toFixed(0)+' 分。'
+        + '<span style="color:#6e7681">（+20% 以上＝滿分 100；跟自己平均一樣＝50；−20% 以下＝0）</span>',
+        '這是 RRG 橫軸本身。它只回答「最近相對大盤在拉開還是在縮」，不回答股價高低。'));
+    }
+    // ② 走勢形狀（Frog in the Pan）
+    if(o.shapePart){
+      var S=o.shapePart, cont=(S.kind==='cont');
+      L.push(row('走勢形狀 '+S.score.toFixed(0)+' 分 · '+(cont?'連續型':'跳躍型'),
+        '過去 '+FIP_FORM+' 根（跳過最近 '+FIP_SKIP+' 根）的相對走勢，是<b>一點一點磨上去</b>的，'
+        + '還是<b>靠少數幾根大 K 跳上去</b>的。',
+        '這段期間 <b>'+S.days+'</b> 根裡有 <b>'+S.pos+'%</b> 是上漲日 → '
+        + (cont ? '上漲日明顯比下跌日多，屬於<b>連續型</b>（慢慢磨上來的形狀）'
+                : '上漲日並沒有比下跌日多，漲幅集中在少數幾天 → <b>跳躍型</b>')
+        + ' → '+S.score.toFixed(0)+' 分。',
+        'Da, Gurun &amp; Warachka《Frog in the Pan》(RFS 2014，CRSP 1927–2007)：同樣漲一段，'
+        + '連續型年化 alpha <b>+5.94%</b>、跳躍型 <b>−2.07%</b>，價差 8.77%（t=8.76）。'
+        + '理由是慢慢漲不容易被注意到，資訊還沒被價格吸收完。'
+        + '<br>⚠ 這裡套在<b>相對大盤的走勢線</b>上；dna.html 那邊套在<b>股價</b>上。'
+        + '兩邊刻意用不同角度看同一個理論，結論不一定一樣 —— 那是交叉比對，不是誰算錯。'));
+    } else {
+      L.push(row('走勢形狀 資料不足',
+        '需要 '+(FIP_FORM+FIP_SKIP)+' 根以上的歷史。',
+        '這一檔還沒有那麼長的資料，<b>以中性 50 分計入</b>，權重不會攤給別項。', ''));
+    }
+    // ③ 量能
+    if(o.volPart){
+      var V=o.volPart, up=(V.volX>1);
+      L.push(row('量能 '+V.score.toFixed(0)+' 分',
+        '近 '+VOL_FAST+' 根的均量 ÷ 近 '+VOL_SLOW+' 根的均量。',
+        '<b>'+V.volX+'×</b> → '+(up?'近期<b>量增</b>':'近期<b>量縮</b>')+' → '+V.score.toFixed(0)+' 分。',
+        '量縮<b>不扣分</b>（一律給中性 50）：Minervini 的 VCP 在打底期本來就是量一路縮，'
+        + '照「量小就扣分」算會把正在打底的形狀判成弱勢。所以只有量增才加分。'));
+    }
+    // ④ 絕對趨勢（Stage 乘數）
+    if(o.absPart && o.rank.gate!=null){
+      var A=o.absPart, ST=stageOf(A);
+      L.push(row('絕對趨勢 ×'+o.rank.gate+'（乘數）',
+        'Weinstein 的 <b>Stage</b> —— 這一檔<b>自己的</b>走勢在不在上升結構裡。'
+        + '看兩件事：價格在 '+ABS_MA+unit+'均之上還是之下、以及這條均線自己往上還往下。',
+        'Stage <b>'+ST.n+'</b>：'+(A.above?'站上':'跌破')+ABS_MA+unit+'均 '
+        + (A.devPct>0?'+':'')+A.devPct+'%'+slopeWord(A)+' '+(A.slpPct>0?'+':'')+A.slpPct+'%/20根'
+        + ' → 乘數 ×'+o.rank.gate+'。<br>'+ST.t+'。',
+        '它是<b>乘數</b>不是第四票：前三項量的都是「相對大盤」，大盤在跌的時候'
+        + '「跌得比較少」也會拿高分。絕對趨勢負責回答「這檔自己有沒有在漲」——'
+        + '前提不成立的時候，相對強度再漂亮也要整體打折。'
+        + '<br><span style="color:#8b949e">乘數看的是 Stage，不是「漲得多開」：'
+        + '站上一條沒下彎的均線就拿滿分，延伸沒有加分。</span>'));
+    }
+    if(!L.length) return '';
+    return '<details style="margin-top:6px"><summary style="cursor:pointer;color:#4ea5ff;'
+         + 'font-size:0.74rem;list-style:none">📖 這幾個數字在說什麼（點開）</summary>'
+         + '<div style="font-size:0.73rem;line-height:1.65;padding:6px 10px;margin-top:4px;'
+         + 'border-left:2px solid #30363d">'+L.join('')+'</div></details>';
   }
   var ABS_FLAT = 0.25;   // |20 根斜率| < 0.25% 就叫「走平」，不硬分上揚／下彎
   function slopeWord(A){ return A.flat ? '·均線走平' : (A.rising ? '·均線上揚' : '·均線下彎'); }
@@ -675,7 +754,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   靠「相對強度還行」爬回中段。所以它改當乘數。
   //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
   //   差一點的不會直接歸零，只是被明顯壓低。
-  // v2.9.3：缺項不得重新分配權重。
+  // v2.9.5：缺項不得重新分配權重。
   //   舊版把缺項的權重按比例攤回「有資料的那幾項」—— 結果是資料愈少分數愈高。
   //   實例（她 9/28 的真實掃描）：INFQ 形狀不足、絕對趨勢整段算不出來，
   //     舊算法 = (95×50 + 50×15) ÷ 65 = 84.6，乘數又預設給滿的 ×1 → 85 分，全池第 2 名。
@@ -786,7 +865,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.3 防守事件
+  // v2.9.5 防守事件
   //   她要的是「哪幾檔開始有急速下跌的迹象」。我原本打算用 RRG 的走弱象限做，
   //   查完發現那是反的 —— de Kempenaer 本人把 領先→走弱 稱為
   //   「digesting its recent rise」，把 領先→走弱→領先 稱為
@@ -1007,7 +1086,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // 踩在邊界上時要補的那一句白話（沒踩到就回空字串）
-  // v2.9.3：象限箭頭。
+  // v2.9.5：象限箭頭。
   //   ⚠ 箭頭指的是「象限在圖上的幾何方向」（x=RS 水位、y=動能，中心 100），
   //     不是「好↑／壞↓」。走弱區的 ↘ 不代表股價在跌 —— RRG 量的是相對大盤，
   //     de Kempenaer 本人把 領先→走弱 稱為「digesting its recent rise」，
@@ -1049,7 +1128,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
-    // v2.9.3：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    // v2.9.5：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
     //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
     if (mode==='ranking') {
       document.getElementById('chart-wrap').style.display='none';
@@ -1226,7 +1305,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.3 排名榜
+  // v2.9.5 排名榜
   //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
   //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
   //
@@ -1333,8 +1412,8 @@ window.onerror = function(msg, src, line, col, err) {
     function partCell(name,val,note,w){
       var txt=(val==null)?'<span style="color:#6e7681">不足</span>'
             :'<b style="color:'+(val>=60?'#00d4a8':(val>=40?'#9ca3af':'#f7c948'))+'">'+val.toFixed(0)+'</b>';
-      return '<span style="margin-right:12px;white-space:nowrap">'+name
-           + '<span style="color:#6e7681;font-size:0.66rem">('+w+')</span> '+txt
+      return '<span style="margin-right:12px;white-space:nowrap">'+name+' '+txt
+           + '<span style="color:#6e7681;font-size:0.68rem">分 ·佔'+w+'</span>'
            + (note?'<span style="color:#6e7681"> '+note+'</span>':'')+'</span>';
     }
     function rowHTML(r, idx, isMine){
@@ -1376,6 +1455,7 @@ window.onerror = function(msg, src, line, col, err) {
          + '</span>';
       }
       h+='</div>';
+      h+=metricNotes(r, (data.interval==='1wk'?'週':'天'));
       h+=defenseHTML(r.defense, (data.interval==='1wk'?'週':'天'));
       h+='</div>';
       return h;
@@ -1657,7 +1737,7 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<line x1="'+cx+'" y1="'+P+'" x2="'+cx+'" y2="'+(H-P)+'" stroke="#5a6680" stroke-dasharray="5,4" stroke-width="1.2" opacity="0.7"/>';
     html+='<rect x="'+P+'" y="'+P+'" width="'+(W-2*P)+'" height="'+(H-2*P)+'" fill="none" stroke="#2a3554" stroke-width="1.5"/>';
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.3：圖上的象限標籤有兩個問題，兩個都是「補丁只補一半」的第 8 次發作。
+    // v2.9.5：圖上的象限標籤有兩個問題，兩個都是「補丁只補一半」的第 8 次發作。
     //   ① 副標是動作指示：「續抱黃金區」「避開禁區」—— 直接牴觸這張圖正上方
     //      自己寫的「這一區是排序，不是買賣指示」，而且 RRG 看不到價格與停損，
     //      沒有資格講續抱或避開。v2.7.3 把判詞清乾淨了，圖上的字沒跟著清。
@@ -1666,14 +1746,28 @@ window.onerror = function(msg, src, line, col, err) {
     //   副標改成純描述，而且一律點明是「比大盤」，因為那是最常被誤讀的一點：
     //   走弱不是股價在跌，是相對大盤的動能在減。
     // ════════════════════════════════════════════════════════════════════════
-    html+='<text x="'+(W-P-12)+'" y="'+(P+24)+'" fill="#00d4a8" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">'+QUAD_ARROW.leading+' 領先</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(P+40)+'" fill="#00d4a8" opacity="0.5" text-anchor="end" font-size="10">比大盤強 · 動能還在加</text>';
-    html+='<text x="'+(P+12)+'" y="'+(P+24)+'" fill="#4ea5ff" opacity="0.85" font-size="15" font-weight="800">'+QUAD_ARROW.improving+' 改善中</text>';
-    html+='<text x="'+(P+12)+'" y="'+(P+40)+'" fill="#4ea5ff" opacity="0.5" font-size="10">比大盤弱 · 動能轉正</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(H-P-18)+'" fill="#f7c948" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">'+QUAD_ARROW.weakening+' 走弱</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(H-P-6)+'" fill="#f7c948" opacity="0.5" text-anchor="end" font-size="10">比大盤強 · 動能在減</text>';
-    html+='<text x="'+(P+12)+'" y="'+(H-P-18)+'" fill="#ef476f" opacity="0.85" font-size="15" font-weight="800">'+QUAD_ARROW.lagging+' 落後</text>';
-    html+='<text x="'+(P+12)+'" y="'+(H-P-6)+'" fill="#ef476f" opacity="0.5" font-size="10">比大盤弱 · 動能也在減</text>';
+    // v2.9.5：標籤要待在自己的象限裡。
+    //   舊版四個標籤釘在「畫框的四個角」，但象限的分界線 cx/cy 會跟著資料跑 ——
+    //   當 15 檔動能全部 >100（就是她 9/28 的情況），cy 被推到最底下，
+    //   「走弱」「落後」兩個標籤就坐進了領先／改善的底色裡。
+    //   底色 rect 用的是 cx/cy（對的），標籤用的是畫框角落（錯的）—— 又是只補一半。
+    //   現在標籤照自己象限的矩形放，而且放不下就降級成只有標題、再放不下就不畫，
+    //   絕不硬塞到別人的地盤。
+    function quadLabel(qx, qy, qw, qh, right, color, title, sub){
+      if(qw<70 || qh<22) return '';                       // 連標題都塞不下 → 不畫
+      var x = right ? (qx+qw-12) : (qx+12);
+      var ta = right ? ' text-anchor="end"' : '';
+      var h = '<text x="'+x+'" y="'+(qy+20)+'" fill="'+color+'" opacity="0.85"'+ta
+            + ' font-size="15" font-weight="800">'+title+'</text>';
+      if(qw>=140 && qh>=40)                               // 放得下才加副標
+        h += '<text x="'+x+'" y="'+(qy+36)+'" fill="'+color+'" opacity="0.5"'+ta
+           + ' font-size="10">'+sub+'</text>';
+      return h;
+    }
+    html+=quadLabel(cx, P,  W-P-cx, cy-P,   true,  '#00d4a8', QUAD_ARROW.leading+' 領先',   '比大盤強 · 動能還在加');
+    html+=quadLabel(P,  P,  cx-P,   cy-P,   false, '#4ea5ff', QUAD_ARROW.improving+' 改善中', '比大盤弱 · 動能轉正');
+    html+=quadLabel(cx, cy, W-P-cx, H-P-cy, true,  '#f7c948', QUAD_ARROW.weakening+' 走弱',   '比大盤強 · 動能在減');
+    html+=quadLabel(P,  cy, cx-P,   H-P-cy, false, '#ef476f', QUAD_ARROW.lagging+' 落後',     '比大盤弱 · 動能也在減');
     html+='<text x="'+(cx+5)+'" y="'+(P-3)+'" fill="#6b7290" font-size="9">100</text>';
     html+='<text x="'+(P-5)+'" y="'+(cy-3)+'" fill="#6b7290" text-anchor="end" font-size="9">100</text>';
     var labelItems=[];
@@ -2558,8 +2652,12 @@ window.onerror = function(msg, src, line, col, err) {
       function cell(name, val, note, weight){
         var txt = (val==null) ? '<span style="color:#6e7681">資料不足</span>'
                 : '<b style="color:'+(val>=60?'#00d4a8':(val>=40?'#9ca3af':'#f7c948'))+'">'+val.toFixed(0)+'</b>';
-        return '<span style="margin-right:14px;white-space:nowrap">'+name
-             + '<span style="color:#6e7681;font-size:0.68rem">('+weight+')</span> '+txt
+        // v2.9.5：舊寫法「RS水位(50) 86」會被讀成「50 分之 86」——
+        //   括號裡是權重、後面才是得分，兩個數字黏在一起完全看不出誰是誰。
+        //   改成「得分 分 · 佔 權重」，順序跟意思一致。
+        return '<span style="margin-right:14px;white-space:nowrap">'+name+' '+txt
+             + '<span style="color:#6e7681;font-size:0.7rem">分</span>'
+             + '<span style="color:#6e7681;font-size:0.68rem"> ·佔'+weight+'</span>'
              + (note?'<span style="color:#6e7681"> '+note+'</span>':'')+'</span>';
       }
       var A=info.absPart, S=info.shapePart, V=info.volPart;
@@ -2615,6 +2713,7 @@ window.onerror = function(msg, src, line, col, err) {
         + '這一區是<strong style="color:#4ea5ff">排序</strong>，不是買賣指示 —— 回答「先看哪一檔」，不回答「買不買」。'
         + '<br><strong style="color:#4ea5ff">排名分數</strong> = '
         + '（RS 水位 50 · 走勢形狀 35 · 量能 15）× <b>絕對趨勢乘數</b>。'
+        + '<br><span style="color:#8b949e">每一列讀法：<b>RS水位 86分 ·佔50</b> = 這一項自己考了 <b>86</b> 分（滿分 100），它在總分裡<b>佔 50</b> 分的份量。三項都是 0–100 的分數，權重才是 50/35/15。</span>'
         + '權重按證據強度分，不是按直覺；絕對趨勢當乘數而不是加權項，'
         + '因為跌破下彎的長均線在 Weinstein 框架裡是<b>前提不成立</b>，不是輸一票。'
         + '<br><span style="color:#8b949e">乘數看的是 <b>Stage</b>（在不在上升結構裡），不是「漲得多開」——'
@@ -2652,7 +2751,7 @@ window.onerror = function(msg, src, line, col, err) {
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
         h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
-        // v2.9.3：象限字放大加粗 + 幾何箭頭（她的建議）。
+        // v2.9.5：象限字放大加粗 + 幾何箭頭（她的建議）。
         //   箭頭是象限在圖上的方向（x=RS、y=動能），不是好壞 ——
         //   走弱的 ↘ 不代表股價在跌，只代表相對大盤的動能掉到 100 以下。
         h+='<span class="hold-position" style="font-size:0.92rem;font-weight:700;color:'
@@ -2681,7 +2780,7 @@ window.onerror = function(msg, src, line, col, err) {
            + '↳ 離 150 日均線 +'+s.absPart.devPct+'%，離 dna 的末期門檻 '+EXT_LATE+'% 還有一段，'
            + '<span style="color:#8b949e">但已經不是貼著均線的位置了。</span></div>';
         }
-        // v2.9.3：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
+        // v2.9.5：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
         //   但 AMKR / GLW / AAOI 都是「跌破均線、但均線上揚」，那是打底不是下降，
         //   而且句子旁邊就印著「均線上揚」，自己打自己。判詞必須跟著 Stage 走。
         if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
@@ -2696,6 +2795,7 @@ window.onerror = function(msg, src, line, col, err) {
            + '「跌得比較少」也會被畫進去。</span></div>';
         }
         h+=rankBreakdownHTML(s);
+        h+=metricNotes(s, unitLabel());   // v2.9.5：數字後面接一份收合的解讀
         if (s.verbose) h+='<div class="hold-verbose">'+s.verbose+'</div>';
         h+='</div>';
       }
@@ -2768,7 +2868,7 @@ window.onerror = function(msg, src, line, col, err) {
       focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.3：防守事件區（總表最後面）。
+    // v2.9.5：防守事件區（總表最後面）。
     //   這一區刻意「不是」RRG 判斷 —— 它完全不看象限、不看軌跡、不看排名，
     //   只照 IBD 官方 Selling Checklist 裡那兩條「只需要價格＋量能」的規則。
     //   理由寫在 defenseEvents 上面：走弱象限在官方定義裡是消化不是預警，
@@ -2841,7 +2941,7 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<div class="narr-section narr-leading"><span class="label">★ '+(mode==='deepscan'?'主流個股（強勢加速）':'主流板塊（強勢加速）')+'</span>';
     if (groups.leading.length>0){
       html+=fmtList(groups.leading, 6);
-      // v2.9.3：同一批動作字眼的最後一處。「等回測 5-10% 再進場」「續抱」「不追進」
+      // v2.9.5：同一批動作字眼的最後一處。「等回測 5-10% 再進場」「續抱」「不追進」
       //   全部需要價格與停損才成立，RRG 兩個都沒有。改成只講位置。
       html+='<span class="narr-tip">→ '+(mode==='deepscan'?'板塊內相對最強的位置':'相對大盤最強的一群')+'</span>';
     } else html+='<span class="narr-empty">目前沒有跑贏大盤的</span>';
@@ -3014,7 +3114,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.3 (圖文一致)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.5 (數字有解讀)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
