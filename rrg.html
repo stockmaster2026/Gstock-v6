@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.9.2</title>
+<title>RRG 板塊輪動圖 v2.9.3</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.9.2 · Stage 判詞不再與旁邊的數字打架</div>
+<div class="sub">v2.9.3 · 圖上的動作字眼清乾淨 · 箭頭跟總表統一</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.9.2 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.9.3 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -586,7 +586,7 @@ window.onerror = function(msg, src, line, col, err) {
     var base = 100*(0.6*a + 0.4*r);
     // 過了 dna 的末期門檻才降權，而且是連續的（不做硬切點）
     var extCut = (devPct>EXT_LATE) ? Math.min(0.35, (devPct-EXT_LATE)/100) : 0;
-    // v2.9.2：加一個「走平」帶，只用在文字標籤上，不碰分數。
+    // v2.9.3：加一個「走平」帶，只用在文字標籤上，不碰分數。
     //   分數這邊本來就是連續的（+0.17%/20根 → r=0.585，幾乎中性），
     //   binary 的只有畫面上那個「上揚／下彎」—— AMKR 的 +0.17%/20根
     //   被硬講成「均線上揚」，那其實是走平。門檻取飽和尺度（1%）的四分之一。
@@ -675,7 +675,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   靠「相對強度還行」爬回中段。所以它改當乘數。
   //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
   //   差一點的不會直接歸零，只是被明顯壓低。
-  // v2.9.2：缺項不得重新分配權重。
+  // v2.9.3：缺項不得重新分配權重。
   //   舊版把缺項的權重按比例攤回「有資料的那幾項」—— 結果是資料愈少分數愈高。
   //   實例（她 9/28 的真實掃描）：INFQ 形狀不足、絕對趨勢整段算不出來，
   //     舊算法 = (95×50 + 50×15) ÷ 65 = 84.6，乘數又預設給滿的 ×1 → 85 分，全池第 2 名。
@@ -786,7 +786,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.2 防守事件
+  // v2.9.3 防守事件
   //   她要的是「哪幾檔開始有急速下跌的迹象」。我原本打算用 RRG 的走弱象限做，
   //   查完發現那是反的 —— de Kempenaer 本人把 領先→走弱 稱為
   //   「digesting its recent rise」，把 領先→走弱→領先 稱為
@@ -951,7 +951,7 @@ window.onerror = function(msg, src, line, col, err) {
     if (rs>=140) return {grade:'⭐⭐',color:'#00d4a8',stars:'★★',label:'強股'};
     if (rs>=120) return {grade:'⭐',color:'#7dd3a8',stars:'★',label:'中性偏強'};
     if (rs>=105) return {grade:'⚠️',color:'#f7c948',stars:'',label:'中性偏弱'};
-    return {grade:'❌',color:'#ef476f',stars:'',label:'該避開'};
+    return {grade:'❌',color:'#ef476f',stars:'',label:'最弱一段'};
   }
   // v2.7.0：第三個參數是這一檔自己的死區（s.buf）。帶了就會回報 onEdge，
   // 讓「正好踩在 100 上」不再被講成斬釘截鐵的 領先 / 走弱。
@@ -1007,7 +1007,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // 踩在邊界上時要補的那一句白話（沒踩到就回空字串）
-  // v2.9.2：象限箭頭。
+  // v2.9.3：象限箭頭。
   //   ⚠ 箭頭指的是「象限在圖上的幾何方向」（x=RS 水位、y=動能，中心 100），
   //     不是「好↑／壞↓」。走弱區的 ↘ 不代表股價在跌 —— RRG 量的是相對大盤，
   //     de Kempenaer 本人把 領先→走弱 稱為「digesting its recent rise」，
@@ -1049,7 +1049,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
-    // v2.9.2：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    // v2.9.3：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
     //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
     if (mode==='ranking') {
       document.getElementById('chart-wrap').style.display='none';
@@ -1226,7 +1226,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.2 排名榜
+  // v2.9.3 排名榜
   //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
   //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
   //
@@ -1656,14 +1656,24 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<line x1="'+P+'" y1="'+cy+'" x2="'+(W-P)+'" y2="'+cy+'" stroke="#5a6680" stroke-dasharray="5,4" stroke-width="1.2" opacity="0.7"/>';
     html+='<line x1="'+cx+'" y1="'+P+'" x2="'+cx+'" y2="'+(H-P)+'" stroke="#5a6680" stroke-dasharray="5,4" stroke-width="1.2" opacity="0.7"/>';
     html+='<rect x="'+P+'" y="'+P+'" width="'+(W-2*P)+'" height="'+(H-2*P)+'" fill="none" stroke="#2a3554" stroke-width="1.5"/>';
-    html+='<text x="'+(W-P-12)+'" y="'+(P+24)+'" fill="#00d4a8" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">★ 領先</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(P+40)+'" fill="#00d4a8" opacity="0.5" text-anchor="end" font-size="10">續抱黃金區</text>';
-    html+='<text x="'+(P+12)+'" y="'+(P+24)+'" fill="#4ea5ff" opacity="0.85" font-size="15" font-weight="800">↗ 改善中</text>';
-    html+='<text x="'+(P+12)+'" y="'+(P+40)+'" fill="#4ea5ff" opacity="0.5" font-size="10">剛從谷底爬上來</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(H-P-18)+'" fill="#f7c948" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">⚠ 走弱</text>';
-    html+='<text x="'+(W-P-12)+'" y="'+(H-P-6)+'" fill="#f7c948" opacity="0.5" text-anchor="end" font-size="10">動能轉弱區</text>';
-    html+='<text x="'+(P+12)+'" y="'+(H-P-18)+'" fill="#ef476f" opacity="0.85" font-size="15" font-weight="800">↘ 落後</text>';
-    html+='<text x="'+(P+12)+'" y="'+(H-P-6)+'" fill="#ef476f" opacity="0.5" font-size="10">避開禁區</text>';
+    // ════════════════════════════════════════════════════════════════════════
+    // v2.9.3：圖上的象限標籤有兩個問題，兩個都是「補丁只補一半」的第 8 次發作。
+    //   ① 副標是動作指示：「續抱黃金區」「避開禁區」—— 直接牴觸這張圖正上方
+    //      自己寫的「這一區是排序，不是買賣指示」，而且 RRG 看不到價格與停損，
+    //      沒有資格講續抱或避開。v2.7.3 把判詞清乾淨了，圖上的字沒跟著清。
+    //   ② 箭頭跟總表打架：圖上 ↗ 是「改善中」，總表 ↗ 是「領先」——
+    //      同一個畫面、同一個符號、兩個意思。現在統一走 QUAD_ARROW。
+    //   副標改成純描述，而且一律點明是「比大盤」，因為那是最常被誤讀的一點：
+    //   走弱不是股價在跌，是相對大盤的動能在減。
+    // ════════════════════════════════════════════════════════════════════════
+    html+='<text x="'+(W-P-12)+'" y="'+(P+24)+'" fill="#00d4a8" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">'+QUAD_ARROW.leading+' 領先</text>';
+    html+='<text x="'+(W-P-12)+'" y="'+(P+40)+'" fill="#00d4a8" opacity="0.5" text-anchor="end" font-size="10">比大盤強 · 動能還在加</text>';
+    html+='<text x="'+(P+12)+'" y="'+(P+24)+'" fill="#4ea5ff" opacity="0.85" font-size="15" font-weight="800">'+QUAD_ARROW.improving+' 改善中</text>';
+    html+='<text x="'+(P+12)+'" y="'+(P+40)+'" fill="#4ea5ff" opacity="0.5" font-size="10">比大盤弱 · 動能轉正</text>';
+    html+='<text x="'+(W-P-12)+'" y="'+(H-P-18)+'" fill="#f7c948" opacity="0.85" text-anchor="end" font-size="15" font-weight="800">'+QUAD_ARROW.weakening+' 走弱</text>';
+    html+='<text x="'+(W-P-12)+'" y="'+(H-P-6)+'" fill="#f7c948" opacity="0.5" text-anchor="end" font-size="10">比大盤強 · 動能在減</text>';
+    html+='<text x="'+(P+12)+'" y="'+(H-P-18)+'" fill="#ef476f" opacity="0.85" font-size="15" font-weight="800">'+QUAD_ARROW.lagging+' 落後</text>';
+    html+='<text x="'+(P+12)+'" y="'+(H-P-6)+'" fill="#ef476f" opacity="0.5" font-size="10">比大盤弱 · 動能也在減</text>';
     html+='<text x="'+(cx+5)+'" y="'+(P-3)+'" fill="#6b7290" font-size="9">100</text>';
     html+='<text x="'+(P-5)+'" y="'+(cy-3)+'" fill="#6b7290" text-anchor="end" font-size="9">100</text>';
     var labelItems=[];
@@ -1933,15 +1943,15 @@ window.onerror = function(msg, src, line, col, err) {
     var summary='',summaryColor='var(--dim)';
     var ratio=s.current.ratio,mom=s.current.mom;
     if (q.key==='leading'){
-      if (ratio>=105&&mom>=105){ summary='🔥 領先深處，強勢加速中，續抱'; summaryColor='#00d4a8'; }
+      if (ratio>=105&&mom>=105){ summary='🔥 領先深處，強勢加速中'; summaryColor='#00d4a8'; }
       else if (ratio>=105&&mom<100){ summary='⚠ 領先右下角：RS 高但動能轉弱 → 即將掉進走弱區'; summaryColor='#f7c948'; }
       else if (ratio>=105&&mom>=100){ summary='⚠ 領先右側：RS 高但動能在減速'; summaryColor='#f7c948'; }
       else if (ratio<105&&mom>=105){ summary='🌱 領先左上：剛跳進領先區，動能加速 → 健康新進場'; summaryColor='#00d4a8'; }
       else if (ratio<105&&mom<100){ summary='⚠ 領先邊緣 + 動能弱化 → 隨時可能掉出領先'; summaryColor='#f7c948'; }
-      else { summary='★ 領先中，續抱'; summaryColor='#00d4a8'; }
+      else { summary='★ 領先中'; summaryColor='#00d4a8'; }
     } else if (q.key==='improving'){ summary='🌱 從落後爬回來，位置在改善'; summaryColor='#4ea5ff'; }
     else if (q.key==='weakening'){ summary='⚠ 動能已經轉弱'; summaryColor='#f7c948'; }
-    else if (q.key==='lagging'){ summary='↘ 避開，等真正反轉'; summaryColor='#ef476f'; }
+    else if (q.key==='lagging'){ summary='↘ 落後區：RS 與動能都在 100 之下'; summaryColor='#ef476f'; }
     var sectorTag=s.sectorName?'<span style="color:var(--dim);font-size:0.78rem">（'+s.sectorName+'）</span>':'';
     var html='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
     html+='<div><strong style="color:'+s.color+';font-size:1.1rem">'+focusedTicker+'</strong>'+sectorTag+'</div>';
@@ -1958,7 +1968,7 @@ window.onerror = function(msg, src, line, col, err) {
       else if (FT.arrow==='↗'){ dirText='朝領先深處（最強訊號）'; dirColor='#00d4a8'; }
       else if (FT.arrow==='↘'){ dirText='朝走弱（動能在衰退）'; dirColor='#f7c948'; }
       else if (FT.arrow==='↖'){ dirText='朝改善中（V 型反轉訊號）'; dirColor='#4ea5ff'; }
-      else { dirText='朝落後（避開，雙弱）'; dirColor='#ef476f'; }
+      else { dirText='朝落後（RS 與動能雙弱）'; dirColor='#ef476f'; }
       var rsSign=dRS>=0?'+':'', momSign=dMom>=0?'+':'';
       html+='<div style="margin-top:6px;padding:8px 10px;background:linear-gradient(135deg,'+dirColor+'15,'+dirColor+'08);border:1px solid '+dirColor+'44;border-radius:8px;font-size:0.82rem;">';
       html+='<div style="display:flex;justify-content:space-between;align-items:center;">';
@@ -1987,7 +1997,7 @@ window.onerror = function(msg, src, line, col, err) {
         else if (s.ibdRS>=140) ibdNote='12個月持續贏 SPY → Minervini/O\'Neil 標準';
         else if (s.ibdRS>=120) ibdNote='12個月穩定贏 SPY → 強股池候選';
         else if (s.ibdRS>=105) ibdNote='12個月略贏 SPY → 雞肋（中性偏弱）';
-        else ibdNote='12個月弱於或接近 SPY → 該避開';
+        else ibdNote='12個月弱於或接近 SPY';
       }
       html+='<div style="margin-top:10px;padding:10px;background:linear-gradient(135deg,rgba(255,209,102,0.08),rgba(0,212,168,0.04));border:1px solid '+ibdGrade.color+'33;border-radius:8px;">';
       html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;margin-bottom:4px;">';
@@ -2177,7 +2187,7 @@ window.onerror = function(msg, src, line, col, err) {
     else if (dnaScore>=60){ dnaColor='#00d4a8'; dnaLabel='飆股候選'; dnaIcon='⭐⭐'; }
     else if (dnaScore>=40){ dnaColor='#7dd3a8'; dnaLabel='觀察'; dnaIcon='⭐'; }
     else if (dnaScore>=20){ dnaColor='#f7c948'; dnaLabel='雞肋'; dnaIcon='⚠️'; }
-    else { dnaColor='#ef476f'; dnaLabel='避開'; dnaIcon='❌'; }
+    else { dnaColor='#ef476f'; dnaLabel='最後段'; dnaIcon='❌'; }
     html+='<div style="margin-top:14px;padding:12px;background:linear-gradient(135deg,'+dnaColor+'15,'+dnaColor+'08);border:1.5px solid '+dnaColor+'55;border-radius:10px;">';
     html+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">';
     html+='<div style="font-size:0.84rem;color:var(--accent);font-weight:700">🧬 飆股 DNA 評分</div>';
@@ -2260,8 +2270,8 @@ window.onerror = function(msg, src, line, col, err) {
       if (positionTier==='deep'){
         if (directionEmoji==='↗'){
           if (strength==='strong'){ advice='🔥 領先群加速，緊抱不動'; groupKey='strong'; }
-          else if (strength==='normal'){ advice='💪 領先深處穩步上推，續抱'; groupKey='strong'; }
-          else { advice='📈 領先深處緩慢上行，續抱'; groupKey='strong'; }
+          else if (strength==='normal'){ advice='💪 領先深處穩步上推'; groupKey='strong'; }
+          else { advice='📈 領先深處緩慢上行'; groupKey='strong'; }
         }
         else if (directionEmoji==='→'){ advice='⏸ 領先深處整理蓄力，主力洗盤'; groupKey='strong'; }
         else if (directionEmoji==='↖'){ advice='👀 領先深處方向不明，先觀察'; groupKey='watch'; }
@@ -2278,7 +2288,7 @@ window.onerror = function(msg, src, line, col, err) {
       else if (positionTier==='edge'){
         if (directionEmoji==='↗'){
           if (strength==='strong'){ advice='🎯 從邊緣強勢推進到領先深處'; groupKey='strong'; }
-          else { advice='📈 從邊緣往領先推進，續抱'; groupKey='strong'; }
+          else { advice='📈 從邊緣往領先推進'; groupKey='strong'; }
         }
         else if (directionEmoji==='→'){ advice='⏸ 領先邊緣盤整，等突破'; groupKey='watch'; }
         else if (directionEmoji==='↘'||directionEmoji==='↙'){
@@ -2290,8 +2300,8 @@ window.onerror = function(msg, src, line, col, err) {
       else {
         if (directionEmoji==='↗'){
           if (strength==='strong'){ advice='🚀 相對強度正在加速拉開'; groupKey='strong'; }
-          else if (strength==='normal'){ advice='✅ 領先區穩步上行，續抱'; groupKey='strong'; }
-          else { advice='📈 領先區緩慢推升，續抱'; groupKey='strong'; }
+          else if (strength==='normal'){ advice='✅ 領先區穩步上行'; groupKey='strong'; }
+          else { advice='📈 領先區緩慢推升'; groupKey='strong'; }
         }
         else if (directionEmoji==='→'){ advice='⏸ 領先區整理蓄力，持有'; groupKey='strong'; }
         else if (directionEmoji==='↖'){ advice='👀 領先區橫向擺盪，持有'; groupKey='watch'; }
@@ -2371,9 +2381,9 @@ window.onerror = function(msg, src, line, col, err) {
         else { advice='👀 剛觸底，等確認'; groupKey='warn'; }
       }
       else if (directionEmoji==='↖'){ advice='👀 落後區橫向偏強，等確認'; groupKey='warn'; }
-      else if (directionEmoji==='→'){ advice='❌ 落後區停滯，避開'; groupKey='danger'; }
-      else if (directionEmoji==='↘'){ advice='❌ 持續惡化，避開'; groupKey='danger'; }
-      else { advice='❌ 持續崩落，避開'; groupKey='danger'; }
+      else if (directionEmoji==='→'){ advice='❌ 落後區停滯'; groupKey='danger'; }
+      else if (directionEmoji==='↘'){ advice='❌ 持續惡化'; groupKey='danger'; }
+      else { advice='❌ 持續崩落'; groupKey='danger'; }
     }
     // === verbose 白話文（v2.6.3 重寫：降重複 + 台灣腔）===
     var reversal=detectReversal(s);
@@ -2435,18 +2445,18 @@ window.onerror = function(msg, src, line, col, err) {
     var sentence3='';
     if (groupKey==='strong'){
       if (positionTier==='deep'&&directionEmoji==='↗'){
-        if (strength==='strong') sentence3='<strong style="color:#00d4a8;">趨勢沒真破前繼續抱。</strong>看到一根紅 K 別腦衝去賣。';
+        if (strength==='strong') sentence3='<strong style="color:#00d4a8;">相對趨勢還沒轉向。</strong>單日的紅 K 不改變這個位置。';
         else if (strength==='normal') sentence3='<strong style="color:#00d4a8;">穩穩往上推，這種就是抱得最舒服的。</strong>不要看到震盪就被洗下車。';
-        else sentence3='<strong style="color:#00d4a8;">慢牛走勢，續抱。</strong>慢慢漲的不容易被甩。';
+        else sentence3='<strong style="color:#00d4a8;">慢速推進的形狀。</strong>斜率平緩，波動也小。';
       }
       else if (positionTier==='normal'&&directionEmoji==='↗'){
         if (strength==='strong') sentence3='<strong style="color:#00d4a8;">動能正在往深處推進。</strong>這是位置在變好，不是買賣訊號。';
-        else sentence3='<strong style="color:#00d4a8;">領先區穩步上行，續抱。</strong>節奏穩的不容易被洗下車。';
+        else sentence3='<strong style="color:#00d4a8;">領先區穩步上行。</strong>節奏穩定，沒有忽快忽慢。';
       }
       else if (positionTier==='edge'&&directionEmoji==='↗') sentence3='<strong style="color:#00d4a8;">從邊緣往深處推進，方向對了。</strong>';
       else if (strength==='flat'&&positionTier==='deep') sentence3='<strong style="color:#00d4a8;">高位橫盤是好事，主力在洗盤。</strong>看起來像跌但量縮就還好。';
       else if (directionEmoji==='→') sentence3='<strong style="color:#00d4a8;">領先區整理蓄力中，持有。</strong>等突破方向再做動作。';
-      else sentence3='<strong style="color:#00d4a8;">繼續抱，但密切看方向是否轉變。</strong>';
+      else sentence3='<strong style="color:#00d4a8;">位置仍在前段，但方向已經不是單邊。</strong>';
     }
     else if (groupKey==='watch'){
       if (nowQKey==='improving'&&positionTier==='deep'&&directionEmoji==='↗'&&strength==='strong')
@@ -2469,15 +2479,15 @@ window.onerror = function(msg, src, line, col, err) {
       // v2.6.6: 強勢股回測 (RS>=110 + 走弱) 給特別文案
       if (nowQKey==='weakening'&&rsVal>=110) sentence3='<strong style="color:#f7c948;">強勢股回測中，動能放緩很正常。</strong>RS 還是在領先群，這個形狀本身不代表結構壞掉。';
       else if (nowQKey==='leading') sentence3='<strong style="color:#f7c948;">領先區開始轉弱，要警覺了。</strong>方向還沒確認。';
-      else if (nowQKey==='weakening') sentence3='<strong style="color:#f7c948;">已經在走弱了，方向不對就認錯。</strong>不要凹。';
+      else if (nowQKey==='weakening') sentence3='<strong style="color:#f7c948;">已經在走弱區，動能在 100 之下。</strong>';
       else if (nowQKey==='improving') sentence3='<strong style="color:#f7c948;">改善動能放緩，可能會回落。</strong>觀察中，先別追。';
       else if (nowQKey==='lagging') sentence3='<strong style="color:#f7c948;">底部反彈但還沒確認，先觀察。</strong>';
       else sentence3='<strong style="color:#f7c948;">方向不對，警戒。</strong>';
     }
     else if (groupKey==='danger'){
-      if (nowQKey==='lagging') sentence3='<strong style="color:#ef476f;">在落後區，避開。</strong>不要去接刀。';
+      if (nowQKey==='lagging') sentence3='<strong style="color:#ef476f;">在落後區：RS 與動能都在 100 之下。</strong>';
       else if (nowQKey==='leading'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">位置還在領先區、軌跡卻反向 — 最像高位派發的形狀。</strong>';
-      else if (nowQKey==='weakening'&&directionEmoji==='↙') sentence3='<strong style="color:#ef476f;">走弱深處還在加速往下，最差的組合。</strong>資金保護優先，砍了別凹。';
+      else if (nowQKey==='weakening'&&directionEmoji==='↙') sentence3='<strong style="color:#ef476f;">走弱深處還在加速往下，四個象限裡最差的組合。</strong>';
       else if (nowQKey==='weakening'&&directionEmoji==='↘') sentence3='<strong style="color:#ef476f;">急速惡化。</strong>';
       else sentence3='<strong style="color:#ef476f;">相對強度還在惡化中。</strong>';
     }
@@ -2642,7 +2652,7 @@ window.onerror = function(msg, src, line, col, err) {
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
         h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
-        // v2.9.2：象限字放大加粗 + 幾何箭頭（她的建議）。
+        // v2.9.3：象限字放大加粗 + 幾何箭頭（她的建議）。
         //   箭頭是象限在圖上的方向（x=RS、y=動能），不是好壞 ——
         //   走弱的 ↘ 不代表股價在跌，只代表相對大盤的動能掉到 100 以下。
         h+='<span class="hold-position" style="font-size:0.92rem;font-weight:700;color:'
@@ -2671,7 +2681,7 @@ window.onerror = function(msg, src, line, col, err) {
            + '↳ 離 150 日均線 +'+s.absPart.devPct+'%，離 dna 的末期門檻 '+EXT_LATE+'% 還有一段，'
            + '<span style="color:#8b949e">但已經不是貼著均線的位置了。</span></div>';
         }
-        // v2.9.2：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
+        // v2.9.3：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
         //   但 AMKR / GLW / AAOI 都是「跌破均線、但均線上揚」，那是打底不是下降，
         //   而且句子旁邊就印著「均線上揚」，自己打自己。判詞必須跟著 Stage 走。
         if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
@@ -2758,7 +2768,7 @@ window.onerror = function(msg, src, line, col, err) {
       focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.2：防守事件區（總表最後面）。
+    // v2.9.3：防守事件區（總表最後面）。
     //   這一區刻意「不是」RRG 判斷 —— 它完全不看象限、不看軌跡、不看排名，
     //   只照 IBD 官方 Selling Checklist 裡那兩條「只需要價格＋量能」的規則。
     //   理由寫在 defenseEvents 上面：走弱象限在官方定義裡是消化不是預警，
@@ -2831,7 +2841,9 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<div class="narr-section narr-leading"><span class="label">★ '+(mode==='deepscan'?'主流個股（強勢加速）':'主流板塊（強勢加速）')+'</span>';
     if (groups.leading.length>0){
       html+=fmtList(groups.leading, 6);
-      html+='<span class="narr-tip">→ '+(mode==='deepscan'?'板塊內最強，但不追高，等回測 5-10% 再進場':'已持有續抱，不在這裡追進')+'</span>';
+      // v2.9.3：同一批動作字眼的最後一處。「等回測 5-10% 再進場」「續抱」「不追進」
+      //   全部需要價格與停損才成立，RRG 兩個都沒有。改成只講位置。
+      html+='<span class="narr-tip">→ '+(mode==='deepscan'?'板塊內相對最強的位置':'相對大盤最強的一群')+'</span>';
     } else html+='<span class="narr-empty">目前沒有跑贏大盤的</span>';
     html+='</div>';
     html+='<div class="narr-section narr-improving"><span class="label">↗ 起漲候選（弱但變強）</span>';
@@ -2842,8 +2854,8 @@ window.onerror = function(msg, src, line, col, err) {
     if (groups.weakening.length>0){ html+=fmtList(groups.weakening, 6); html+='<span class="narr-tip">→ 動能轉弱，位置在退</span>'; }
     else html+='<span class="narr-empty">無</span>';
     html+='</div>';
-    html+='<div class="narr-section narr-lagging"><span class="label">↘ 避開（弱且持續走弱）</span>';
-    if (groups.lagging.length>0){ html+=fmtList(groups.lagging, 6); html+='<span class="narr-tip">→ 不接刀，等真正反轉訊號再說</span>'; }
+    html+='<div class="narr-section narr-lagging"><span class="label">↙ 落後（弱且動能還在減）</span>';
+    if (groups.lagging.length>0){ html+=fmtList(groups.lagging, 6); html+='<span class="narr-tip">→ 比大盤弱，動能也還沒轉正</span>'; }
     else html+='<span class="narr-empty">無</span>';
     html+='</div>';
     document.getElementById('narr-content').innerHTML=html;
@@ -3002,7 +3014,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.2 (Stage 判詞)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.3 (圖文一致)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
