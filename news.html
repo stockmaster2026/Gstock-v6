@@ -267,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v4.9</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.0</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1606,7 +1606,10 @@ var PROFILE_DEFAULT = {
        story:'單季營收 28 億、出貨 190 EB、年增 26%。下一季財測 29 億，約年增 34%。年產能約 550 EB，<b>仍然不夠滿足雲端需求</b>。HAMR 量產進度比 WDC 稍前面（44TB Mozaic 4+）。',
        risk:'⚠ <b>它不打算擴產能</b> —— 成長只能靠單顆容量提高。這代表如果 HAMR 良率出問題，成長直接卡住。歷史上 STX 的財務波動比 WDC 大。' },
 
-  PSTG:{ biz:'Pure Storage —— <b>全快閃</b>企業儲存陣列。賣的是整套設備加軟體訂閱，不是零件。',
+  /* ⚠ 2026-04-17: Pure Storage 更名 Everpure, 代號 PSTG → P（公司新聞稿與 IR 頁確認）。
+     key 一定要跟著改, 不然按板塊之後 P 會變成空白卡 —— 速寫還在、只是對不上號。
+     ⚠ 另外: 2019 年之前 NYSE:P 是 Pandora Media（被 SiriusXM 併購）, 拉長期歷史要當心。*/
+  P:{   biz:'Everpure（前 Pure Storage, 2026/4 更名, 代號 PSTG→P）—— <b>全快閃</b>企業儲存陣列。賣的是整套設備加軟體訂閱，不是零件。',
        pos:'⚠ 【跟 WDC／STX 在搶同一筆預算，但方向相反】它賣的是快、貴的 SSD 方案；WDC／STX 賣的是慢、便宜的 HDD。<b>當 SSD 缺貨漲價時，客戶會回頭去買 HDD</b> —— 這對它是逆風。',
        cust:'企業與新開拓的超大規模雲端客戶。',
        story:'2027 財年營收財測 43~44 億，約成長 19%，部分來自超大規模客戶的擴張。',
@@ -2397,6 +2400,11 @@ function qsort(key){
      不講清楚, 你會以為跑完就等於掃過全市場了。
    ⚠ verified 標記: true = 2026-09-12 有查證過當期狀況;
      false = 只是從既有知識整理的常見名字, 沒查當期 —— 誠實標出來, 不假裝。 */
+/* ═══ v5.0 (2026-09-29):【PSTG 死代號 + 量子板塊】══════════════════════
+   ① Pure Storage 2026-04-17 更名 Everpure、代號 PSTG → P。清單與公司速寫的 key
+      都要跟著改 —— 只改清單不改 key, P 會變成空白卡(速寫還在、只是對不上號)。
+   ② 新增量子運算板塊。dna.html 那份要一起改, 兩邊是同一份清單。
+   ⚠ 死代號是安靜地失敗的: 抓不到就跳過, 沒有紅字, 只是少一檔。      */
 var SECTORS = [
  {k:'cyber', n:'資安', v:true,
   s:'CRWD, PANW, ZS, S, FTNT, NET, OKTA, RBRK, TENB, QLYS',
@@ -2416,11 +2424,11 @@ var SECTORS = [
      + '⚠ FN 是代工廠，幾乎每一家都找它做 —— <b>它的財報等於整個板塊的出貨統計</b>，'
      + '要看景氣它比任何單一家都準。'},
  {k:'mem', n:'記憶體與儲存', v:true,
-  s:'MU, SNDK, WDC, STX, NTAP, PSTG, SMCI, DELL, HPE, AMKR',
+  s:'MU, SNDK, WDC, STX, NTAP, P, SMCI, DELL, HPE, AMKR',   /* PSTG→P: 2026-04-17 更名 Everpure, 見下方公司速寫 */
   note:'⚠ 這一組裡面<b>方向是相反的</b>：MU／SNDK／WDC／STX 漲價是獲利，DELL／HPE／SMCI 漲價是<b>成本</b>。'
      + '同一則「記憶體漲價」的新聞，在這張表上是兩種相反的意思。<br>'
      + '⚠ 另一個容易混的：<b>HDD 與 SSD 在搶同一筆預算但方向相反</b> —— 企業級硬碟每 TB 成本約只有 SSD 的七分之一，'
-     + 'SSD 一缺貨漲價，客戶就回頭買 HDD。WDC／STX 的順風正是 PSTG 的逆風。<br>'
+     + 'SSD 一缺貨漲價，客戶就回頭買 HDD。WDC／STX 的順風正是 P（Everpure）的逆風。<br>'
      + '⚠ NTAP、SMCI、HPE 三檔我<b>沒有深入查證當期近況</b>，速寫裡寫的是結構不是數字。'},
  {k:'power', n:'AI 電力與散熱', v:true,
   s:'VRT, BE, OKLO, GEV, PWR, ETN, CEG, TLN, SMR, NNE',
@@ -2459,6 +2467,17 @@ var SECTORS = [
      + 'GS 信用損失提列年減 73%）；私募要靠<b>退出</b>才實現收益，退出市場冷就只剩管理費。<br>'
      + '⚠ 另外三檔根本不是銀行：<b>COIN 是幣價的代理部位</b>、<b>HOOD 是零售情緒的代理部位</b>、'
      + '<b>V 是收費公路</b>（不放款、不承擔信用風險）。它們跟 JPM 不會同向。'},
+ {k:'quantum', n:'量子運算', v:true,
+  s:'IONQ, RGTI, QBTS, QUBT, LAES, ARQQ',
+  note:'⚠ <b>這一組裡面是兩門不同的生意</b>，跟生技那組同一個道理，不要混著比：<br>'
+     + '<b>① 造量子電腦</b>：IONQ（離子阱，NYSE）、RGTI（超導）、QBTS（量子退火，2026/7 已從 NYSE 轉板到 Nasdaq）、QUBT（光子）。<br>'
+     + '<b>② 後量子加密</b>：LAES、ARQQ —— 賣的是「防禦量子攻擊的加密」，<b>不是量子電腦</b>。'
+     + '同一則量子新聞對這兩邊的方向不一定相同。<br>'
+     + '⚠ <b>2026 年新上市的五檔刻意沒放進來</b>：QNT(6/4 IPO)、IQMX(7/3)、XNDU(3/27)、HQ(3月)、INFQ(2/17)。'
+     + '它們上市都不到 8 個月 —— 需要 30 週均線／年度型態的判斷會拿到殘缺資料，卻仍然算得出一個'
+     + '「看起來正常」的分數。<b>寧可掃不到，不要掃到假的。</b>等滿一年再加。<br>'
+     + '⚠ <b>代號陷阱</b>：QMCO 名字有 Quantum，但那是磁帶備份儲存公司，跟量子運算無關。<br>'
+     + '⚠ ZPTA（Zapata）是 OTC、有 going concern 疑慮；PSQL（Pasqal）合併案還沒完成 —— 兩檔都不放。'},
  {k:'mine', n:'我的持股', v:true,
   s:'MU, BE, COHR, GLW, MRVL, AAOI, AXTI, AEHR, LITE, INTC, AMKR, RKLB, NBIS, DELL',
   note:'你原本那幾檔。<b>只有這一組每一檔都有公司速寫</b>，別的板塊會是空白卡 —— 那是正常的，不是壞掉。'}
