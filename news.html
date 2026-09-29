@@ -267,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.0</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.1</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -2407,31 +2407,47 @@ function qsort(key){
    ⚠ 死代號是安靜地失敗的: 抓不到就跳過, 沒有紅字, 只是少一檔。      */
 var SECTORS = [
  {k:'cyber', n:'資安', v:true,
-  s:'CRWD, PANW, ZS, S, FTNT, NET, OKTA, RBRK, TENB, QLYS',
+  s:'CRWD, PANW, ZS, S, FTNT, NET, OKTA, RBRK, TENB, QLYS, CHKP, SAIL, CVLT, VRNS, FFIV, AKAM, GEN',
   note:'2026 主軸是「AI 讓攻擊變便宜，防守預算跟著加」。CRWD 與 PANW 規模與獲利都穩，ZS／S／NET 波動大但彈性也大。<br>⚠ 整個板塊本益比很貴（CRWD 約 90 倍），<b>任何一家不如預期，會整片一起重評價</b>。'},
  {k:'saas', n:'軟體 SaaS', v:true,
-  s:'PLTR, NOW, SNOW, DDOG, MDB, CRM, WDAY, ADBE, TEAM, HUBS',
+  s:'NOW, CRM, DDOG, SNOW, MDB, TEAM, HUBS, WDAY, ADBE, INTU, PLTR, ORCL, DT, ESTC, NTNX, GTLB, VEEV',
   note:'⚠ 這個板塊 2026 是<b>分裂的</b> —— IGV 指數上半年跌超過 20%，但 PLTR／SNOW／DDOG 這類「資料底層」反而在漲，純應用軟體被 AI 擠壓。<br>放進來是<b>為了讓你看到差異</b>，不是因為整個板塊都好。'},
- {k:'chip', n:'AI 晶片與設備', v:true,
-  s:'NVDA, AVGO, AMD, TSM, ASML, AMAT, LRCX, KLAC, ARM, MPWR',
+ {k:'chip', n:'AI 晶片', v:true,
+  s:'NVDA, AVGO, AMD, TSM, ARM, MPWR, INTC, QCOM, SITM, LSCC, TSEM, GFS, ASX',
   note:''},
+ {k:'semicap', n:'半導體設備', v:true,
+  s:'ASML, AMAT, LRCX, KLAC, AEHR, TER, ONTO, KLIC, CAMT, ENTG, MKSI, FORM, NVMI, ACMR',
+  note:'⚠ <b>這一組是從「AI 晶片與設備」拆出來的</b>，因為那本來是兩門生意：'
+     + '<b>晶片設計商</b>跟著 AI 出貨走，<b>設備商</b>跟著客戶的 capex 週期走 —— 兩者常常反向。'
+     + '混在一起，強勢的設備股會被弱勢的晶片股稀釋掉，板塊 RS 排序就失真了。<br>'
+     + '⚠ 內部還可以再分兩層：<b>前段製程</b>（ASML 微影、AMAT／LRCX 沉積蝕刻、KLAC 檢測）與'
+     + '<b>先進封裝／測試</b>（AEHR burn-in、TER ATE、KLIC TCB 堆疊、ONTO／CAMT 封裝檢測、FORM probe card）。'
+     + 'HBM 與 CoWoS 的瓶頸在<b>後段</b>，所以後面那一層對 AI 的敏感度比前段高。<br>'
+     + '⚠ <b>NVMI 流動性最薄</b>（20 日均量約 4.9 萬股），下單注意滑價。<br>'
+     + '⚠ 待解禁：<b>Q</b>（Qnity，DuPont 分拆的電子材料，2025-11-01 上市）2026-11 後即可納入。',
+     },
  {k:'optic', n:'光通訊', v:true,
-  s:'COHR, LITE, AAOI, CIEN, FN, AXTI, MRVL, GLW, ANET, POET',
+  s:'COHR, LITE, AAOI, CIEN, FN, AXTI, MRVL, GLW, ANET, POET, ALAB, CRDO, MTSI, VIAV, CLS, SMTC, MXL, APH',
   note:'你最熟的板塊，當<b>對照組</b>用 —— 拿它去對別的板塊，才知道別人的數字算好還算普通。<br>'
      + '⚠ 但這一組<b>內部不是同一門生意</b>，別混著看：<b>機房「裡面」的模組</b>（AAOI、LITE、COHR）、'
      + '<b>機房「之間」的長途傳輸</b>（CIEN）、<b>接 GPU 的交換器</b>（ANET）、<b>代工廠</b>（FN）、'
      + '<b>基板材料</b>（AXTI、GLW）、<b>還在證明技術的</b>（POET）。<br>'
      + '⚠ FN 是代工廠，幾乎每一家都找它做 —— <b>它的財報等於整個板塊的出貨統計</b>，'
-     + '要看景氣它比任何單一家都準。'},
+     + '要看景氣它比任何單一家都準。<br>'
+     + '⚠ v5.1 新增：<b>CRDO</b>（AEC 主動電纜＋光 DSP，AI 互連純度最高）、'
+     + '<b>MTSI</b>（lightwave 晶片）、<b>SMTC</b>／<b>MXL</b>（TIA/driver、800G PAM4 DSP）、'
+     + '<b>VIAV</b>（光網路測試 —— 設備商上量的領先指標）、<b>CLS</b>（800G/1.6T 光模組組裝）、'
+     + '<b>APH</b>（2026 年吃下 CommScope 的光纖連接事業）。<br>'
+     + '⚠ 注意 <b>LWLW 不是光通訊</b>（那是 OTC 殼股），正確的電光聚合物公司是 LWLG，但市值僅 $797M 未達門檻。'},
  {k:'mem', n:'記憶體與儲存', v:true,
-  s:'MU, SNDK, WDC, STX, NTAP, P, SMCI, DELL, HPE, AMKR',   /* PSTG→P: 2026-04-17 更名 Everpure, 見下方公司速寫 */
+  s:'MU, SNDK, WDC, STX, NTAP, P, SMCI, DELL, HPE, AMKR, RMBS, PENG, SIMO',   /* PSTG→P: 2026-04-17 更名 Everpure, 見下方公司速寫 */
   note:'⚠ 這一組裡面<b>方向是相反的</b>：MU／SNDK／WDC／STX 漲價是獲利，DELL／HPE／SMCI 漲價是<b>成本</b>。'
      + '同一則「記憶體漲價」的新聞，在這張表上是兩種相反的意思。<br>'
      + '⚠ 另一個容易混的：<b>HDD 與 SSD 在搶同一筆預算但方向相反</b> —— 企業級硬碟每 TB 成本約只有 SSD 的七分之一，'
      + 'SSD 一缺貨漲價，客戶就回頭買 HDD。WDC／STX 的順風正是 P（Everpure）的逆風。<br>'
      + '⚠ NTAP、SMCI、HPE 三檔我<b>沒有深入查證當期近況</b>，速寫裡寫的是結構不是數字。'},
  {k:'power', n:'AI 電力與散熱', v:true,
-  s:'VRT, BE, OKLO, GEV, PWR, ETN, CEG, TLN, SMR, NNE',
+  s:'VRT, BE, OKLO, GEV, PWR, ETN, CEG, TLN, SMR, NNE, VST, NRG, MOD, NVT, AAON, POWL, FIX, STRL, BWXT, CW',
   note:'⚠ <b>這個板塊 2026 年內部已經分裂了，而且順序很清楚 —— 設備端賺到錢，發電端沒有。</b><br>'
      + '見頂的先後：Vistra 2025/9/22、Talen 10/3、Constellation 10/15 先倒；'
      + '設備端晚了七到十個月才見頂 —— Quanta 2026/5/6、GE Vernova 7/6、Eaton 8/12。<br>'
@@ -2441,10 +2457,10 @@ var SECTORS = [
      + '發電端要等 2029~2032 年的合約才開始收錢，中間那幾年股東只能空等。<br>'
      + '⚠ 但注意：設備三檔<b>都已經在 2026 年見過頂了</b>。這個順序是已經發生的事，不保證會重複。'},
  {k:'space', n:'太空與國防', v:true,
-  s:'RKLB, LUNR, ASTS, PL, KTOS, AVAV, LDOS, RCAT, LMT, RTX',
+  s:'RKLB, LUNR, ASTS, PL, KTOS, AVAV, LDOS, RCAT, LMT, RTX, RDW, FLY, KRMN, VOYG, VSAT, ONDS, AXON, MRCY, PLTR, NOC, GD, LHX',
   note:''},
  {k:'bio', n:'生技與醫材', v:true,
-  s:'LLY, NVO, ISRG, TEM, CRSP, NTRA, HIMS, RXRX, VKTX, ALNY',
+  s:'LLY, NVO, ISRG, TEM, CRSP, NTRA, HIMS, RXRX, VKTX, ALNY, AMGN, SYK, MDT, NTLA, BEAM, ARWR, IONS, VRTX, GH, ILMN',
   note:'⚠ <b>這一組不是一個板塊，至少是五門不同的生意</b>：減肥藥（LLY、NVO、VKTX）／手術機器人（ISRG）／'
      + '<b>AI 用在醫療</b>（TEM、RXRX）／基因與診斷（CRSP、NTRA、ALNY）／遠距醫療通路（HIMS）。'
      + '把它們放同一張表比成長率沒有意義，<b>要一組一組看</b>。<br>'
@@ -2453,7 +2469,7 @@ var SECTORS = [
      + '「看好減肥藥」這句話買錯一家就是 +55% 對 −4%。<br>'
      + '⚠ TEM 嚴格講<b>是 AI 應用股不是生技股</b>（它賣資料與演算法），放在這裡只是因為它的客戶是醫療端。'},
  {k:'fin', n:'金融', v:true,
-  s:'JPM, GS, MS, BLK, KKR, BX, SCHW, COIN, HOOD, V',
+  s:'JPM, GS, MS, BLK, KKR, BX, SCHW, COIN, HOOD, V, ARCC, APO, SYF, ALLY, AXP, COF, MA, CME, SPGI, BAC',
   note:'⚠ <b>這一組用這張表的門檻去看幾乎會全紅，但那不代表它們爛。</b><br>'
      + '這裡的綠燈門檻是成長股的門檻（EPS／營收 +25%、ROE 17%）—— 銀行的營收本來就不會年年成長 25%，'
      + 'ROE 也是靠槓桿撐出來的，兩邊定義不同。<b>拿成長股的尺去量銀行，量出來的紅字沒有意義。</b><br>'
