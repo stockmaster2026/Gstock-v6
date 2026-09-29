@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.9.0</title>
+<title>RRG 板塊輪動圖 v2.9.1</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.9.0 · 新增排名榜：把整個板塊池一起排序</div>
+<div class="sub">v2.9.1 · 缺資料不再加分 · IBD 防守事件 · 象限箭頭</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.9.0 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.9.1 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -651,20 +651,38 @@ window.onerror = function(msg, src, line, col, err) {
   //   靠「相對強度還行」爬回中段。所以它改當乘數。
   //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
   //   差一點的不會直接歸零，只是被明顯壓低。
+  // v2.9.1：缺項不得重新分配權重。
+  //   舊版把缺項的權重按比例攤回「有資料的那幾項」—— 結果是資料愈少分數愈高。
+  //   實例（她 9/28 的真實掃描）：INFQ 形狀不足、絕對趨勢整段算不出來，
+  //     舊算法 = (95×50 + 50×15) ÷ 65 = 84.6，乘數又預設給滿的 ×1 → 85 分，全池第 2 名。
+  //     兩個資料缺口「各自」都把它往上推：權重攤回它最強的那一項，乘數補成最寬鬆的值。
+  //   專業做法查到的是三種，沒有一種是在頂層重新分配：
+  //     · MSCI Core Multiple-Factor §2.2：「If any of the factor score (Fj,i) is missing
+  //       for a security (i), a value of zero is assigned for that factor score」→ 補中性值。
+  //     · MSCI Momentum：「Momentum value is not computed if 6-month Price Momentum is not
+  //       available. In the absence of Momentum value, security is not considered for
+  //       inclusion」→ 核心項缺了就整檔排除（hard floor）。
+  //     · S&P Quality-Value-Momentum 標準版：資格要求「have the necessary data in order to
+  //       compute all underlying Quality, Value, and Momentum z-scores」→ 排除。
+  //   MSCI 只在「同質 descriptor 群組內部」才取可得項平均；頂層 composite 一律補中性或排除。
+  //   所以這裡照兩條走：核心項缺 → 不排名；非核心項缺 → 補中性 50，權重不動。
   function rankScore(parts){
     var W={ rs:50, shape:35, vol:15 };
-    var tot=0, acc=0;
+    // hard floor ①：沒有 RS 水位就沒有 RRG，本來就算不出來。
+    if(parts.rs==null||!isFinite(parts.rs)) return null;
+    // hard floor ②：算不出絕對趨勢 = 連「在不在上升結構裡」都不知道。
+    //   Stage 是這個分數的前提，前提不知道就不該給分數，更不該預設成最寬鬆的 ×1。
+    if(parts.abs==null||!isFinite(parts.abs)) return null;
+    var acc=0, imputed=[];
     ['rs','shape','vol'].forEach(function(k){
       var v=parts[k];
-      if(v==null||!isFinite(v)) return;
-      acc += v*W[k]; tot += W[k];
+      if(v==null||!isFinite(v)){ v=50; imputed.push(k); }   // 補中性，不動權重
+      acc += v*W[k];
     });
-    if(tot<=0) return null;
-    var base=acc/tot;
-    var a=parts.abs;
-    var gate=(a==null||!isFinite(a)) ? 1 : (0.40 + 0.60*(a/100));
+    var base=acc/100;                                        // 分母永遠是 100
+    var gate=0.40 + 0.60*(parts.abs/100);
     return { score:+(base*gate).toFixed(1), base:+base.toFixed(1),
-             gate:+gate.toFixed(2), covered:tot };
+             gate:+gate.toFixed(2), covered:100, imputed:imputed };
   }
 
   function calculateRRG(sectorCloses, spyCloses, secVols) {
@@ -739,7 +757,118 @@ window.onerror = function(msg, src, line, col, err) {
                            shape:(sShape?sShape.score:null),
                            vol:(sVol?sVol.score:null) });
     return { ratios:ratios, moms:moms, buf:buf,
-             rank:rank, rsPart:sRs, absPart:sAbs, shapePart:sShape, volPart:sVol };
+             rank:rank, rsPart:sRs, absPart:sAbs, shapePart:sShape, volPart:sVol,
+             defense: defenseEvents(sectorCloses, secVols) };
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // v2.9.1 防守事件
+  //   她要的是「哪幾檔開始有急速下跌的迹象」。我原本打算用 RRG 的走弱象限做，
+  //   查完發現那是反的 —— de Kempenaer 本人把 領先→走弱 稱為
+  //   「digesting its recent rise」，把 領先→走弱→領先 稱為
+  //   「signals a strong relative uptrend」。走弱是消化，不是預警。
+  //   而且 RRG 量的是相對大盤：股價在漲、只是跑輸，也會掉進走弱區。
+  //
+  //   四家冠軍裡「只用 RS＋均線＋量」的暴跌預警：一條都沒有。
+  //   IBD 官方 Selling Checklist 三條規則一條 RS 都沒有，全部要價格事件＋量能事件。
+  //   其中兩條只需要價格序列與量能序列 —— 這兩樣這個檔案都有，所以照抄那兩條：
+  //     ②「Biggest single-day price decline since the start of the stock's run
+  //        in the heaviest volume in months」
+  //     ③「Sharp drop – and close – below the 50-day or 10-week moving average
+  //        in exceptionally heavy volume」
+  //     （①「跌破成本 7-8%」需要她的成本，這裡沒有，不做。）
+  //
+  //   ⚠ IBD 的原文沒有給數字門檻（"heaviest"、"exceptionally"、"sharp" 都是形容詞）。
+  //      下面這些數字是我訂的，不是 IBD 訂的，所以畫面上必須標明是誰訂的。
+  //      「sharp drop」用這一檔自己的日均波動當尺，不寫死百分比 ——
+  //      否則安靜的股票永遠不觸發、波動的股票天天觸發。
+  // ══════════════════════════════════════════════════════════════════════════
+  var DEF_MA      = 50;    // IBD 原文：50-day or 10-week moving average
+  var DEF_VOLWIN  = 50;    // 「exceptionally heavy volume」的比較基準
+  var DEF_VOLX    = 1.5;   // 我訂的：量 ≥ 1.5× 50 日均量
+  var DEF_HIWIN   = 60;    // 我訂的：「heaviest volume in months」＝近 60 根最大量
+  var DEF_RUNWIN  = 126;   // 我訂的：「since the start of the run」近似為近半年
+  var DEF_SHARP   = 2.0;   // 我訂的：單日跌幅 ≥ 2.0× 這一檔自己的 20 日平均日波動
+  var DEF_LOOK    = 10;    // 只回報最近 10 根裡發生的事件
+  function defenseEvents(closes, vols){
+    if(!closes||!vols) return null;
+    var n=Math.min(closes.length, vols.length);
+    if(n < DEF_RUNWIN+2) return null;
+    // 這一檔自己的日波動尺度（平均絕對日變動 %）
+    var sum=0, cnt=0;
+    for(var i=n-20;i<n;i++){
+      if(i<1||closes[i-1]==null||closes[i]==null||closes[i-1]===0) continue;
+      sum+=Math.abs(closes[i]/closes[i-1]-1)*100; cnt++;
+    }
+    if(cnt<10) return null;
+    var scl=sum/cnt;
+    if(!(scl>0)) return null;
+    function maAt(idx, len){
+      if(idx-len+1<0) return null;
+      var s=0,c=0;
+      for(var k=idx-len+1;k<=idx;k++){ if(closes[k]==null) continue; s+=closes[k]; c++; }
+      return c?(s/c):null;
+    }
+    function volAvgAt(idx, len){
+      if(idx-len<0) return null;
+      var s=0,c=0;
+      for(var k=idx-len;k<idx;k++){ if(vols[k]==null) continue; s+=vols[k]; c++; }
+      return c?(s/c):null;
+    }
+    var out=[];
+    for(var d=Math.max(1,n-DEF_LOOK); d<n; d++){
+      if(closes[d]==null||closes[d-1]==null||closes[d-1]===0||vols[d]==null) continue;
+      var chg=(closes[d]/closes[d-1]-1)*100;
+      if(chg>=0) continue;
+      var va=volAvgAt(d, DEF_VOLWIN);
+      if(!va) continue;
+      var volX=vols[d]/va;
+      var sharp=(-chg >= DEF_SHARP*scl);
+      // ③ 大跌且「收在」50 日均之下，伴隨爆量
+      var ma=maAt(d, DEF_MA), maPrev=maAt(d-1, DEF_MA);
+      if(sharp && volX>=DEF_VOLX && ma && maPrev && closes[d]<ma && closes[d-1]>=maPrev){
+        out.push({ rule:3, back:n-1-d, chg:+chg.toFixed(1), volX:+volX.toFixed(2),
+                   ma:+ma.toFixed(2), px:+closes[d].toFixed(2) });
+      }
+      // ② 近半年最大單日跌幅 + 近 60 根最大量
+      var worst=true, biggest=true;
+      for(var w=Math.max(1,d-DEF_RUNWIN); w<d; w++){
+        if(closes[w]==null||closes[w-1]==null||closes[w-1]===0) continue;
+        if((closes[w]/closes[w-1]-1)*100 <= chg){ worst=false; break; }
+      }
+      if(worst){
+        for(var v2=Math.max(0,d-DEF_HIWIN); v2<d; v2++){
+          if(vols[v2]!=null && vols[v2]>=vols[d]){ biggest=false; break; }
+        }
+        if(biggest) out.push({ rule:2, back:n-1-d, chg:+chg.toFixed(1), volX:+volX.toFixed(2) });
+      }
+    }
+    return out.length ? out : null;
+  }
+  // 事件 → 文字。⚠ 只描述事件並附 IBD 原文，不下動作指示。
+  //   要不要動部位需要成本與停損，這個檔案兩個都看不到（v2.7.3 的界線）。
+  function defenseHTML(list, unit){
+    if(!list||!list.length) return '';
+    var h='';
+    for(var i=0;i<list.length;i++){
+      var e=list[i];
+      var when=(e.back===0?'今天':(e.back+' '+(unit||'天')+'前'));
+      if(e.rule===3){
+        h+='<div style="margin-top:4px;color:#ff6b6b;font-size:0.74rem;line-height:1.6">'
+         + '⚠ <b>'+when+'</b> 單日 '+e.chg+'%，量 '+e.volX+'× 50'+(unit||'天')+'均量，'
+         + '收盤 '+e.px+' 跌破 '+DEF_MA+(unit||'天')+'均 '+e.ma
+         + '<br><span style="color:#8b949e">IBD Selling Checklist 第 3 條：'
+         + '「Sharp drop – and close – below the 50-day or 10-week moving average '
+         + 'in exceptionally heavy volume」</span></div>';
+      } else {
+        h+='<div style="margin-top:4px;color:#ff6b6b;font-size:0.74rem;line-height:1.6">'
+         + '⚠ <b>'+when+'</b> 單日 '+e.chg+'% —— 近半年最大單日跌幅，且是近 '+DEF_HIWIN+' 根最大量（'+e.volX+'× 均量）'
+         + '<br><span style="color:#8b949e">IBD Selling Checklist 第 2 條：'
+         + '「Biggest single-day price decline since the start of the stock&#39;s run '
+         + 'in the heaviest volume in months」</span></div>';
+      }
+    }
+    return h;
   }
 
   var BUF_FRAC=0.30, BUF_MIN=0.30, BUF_MAX=3.0;
@@ -854,6 +983,17 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // 踩在邊界上時要補的那一句白話（沒踩到就回空字串）
+  // v2.9.1：象限箭頭。
+  //   ⚠ 箭頭指的是「象限在圖上的幾何方向」（x=RS 水位、y=動能，中心 100），
+  //     不是「好↑／壞↓」。走弱區的 ↘ 不代表股價在跌 —— RRG 量的是相對大盤，
+  //     de Kempenaer 本人把 領先→走弱 稱為「digesting its recent rise」，
+  //     把 領先→走弱→領先 整條路徑稱為「signals a strong relative uptrend」。
+  //     把走弱當「要跌了」在官方文件上沒有任何支持。
+  var QUAD_ARROW={ leading:'↗', weakening:'↘', lagging:'↙', improving:'↖' };
+  // 持倉總表的 positionText 是「領先深處／領先邊緣／領先區／走弱…／改善…／落後區」，
+  // 取前兩個字當 key。顏色沿用整個工具既有的一套，不在這裡另開一組。
+  var POS_ARROW={ '領先':'↗', '走弱':'↘', '落後':'↙', '改善':'↖' };
+  var POS_COLOR={ '領先':'#00d4a8', '走弱':'#f7c948', '落後':'#ef476f', '改善':'#4ea5ff' };
   function edgeNote(q) {
     if(!q||!q.onEdge) return '';
     if(q.nearR&&q.nearM) return '（RS 和動能都貼在分界線上 —— 等於還沒表態，象限別當真）';
@@ -885,7 +1025,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
-    // v2.9.0：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    // v2.9.1：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
     //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
     if (mode==='ranking') {
       document.getElementById('chart-wrap').style.display='none';
@@ -1053,7 +1193,7 @@ window.onerror = function(msg, src, line, col, err) {
           var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:'insufficient'});
-          else data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',sectorName:s.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',sectorName:s.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(300).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:e.message}); sleep(300).then(function(){ fetchNext(i+1); }); });
       }
@@ -1062,7 +1202,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.0 排名榜
+  // v2.9.1 排名榜
   //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
   //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
   //
@@ -1136,7 +1276,7 @@ window.onerror = function(msg, src, line, col, err) {
             data.rows.push({ticker:u.ticker,sectors:u.sectors,color:u.color,error:'insufficient'});
           } else {
             data.rows.push({ticker:u.ticker,sectors:u.sectors,color:u.color,
-              rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,
+              rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,defense:rrg.defense,
               ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1],buf:rrg.buf});
           }
           sleep(500).then(function(){ next(i+1); });
@@ -1189,14 +1329,19 @@ window.onerror = function(msg, src, line, col, err) {
       //   之前這裡誤用 getQuadrantBuffered —— 它回傳的是 key 字串不是物件，
       //   所以畫面上印出 undefined。踩在分界線上就標「分界線上」，不要硬講領先／落後。
       var Q=getQuadrant(r.ratio, r.mom, r.buf);
-      var qtxt = Q.onEdge ? '<span style="color:#f7c948">'+Q.name+'（分界線上）</span>'
-                          : '<span style="color:'+Q.color+'">'+Q.name+'</span>';
+      var qtxt = Q.onEdge ? '<span style="color:#f7c948;font-size:0.84rem;font-weight:700">'+QUAD_ARROW[Q.key]+' '+Q.name+'</span>'
+                          + '<span style="color:#f7c948;font-size:0.7rem">（分界線上）</span>'
+                          : '<span style="color:'+Q.color+';font-size:0.84rem;font-weight:700">'+QUAD_ARROW[Q.key]+' '+Q.name+'</span>';
       h+='<div style="font-size:0.7rem;color:#6e7681;margin-top:2px">'+r.sectors.join(' · ')
-       + ' ｜ RS '+r.ratio.toFixed(1)+' · 動能 '+r.mom.toFixed(1)+' · '+qtxt+'</div>';
+       + ' ｜ RS '+r.ratio.toFixed(1)+' · 動能 '+r.mom.toFixed(1)+' ｜ '+qtxt+'</div>';
       h+='<div style="margin-top:4px;font-size:0.71rem;color:var(--dim);line-height:1.7">';
+      // 補過中性值的項目要看得出來 —— 那一格的 50 不是算出來的，是填的。
+      var IMP=(r.rank.imputed||[]);
       h+=partCell('RS水位',r.rsPart,'',50);
-      h+=partCell('走勢形狀',S?S.score:null,S?(S.kind==='cont'?'連續型':'跳躍型'):'',35);
-      h+=partCell('量能',V?V.score:null,V?(V.volX+'×'):'',15);
+      h+=partCell('走勢形狀', S?S.score:50, S?(S.kind==='cont'?'連續型':'跳躍型')
+                 :'<span style="color:#f7c948">資料不足·以中性 50 計入</span>', 35);
+      h+=partCell('量能', V?V.score:50, V?(V.volX+'×')
+                 :'<span style="color:#f7c948">資料不足·以中性 50 計入</span>', 15);
       if(A){
         var gc=r.rank.gate>=0.85?'#00d4a8':(r.rank.gate>=0.7?'#9ca3af':'#f7c948');
         h+='<span style="white-space:nowrap">絕對趨勢<span style="color:#6e7681;font-size:0.66rem">(乘數)</span> '
@@ -1206,7 +1351,9 @@ window.onerror = function(msg, src, line, col, err) {
          + (A.late?'<span style="color:#ff6b6b"> ⚠末期延伸</span>':(A.warn?'<span style="color:#f7c948"> ⚠偏延伸</span>':''))
          + '</span>';
       }
-      h+='</div></div>';
+      h+='</div>';
+      h+=defenseHTML(r.defense, (data.interval==='1wk'?'週':'天'));
+      h+='</div>';
       return h;
     }
 
@@ -1263,6 +1410,22 @@ window.onerror = function(msg, src, line, col, err) {
           + '</div>';
     }
 
+    // 防守事件摘要：整池裡最近觸發的，放在榜單之前，因為它跟排名是兩個獨立角度。
+    var dfList=[];
+    for(var df=0;df<ok.length;df++){ if(ok[df].defense) dfList.push(ok[df]); }
+    if(dfList.length){
+      html+='<div style="margin-bottom:14px;padding:10px 11px;border-left:3px solid #ff6b6b;'
+          + 'background:rgba(255,107,107,0.06);border-radius:6px">';
+      html+='<div style="font-size:0.85rem;color:#ff6b6b;font-weight:700">🛡 防守事件 · 最近 '
+          + DEF_LOOK+' 根（'+dfList.length+' 檔）</div>';
+      html+='<div style="font-size:0.72rem;color:var(--dim);margin-top:4px;line-height:1.6">'
+          + '<b>不看 RRG</b>，只照 IBD 官方 Selling Checklist 裡兩條只需要價格＋量能的規則。'
+          + '門檻數字是我訂的，不是 IBD 訂的（原文只有形容詞）。排名高的照樣可能觸發 —— '
+          + '這兩個角度不互相背書，這正是分開看的用意。</div>';
+      html+='<div style="border-top:1px solid var(--line);margin-top:8px">';
+      for(var dg=0;dg<dfList.length;dg++) html+=rowHTML(dfList[dg], '·', !!mine[dfList[dg].ticker]);
+      html+='</div></div>';
+    }
     // 完整榜單收合：89 檔全攤開在 iPad 上要滑很久，而她要的答案在上面那一段。
     // 收的是名單不是數字 —— 點一下就全在，預設不佔畫面。
     html+='<details style="margin-top:14px"><summary style="cursor:pointer;font-size:0.85rem;'
@@ -1274,13 +1437,27 @@ window.onerror = function(msg, src, line, col, err) {
 
     if(bad.length){
       var names=[];
-      for(var d=0;d<bad.length;d++) names.push(bad[d].ticker+'<span style="color:#6e7681">('+(bad[d].error||'無分數')+')</span>');
+      for(var d=0;d<bad.length;d++){
+        var bb=bad[d], why;
+        if(bb.error==='insufficient') why='資料根數不足 '+(WARMUP+2)+' 根';
+        else if(bb.error) why=bb.error;
+        else if(!bb.absPart) why='上市未滿 '+(ABS_MA+20)+' 根，算不出 '+ABS_MA+' 日均線與 Stage';
+        else why='核心項缺漏';
+        names.push('<div style="margin:3px 0"><b>'+bb.ticker+'</b> <span style="color:#6e7681">'+why+'</span></div>');
+      }
       html+='<details style="margin-top:12px;font-size:0.75rem;color:var(--dim)">'
-          + '<summary style="cursor:pointer;color:#f7c948">⚠ '+bad.length+' 檔沒有分數（點開看原因）</summary>'
-          + '<div style="margin-top:6px;line-height:1.8">'+names.join('　')+'</div>'
-          + '<div style="margin-top:6px;color:#6e7681">新上市 / 上市未滿約 '+(FIP_FORM+FIP_SKIP)
-          + ' 根的股票，走勢形狀那一項本來就算不出來；權重會重新分配，但分數的可比性會變差。'
-          + 'insufficient = 資料根數不足 '+(WARMUP+2)+' 根。</div></details>';
+          + '<summary style="cursor:pointer;color:#f7c948">⚠ '+bad.length+' 檔不列入排名（點開看原因）</summary>'
+          + '<div style="margin-top:6px;line-height:1.7">'+names.join('')+'</div>'
+          + '<div style="margin-top:8px;color:#6e7681;line-height:1.7">'
+          + '<b style="color:#f7c948">為什麼是排除而不是照算：</b>'
+          + '算不出 '+ABS_MA+' 日均線，等於連「這檔在不在上升結構裡」都不知道，而那是這個分數的前提。'
+          + '舊版遇到這種情況會把缺項的權重攤回其他項、乘數預設給滿的 ×1 —— '
+          + '結果是<b>資料愈少分數愈高</b>（9/28 掃描時 INFQ 就這樣排到第 2 名）。'
+          + '<br>專業做法沒有一家在頂層重新分配：MSCI Momentum「security is not considered for inclusion」、'
+          + 'S&amp;P 多因子標準版要求「have the necessary data in order to compute all underlying z-scores」，'
+          + '兩家都是排除；MSCI 頂層 composite 缺項則是補中性值。這裡兩條都用：'
+          + '核心項（RS 水位、絕對趨勢）缺 → 不排名；走勢形狀 / 量能缺 → 補中性 50 並標出來。'
+          + '</div></details>';
     }
     html+='<div style="margin-top:12px;font-size:0.72rem;color:#6e7681">掃描時間 '
         + new Date(ts).toLocaleString('zh-TW')+' ｜ 引擎 v'+ENGINE_VER+' ｜ '
@@ -1320,7 +1497,7 @@ window.onerror = function(msg, src, line, col, err) {
           var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:'insufficient'});
-          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(500).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:e.message}); sleep(500).then(function(){ fetchNext(i+1); }); });
       }
@@ -1363,7 +1540,7 @@ window.onerror = function(msg, src, line, col, err) {
           var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',error:'insufficient'});
-          else data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
           sleep(500).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:t,ticker:t,color:color,sectorName:'快速查詢',error:e.message}); sleep(500).then(function(){ fetchNext(i+1); }); });
       }
@@ -2285,7 +2462,7 @@ window.onerror = function(msg, src, line, col, err) {
       if (reversal.type==='bullish') verbose+='<br>✨ <strong style="color:#00d4a8;">特別注意：之前一直走弱，最近突然轉強！</strong>可能有主力進場，去 test-accum.html 看看大單訊號。';
       else verbose+='<br>🚨 <strong style="color:#ef476f;">特別注意：之前往上衝，最近開始反向。</strong>這是派發常見的形狀。';
     }
-    return { ticker:s.ticker||s.name, position:positionText, direction:directionEmoji, directionText:directionText, strength:strength, advice:advice, groupKey:groupKey, dist:dist, pathLength:pathLength, verbose:verbose, reversal:reversal, ratio:s.current.ratio, mom:s.current.mom, buf:s.buf, rank:s.rank, rsPart:s.rsPart, absPart:s.absPart, shapePart:s.shapePart, volPart:s.volPart };
+    return { ticker:s.ticker||s.name, position:positionText, direction:directionEmoji, directionText:directionText, strength:strength, advice:advice, groupKey:groupKey, dist:dist, pathLength:pathLength, verbose:verbose, reversal:reversal, ratio:s.current.ratio, mom:s.current.mom, buf:s.buf, rank:s.rank, rsPart:s.rsPart, absPart:s.absPart, shapePart:s.shapePart, volPart:s.volPart, defense:s.defense };
   }
 
   function renderHoldingsOverview(data) {
@@ -2441,8 +2618,18 @@ window.onerror = function(msg, src, line, col, err) {
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
         h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
-        h+='<span class="hold-position">['+s.position+']</span>';
-        h+='<span class="hold-direction">'+s.direction+' '+s.directionText+'</span>';
+        // v2.9.1：象限字放大加粗 + 幾何箭頭（她的建議）。
+        //   箭頭是象限在圖上的方向（x=RS、y=動能），不是好壞 ——
+        //   走弱的 ↘ 不代表股價在跌，只代表相對大盤的動能掉到 100 以下。
+        h+='<span class="hold-position" style="font-size:0.92rem;font-weight:700;color:'
+         + (POS_COLOR[s.position.slice(0,2)]||'var(--dim)')+'">'
+         + (POS_ARROW[s.position.slice(0,2)]||'')+' '+s.position+'</span>';
+        // 加了象限箭頭之後，一行裡會同時出現兩個箭頭（位置箭頭／軌跡箭頭），
+        //   而且它們常常指不同方向（例：↗ 領先深處 · 軌跡 ↙ 往左下）。
+        //   兩個都對，但並排放會被讀成自相矛盾 —— 那正是這次 RRG 大修的起因。
+        //   所以軌跡那個一定要帶標籤，讓「位置」和「往哪走」不會被當成同一句話。
+        h+='<span class="hold-direction"><span style="color:#6e7681;font-size:0.72rem">軌跡</span> '
+         + s.direction+' '+s.directionText+'</span>';
         h+=weekDeltaHTML(s);
         h+='<span class="hold-advice">→ '+s.advice+'</span></div>';
         // v2.8：乘數把排名壓低時要明講，否則「方向是對的」坐在「最弱」區裡
@@ -2540,7 +2727,40 @@ window.onerror = function(msg, src, line, col, err) {
     } else if (groups.strong.length===1){
       focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
+    // ════════════════════════════════════════════════════════════════════════
+    // v2.9.1：防守事件區（總表最後面）。
+    //   這一區刻意「不是」RRG 判斷 —— 它完全不看象限、不看軌跡、不看排名，
+    //   只照 IBD 官方 Selling Checklist 裡那兩條「只需要價格＋量能」的規則。
+    //   理由寫在 defenseEvents 上面：走弱象限在官方定義裡是消化不是預警，
+    //   拿它當下跌訊號會是反的。這一區跟排名分數是兩個獨立角度，不互相背書。
+    // ════════════════════════════════════════════════════════════════════════
+    var defHits=[];
+    for(var dq=0;dq<allInfos.length;dq++){ if(allInfos[dq].defense) defHits.push(allInfos[dq]); }
+    html+='<div style="margin-top:14px;padding:10px 11px;border-left:3px solid '
+        + (defHits.length?'#ff6b6b':'#30363d')+';background:rgba('
+        + (defHits.length?'255,107,107':'110,118,129')+',0.06);border-radius:6px">';
+    html+='<div style="font-size:0.85rem;font-weight:700;color:'+(defHits.length?'#ff6b6b':'#8b949e')+'">'
+        + '🛡 防守事件 · 最近 '+DEF_LOOK+' '+unitLabel()+'（'+(defHits.length?defHits.length+' 檔觸發':'沒有觸發')+'）</div>';
+    html+='<div style="font-size:0.72rem;color:var(--dim);margin-top:4px;line-height:1.65">'
+        + '這一區<b>不看 RRG</b>，只照 IBD 官方 Selling Checklist 裡兩條「只需要價格＋量能」的規則。'
+        + '<br><span style="color:#8b949e">為什麼不用 RRG 的走弱區當預警：RRG 發明人 de Kempenaer 把 領先→走弱 稱為'
+        + '「digesting its recent rise」，把 領先→走弱→領先 稱為「signals a strong relative uptrend」——'
+        + '走弱在官方定義裡是<b>消化</b>不是預警，而且 RRG 量的是相對大盤，股價在漲、只是跑輸也會掉進走弱區。</span>'
+        + '<br><span style="color:#f7c948">⚠ IBD 原文沒有給數字門檻（heaviest／exceptionally／sharp 都是形容詞）。'
+        + '「爆量」= ≥'+DEF_VOLX+'× 50'+unitLabel()+'均量、「大跌」= ≥'+DEF_SHARP+'× 這一檔自己的 20'+unitLabel()+'平均波動 ——'
+        + '<b>這些數字是我訂的，不是 IBD 訂的。</b></span>'
+        + '<br>觸發只代表「這個事件發生了」。要不要動部位需要成本與停損，這個工具兩個都看不到，去 dna 看。</div>';
+    if(defHits.length){
+      for(var dh=0;dh<defHits.length;dh++){
+        html+='<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--line)">'
+            + '<b style="font-size:0.9rem">'+defHits[dh].ticker+'</b>'
+            + defenseHTML(defHits[dh].defense, unitLabel())+'</div>';
+      }
+    }
+    html+='</div>';
     if (focusItems.length===0) focusItems.push('✅ 整體狀況良好，沒有需要立刻處理的警訊');
+    if (defHits.length) focusItems.unshift('🛡 防守事件觸發：<strong>'
+        + defHits.map(function(x){return x.ticker;}).join('、')+'</strong>（IBD 賣出清單第 2/3 條）');
     html+='<div class="today-focus"><div class="today-focus-title">💡 今日重點</div>';
     for(var fi=0;fi<focusItems.length;fi++) html+='<div class="focus-item">'+(fi+1)+'. '+focusItems[fi]+'</div>';
     html+='</div></div>';
@@ -2752,7 +2972,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.0 (排名榜)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.1 (防守事件)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
