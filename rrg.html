@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.8.3</title>
+<title>RRG 板塊輪動圖 v2.9.0</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.8.3 · 接上 dna 自己的末期門檻 70%（延伸不再無感）</div>
+<div class="sub">v2.9.0 · 新增排名榜：把整個板塊池一起排序</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -219,6 +219,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <button class="mode-tab active" data-mode="overview">📊 板塊總覽</button>
 <button class="mode-tab" data-mode="deepscan">🔍 板塊深掃</button>
 <button class="mode-tab" data-mode="quickquery">🎯 自選個股查詢</button>
+<button class="mode-tab" data-mode="ranking">📋 排名榜</button>
 <button class="mode-tab" data-mode="history">📚 歷史軌跡</button>
 </div>
 <div class="interval-toggle">
@@ -253,6 +254,14 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <button id="btn-qq-clear">清空</button>
 <button id="btn-qq-load-holding">📥 從板塊載入</button>
 <button class="snap" id="btn-snap-quickquery" style="display:none">📸 存本週快照</button>
+</div>
+</div>
+<div id="ranking-controls" class="deepscan-panel" style="display:none;">
+<h3>📋 排名榜 · 把所有板塊一起排序</h3>
+<div class="scan-info">💡 回答「我的清單外面，有誰排名比我手上最好的那檔更高」<br>⚠ 掃的範圍是<b>妳自己的板塊清單</b>（不是全美股）；清單裡沒有的股票不會出現<br>每檔 ~500ms，全掃約需 <span id="rank-est">—</span></div>
+<div class="scan-actions">
+<button class="primary" id="btn-ranking-run">🚀 開始排名掃描</button>
+<button id="btn-ranking-refresh">🔄 強制重抓</button>
 </div>
 </div>
 <div id="history-panel" class="history-panel" style="display:none;">
@@ -290,7 +299,8 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <div style="text-align:center">象限</div>
 </div>
 </div>
-<footer>RRG v2.8.3 · Yahoo Finance API · 不構成投資建議</footer>
+<div id="ranking-results" style="display:none;"></div>
+<footer>RRG v2.9.0 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -863,6 +873,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('sector-table').style.display='none';
     document.getElementById('btn-snap-overview').style.display='none';
     document.getElementById('btn-snap-deepscan').style.display='none';
+    var rk=document.getElementById('ranking-results'); if(rk) rk.style.display='none';
   }
   function switchMode(mode) {
     currentMode=mode;
@@ -871,8 +882,25 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('overview-controls').style.display=mode==='overview'?'flex':'none';
     document.getElementById('deepscan-controls').style.display=mode==='deepscan'?'block':'none';
     document.getElementById('quickquery-controls').style.display=mode==='quickquery'?'block':'none';
+    document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
+    // v2.9.0：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
+    if (mode==='ranking') {
+      document.getElementById('chart-wrap').style.display='none';
+      document.getElementById('narrative').style.display='none';
+      document.getElementById('sector-table').style.display='none';
+      document.getElementById('btn-snap-overview').style.display='none';
+      document.getElementById('btn-snap-deepscan').style.display='none';
+      updateRankEstimate();
+      if (lastRankData) { renderRanking(lastRankData, lastRankTs); return; }
+      var ck=loadCache(getCacheKeyRank());
+      if (ck) { renderRanking(ck.data, ck.timestamp); return; }
+      document.getElementById('ranking-results').style.display='none';
+      setStatus('點「開始排名掃描」把所有板塊一起排序');
+      return;
+    }
     if (mode==='history') {
       document.getElementById('chart-wrap').style.display='none';
       document.getElementById('narrative').style.display='none';
@@ -1032,6 +1060,239 @@ window.onerror = function(msg, src, line, col, err) {
       fetchNext(0);
     }).catch(function(e){ setStatus('<div class="error">❌ 無法抓取 '+currentBenchmark+'：'+e.message+'<br>上面每個 P 後面就是各代理的真正死因：HTTP_xxx＝網路／代理問題，bars_xx＝抓到的資料太短</div>'); });
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // v2.9.0 排名榜
+  //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
+  //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
+  //
+  //   ⚠ 三件必須先講清楚的事，寫在這裡也寫在畫面上：
+  //   1. 掃的是「妳自己的板塊清單」（radar 的 biaoguo_sectors_v5，沒有就用內建 15 組），
+  //      不是全美股。清單外的股票永遠不會出現 —— 這是一個受限宇宙的排序，
+  //      所以它的正確說法是「我的池子裡誰最前面」，不是「全市場誰最強」。
+  //   2. 這個分數是為了「同一組裡先看哪一檔」設計的，從來沒有被當成
+  //      「選股條件」回測過（樣本 ≥30、EV >+0.3R、中位數為正、最大連虧 ≤6 都還沒跑）。
+  //      所以它只能產生「去看一下這幾檔」，不能產生「買這幾檔」。
+  //   3. 排名高≠可以進場。進場點要價格、pivot、停損，RRG 三個都看不到 ——
+  //      跟 v2.7.3 定的界線一致：這個檔案只描述位置與方向，不下動作。
+  // ══════════════════════════════════════════════════════════════════════════
+  function getCacheKeyRank(){ return 'rrg_ranking_v29_' + rrgInterval + '_' + currentBenchmark; }
+  function buildRankUniverse() {
+    var list=getSectorList(), seen={}, out=[];
+    for(var i=0;i<list.length;i++){
+      var sec=list[i];
+      for(var j=0;j<sec.stocks.length;j++){
+        var t=String(sec.stocks[j]||'').toUpperCase().trim();
+        if(!t) continue;
+        if(seen[t]){ if(seen[t].sectors.indexOf(sec.name)<0) seen[t].sectors.push(sec.name); continue; }
+        var rec={ticker:t,sectors:[sec.name],color:SECTOR_COLORS[sec.name]||'#888'};
+        seen[t]=rec; out.push(rec);
+      }
+    }
+    return out;
+  }
+  // 「我的自選股」= 自選個股查詢那個輸入框的內容（localStorage rrg_qq_input）。
+  //   讀不到就回空集合，這時候榜單照樣出，只是沒有「比 X 更好」那一段。
+  function readMyTickers() {
+    var raw='';
+    try { var el=document.getElementById('qq-input'); if(el&&el.value) raw=el.value; } catch(e){}
+    if(!raw){ try { raw=localStorage.getItem('rrg_qq_input')||''; } catch(e){} }
+    var arr=parseQuickQueryInput(raw), map={};
+    for(var i=0;i<arr.length;i++) map[arr[i]]=1;
+    return map;
+  }
+  function updateRankEstimate() {
+    var n=buildRankUniverse().length;
+    var secs=Math.round(n*0.9);
+    var el=document.getElementById('rank-est');
+    if(el) el.textContent=n+' 檔 · 約 '+Math.floor(secs/60)+' 分 '+(secs%60)+' 秒';
+  }
+  function loadRanking(force) {
+    var universe=buildRankUniverse();
+    if(universe.length===0){ setStatus('<div class="error">❌ 板塊清單是空的，沒有東西可以排名</div>'); return; }
+    hideAllResults();
+    var cacheKey=getCacheKeyRank();
+    if(!force){
+      var cached=loadCache(cacheKey);
+      if(cached){ renderRanking(cached.data, cached.timestamp); return; }
+    }
+    setStatus('正在抓取 '+currentBenchmark+' 基準資料...');
+    var t0=Date.now();
+    fetchPrice(currentBenchmark).then(function(spyPx){
+      var data={benchmark:currentBenchmark,interval:rrgInterval,eng:ENGINE_VER,rows:[]};
+      function next(i){
+        if(i>=universe.length){ saveCache(cacheKey,data); renderRanking(data, Date.now()); return; }
+        var u=universe[i];
+        var done=i, left=universe.length-i;
+        var eta=done>0 ? Math.round((Date.now()-t0)/done*left/1000) : Math.round(left*0.9);
+        setStatus('排名掃描 '+u.ticker+' … '+(i+1)+'/'+universe.length
+                + ' <span style="color:var(--dim)">（還要約 '+Math.floor(eta/60)+' 分 '+(eta%60)+' 秒）</span>'
+                + '<div style="margin-top:8px;height:5px;background:#1b2233;border-radius:3px;overflow:hidden">'
+                + '<div style="height:100%;width:'+((i/universe.length)*100).toFixed(1)+'%;background:#00d4a8"></div></div>');
+        fetchPrice(u.ticker).then(function(px){
+          var AL=alignSeries(px, spyPx);
+          var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
+          if(!rrg.ratios.length||!rrg.moms.length){
+            data.rows.push({ticker:u.ticker,sectors:u.sectors,color:u.color,error:'insufficient'});
+          } else {
+            data.rows.push({ticker:u.ticker,sectors:u.sectors,color:u.color,
+              rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,volPart:rrg.volPart,
+              ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1],buf:rrg.buf});
+          }
+          sleep(500).then(function(){ next(i+1); });
+        }).catch(function(e){
+          data.rows.push({ticker:u.ticker,sectors:u.sectors,color:u.color,error:e.message});
+          sleep(500).then(function(){ next(i+1); });
+        });
+      }
+      next(0);
+    }).catch(function(e){ setStatus('<div class="error">❌ 無法抓取 '+currentBenchmark+'：'+e.message+'</div>'); });
+  }
+
+  function renderRanking(data, ts) {
+    var mine=readMyTickers();
+    var ok=[],bad=[];
+    for(var i=0;i<data.rows.length;i++){
+      var r=data.rows[i];
+      if(r.error||!r.rank||r.rank.score==null) bad.push(r); else ok.push(r);
+    }
+    ok.sort(function(a,b){ return b.rank.score-a.rank.score; });
+    // 我手上最好的那一檔（必須是這次掃到的，否則沒有可比的分數）
+    var myBest=null, myCount=0;
+    for(var k=0;k<ok.length;k++){ if(mine[ok[k].ticker]){ myCount++; if(!myBest) myBest=ok[k]; } }
+    var myMissing=[];
+    for(var t in mine){ if(!mine.hasOwnProperty(t)) continue; var found=false;
+      for(var m=0;m<data.rows.length;m++){ if(data.rows[m].ticker===t){ found=true; break; } }
+      if(!found) myMissing.push(t); }
+
+    function scCol(sc){ return sc>=70?'#00d4a8':(sc>=55?'#7dd3a8':(sc>=40?'#9ca3af':'#f7c948')); }
+    function partCell(name,val,note,w){
+      var txt=(val==null)?'<span style="color:#6e7681">不足</span>'
+            :'<b style="color:'+(val>=60?'#00d4a8':(val>=40?'#9ca3af':'#f7c948'))+'">'+val.toFixed(0)+'</b>';
+      return '<span style="margin-right:12px;white-space:nowrap">'+name
+           + '<span style="color:#6e7681;font-size:0.66rem">('+w+')</span> '+txt
+           + (note?'<span style="color:#6e7681"> '+note+'</span>':'')+'</span>';
+    }
+    function rowHTML(r, idx, isMine){
+      var sc=r.rank.score, col=scCol(sc);
+      var A=r.absPart,S=r.shapePart,V=r.volPart;
+      var h='<div style="padding:9px 10px;border-bottom:1px solid var(--line);'
+          + (isMine?'background:rgba(78,165,255,0.06);':'')+'">';
+      h+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">';
+      h+='<span style="color:#6e7681;font-family:monospace;font-size:0.74rem;min-width:24px">'+idx+'</span>';
+      h+='<b style="font-size:0.95rem;color:'+r.color+'">'+r.ticker+'</b>';
+      if(isMine) h+='<span style="font-size:0.68rem;color:#4ea5ff;border:1px solid #4ea5ff55;border-radius:8px;padding:0 5px">★ 我的</span>';
+      h+='<span style="margin-left:auto;padding:1px 8px;border-radius:9px;font-size:0.78rem;font-family:monospace;'
+       + 'font-weight:700;color:'+col+';border:1px solid '+col+'55;background:'+col+'12">'+sc.toFixed(0)+'</span>';
+      h+='</div>';
+      // 象限一律走 getQuadrant（唯一那一份定義，含死區）。
+      //   之前這裡誤用 getQuadrantBuffered —— 它回傳的是 key 字串不是物件，
+      //   所以畫面上印出 undefined。踩在分界線上就標「分界線上」，不要硬講領先／落後。
+      var Q=getQuadrant(r.ratio, r.mom, r.buf);
+      var qtxt = Q.onEdge ? '<span style="color:#f7c948">'+Q.name+'（分界線上）</span>'
+                          : '<span style="color:'+Q.color+'">'+Q.name+'</span>';
+      h+='<div style="font-size:0.7rem;color:#6e7681;margin-top:2px">'+r.sectors.join(' · ')
+       + ' ｜ RS '+r.ratio.toFixed(1)+' · 動能 '+r.mom.toFixed(1)+' · '+qtxt+'</div>';
+      h+='<div style="margin-top:4px;font-size:0.71rem;color:var(--dim);line-height:1.7">';
+      h+=partCell('RS水位',r.rsPart,'',50);
+      h+=partCell('走勢形狀',S?S.score:null,S?(S.kind==='cont'?'連續型':'跳躍型'):'',35);
+      h+=partCell('量能',V?V.score:null,V?(V.volX+'×'):'',15);
+      if(A){
+        var gc=r.rank.gate>=0.85?'#00d4a8':(r.rank.gate>=0.7?'#9ca3af':'#f7c948');
+        h+='<span style="white-space:nowrap">絕對趨勢<span style="color:#6e7681;font-size:0.66rem">(乘數)</span> '
+         + '<b style="color:'+gc+'">×'+r.rank.gate+'</b>'
+         + '<span style="color:#6e7681"> '+(A.above?'站上':'跌破')+ABS_MA+'均 '
+         + (A.devPct>0?'+':'')+A.devPct+'%·均線'+(A.rising?'上揚':'下彎')+'</span>'
+         + (A.late?'<span style="color:#ff6b6b"> ⚠末期延伸</span>':(A.warn?'<span style="color:#f7c948"> ⚠偏延伸</span>':''))
+         + '</span>';
+      }
+      h+='</div></div>';
+      return h;
+    }
+
+    var html='<div class="holdings-overview">';
+    html+='<div class="ho-header">📋 排名榜 <span class="ho-count">'+ok.length+' 檔有分數'
+        + (bad.length?' · '+bad.length+' 檔資料不足':'')+' · 基準 '+(data.benchmark||currentBenchmark)+'</span></div>';
+    // 界線宣告：這一區的性質。跟持倉總表用同一套說法，不能在這裡悄悄鬆綁。
+    html+='<div style="margin:6px 0 12px;padding:9px 11px;border-left:3px solid #f7c948;'
+        + 'background:rgba(247,201,72,0.07);border-radius:6px;font-size:0.78rem;line-height:1.65;color:var(--dim)">'
+        + '<strong style="color:#f7c948">這是「先去看哪幾檔」的清單，不是買進清單。</strong>'
+        + '<br>① 掃的範圍是<b>妳自己的板塊清單</b>（'+ok.length+'+'+bad.length+' 檔），不是全美股 —— '
+        + '清單外的好股票不會出現在這裡，所以它回答的是「我的池子裡誰最前面」。'
+        + '<br>② 這個分數是為「同一組裡先看哪一檔」設計的，<b>沒有當成選股條件回測過</b>'
+        + '（樣本 ≥30、EV >+0.3R、中位數為正、最大連虧 ≤6 都還沒跑）。'
+        + '<br>③ 排名高不等於現在可以進場。進場要價格、pivot、停損，RRG 這三個都看不到；'
+        + '第二步要拿去 dna / radar 看型態與 pivot，這裡只負責<b>縮短要看的名單</b>。'
+        + '</div>';
+
+    if(myBest){
+      var above=[];
+      for(var a=0;a<ok.length;a++){
+        if(ok[a].rank.score>myBest.rank.score && !mine[ok[a].ticker]) above.push(ok[a]);
+      }
+      html+='<div style="margin-bottom:14px;padding:10px 11px;border-left:3px solid #00d4a8;'
+          + 'background:rgba(0,212,168,0.06);border-radius:6px">';
+      html+='<div style="font-size:0.85rem;color:#00d4a8;font-weight:700;margin-bottom:4px">'
+          + '🔍 排名比妳最高的持股（'+myBest.ticker+' '+myBest.rank.score.toFixed(0)+' 分）更高、而且不在妳清單裡的：'
+          + (above.length?above.length+' 檔':'沒有')+'</div>';
+      if(above.length===0){
+        html+='<div style="font-size:0.78rem;color:var(--dim);line-height:1.6">'
+            + '妳清單裡最好的那一檔就是整個池子的第一名。這代表<b>在這個池子裡</b>沒有更前面的可以換，'
+            + '不代表全市場沒有 —— 要擴大就得先把新的板塊 / 個股加進 radar 清單。</div>';
+      } else {
+        html+='<div style="font-size:0.72rem;color:var(--dim);margin-bottom:6px">'
+            + '下面這幾檔分數比 '+myBest.ticker+' 高。分數高只表示「值得先看」，'
+            + '不表示比妳手上的更該買 —— 妳手上的有成本、有部位、有停損，這張表看不到那些。</div>';
+        html+='<div style="border-top:1px solid var(--line)">';
+        for(var b=0;b<above.length;b++) html+=rowHTML(above[b], b+1, false);
+        html+='</div>';
+      }
+      if(myCount<Object.keys(mine).length){
+        html+='<div style="font-size:0.72rem;color:#f7c948;margin-top:8px">⚠ 妳清單裡有 '
+            + myMissing.length+' 檔不在板塊清單中，這次沒掃到，沒有參與比較：'+myMissing.join(' ')
+            + '<br><span style="color:var(--dim)">要讓它們入榜，把它們加進 radar 的板塊清單。</span></div>';
+      }
+      html+='</div>';
+    } else {
+      html+='<div style="margin-bottom:14px;padding:10px 11px;border-left:3px solid #f7c948;'
+          + 'background:rgba(247,201,72,0.06);border-radius:6px;font-size:0.78rem;color:var(--dim);line-height:1.6">'
+          + '還沒辦法做「比我最好的持股更高」這一段：'
+          + (Object.keys(mine).length===0
+             ? '「自選個股查詢」的輸入框是空的，先把持股打進去（會自動記住），再回來看這裡。'
+             : '妳清單裡的 '+Object.keys(mine).join(' ')+' 都不在板塊清單中，這次沒掃到。')
+          + '</div>';
+    }
+
+    // 完整榜單收合：89 檔全攤開在 iPad 上要滑很久，而她要的答案在上面那一段。
+    // 收的是名單不是數字 —— 點一下就全在，預設不佔畫面。
+    html+='<details style="margin-top:14px"><summary style="cursor:pointer;font-size:0.85rem;'
+        + 'color:var(--accent);font-weight:700;padding:6px 0">📊 完整排名（'+ok.length+' 檔）'
+        + '<span style="color:#6e7681;font-weight:400;font-size:0.75rem"> — 點開看全部</span></summary>';
+    html+='<div style="border-top:1px solid var(--line)">';
+    for(var c=0;c<ok.length;c++) html+=rowHTML(ok[c], c+1, !!mine[ok[c].ticker]);
+    html+='</div></details>';
+
+    if(bad.length){
+      var names=[];
+      for(var d=0;d<bad.length;d++) names.push(bad[d].ticker+'<span style="color:#6e7681">('+(bad[d].error||'無分數')+')</span>');
+      html+='<details style="margin-top:12px;font-size:0.75rem;color:var(--dim)">'
+          + '<summary style="cursor:pointer;color:#f7c948">⚠ '+bad.length+' 檔沒有分數（點開看原因）</summary>'
+          + '<div style="margin-top:6px;line-height:1.8">'+names.join('　')+'</div>'
+          + '<div style="margin-top:6px;color:#6e7681">新上市 / 上市未滿約 '+(FIP_FORM+FIP_SKIP)
+          + ' 根的股票，走勢形狀那一項本來就算不出來；權重會重新分配，但分數的可比性會變差。'
+          + 'insufficient = 資料根數不足 '+(WARMUP+2)+' 根。</div></details>';
+    }
+    html+='<div style="margin-top:12px;font-size:0.72rem;color:#6e7681">掃描時間 '
+        + new Date(ts).toLocaleString('zh-TW')+' ｜ 引擎 v'+ENGINE_VER+' ｜ '
+        + (data.interval==='1wk'?'週線':'日線')+' ｜ 4 小時內重開會直接讀快取，要更新請按「強制重抓」</div>';
+    html+='</div>';
+    var el=document.getElementById('ranking-results');
+    el.innerHTML=html;
+    el.style.display='block';
+    document.getElementById('status').style.display='none';
+    lastRankData=data; lastRankTs=ts;
+  }
+  var lastRankData=null, lastRankTs=null;
 
   function loadDeepscan() {
     focusedTicker=null;
@@ -2491,7 +2752,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.8.3 (末期門檻)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.0 (排名榜)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
@@ -2525,6 +2786,8 @@ window.onerror = function(msg, src, line, col, err) {
   }
   document.getElementById('btn-overview-load').addEventListener('click', function(){ loadOverview(false); });
   document.getElementById('btn-overview-refresh').addEventListener('click', function(){ loadOverview(true); });
+  document.getElementById('btn-ranking-run').addEventListener('click', function(){ loadRanking(false); });
+  document.getElementById('btn-ranking-refresh').addEventListener('click', function(){ loadRanking(true); });
   document.getElementById('btn-deepscan-run').addEventListener('click', loadDeepscan);
   document.getElementById('btn-deepscan-clear').addEventListener('click', function(){
     var checks=document.querySelectorAll('#sector-checks-container input');
