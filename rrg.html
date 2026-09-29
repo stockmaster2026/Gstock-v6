@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.9.1</title>
+<title>RRG 板塊輪動圖 v2.9.2</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.9.1 · 缺資料不再加分 · IBD 防守事件 · 象限箭頭</div>
+<div class="sub">v2.9.2 · Stage 判詞不再與旁邊的數字打架</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.9.1 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.9.2 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -586,10 +586,34 @@ window.onerror = function(msg, src, line, col, err) {
     var base = 100*(0.6*a + 0.4*r);
     // 過了 dna 的末期門檻才降權，而且是連續的（不做硬切點）
     var extCut = (devPct>EXT_LATE) ? Math.min(0.35, (devPct-EXT_LATE)/100) : 0;
+    // v2.9.2：加一個「走平」帶，只用在文字標籤上，不碰分數。
+    //   分數這邊本來就是連續的（+0.17%/20根 → r=0.585，幾乎中性），
+    //   binary 的只有畫面上那個「上揚／下彎」—— AMKR 的 +0.17%/20根
+    //   被硬講成「均線上揚」，那其實是走平。門檻取飽和尺度（1%）的四分之一。
     return { score: base*(1-extCut), pos:100*a, slp:100*r,
-             above: px>maNow, rising: maNow>maPrev, ma:maNow,
+             above: px>maNow, rising: maNow>maPrev, flat: Math.abs(slpPct)<ABS_FLAT, ma:maNow,
              devPct:+devPct.toFixed(1), slpPct:+slpPct.toFixed(2),
              late:(devPct>EXT_LATE), warn:(devPct>EXT_WARN), extCut:+extCut.toFixed(2) };
+  }
+  var ABS_FLAT = 0.25;   // |20 根斜率| < 0.25% 就叫「走平」，不硬分上揚／下彎
+  function slopeWord(A){ return A.flat ? '·均線走平' : (A.rising ? '·均線上揚' : '·均線下彎'); }
+  // Stage 名稱與一句話說明。
+  //   ⚠ 這四句只描述「量到了什麼」，不套未經原書驗證的說法。
+  //     能引用的 Weinstein 原書文字只有 Stage 1 那句：
+  //     「the 30-week MA loses its downside slope and starts to flatten out …
+  //       This basing action can go on for months」。
+  //     Stage 3 的「均線走平但價格仍在高位」查不到原書出處（二手之間也不一致），
+  //     所以 Stage 3 這裡只講測到的事實，不引任何來源。
+  function stageOf(A){
+    if(!A) return null;
+    if(A.above && !A.rising && !A.flat)
+      return { n:3, t:'價格還在 '+ABS_MA+' 均之上，但均線已經轉下 —— 上升結構在鬆動' };
+    if(A.above) return { n:2, t:'站上一條沒有下彎的 '+ABS_MA+' 均 —— 還在上升結構裡' };
+    if(A.flat)  return { n:1, t:'均線走平、價格在均線之下 —— 底部整理的位置' };
+    if(A.rising)
+      return { n:1, t:'<b>均線還在上揚</b>，是價格掉到均線之下 —— 這是修復／打底的位置，'
+                    + '<b>不是「還在下降」</b>' };
+    return { n:4, t:'價格在均線之下、均線也在下彎 —— 絕對走勢確實還在下降' };
   }
 
   // ③ 走勢形狀（Frog in the Pan，套在 RS 線上）
@@ -651,7 +675,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   靠「相對強度還行」爬回中段。所以它改當乘數。
   //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
   //   差一點的不會直接歸零，只是被明顯壓低。
-  // v2.9.1：缺項不得重新分配權重。
+  // v2.9.2：缺項不得重新分配權重。
   //   舊版把缺項的權重按比例攤回「有資料的那幾項」—— 結果是資料愈少分數愈高。
   //   實例（她 9/28 的真實掃描）：INFQ 形狀不足、絕對趨勢整段算不出來，
   //     舊算法 = (95×50 + 50×15) ÷ 65 = 84.6，乘數又預設給滿的 ×1 → 85 分，全池第 2 名。
@@ -762,7 +786,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.1 防守事件
+  // v2.9.2 防守事件
   //   她要的是「哪幾檔開始有急速下跌的迹象」。我原本打算用 RRG 的走弱象限做，
   //   查完發現那是反的 —— de Kempenaer 本人把 領先→走弱 稱為
   //   「digesting its recent rise」，把 領先→走弱→領先 稱為
@@ -983,7 +1007,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // 踩在邊界上時要補的那一句白話（沒踩到就回空字串）
-  // v2.9.1：象限箭頭。
+  // v2.9.2：象限箭頭。
   //   ⚠ 箭頭指的是「象限在圖上的幾何方向」（x=RS 水位、y=動能，中心 100），
   //     不是「好↑／壞↓」。走弱區的 ↘ 不代表股價在跌 —— RRG 量的是相對大盤，
   //     de Kempenaer 本人把 領先→走弱 稱為「digesting its recent rise」，
@@ -1025,7 +1049,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
-    // v2.9.1：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    // v2.9.2：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
     //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
     if (mode==='ranking') {
       document.getElementById('chart-wrap').style.display='none';
@@ -1202,7 +1226,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.1 排名榜
+  // v2.9.2 排名榜
   //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
   //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
   //
@@ -1347,7 +1371,7 @@ window.onerror = function(msg, src, line, col, err) {
         h+='<span style="white-space:nowrap">絕對趨勢<span style="color:#6e7681;font-size:0.66rem">(乘數)</span> '
          + '<b style="color:'+gc+'">×'+r.rank.gate+'</b>'
          + '<span style="color:#6e7681"> '+(A.above?'站上':'跌破')+ABS_MA+'均 '
-         + (A.devPct>0?'+':'')+A.devPct+'%·均線'+(A.rising?'上揚':'下彎')+'</span>'
+         + (A.devPct>0?'+':'')+A.devPct+'%'+slopeWord(A)+'</span>'
          + (A.late?'<span style="color:#ff6b6b"> ⚠末期延伸</span>':(A.warn?'<span style="color:#f7c948"> ⚠偏延伸</span>':''))
          + '</span>';
       }
@@ -2539,7 +2563,7 @@ window.onerror = function(msg, src, line, col, err) {
              + (A.above?'站上150均':'跌破150均')
              + (A.devPct!=null? '<b style="color:'+(A.late?'#f85149':(A.warn?'#d29922':'#6e7681'))+'"> '
                  +(A.devPct>0?'+':'')+A.devPct+'%</b>' : '')
-             + (A.rising?'·均線上揚':'·均線下彎')
+             + slopeWord(A)
              + (A.slpPct!=null? ' '+(A.slpPct>0?'+':'')+A.slpPct+'%/20根' : '')
              + '</span></span>';
       if(info.rank.covered<100) h+='<span style="color:#6e7681">· 只算得出 '+info.rank.covered+'% 的權重</span>';
@@ -2618,7 +2642,7 @@ window.onerror = function(msg, src, line, col, err) {
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
         h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
-        // v2.9.1：象限字放大加粗 + 幾何箭頭（她的建議）。
+        // v2.9.2：象限字放大加粗 + 幾何箭頭（她的建議）。
         //   箭頭是象限在圖上的方向（x=RS、y=動能），不是好壞 ——
         //   走弱的 ↘ 不代表股價在跌，只代表相對大盤的動能掉到 100 以下。
         h+='<span class="hold-position" style="font-size:0.92rem;font-weight:700;color:'
@@ -2647,12 +2671,18 @@ window.onerror = function(msg, src, line, col, err) {
            + '↳ 離 150 日均線 +'+s.absPart.devPct+'%，離 dna 的末期門檻 '+EXT_LATE+'% 還有一段，'
            + '<span style="color:#8b949e">但已經不是貼著均線的位置了。</span></div>';
         }
+        // v2.9.2：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
+        //   但 AMKR / GLW / AAOI 都是「跌破均線、但均線上揚」，那是打底不是下降，
+        //   而且句子旁邊就印著「均線上揚」，自己打自己。判詞必須跟著 Stage 走。
         if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
+          var ST=stageOf(s.absPart);
           h+='<div style="margin-top:4px;font-size:0.73rem;color:#f7c948;line-height:1.6">'
-           + '↳ RRG 上的位置與方向沒問題，但<strong>它自己的絕對走勢還在下降</strong>（'
-           + (s.absPart.above?'站上':'跌破')+'150 均'+(s.absPart.rising?'·均線上揚':'·均線下彎')
-           + '），所以排名被乘上 ×'+s.rank.gate+' 壓到 '+s.rank.score.toFixed(0)+'。'
-           + '<span style="color:#8b949e">領先／改善是<b>相對</b>大盤，大盤在跌的時候，'
+           + '↳ RRG 上的位置與方向沒問題，但它<b>自己的絕對走勢</b>是 <b>Stage '+ST.n+'</b>（'
+           + (s.absPart.above?'站上':'跌破')+ABS_MA+' 均 '+(s.absPart.devPct>0?'+':'')+s.absPart.devPct+'%'
+           + slopeWord(s.absPart)+' '+(s.absPart.slpPct>0?'+':'')+s.absPart.slpPct+'%/20根），'
+           + '所以排名被乘上 ×'+s.rank.gate+' 壓到 '+s.rank.score.toFixed(0)+'。'
+           + '<br><span style="color:#8b949e">'+ST.t+'。</span>'
+           + '<br><span style="color:#8b949e">領先／改善是<b>相對</b>大盤，大盤在跌的時候，'
            + '「跌得比較少」也會被畫進去。</span></div>';
         }
         h+=rankBreakdownHTML(s);
@@ -2728,7 +2758,7 @@ window.onerror = function(msg, src, line, col, err) {
       focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.1：防守事件區（總表最後面）。
+    // v2.9.2：防守事件區（總表最後面）。
     //   這一區刻意「不是」RRG 判斷 —— 它完全不看象限、不看軌跡、不看排名，
     //   只照 IBD 官方 Selling Checklist 裡那兩條「只需要價格＋量能」的規則。
     //   理由寫在 defenseEvents 上面：走弱象限在官方定義裡是消化不是預警，
@@ -2972,7 +3002,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.1 (防守事件)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.2 (Stage 判詞)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
