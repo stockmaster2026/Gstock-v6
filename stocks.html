@@ -1,5 +1,6 @@
 
 <!DOCTYPE html>
+<!-- v2 (2026-09-29): 代理改走自建 Worker＋12秒逾時；警示優先於鯨魚訊號；10日趨勢每天用當天資料；死代號 IIVI→AXTI、GOLD→B；CSS 彎引號修正 -->
 
 <html lang="zh-TW">
 <head>
@@ -18,7 +19,7 @@ padding: 14px 20px;
 display: flex; justify-content: space-between; align-items: center;
 position: sticky; top: 0; z-index: 100;
 }
-.header-title { font-family: ‘Oswald’, sans-serif; font-size: 20px; letter-spacing: 2px; }
+.header-title { font-family: 'Oswald', sans-serif; font-size: 20px; letter-spacing: 2px; }
 .back-btn { background: rgba(255,255,255,0.15); border: none; border-radius: 8px; padding: 6px 14px; color: #fff; font-size: 12px; cursor: pointer; }
 
 .sector-bar { background: #2a3a4a; padding: 10px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; overflow-x: auto; }
@@ -42,7 +43,7 @@ position: sticky; top: 0; z-index: 100;
 .stock-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
 
 .search-wrap { display: flex; gap: 10px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e0e0e0; }
-.custom-input { flex: 1; background: #fff; border: 2px solid #1a2a3a; border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: ‘Noto Sans TC’, sans-serif; outline: none; text-transform: uppercase; }
+.custom-input { flex: 1; background: #fff; border: 2px solid #1a2a3a; border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: 'Noto Sans TC', sans-serif; outline: none; text-transform: uppercase; }
 .custom-input:focus { border-color: #f0c040; }
 .search-btn { background: #1a2a3a; border: none; border-radius: 10px; padding: 10px 18px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .search-btn:hover { background: #f0c040; color: #000; }
@@ -62,14 +63,14 @@ position: sticky; top: 0; z-index: 100;
 .card-loading { background: #e8eef5; border-color: #c0ccd8; color: #666; }
 
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.stock-symbol { font-family: ‘Oswald’, sans-serif; font-size: 26px; letter-spacing: 2px; line-height: 1; }
+.stock-symbol { font-family: 'Oswald', sans-serif; font-size: 26px; letter-spacing: 2px; line-height: 1; }
 .class-badge { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-top: 4px; background: rgba(255,255,255,0.25); letter-spacing: 0.5px; }
 .score-circle { background: rgba(0,0,0,0.2); border-radius: 50%; width: 52px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
-.score-num { font-family: ‘Oswald’, sans-serif; font-size: 18px; line-height: 1.1; }
+.score-num { font-family: 'Oswald', sans-serif; font-size: 18px; line-height: 1.1; }
 .score-lbl { font-size: 8px; opacity: 0.8; }
 
 .price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; }
-.price-val { font-family: ‘Oswald’, sans-serif; font-size: 20px; }
+.price-val { font-family: 'Oswald', sans-serif; font-size: 20px; }
 .price-chg { font-size: 11px; font-weight: 700; background: rgba(0,0,0,0.2); padding: 2px 7px; border-radius: 6px; }
 
 .weather-row { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
@@ -80,7 +81,7 @@ position: sticky; top: 0; z-index: 100;
 .factor-lbl { font-size: 9px; opacity: 0.85; width: 85px; flex-shrink: 0; font-weight: 600; }
 .factor-bar-wrap { flex: 1; background: rgba(0,0,0,0.2); border-radius: 3px; height: 4px; overflow: hidden; }
 .factor-bar-fill { height: 100%; background: rgba(255,255,255,0.7); border-radius: 3px; transition: width 0.6s ease; }
-.factor-val { font-family: ‘Oswald’, sans-serif; font-size: 12px; width: 22px; text-align: right; opacity: 0.9; }
+.factor-val { font-family: 'Oswald', sans-serif; font-size: 12px; width: 22px; text-align: right; opacity: 0.9; }
 
 /* 10天趨勢 */
 .trend-section { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; margin-bottom: 10px; }
@@ -88,19 +89,20 @@ position: sticky; top: 0; z-index: 100;
 .trend-row-label { font-size: 9px; opacity: 0.8; margin-bottom: 3px; font-weight: 600; }
 .trend-bars { display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; width: 100%; overflow: hidden; margin-bottom: 6px; }
 .trend-num-wrap { flex: 1; text-align: center; min-width: 0; }
-.trend-num-val { display: inline-block; font-family: ‘Oswald’, sans-serif; font-size: 8.5px; font-weight: 600; padding: 1px 1px; border-radius: 3px; width: 100%; text-align: center; }
+.trend-num-val { display: inline-block; font-family: 'Oswald', sans-serif; font-size: 8.5px; font-weight: 600; padding: 1px 1px; border-radius: 3px; width: 100%; text-align: center; }
 
 /* 綜合分數區塊 */
 .score-summary-box { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.2); }
 .score-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
 .score-summary-row + .score-summary-row { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 3px; padding-top: 6px; }
 .ss-label { font-size: 10px; font-weight: 600; opacity: 0.85; }
-.ss-num { font-family: ‘Oswald’, sans-serif; font-size: 20px; font-weight: 700; line-height: 1; display: inline-block; min-width: 32px; text-align: right; }
+.ss-num { font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 700; line-height: 1; display: inline-block; min-width: 32px; text-align: right; }
 .ss-denom { font-size: 10px; opacity: 0.6; margin-left: 2px; }
 
 /* 白話文建議 */
 .advice-box { background: rgba(0,0,0,0.15); border-radius: 8px; padding: 8px 10px; font-size: 10px; line-height: 1.6; border-left: 3px solid rgba(255,255,255,0.4); }
-.wt-num { flex: 1; text-align: center; font-family: “Oswald”, sans-serif; font-size: 8.5px; padding: 1px 0; border-radius: 3px; }
+.wt-num { flex: 1; text-align: center; font-family: "Oswald", sans-serif; font-size: 8.5px; padding: 1px 0; border-radius: 3px; }
+.trend-note { font-size: 9px; opacity: 0.85; margin: -2px 0 8px 0; line-height: 1.4; }
 .advice-technical { opacity: 0.9; margin-bottom: 4px; }
 .advice-action { font-weight: 700; opacity: 1; }
 </style>
@@ -109,7 +111,7 @@ position: sticky; top: 0; z-index: 100;
 <body>
 
 <div class="header">
-  <div class="header-title">📊 股票評分</div>
+  <div class="header-title">📊 股票評分<span style="font-size:10px;opacity:.6;margin-left:8px;letter-spacing:0">v2</span></div>
   <button class="back-btn" onclick="history.back()">← 返回板塊</button>
 </div>
 
@@ -140,13 +142,13 @@ const SECTORS = {
   'AI巨頭':      { emoji:'🤖', stocks:['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'] },
   'AI基礎設施':  { emoji:'🔧', stocks:['AMD','SMCI','AVGO','ARM','MRVL'] },
   'AI電力/散熱': { emoji:'⚡', stocks:['VST','CEG','GEV','VRT','ETN'] },
-  '光通訊':      { emoji:'📡', stocks:['COHR','LITE','CIEN','AAOI','IIVI'] },
+  '光通訊':      { emoji:'📡', stocks:['COHR','LITE','CIEN','AAOI','AXTI'] },
   '儲存硬體':    { emoji:'💾', stocks:['SNDK','WDC','MU','STX','LRCX'] },
   '太空':        { emoji:'🚀', stocks:['RKLB','LUNR','PL','ASTS','RDW'] },
   '無人機/國防': { emoji:'🛸', stocks:['AVAV','KTOS','JOBY','ACHR','AIRO'] },
   '量子運算':    { emoji:'⚛️', stocks:['IONQ','RGTI','QBTS','QUBT','IBM'] },
   '生技/健康':   { emoji:'🧬', stocks:['RXRX','TEM','CRSP','SDGR','HIMS'] },
-  '貴金屬/礦業': { emoji:'🥇', stocks:['NEM','AEM','WPM','GOLD','HL'] },
+  '貴金屬/礦業': { emoji:'🥇', stocks:['NEM','AEM','WPM','B','HL'] },
 };
 
 const CLASS_A = ['NVDA','AMD','MU','WDC','COHR','STX','SNDK','MSFT','AAPL','GOOGL','META','AMZN','TSLA','NEM','LRCX','AVGO','IBM','VRT','ETN','CEG','VST'];
@@ -157,32 +159,27 @@ function getThreshold(sym) { return getClass(sym) === 'A' ? 6.5 : 7.0; }
 let currentSector = 'AI巨頭';
 
 const PROXIES = [
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => url
+  url => `https://gstock-proxy.cykjas.workers.dev/?url=${encodeURIComponent(url)}`
 ];
 
 async function fetchYahoo(symbol) {
   const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y`;
+  let lastErr = '';
   for (let i = 0; i < PROXIES.length; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
     try {
-      const proxyUrl = PROXIES[i](yahooUrl);
-      const res = await fetch(proxyUrl);
-      if (!res.ok) continue;
-      let data;
-      if (i === 1) {
-        const wrapper = await res.json();
-        data = JSON.parse(wrapper.contents);
-      } else {
-        data = await res.json();
-      }
-      if (!data.chart || !data.chart.result) continue;
+      const res = await fetch(PROXIES[i](yahooUrl), { signal: ctrl.signal });
+      if (!res.ok) { lastErr = 'HTTP ' + res.status; continue; }
+      const data = await res.json();
+      if (!data.chart || !data.chart.result) { lastErr = '查無這個代號的資料'; continue; }
       const result = data.chart.result[0];
       const closes = result.indicators.quote[0].close;
       const volumes = result.indicators.quote[0].volume;
       const timestamps = result.timestamp;
-      const valid = closes.map((c, i) => ({ c, v: volumes[i], t: timestamps[i] }))
+      const valid = closes.map((c, k) => ({ c, v: volumes[k], t: timestamps[k] }))
                           .filter(d => d.c !== null && d.c !== undefined);
+      if (valid.length < 2) { lastErr = '資料筆數不足'; continue; }
       return {
         current: valid[valid.length-1].c,
         prev: valid[valid.length-2].c,
@@ -191,11 +188,25 @@ async function fetchYahoo(symbol) {
         timestamps: valid.map(d => d.t)
       };
     } catch(e) {
-      console.log(`Proxy ${i} failed for ${symbol}:`, e.message);
-      continue;
+      lastErr = (e && e.name === 'AbortError') ? '逾時（12 秒沒有回應）' : (e && e.message) || '連線失敗';
+    } finally {
+      clearTimeout(timer);
     }
   }
-  throw new Error('所有代理均失敗');
+  throw new Error(lastErr || '抓不到資料');
+}
+
+// 大盤(SPY)：回傳今天漲跌，以及每天的收盤（讓 10 日趨勢每一天用當天的大盤）
+function dayKey(t) { return new Date(t * 1000).toISOString().slice(0, 10); }
+async function getSpy() {
+  try {
+    const spy = await fetchYahoo('SPY');
+    const byDate = {};
+    spy.closes.forEach((c, k) => { byDate[dayKey(spy.timestamps[k])] = c; });
+    return { change: spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0, byDate };
+  } catch(e) {
+    return { change: null, byDate: null };
+  }
 }
 
 async function searchCustomStock() {
@@ -209,12 +220,8 @@ async function searchCustomStock() {
       載入中...
     </div>
   </div></div>`;
-  let spyChange = 0;
-  try {
-    const spy = await fetchYahoo('SPY');
-    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
-  } catch(e) {}
-  await loadStock(sym, spyChange, 0);
+  const spy = await getSpy();
+  await loadStock(sym, spy.change, 0, spy.byDate);
 }
 
 function init() {
@@ -254,20 +261,16 @@ async function loadSector(sectorName) {
     </div>`).join('');
   document.getElementById('progressBar').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
-  let spyChange = 0;
-  try {
-    const spy = await fetchYahoo('SPY');
-    spyChange = spy.prev ? ((spy.current - spy.prev) / spy.prev * 100) : 0;
-  } catch(e) {}
+  const spy = await getSpy();
   for (let i = 0; i < stocks.length; i++) {
     document.getElementById('progressFill').style.width = `${((i+1)/stocks.length)*100}%`;
-    await loadStock(stocks[i], spyChange, i);
+    await loadStock(stocks[i], spy.change, i, spy.byDate);
     await sleep(400);
   }
   document.getElementById('progressBar').style.display = 'none';
 }
 
-async function loadStock(sym, spyChange, idx) {
+async function loadStock(sym, spyChange, idx, spyByDate) {
   try {
     const d = await fetchYahoo(sym);
     const stockClass = getClass(sym);
@@ -276,7 +279,7 @@ async function loadStock(sym, spyChange, idx) {
     const total10 = scores.total / 10;
     const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
 
-    const hist10 = calcHistory10(d, spyChange);
+    const hist10 = calcHistory10(d, spyChange, spyByDate);
     const whaleScore = calcWhale(d);
     const whaleDisplay = getWhaleDisplay(whaleScore);
     const whaleHistory = calcWhaleHistory10(d);
@@ -285,7 +288,8 @@ async function loadStock(sym, spyChange, idx) {
     // ★ 覆蓋規則：空頭訊號強制降級顏色
     const hasBearOverride = advice.technical.includes('空頭訊號確認') 
       || advice.technical.includes('跌破MA200');
-    const hasFireOverride = advice.action.includes('三把火');
+    const hasFireOverride = advice.fireLv >= 3;
+    const hasFireWarn = advice.fireLv >= 1 && advice.fireLv < 3;
     let weather;
     if (hasBearOverride) {
       weather = { icon:'🌧️', label:'走弱 — 空頭訊號！', cardCls:'card-red-light' };
@@ -293,6 +297,11 @@ async function loadStock(sym, spyChange, idx) {
       weather = { icon:'🔥', label:'過熱 — 謹慎追高', cardCls:'card-red-light' };
     } else {
       weather = getWeather(total10, threshold);
+      // 一把火／二把火：顏色照分數（趨勢確實強），但標籤不能再寫「積極進場／可小量試單」，
+      // 否則會跟下面「空手者等回調」互相打架
+      if (hasFireWarn) {
+        weather = { icon:'🔥', label: total10 >= threshold ? '強勢但過熱 — 不追高' : '過熱 — 留意回調', cardCls: weather.cardCls };
+      }
     }
 
     const card = document.getElementById(`card-${sym}`);
@@ -302,7 +311,7 @@ async function loadStock(sym, spyChange, idx) {
 
     // ★ suggestText 也跟著覆蓋
     const suggestText = hasBearOverride ? '⚠️ 空頭訊號警示'
-      : hasFireOverride ? '🔥 過熱警示'
+      : (hasFireOverride || hasFireWarn) ? '🔥 過熱警示'
       : total10 >= threshold ? '✓ 符合進場條件'
       : total10 >= 4 ? '～ 繼續觀察' : '✗ 暫時迴避';
 
@@ -332,10 +341,14 @@ async function loadStock(sym, spyChange, idx) {
       </div>
       <div class="trend-section">
         <div class="trend-title">📅 近10日趨勢</div>
-        <div class="trend-row-label"><span style="display:inline-block;width:42px">📊 綜合</span>${renderTrendBars(hist10)}</div>
+        <div class="trend-row-label"><span style="display:inline-block;width:42px">📊 綜合</span>${renderTrendBars(hist10, threshold)}</div>
+        ${trendReading(hist10, '綜合分數')}
         <div class="trend-row-label"><span style="display:inline-block;width:42px">🐋 鯨魚</span>${renderWhaleTrend(whaleHistory)}</div>
+        ${trendReading(whaleHistory, '主力吸籌')}
         <div class="trend-row-label"><span style="display:inline-block;width:42px">💰 股價</span>${renderPriceTrend(d.closes)}</div>
+        ${priceReading(d.closes)}
       </div>
+      ${spyChange == null ? '<div class="trend-note">⚠ 大盤資料沒抓到，「大盤」那一項先用中性值，其他四項不受影響。</div>' : ''}
       <div class="score-summary-box">
         <div class="score-summary-row">
           <span class="ss-label">📊 綜合評分</span>
@@ -366,30 +379,55 @@ function factorRow(label, score) {
   </div>`;
 }
 
-function calcHistory10(d, spyChange) {
+function calcHistory10(d, spyChange, spyByDate) {
   const results = [];
   const len = d.closes.length;
   for (let i = 0; i < 10; i++) {
     const idx = len - 10 + i;
     if (idx < 50) { results.push(null); continue; }
-    const slice = { ...d, closes: d.closes.slice(0, idx+1), volumes: d.volumes.slice(0, idx+1) };
-    const s = calcScore(slice, spyChange);
+    // 每一天用「那一天」的前收盤與大盤漲跌；今天（最後一格）維持與卡片主分數完全相同
+    let sc = spyChange;
+    if (i < 9 && spyByDate && d.timestamps) {
+      const c1 = spyByDate[dayKey(d.timestamps[idx])];
+      const c0 = spyByDate[dayKey(d.timestamps[idx-1])];
+      if (c1 && c0) sc = (c1 - c0) / c0 * 100;
+    }
+    const slice = { ...d, closes: d.closes.slice(0, idx+1), volumes: d.volumes.slice(0, idx+1),
+                    prev: i < 9 ? d.closes[idx-1] : d.prev };
+    const s = calcScore(slice, sc);
     results.push(s.total / 10); // ★ 存10分制
   }
   return results;
 }
 
 // ★ renderTrendBars 現在接收10分制數值
-function renderTrendBars(scores) {
+function renderTrendBars(scores, threshold) {
   return `<span style="display:inline-flex;gap:2px;vertical-align:middle">${scores.map((s, i) => {
     if (s === null) return `<span class="trend-num-val" style="opacity:0.3;display:inline-block;width:18px">--</span>`;
     const isToday = i === 9;
-    const color = s >= 7.5 ? 'rgba(160,255,200,0.95)'
-                : s >= 5.0 ? 'rgba(160,200,255,0.95)'
+    // 顏色門檻與卡片一致：達標=綠、4分以上=藍、2.5分以上=淡紅、其餘=橘
+    const color = s >= threshold ? 'rgba(160,255,200,0.95)'
+                : s >= 4.0 ? 'rgba(160,200,255,0.95)'
                 : s >= 2.5 ? 'rgba(255,160,160,0.95)'
                 : 'rgba(255,140,100,0.95)';
     return `<span class="trend-num-val" style="background:${color};display:inline-block;min-width:18px;text-align:center;border-radius:3px;padding:1px 2px;${isToday?'font-weight:900;':''}">${s.toFixed(1)}</span>`;
   }).join('')}</span>`;
+}
+
+// 近10日走勢的白話解讀（光看數字沒有意義）
+function trendReading(arr, label) {
+  const v = arr.filter(x => x !== null && x !== undefined);
+  if (v.length < 4) return '';
+  const first = v[0], last = v[v.length-1], diff = last - first;
+  const word = diff >= 1 ? '在走強' : diff <= -1 ? '在轉弱' : '大致持平';
+  return `<div class="trend-note">近${v.length}日 ${first.toFixed(1)} → ${last.toFixed(1)}：${label}${word}</div>`;
+}
+function priceReading(closes) {
+  const last10 = closes.slice(-10);
+  if (last10.length < 2 || !(last10[0] > 0)) return '';
+  const pct = (last10[last10.length-1] - last10[0]) / last10[0] * 100;
+  const word = pct >= 3 ? '股價在往上' : pct <= -3 ? '股價在往下' : '股價大致橫盤';
+  return `<div class="trend-note">近10日 ${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%：${word}</div>`;
 }
 
 function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) {
@@ -502,7 +540,14 @@ function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) 
 
   const whaleStrong = whaleScore >= 7;
   const whaleMed = whaleScore >= 4;
-  if (whaleStrong && total10 >= threshold) {
+  // 過熱／空頭警示優先：鯨魚訊號只能「補充說明」，不能蓋掉警示、更不能叫人加碼
+  if (fireLv >= 1 || bearSignal) {
+    if (whaleStrong) {
+      action = action + ' 🐋 另外：主力有明顯吸籌跡象，但這不改變上面的判斷（過熱／空頭警示優先，不因此加碼）。';
+    } else if (!whaleMed && total10 >= 7.5) {
+      action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
+    }
+  } else if (whaleStrong && total10 >= threshold) {
     action = '🐋🐋🐋 主力積極吸籌！' + action + ' 鯨魚訊號極強，可提高倉位至60-70%。';
   } else if (whaleStrong && total10 >= 4.0) {
     action = '🐋🐋🐋 注意！技術面雖偏弱，但主力有明顯吸籌跡象。空手者可小量試探（10-20%），設好停損。';
@@ -514,7 +559,7 @@ function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) 
     action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
   }
 
-  return { technical, action };
+  return { technical, action, fireLv, bearSignal };
 }
 
 // ★ getWeather 接收10分制
@@ -541,7 +586,7 @@ function calcScore(d, spyChange) {
   if (ma200) champ += 15;
   champ = Math.min(100, champ);
 
-  let marketBase = 50 + (spyChange > 1 ? 30 : spyChange > 0 ? 15 : spyChange > -1 ? -10 : -25);
+  let marketBase = spyChange == null ? 50 : 50 + (spyChange > 1 ? 30 : spyChange > 0 ? 15 : spyChange > -1 ? -10 : -25);
   let rs = 50;
   if (closes.length >= 20) {
     const stockRet20 = (price - closes[closes.length-20]) / closes[closes.length-20] * 100;
@@ -639,23 +684,13 @@ function getWhaleDisplay(score) {
 }
 
 function calcWhaleHistory10(d) {
+  // 每一天都用與「🐋 鯨魚指標」同一套算法，這樣最後一格 = 今天的鯨魚分數
   const results = [];
-  const closes = d.closes;
-  const volumes = d.volumes;
-  const len = closes.length;
-  if (len < 25) return Array(10).fill(null);
+  const len = d.closes.length;
   for (let i = 0; i < 10; i++) {
     const idx = len - 10 + i;
     if (idx < 21) { results.push(null); continue; }
-    let upV = 0, downV = 0;
-    for (let j = idx-9; j <= idx; j++) {
-      if (j < 1) continue;
-      if (closes[j] > closes[j-1]) upV += volumes[j];
-      else downV += volumes[j];
-    }
-    const ratio = upV / (downV || 1);
-    const score = Math.min(10, Math.round(ratio * 3));
-    results.push(score);
+    results.push(calcWhale({ closes: d.closes.slice(0, idx+1), volumes: d.volumes.slice(0, idx+1) }));
   }
   return results;
 }
