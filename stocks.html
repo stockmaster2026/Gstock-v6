@@ -1,6 +1,7 @@
 
 <!DOCTYPE html>
-<!-- v4 (2026-09-29): 程式碼檢查後修正：新上市不誤判空頭、RSI 改 Wilder（同 TradingView）、盤中不用未收完的量、圖例顏色對齊卡片、過熱改橘色、搜尋框驗證。
+<!-- v5 (2026-09-30): 建議文字改成跟 dna／你的規則一致（不給倉位%、不用 MA 當停損、不叫人加碼）；板塊溫度條＋掃描全部板塊；排序與篩選。
+     v4 (2026-09-29): 程式碼檢查後修正：新上市不誤判空頭、RSI 改 Wilder（同 TradingView）、盤中不用未收完的量、圖例顏色對齊卡片、過熱改橘色、搜尋框驗證。
      v3 (2026-09-29): 板塊與 dna／news 同一份名單（七巨頭＋11 個板塊），每個板塊 6~22 檔；3 檔同時載入；切板塊會停掉舊的；10 分鐘快取。
      v2 (2026-09-29): 代理改走自建 Worker＋12秒逾時；警示優先於鯨魚訊號；10日趨勢每天用當天資料；死代號 IIVI→AXTI、GOLD→B；CSS 彎引號修正 -->
 
@@ -65,6 +66,29 @@ position: sticky; top: 0; z-index: 100;
 .card-brown  { background: #8a0c0c; border-color: #5a0808; color: #fff; }
 .card-orange { background: #d9822b; border-color: #a8611a; color: #fff; }
 .card-gray   { background: #7b8794; border-color: #5d6875; color: #fff; }
+.role-note { font-size: 11px; color: #355; background: #e8f1f8; border: 1px solid #c9dcec; border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; line-height: 1.5; }
+.sector-summary { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.ss2-title { font-size: 13px; font-weight: 700; color: #1a2a3a; margin-bottom: 8px; }
+.ss2-title small { font-weight: 400; color: #888; font-size: 10px; }
+.ss2-row { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 5px; color: #333; flex-wrap: wrap; }
+.ss2-k { width: 74px; flex-shrink: 0; font-weight: 600; }
+.ss2-bar { flex: 1; min-width: 80px; height: 8px; background: #e3e7ec; border-radius: 4px; overflow: hidden; }
+.ss2-bar span { display: block; height: 100%; border-radius: 4px; }
+.ss2-v { width: 88px; text-align: right; font-variant-numeric: tabular-nums; }
+.ss2-w { font-weight: 700; min-width: 96px; }
+.ss2-bands { font-size: 11px; color: #333; margin-top: 6px; }
+.ss2-note { font-size: 10px; color: #777; margin-top: 6px; line-height: 1.5; }
+.view-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 11px; color: #444; }
+.view-bar select { font-size: 12px; padding: 5px 8px; border: 1px solid #c0c8d2; border-radius: 8px; background: #fff; color: #1a2a3a; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: #fff; border: 1px solid #c0c8d2; border-radius: 16px; padding: 4px 11px; font-size: 11px; cursor: pointer; color: #1a2a3a; white-space: nowrap; }
+.chip.active { background: #1a2a3a; color: #fff; border-color: #1a2a3a; font-weight: 700; }
+.view-count { color: #888; font-size: 10px; }
+.scan-btn { margin-left: auto; background: #1a2a3a; color: #fff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.scan-btn:disabled { opacity: 0.6; cursor: default; }
+.scan-note { font-size: 10px; color: #888; margin-bottom: 10px; line-height: 1.5; }
+.tab-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 3px 0 6px; vertical-align: middle; border: 1px solid rgba(255,255,255,0.6); }
+.tab-pct { font-size: 10px; opacity: 0.85; }
 .card-loading { background: #e8eef5; border-color: #c0ccd8; color: #666; }
 
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
@@ -116,7 +140,7 @@ position: sticky; top: 0; z-index: 100;
 <body>
 
 <div class="header">
-  <div class="header-title">📊 股票評分<span style="font-size:10px;opacity:.6;margin-left:8px;letter-spacing:0">v4</span></div>
+  <div class="header-title">📊 股票評分<span style="font-size:10px;opacity:.6;margin-left:8px;letter-spacing:0">v5</span></div>
   <button class="back-btn" onclick="history.back()">← 返回板塊</button>
 </div>
 
@@ -129,6 +153,27 @@ position: sticky; top: 0; z-index: 100;
 
 <div class="main">
 <div id="customCardArea"></div>
+<div class="role-note">📌 這一頁回答的是「哪裡值得看」。買價、停損、股數請用 dna（pivot／停損／每筆風險 1% 的規則），出場用你自己的出場規則。</div>
+<div id="sectorSummary"></div>
+<div class="view-bar">
+  <label>排序 <select id="sortSel" onchange="setSort(this.value)">
+    <option value="default">預設順序</option>
+    <option value="scoreDesc">分數 高 → 低</option>
+    <option value="scoreAsc">分數 低 → 高</option>
+    <option value="chgDesc">今日漲幅 大 → 小</option>
+  </select></label>
+  <span class="chips" id="filterChips">
+    <span class="chip active" data-f="all" onclick="setFilter('all')">全部</span>
+    <span class="chip" data-f="green" onclick="setFilter('green')">🟢 綠</span>
+    <span class="chip" data-f="blue" onclick="setFilter('blue')">🔵 藍</span>
+    <span class="chip" data-f="red" onclick="setFilter('red')">🔴 紅</span>
+    <span class="chip" data-f="orange" onclick="setFilter('orange')">🟠 過熱</span>
+    <span class="chip" data-f="gray" onclick="setFilter('gray')">⚪ 灰</span>
+  </span>
+  <span class="view-count" id="viewCount"></span>
+  <button class="scan-btn" id="scanBtn" onclick="scanAll()">🔍 掃描全部板塊</button>
+</div>
+<div class="scan-note" id="scanNote"></div>
 <div class="legend-bar">
     <div class="legend-item"><div class="leg-dot" style="background:#0a5c2e"></div>強勢(8分以上)</div>
     <div class="legend-item"><div class="leg-dot" style="background:#2eab5f"></div>達標</div>
@@ -259,17 +304,121 @@ async function searchCustomStock() {
   await loadStock(sym, spy.change, 0, spy.byDate, 'custom-card-' + sym);
 }
 
-function init() {
+// ---------- 板塊溫度（站上均線的比例）----------
+const ZONE = { strong:{ c:'#1e8c4a' }, mixed:{ c:'#d9a400' }, weak:{ c:'#c0281e' } };
+function zoneOf(p) { return p >= 65 ? 'strong' : p <= 35 ? 'weak' : 'mixed'; }   // 粗略分界，不是精確門檻
+let scanData = null;      // { time, sectors:{名稱:{p50,a50,e50,a200,e200}} }
+let viewSort = 'default', viewFilter = 'all';
+
+function loadPrefs() {
+  try { scanData = JSON.parse(localStorage.getItem('stocks_scan_v1') || 'null'); } catch(e) { scanData = null; }
+  try {
+    const v = JSON.parse(localStorage.getItem('stocks_view_v1') || 'null');
+    if (v && v.sort) viewSort = v.sort;
+    if (v && v.filter) viewFilter = v.filter;
+  } catch(e) {}
+}
+function savePrefs() {
+  try { localStorage.setItem('stocks_view_v1', JSON.stringify({ sort: viewSort, filter: viewFilter })); } catch(e) {}
+}
+
+function renderTabs() {
   const bar = document.getElementById('sectorBar');
+  bar.innerHTML = Object.entries(SECTORS).map(([name, sec]) => {
+    const sc = scanData && scanData.sectors && scanData.sectors[name];
+    let badge = '', tip = '';
+    if (sc && sc.e50) {
+      badge = `<span class="tab-dot" style="background:${ZONE[zoneOf(sc.p50)].c}"></span><span class="tab-pct">${sc.p50}%</span>`;
+      tip = ` title="站上 MA50：${sc.a50}/${sc.e50}（${sc.p50}%）"`;
+    }
+    return `<div class="sector-tag ${name===currentSector?'active':''}" data-sector="${name}"${tip} onclick="switchSector(this)">${sec.emoji} ${name}${badge}</div>`;
+  }).join('');
+  const note = document.getElementById('scanNote');
+  if (note) {
+    if (scanData && scanData.time) {
+      const t = new Date(scanData.time);
+      const stale = Date.now() - scanData.time > 86400000 ? '（已超過一天，建議重掃）' : '';
+      note.textContent = `分頁上的百分比＝該板塊站在 MA50 之上的比例（綠＝多數在上、黃＝分歧、紅＝多數在下）。上次掃描：${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}${stale}`;
+    } else {
+      note.textContent = '按「掃描全部板塊」，分頁上會出現各板塊的強弱色點，不用一個一個點進去看。';
+    }
+  }
+}
+
+function renderSectorSummary(sectorName, results, total) {
+  const box = document.getElementById('sectorSummary');
+  if (!box) return;
+  if (!results.length) { box.innerHTML = ''; return; }
+  const cnt = { green:0, blue:0, red:0, orange:0, gray:0 };
+  let a50 = 0, e50 = 0, a200 = 0, e200 = 0;
+  results.forEach(r => {
+    cnt[r.band]++;
+    if (r.above50 !== null) { e50++; if (r.above50) a50++; }
+    if (r.above200 !== null) { e200++; if (r.above200) a200++; }
+  });
+  const line = (label, a, e) => {
+    if (!e) return '';
+    const p = Math.round(a / e * 100), z = zoneOf(p), c = ZONE[z].c;
+    const word = z === 'strong' ? `多數站在 ${label} 之上` : z === 'weak' ? `多數跌到 ${label} 之下` : '強弱分歧';
+    return `<div class="ss2-row"><span class="ss2-k">站上 ${label}</span><span class="ss2-bar"><span style="width:${p}%;background:${c}"></span></span><span class="ss2-v">${a}/${e}（${p}%）</span><span class="ss2-w" style="color:${c}">${word}</span></div>`;
+  };
+  const loading = results.length < total ? `（已載入 ${results.length}/${total}）` : '';
+  box.innerHTML = `<div class="sector-summary">
+    <div class="ss2-title">🌡️ 板塊溫度 · ${sectorName} <small>${loading}</small></div>
+    ${line('MA50', a50, e50)}${line('MA200', a200, e200)}
+    <div class="ss2-bands">🟢 ${cnt.green}　🔵 ${cnt.blue}　🔴 ${cnt.red}　🟠 ${cnt.orange}　⚪ ${cnt.gray}</div>
+    <div class="ss2-note">MA50 看短期、MA200 看長期，兩條都偏弱才算板塊真的弱。看「比例」比看單一張卡的顏色穩，因為單日顏色會被大盤當天的漲跌影響。65%／35% 只是粗略的分界，不是精確門檻。</div>
+  </div>`;
+}
+
+// ---------- 排序與篩選 ----------
+function syncViewControls() {
+  const sel = document.getElementById('sortSel');
+  if (sel) sel.value = viewSort;
+  document.querySelectorAll('#filterChips .chip').forEach(c => {
+    if (c.getAttribute('data-f') === viewFilter) c.classList.add('active'); else c.classList.remove('active');
+  });
+}
+function setSort(v) { viewSort = v; savePrefs(); applyView(); }
+function setFilter(f) { viewFilter = f; savePrefs(); syncViewControls(); applyView(); }
+function applyView() {
+  const grid = document.getElementById('cardsGrid');
+  const cards = grid && grid.children ? Array.from(grid.children) : [];
+  let withData = 0, shown = 0;
+  cards.forEach(c => {
+    const idx = +(c.getAttribute('data-idx') || 0);
+    const sc = c.getAttribute('data-score');
+    const hasData = sc !== null && sc !== '' && sc !== undefined;
+    let order = idx, show = true;
+    if (hasData) {
+      withData++;
+      const score = +sc;
+      const chg = Math.max(-90, Math.min(90, +c.getAttribute('data-chg')));
+      if (viewSort === 'scoreDesc') order = Math.round((10 - score) * 100) * 1000 + idx;
+      else if (viewSort === 'scoreAsc') order = Math.round(score * 100) * 1000 + idx;
+      else if (viewSort === 'chgDesc') order = Math.round((100 - chg) * 100) * 1000 + idx;
+      if (viewFilter !== 'all' && c.getAttribute('data-band') !== viewFilter) show = false;
+      if (show) shown++;
+    } else if (viewSort !== 'default') {
+      order = 900000000 + idx;      // 還在載入的排到最後
+    }
+    c.style.order = order;
+    c.style.display = show ? '' : 'none';
+  });
+  const vc = document.getElementById('viewCount');
+  if (vc) vc.textContent = withData ? `顯示 ${shown} / ${withData} 檔` : '';
+}
+
+function init() {
+  loadPrefs();
   try {
     const inp = document.getElementById('customInput');
     if (inp) inp.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') searchCustomStock();
     });
   } catch(e) {}
-  bar.innerHTML = Object.entries(SECTORS).map(([name, s]) =>
-    `<div class="sector-tag ${name===currentSector?'active':''}" data-sector="${name}" onclick="switchSector(this)">${s.emoji} ${name}</div>`
-  ).join('');
+  renderTabs();
+  syncViewControls();
   loadSector(currentSector);
 }
 
@@ -277,11 +426,56 @@ function switchSector(el) {
   const sectorName = el.getAttribute('data-sector');
   if (!sectorName || !SECTORS[sectorName]) return;
   currentSector = sectorName;
-  document.querySelectorAll('.sector-tag').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  renderTabs();
   document.getElementById('customCardArea').innerHTML = '';
   document.getElementById('customInput').value = '';
   loadSector(sectorName);
+}
+
+// ---------- 掃描全部板塊（只算站上均線與顏色，不畫卡片）----------
+let scanRunning = false;
+async function scanAll() {
+  if (scanRunning) return;
+  scanRunning = true;
+  const btn = document.getElementById('scanBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const spy = await getSpy();
+    const syms = [];
+    Object.values(SECTORS).forEach(sec => sec.stocks.forEach(x => { if (!syms.includes(x)) syms.push(x); }));
+    const res = {};
+    let next = 0, done = 0;
+    const worker = async () => {
+      while (true) {
+        const i = next++;
+        if (i >= syms.length) return;
+        try {
+          const d = await fetchYahoo(syms[i]);
+          res[syms[i]] = analyzeStock(syms[i], d, spy.change, null, true);
+        } catch(e) { res[syms[i]] = null; }
+        done++;
+        if (btn) btn.textContent = `掃描中 ${done}/${syms.length}`;
+        await sleep(150);
+      }
+    };
+    await Promise.all([worker(), worker()]);
+    const sectors = {};
+    Object.entries(SECTORS).forEach(([name, sec]) => {
+      let a50 = 0, e50 = 0, a200 = 0, e200 = 0;
+      sec.stocks.forEach(x => {
+        const r = res[x]; if (!r) return;
+        if (r.above50 !== null) { e50++; if (r.above50) a50++; }
+        if (r.above200 !== null) { e200++; if (r.above200) a200++; }
+      });
+      sectors[name] = { a50, e50, a200, e200, p50: e50 ? Math.round(a50 / e50 * 100) : 0 };
+    });
+    scanData = { time: Date.now(), sectors };
+    try { localStorage.setItem('stocks_scan_v1', JSON.stringify(scanData)); } catch(e) {}
+    renderTabs();
+  } finally {
+    scanRunning = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 掃描全部板塊'; }
+  }
 }
 
 let loadToken = 0;   // 切換板塊時，舊板塊還沒跑完的就停掉，不再浪費請求
@@ -290,7 +484,7 @@ async function loadSector(sectorName) {
   const stocks = SECTORS[sectorName].stocks;
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = stocks.map((sym, i) => `
-    <div class="stock-card card-loading" id="card-${sym}" style="animation-delay:${Math.min(i,12)*0.05}s">
+    <div class="stock-card card-loading" id="card-${sym}" data-idx="${i}" style="order:${i};animation-delay:${Math.min(i,12)*0.05}s">
       <div style="padding:30px;text-align:center;color:#aaa;font-size:12px;">
         <div style="font-family:'Oswald',sans-serif;font-size:22px;color:#1a2a3a;margin-bottom:8px">${sym}</div>
         載入中...
@@ -298,16 +492,24 @@ async function loadSector(sectorName) {
     </div>`).join('');
   document.getElementById('progressBar').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('sectorSummary').innerHTML = '';
+  const vc0 = document.getElementById('viewCount'); if (vc0) vc0.textContent = '';
   const spy = await getSpy();
   if (my !== loadToken) return;
+  const results = [];
   let next = 0, done = 0;
   async function worker() {
     while (my === loadToken) {
       const i = next++;
       if (i >= stocks.length) return;
-      await loadStock(stocks[i], spy.change, i, spy.byDate);
+      const r = await loadStock(stocks[i], spy.change, i, spy.byDate);
       done++;
-      if (my === loadToken) document.getElementById('progressFill').style.width = `${(done/stocks.length)*100}%`;
+      if (my === loadToken) {
+        if (r) results.push({ sym: r.sym, band: r.band, above50: r.above50, above200: r.above200, total10: r.total10 });
+        renderSectorSummary(sectorName, results, stocks.length);
+        applyView();
+        document.getElementById('progressFill').style.width = `${(done/stocks.length)*100}%`;
+      }
       await sleep(150);
     }
   }
@@ -315,55 +517,80 @@ async function loadSector(sectorName) {
   if (my === loadToken) document.getElementById('progressBar').style.display = 'none';
 }
 
+// 卡片顏色 → 大類（篩選與板塊溫度共用）
+function bandOf(cls) {
+  if (/green/.test(cls)) return 'green';
+  if (/blue/.test(cls))  return 'blue';
+  if (/orange/.test(cls)) return 'orange';
+  if (/gray/.test(cls))  return 'gray';
+  return 'red';
+}
+
+// 分析一檔：回傳卡片要用的全部東西（不碰畫面）。light=true 時略過 10 日趨勢（掃描全部板塊用）
+function analyzeStock(sym, d, spyChange, spyByDate, light) {
+  const stockClass = getClass(sym);
+  const threshold = getThreshold(sym);
+  const scores = calcScore(d, spyChange);
+  const total10 = scores.total / 10;
+  const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
+
+  const hist10 = light ? null : calcHistory10(d, spyChange, spyByDate);
+  const whaleScore = calcWhale(d);
+  const whaleDisplay = getWhaleDisplay(whaleScore);
+  const whaleHistory = light ? null : calcWhaleHistory10(d);
+  const advice = genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore);
+
+  // ★ 覆蓋規則：空頭訊號強制降級顏色
+  const hasBearOverride = advice.technical.includes('空頭訊號確認')
+    || advice.technical.includes('跌破MA200');
+  const hasFireOverride = advice.fireLv >= 3;
+  const hasFireWarn = advice.fireLv >= 1 && advice.fireLv < 3;
+  let weather;
+  if (hasBearOverride) {
+    weather = { icon:'🌧️', label:'走弱 — 空頭訊號！', cardCls:'card-red-light' };
+  } else if (hasFireOverride) {
+    weather = { icon:'🔥', label:'過熱 — 謹慎追高', cardCls:'card-orange' };
+  } else if (advice.noMA200) {
+    weather = { icon:'🆕', label:'新上市 — 資料不足', cardCls:'card-gray' };
+  } else {
+    weather = getWeather(total10, threshold);
+    // 一把火／二把火：顏色照分數（趨勢確實強），但標籤要明講過熱，才不會跟建議文字打架
+    if (hasFireWarn) {
+      weather = { icon:'🔥', label: total10 >= threshold ? '強勢但過熱 — 不追高' : '過熱 — 留意回調', cardCls: weather.cardCls };
+    }
+  }
+
+  // ★ suggestText 也跟著覆蓋
+  const suggestText = hasBearOverride ? '⚠️ 空頭訊號警示'
+    : (hasFireOverride || hasFireWarn) ? '🔥 過熱警示'
+    : advice.noMA200 ? '🆕 資料不足，僅供參考'
+    : total10 >= threshold ? '✓ 達到候選門檻'
+    : total10 >= 4 ? '～ 繼續觀察' : '✗ 暫時迴避';
+
+  const n = d.closes.length;
+  const price = d.closes[n-1];
+  const ma50 = n >= 50 ? avg(d.closes.slice(-50)) : null;
+  const ma200 = n >= 200 ? avg(d.closes.slice(-200)) : null;
+  return { sym, stockClass, threshold, scores, total10, change, hist10, whaleScore, whaleDisplay, whaleHistory,
+           advice, weather, suggestText, band: bandOf(weather.cardCls),
+           above50: ma50 ? price > ma50 : null, above200: ma200 ? price > ma200 : null };
+}
+
 async function loadStock(sym, spyChange, idx, spyByDate, domId) {
   const cardId = domId || `card-${sym}`;
   try {
     const d = await fetchYahoo(sym);
     if (d.partial) { const mn = document.getElementById('marketNote'); if (mn) mn.style.display = 'block'; }
-    const stockClass = getClass(sym);
-    const threshold = getThreshold(sym);
-    const scores = calcScore(d, spyChange);
-    const total10 = scores.total / 10;
-    const change = d.prev ? ((d.current - d.prev) / d.prev * 100) : 0;
-
-    const hist10 = calcHistory10(d, spyChange, spyByDate);
-    const whaleScore = calcWhale(d);
-    const whaleDisplay = getWhaleDisplay(whaleScore);
-    const whaleHistory = calcWhaleHistory10(d);
-    const advice = genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore);
-
-    // ★ 覆蓋規則：空頭訊號強制降級顏色
-    const hasBearOverride = advice.technical.includes('空頭訊號確認') 
-      || advice.technical.includes('跌破MA200');
-    const hasFireOverride = advice.fireLv >= 3;
-    const hasFireWarn = advice.fireLv >= 1 && advice.fireLv < 3;
-    let weather;
-    if (hasBearOverride) {
-      weather = { icon:'🌧️', label:'走弱 — 空頭訊號！', cardCls:'card-red-light' };
-    } else if (hasFireOverride) {
-      weather = { icon:'🔥', label:'過熱 — 謹慎追高', cardCls:'card-orange' };
-    } else if (advice.noMA200) {
-      weather = { icon:'🆕', label:'新上市 — 資料不足', cardCls:'card-gray' };
-    } else {
-      weather = getWeather(total10, threshold);
-      // 一把火／二把火：顏色照分數（趨勢確實強），但標籤不能再寫「積極進場／可小量試單」，
-      // 否則會跟下面「空手者等回調」互相打架
-      if (hasFireWarn) {
-        weather = { icon:'🔥', label: total10 >= threshold ? '強勢但過熱 — 不追高' : '過熱 — 留意回調', cardCls: weather.cardCls };
-      }
-    }
+    const r = analyzeStock(sym, d, spyChange, spyByDate, false);
+    const { stockClass, threshold, scores, total10, change, hist10, whaleScore, whaleDisplay, whaleHistory, advice, weather, suggestText } = r;
 
     const card = document.getElementById(cardId);
     card.className = `stock-card ${weather.cardCls}`;
+    card.setAttribute('data-score', total10.toFixed(2));
+    card.setAttribute('data-band', r.band);
+    card.setAttribute('data-chg', change.toFixed(2));
 
     const chgSign = change >= 0 ? '+' : '';
-
-    // ★ suggestText 也跟著覆蓋
-    const suggestText = hasBearOverride ? '⚠️ 空頭訊號警示'
-      : (hasFireOverride || hasFireWarn) ? '🔥 過熱警示'
-      : advice.noMA200 ? '🆕 資料不足，僅供參考'
-      : total10 >= threshold ? '✓ 符合進場條件'
-      : total10 >= 4 ? '～ 繼續觀察' : '✗ 暫時迴避';
 
     card.innerHTML = `
       <div class="card-top">
@@ -414,9 +641,11 @@ async function loadStock(sym, spyChange, idx, spyByDate, domId) {
         <div class="advice-action">💡 ${advice.action}</div>
       </div>
     `;
+    return r;
   } catch(e) {
     const cardErr = document.getElementById(cardId);
     if (cardErr) cardErr.innerHTML = `<div style="padding:20px;text-align:center;color:#999;font-size:12px;">⚠️ 無法載入<br><small>${e.message}</small></div>`;
+    return null;
   }
 }
 
@@ -555,39 +784,37 @@ function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) 
     technical = '技術面中性，方向待確認。';
   }
 
-  // ★ 行動建議用10分制門檻
+  // ★ 行動建議：只講「這檔值不值得看、能不能追」。
+  //   不給倉位百分比、不拿 MA 當停損、不叫人加碼 —— 那些跟你自己定的規則互相衝突：
+  //   買價／停損／股數 = dna 的 pivot 與平台低點 + 每筆風險 1% 的公式；停損距離超過約 10% 就不做這一筆。
+  //   出場 = 你自己的出場規則（漲 30% 賣 1/3；跌破 20 日線 3 天沒站回，或離開 Stage 2 超過 5 個交易日，就全部出場）。
+  //   6 個月內禁止加碼。
   const total10 = scores.total / 10;
   let action = '';
   if (fireLv === 3) {
-    action = '🔥🔥🔥 三把火極度過熱！持倉者建議減碼50%鎖利，空手者絕對不追高。';
+    action = '🔥🔥🔥 三把火極度過熱！空手者絕對不追高；持倉者照你的獲利了結規則（漲 30% 賣 1/3，消息利多跳空先鎖一大部分）。';
   } else if (fireLv === 2) {
-    action = '🔥🔥 二把火過熱！持倉者可減碼30%，等回測MA20再評估是否加回。';
+    action = '🔥🔥 二把火過熱！空手者不追高，等回測 MA20 之後有新的 pivot 再看；持倉者續抱，但不加碼，出場照你的規則。';
   } else if (fireLv === 1) {
-    action = '🔥 一把火初次過熱，持倉者留意，暫不加碼。空手者等待回調再進場。';
+    action = '🔥 一把火初次過熱。空手者等回調、等新的 pivot，不追；持倉者續抱但不加碼。';
   } else if (bearSignal) {
-    action = '⚠️ 空頭四訊號警示！持倉者建議立即減倉，出現長黑K確認後清倉離場。';
+    action = '⚠️ 空頭警示（MACD 在零軸下、MA50 向下、盤整沒突破）。空手者不開新倉；持倉者對照你的出場規則：跌破 20 日線 3 天沒站回、或離開 Stage 2 超過 5 個交易日，就出場。';
   } else if (breakoutSignal) {
-    action = '📈 突破訊號！可積極建倉，停損設在突破點下方3-5%。';
+    action = '📈 放量突破訊號。可列入買進候選；買價與停損請用 dna 的 pivot 與平台低點，股數用每筆風險 1% 來算，停損距離超過約 10% 就不做這一筆。';
   } else if (risingSignal) {
-    action = '📈 起漲準備！空手者可小量試單（全倉30%），確認放量突破後再加碼。';
+    action = '📈 起漲準備（均線多排、縮量整理、MACD 在零軸上）。先列入觀察，等放量突破 pivot 再進場；不要在整理中途試單（停損會放得太遠）。';
   } else if (total10 >= 8.0) {
-    action = `持倉者續抱，停損上移至MA20。空手者可${stockClass==='A'?'積極':'小量'}建倉。`;
+    action = '趨勢很強。持倉者續抱（出場看你的規則，不因分數高就加碼）；空手者分數高代表可能已經漲了一段，要進場請等 dna 的 pivot，不要直接追。';
   } else if (total10 >= threshold) {
-    action = `達到${stockClass}類進場門檻（${threshold.toFixed(1)}分）。空手者可試單，倉位30-50%，停損MA50。`;
+    action = `達到${stockClass}類門檻（${threshold.toFixed(1)}分），可列入買進候選。買價、停損與股數請用 dna 的 pivot 與每筆風險 1% 的公式算；停損距離超過約 10% 就不做這一筆。`;
   } else if (total10 >= 5.0) {
-    action = stockClass==='A'
-      ? '中性偏強。持倉者繼續持有，空手者等分數突破6.5分再進場。'
-      : '中性觀望。空手者等分數突破7.0分，確認方向後再試單。';
+    action = `中性偏強。持倉者繼續持有；空手者還沒到候選門檻（${stockClass}類要${threshold.toFixed(1)}分）。`;
   } else if (total10 >= 4.0) {
-    action = stockClass==='A'
-      ? 'A類股中性偏弱，機構可能逢低承接。持倉者設好停損，空手者繼續等待。'
-      : '接近危險邊緣。持倉者考慮減倉至半倉，空手者暫時迴避。';
+    action = '中性偏弱。持倉者確認停損還在、對照你的出場規則；空手者繼續等待。';
   } else if (total10 >= 2.5) {
-    action = stockClass==='A'
-      ? 'A類大型股走弱。持倉者停損設MA200，跌破MA200則清倉。空手者等待反彈訊號。'
-      : '走弱訊號明確。持倉者建議減倉或停損離場，空手者暫時迴避。';
+    action = '走弱。持倉者對照你的出場規則（跌破 20 日線 3 天沒站回、或離開 Stage 2 超過 5 個交易日就出場）；空手者不開新倉，等新的 Stage 2。';
   } else {
-    action = '⛈️ 危險區間！持倉者建議清倉觀望，空手者絕對不抄底，等趨勢確認反轉。';
+    action = '⛈️ 危險區間。空手者絕對不抄底；持倉者對照你的出場規則，該出就出。';
   }
 
   const whaleStrong = whaleScore >= 7;
@@ -595,18 +822,18 @@ function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) 
   // 過熱／空頭警示優先：鯨魚訊號只能「補充說明」，不能蓋掉警示、更不能叫人加碼
   if (fireLv >= 1 || bearSignal) {
     if (whaleStrong) {
-      action = action + ' 🐋 另外：主力有明顯吸籌跡象，但這不改變上面的判斷（過熱／空頭警示優先，不因此加碼）。';
+      action = action + ' 🐋 另外：量能顯示有明顯買盤，但這不改變上面的判斷（過熱／空頭警示優先，不因此加碼）。';
     } else if (!whaleMed && total10 >= 7.5) {
       action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
     }
   } else if (whaleStrong && total10 >= threshold) {
-    action = '🐋🐋🐋 主力積極吸籌！' + action + ' 鯨魚訊號極強，可提高倉位至60-70%。';
+    action = '🐋🐋🐋 量能偏多、吸籌跡象強！' + action + ' 信心比較高，但股數仍由停損距離決定，不因此加大。';
   } else if (whaleStrong && total10 >= 4.0) {
-    action = '🐋🐋🐋 注意！技術面雖偏弱，但主力有明顯吸籌跡象。空手者可小量試探（10-20%），設好停損。';
+    action = '🐋🐋🐋 技術面偏弱，但量能顯示有買盤進場。先列入觀察，等 pivot 出現再進場；不要在整理中途試單（停損會放得太遠）。';
   } else if (whaleStrong && total10 < 4.0) {
-    action = '🐋 主力可能在底部悄悄吸籌，但技術面仍弱。持倉者暫不加碼，空手者觀察是否形成底部型態再決定。';
+    action = '🐋 量能有買盤跡象，但技術面仍弱。持倉者不加碼；空手者觀察是否形成底部型態。';
   } else if (whaleMed && total10 >= threshold) {
-    action = action + ' 🐋🐋 主力有買入跡象，訊號可信度提高。';
+    action = action + ' 🐋🐋 量能有買盤跡象，訊號可信度提高。';
   } else if (!whaleMed && total10 >= 7.5) {
     action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
   }
@@ -620,12 +847,12 @@ function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) 
 
 // ★ getWeather 接收10分制
 function getWeather(score10, threshold) {
-  if (score10 >= 8.0) return { icon:'🌟', label:'強勢 — 積極進場', cardCls:'card-green-dark' };
-  if (score10 >= threshold) return { icon:'☀️', label:'達標 — 可小量試單', cardCls:'card-green-light' };
+  if (score10 >= 8.0) return { icon:'🌟', label:'強勢 — 趨勢很強', cardCls:'card-green-dark' };
+  if (score10 >= threshold) return { icon:'☀️', label:'達標 — 列入候選', cardCls:'card-green-light' };
   if (score10 >= 5.0) return { icon:'⛅', label:'中性偏強 — 觀望', cardCls:'card-blue-dark' };
   if (score10 >= 4.0) return { icon:'☁️', label:'中性偏弱 — 注意', cardCls:'card-blue-light' };
-  if (score10 >= 2.5) return { icon:'🌧️', label:'走弱 — 開始關注', cardCls:'card-red-light' };
-  return { icon:'⛈️', label:'危險 — 立刻行動', cardCls:'card-red-dark' };
+  if (score10 >= 2.5) return { icon:'🌧️', label:'走弱 — 不開新倉', cardCls:'card-red-light' };
+  return { icon:'⛈️', label:'危險 — 不開新倉，檢查持股', cardCls:'card-red-dark' };
 }
 
 function calcScore(d, spyChange) {
