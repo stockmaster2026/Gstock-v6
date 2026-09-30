@@ -267,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.1</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.2</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1366,16 +1366,19 @@ var PROFILE_DEFAULT = {
        risk:'⚠⚠ <b>這檔要用「可能歸零」的心態看，風險等級跟名單上其他股票不是同一個量級。</b><br>⚠ <b>①現金跑道只到 2027 年中</b>：1.6 億現金對上每季約 3,500 萬的燒錢速度，代表<b>未來 12 個月內幾乎一定要再募資</b>。生技募資＝發新股＝稀釋；若股價在低檔時被迫募，稀釋會非常痛。<br>⚠ <b>②樣本數極小</b>：UP421 的 NEJM 數據來自極少數受試者。早期漂亮訊號在後續更大規模試驗被推翻，在這個產業是常態而非例外。<br>⚠ <b>③所有時間點都寫「最快」</b>：臨床延期是常態，每延一季就多燒一季的錢、也更逼近下一次募資。<br>⚠ <b>④沒有營收可以緩衝</b>：任何試驗出現安全性事件，或 FDA 要求補做試驗，股價反應通常是<b>單日腰斬等級</b>，沒有基本面可以接住。<br>⚠ <b>⑤競爭者進度更前面</b>：第一型糖尿病細胞療法已有臨床進度更快的對手，Sana 的差異化全押在「不必用免疫抑制劑」這一點。' },
 
   BE:{ biz:'固態氧化物燃料電池（Bloom Energy Server）—— 燒天然氣直接發電，不經燃燒，也做電解產氫。',
+       pos:'【現場發電】不靠電網，在資料中心旁邊直接供電；跟 OKLO、SMR（核能）、GEV（燃氣渦輪）都在搶「AI 缺電」的解法，BE 的優勢是部署速度快。',
        cust:'【Oracle】是最大客戶：主約最高 2.8GW，已簽約 1.2GW 部署中。另有 Intel、資料中心與半導體廠。',
        story:'AI 資料中心等不到電網接電，燃料電池是最快的替代方案 —— 給 Oracle 的一個案場 55 天就供上電。2026 年 9 月納入 S&P 500。',
        risk:'【Oracle 佔比極高】—— Oracle 的資本支出一縮就直接打到它。而且燃料電池燒天然氣，天然氣價格與環評都是變數。' },
 
   RKLB:{ biz:'小型運載火箭 Electron 的發射服務，以及衛星元件與整星製造（Space Systems 佔營收大半）。',
+       pos:'【火箭加整星】跟 FLY 是小型火箭對手；LUNR、ASTS 是需要發射與衛星的同板塊公司，RKLB 的差別是自己造衛星零組件與整星。',
        cust:'美國太空軍與 NASA、商業衛星星系業者。',
        story:'中型火箭 Neutron 的首飛進度是主要變數；衛星製造訂單則是目前的營收主力。',
        risk:'Neutron 首飛是二元事件 —— 成功與失敗的股價反應完全不同。發射業務本身毛利低，獲利靠衛星製造。' },
 
   NOK:{ biz:'電信網路設備 —— 行動基地台（RAN）、光傳輸、IP 路由，外加規模龐大的專利授權收入。',
+       pos:'【電信設備 · 老牌】跟 CIEN（光傳輸）、ANET（交換器）在光傳輸與路由有重疊，但客戶是電信商而非雲端業者；AI 題材比 CIEN、ANET 弱。',
        cust:'全球電信商（T-Mobile 等），近年增加資料中心網路客戶。',
        story:'輝達投資 10 億美元（每股 6.01）合作開發 AI-RAN，把 AI 運算放進基地台；T-Mobile 從 2026 年開始實地測試。',
        risk:'電信商的資本支出週期很長很慢，AI-RAN 目前還在測試階段，離放量有距離。專利授權收入穩定但不成長。' },
@@ -1450,6 +1453,7 @@ var PROFILE_DEFAULT = {
        risk:'⚠⚠ 它有相當比例的收入來自<b>複方（compounded）GLP-1</b>，那一塊的法規地位一直在變動 —— <b>單一監管決定就可能改寫它的營收結構</b>。<br>⚠ <b>當期數字我沒有深入查證。</b>' },
 
   VKTX:{ biz:'Viking Therapeutics —— 臨床階段的減肥藥開發商，想擠進 LLY／NVO 的市場。',
+       pos:'【減重藥追趕者】LLY、NVO 已在市場上，VKTX 還在臨床，成敗看數據，沒有量產營收。',
        risk:'⚠⚠ <b>純粹是試驗數據的賭注</b>：沒有上市產品、沒有營收，股價由臨床結果單次決定，一份數據可以讓它一天漲跌數十個百分點。<br>⚠ 而且它面對的是兩家已經有幾百億營收在滾的巨頭。<b>沒有深入查證。</b>' },
 
   ALNY:{ biz:'Alnylam —— RNAi 療法的領導者，已有多個上市產品（罕見病與心臟類澱粉沉積症）。',
@@ -1484,6 +1488,7 @@ var PROFILE_DEFAULT = {
        risk:'⚠⚠ 私募的收益要靠<b>退出</b>（IPO、賣掉）才實現。退出市場冷，管理費照收但績效費收不到。<br>⚠ 商用房地產的曝險是另一個獨立風險。<b>沒有深入查證當期數字。</b>' },
 
   KKR:{ biz:'KKR —— 私募股權與另類資產，跟 BX 同一類。',
+       pos:'【另類資產管理】跟 BX、APO 同類；ARCC 是這一類生意在私募信貸上的公開代理部位。',
        risk:'⚠ 跟 BX 完全同一個結構問題，而且同樣在 2026 年這一波裡是下跌的那一邊。<b>沒有深入查證。</b>' },
 
   COIN:{ biz:'Coinbase —— 加密貨幣交易所。收入主要來自交易手續費，加上 USDC 相關收益與訂閱服務。',
@@ -1543,22 +1548,28 @@ var PROFILE_DEFAULT = {
      ⚠ 這一組裡「已經在賺錢的」跟「還在燒錢的」差距極大,
         不要當成同一個板塊看。                                */
   LUNR:{ biz:'Intuitive Machines —— 月球登陸器與月面服務，主要客戶是 NASA。',
+       pos:'【月球運輸】跟 FLY（Blue Ghost 登月）是登月對手；客戶高度集中在 NASA，RKLB 則有更多元的商業客戶。',
        story:'2026 年營收指引 9 億~10 億美元。美國 FY2027 太空預算 597 億美元、資助 31 次發射，是這一組共同的底氣。',
        risk:'⚠⚠ <b>登月任務的時程歷史上一直在延後，而財測是跟著發射節奏走的</b>。成功落地過的時候是股價高點，延期就是回檔 —— 這一檔幾乎完全由事件驅動，<b>技術面訊號在事件面前沒有意義</b>。' },
   ASTS:{ biz:'AST SpaceMobile —— 直接對<b>一般手機</b>發射衛星寬頻，不需要特殊終端。',
+       pos:'【衛星直連手機】跟 RKLB、PL 不同 —— 不是賣火箭或影像，而是做電信服務；靠與電信商合作，需要大量衛星發射才能成局。',
        story:'重申 2026 年營收 1.5 億~2 億美元，目標年底在軌約 45 顆 BlueBird 衛星。BlueBird 6 是新一代，通訊陣列約 2400 平方英尺，遠大於前一代。與 Verizon 有 1 億美元的合作。',
        risk:'⚠⚠ <b>星系部署的節奏是唯一的變數</b>。1.5~2 億營收對應的市值極高，跟 OKLO 同一類 —— 買的是未來。波動極大：曾經單日漲 20%，也曾經一週漲 30% 之後單日跌 5%。' },
   PL:{ biz:'Planet Labs —— 每日全球對地影像。護城河是<b>多年累積的影像資料庫</b>，後進者很難複製。',
+       pos:'【影像資料庫】跟 RKLB 的火箭、ASTS 的衛星通訊不同，PL 賣的是資料；客戶以政府與國防為主，跟 LDOS 的國防資訊服務有交集。',
        story:'國防與情報合約讓剩餘履約義務（RPO）大幅增加。',
        risk:'⚠ 一個很有代表性的走勢：<b>過去一年漲 201%，但 2026 年年初到現在只漲 1%</b> —— 整個十二個月的漲幅都發生在 2026 年之前，今年的持有人等了八個月什麼都沒等到。<b>這正是「離高點遠」跟「離高點近」差別的實例。</b>' },
   KTOS:{ biz:'Kratos —— 無人機、超音速武器，以及 Golden Dome 飛彈防禦相關。',
        pos:'國防預算正在往自主武器、無人機、反無人機、超音速、太空目標鎖定傾斜，它在這幾條線上都有。',
        risk:'⚠ <b>這一檔我沒有深入查證當期數字。</b>國防股的共同問題是營收依賴國會撥款 —— 週期跟景氣無關，但跟政治有關。' },
   AVAV:{ biz:'AeroVironment —— 小型無人機與遊蕩彈藥，已整合 BlueHalo。',
+       pos:'【無人機與遊蕩彈藥】跟 KTOS、RCAT 同屬無人機；規模最大也最成熟，RCAT 是小型版本。',
        risk:'⚠ <b>沒有深入查證當期數字。</b>' },
   LDOS:{ biz:'Leidos —— 國防資訊服務與系統整合，偏服務不偏硬體。',
+       pos:'【國防 IT 服務】跟 LMT、RTX 不同，偏服務與系統整合，不賣武器；和 PLTR 一樣賣的是政府端的軟體與資料能力。',
        risk:'⚠ <b>沒有深入查證。</b>服務型國防承包商毛利率天生低、成長溫和，<b>用這張表的成長門檻幾乎一定全紅</b> —— 跟金融那組同樣的問題。' },
   RCAT:{ biz:'Red Cat —— 小型軍用無人機，市值很小。',
+       pos:'【小型軍用無人機】跟 AVAV 同類但規模小很多，波動大；ONDS 是另一檔小型無人機。',
        risk:'⚠⚠ <b>沒有深入查證，而且這是這一組裡最小、最投機的一檔。</b>放進來是讓光譜完整（從 LMT 到 RCAT），不是推薦。' },
   LMT:{ biz:'Lockheed Martin —— 傳統國防巨頭。F-35、飛彈、太空系統。',
        pos:'【這一組的另一個極端】營收幾百億、有股息、波動低。⚠ 跟 RKLB／ASTS 那種完全不是同一種投資。',
@@ -1803,8 +1814,258 @@ var PROFILE_DEFAULT = {
        pos:'【應用層 · 中小企業市場】',
        cust:'中小企業的行銷與業務。',
        story:'—',
-       risk:'⚠ 【這一檔我沒有深入查證。】中小企業客戶對景氣與價格最敏感，而且是 AI 原生工具最容易切入的一塊。' }
+       risk:'⚠ 【這一檔我沒有深入查證。】中小企業客戶對景氣與價格最敏感，而且是 AI 原生工具最容易切入的一塊。' },
 
+  /* ═══ v5.2 (2026-09-29): 補 82 檔速寫 —— 只寫「在做什麼」+「產業鏈位置」兩欄 ═══
+     ⚠ 主要客戶／這一波的題材／什麼會打破它【刻意留空】: 那三欄是當期數字、
+        約 90 天就過期, 寫了會變成看起來可信的舊資料, 比空白更危險。
+        要補請點卡片上的「✏ 編輯」自己填(存本機)。
+     ⚠ 這一輪沒有上網, 只寫結構性事實; 併購／近期事件請自行核對。        */
+  CHKP:{ biz:'以色列老牌網路資安 —— 防火牆閘道器、雲端與端點安全，靠訂閱與續約收費。',
+       pos:'【傳統防火牆老將】跟 PANW、FTNT 同屬網路邊界防護；成長比 CRWD、ZS 這種雲原生新一代慢，市場給的是穩定現金流的評價。' },
+
+  SAIL:{ biz:'SailPoint —— 身分治理：管誰能存取哪些系統、權限該不該收回，賣給大企業的雲端訂閱。',
+       pos:'【身分這一層】跟 OKTA 同屬身分安全，OKTA 偏登入驗證，SAIL 偏權限管理與稽核；不是 CRWD、S 那種端點防護。' },
+
+  CVLT:{ biz:'Commvault —— 企業資料備份與復原，遭勒索軟體攻擊後把資料救回來。',
+       pos:'【資料復原層】CRWD、S 負責擋攻擊，CVLT 負責被攻擊之後把資料救回；跟 RBRK 是直接對手。' },
+
+  VRNS:{ biz:'Varonis —— 找出企業內部資料放在哪、誰在存取，偵測資料外洩與異常存取。',
+       pos:'【資料安全層】跟 CVLT、RBRK 的備份還原不同，它是事前盯資料權限；也不同於 TENB、QLYS 找漏洞，它看的是資料本身。' },
+
+  FFIV:{ biz:'F5 —— 應用程式交付與安全：負載平衡、網頁應用防火牆，硬體加軟體訂閱。',
+       pos:'【資料中心的流量入口】更接近 ANET、AKAM 的網路層，而不是 CRWD 那種端點安全；硬體更新週期會左右營收。' },
+
+  GEN:{ biz:'Gen Digital —— 個人用戶的網路安全與身分保護（Norton、Avast、LifeLock 等消費品牌）。',
+       pos:'【消費者端的資安】CRWD、PANW、ZS 都賣給企業，GEN 賣給一般個人；成長慢但現金流穩。' },
+
+  INTU:{ biz:'Intuit —— TurboTax 報稅、QuickBooks 記帳、Credit Karma、Mailchimp。',
+       pos:'【應用層 · 財務軟體】跟 HUBS 都服務中小企業，但 INTU 綁的是報稅與記帳這種換掉很麻煩的流程；跟 CRM、WDAY 的大企業客群不同。' },
+
+  ORCL:{ biz:'Oracle —— 資料庫與企業應用軟體，近年加上大規模雲端基礎設施（OCI），租算力給 AI 訓練。',
+       pos:'【軟體股裡最像基礎建設的一檔】OCI 讓它不同於 CRM、NOW 這種純應用，比較接近 AI 算力出租；押大型 AI 合約，資本支出與負債都重。' },
+
+  DT:{ biz:'Dynatrace —— 應用程式與雲端基礎設施的可觀測性：監控效能、自動找出哪裡壞了。',
+       pos:'【監控層】DDOG 是最直接的對手；DT 偏大企業與自動化根因分析，DDOG 偏開發者與雲原生。' },
+
+  ESTC:{ biz:'Elastic —— 開源搜尋與分析引擎（Elasticsearch），延伸到可觀測性與資安。',
+       pos:'【搜尋與資料層】跟 DDOG、DT 在可觀測性上重疊，跟 MDB、SNOW 在資料層相鄰；開源起家，靠雲端託管訂閱賺錢。' },
+
+  NTNX:{ biz:'Nutanix —— 超融合基礎設施：把伺服器、儲存、虛擬化整合成一套軟體，讓企業自建私有雲。',
+       pos:'【地端與混合雲軟體】在軟體板塊裡最偏基礎架構，跟 ORCL 的資料庫與雲端較近，而不是 CRM、NOW 的應用層；跟 DELL、HPE 這些硬體商既合作也競爭；企業想擺脫 VMware 漲價而換平台是它的順風。' },
+
+  GTLB:{ biz:'GitLab —— 軟體開發平台：程式碼託管、CI/CD 自動部署、資安掃描。',
+       pos:'【開發工具層】跟 TEAM 同屬開發者工具；最大對手是微軟的 GitHub。依人頭座位數計價，是 AI 寫程式時代的風險。' },
+
+  VEEV:{ biz:'Veeva —— 製藥與生技公司專用的雲端軟體：臨床試驗、藥品銷售管理、法規文件。',
+       pos:'【產業垂直軟體】不同於 CRM、WDAY 這種通用型，客戶只有生命科學業；換平台成本高，也和生技板塊的客戶景氣連動。' },
+
+  QCOM:{ biz:'高通 —— 手機 SoC（Snapdragon）、行動數據機，外加專利授權。',
+       pos:'【手機晶片龍頭，AI 題材較弱】跟 NVDA、AVGO 不同，主要靠手機；AAPL 是大客戶，自研數據機是長期風險；架構授權自 ARM。' },
+
+  SITM:{ biz:'SiTime —— MEMS 矽振盪器與時脈晶片，取代傳統石英元件。',
+       pos:'【伺服器的時脈零件】不像 NVDA、AMD 賣算力，跟 LSCC 一樣是配角晶片；跟 ALAB、CRDO、MTSI 同屬 AI 資料中心的小零件；規模小，靠資料中心與車用滲透。' },
+
+  LSCC:{ biz:'Lattice —— 低功耗 FPGA（可程式化邏輯晶片），用在通訊、工業、伺服器管理。',
+       pos:'【小型 FPGA】跟 AMD（收購 Xilinx）、INTC（Altera）的大型 FPGA 不在同一層；不做 AI 算力，賣的是「配角晶片」。' },
+
+  GFS:{ biz:'GlobalFoundries —— 成熟製程晶圓代工，不做最先進製程。',
+       pos:'【成熟製程代工】不在 TSM 那一層（TSM 做最先進），更接近 TSEM 的特殊製程路線；受惠美國本土製造政策。' },
+
+  ASX:{ biz:'日月光（ASE）—— 全球最大的晶片封裝與測試代工（OSAT），在美國掛 ADR。',
+       pos:'【後段封測】TSM 把晶片做出來，ASX 負責封裝測試，跟 AMKR 是直接同業；先進封裝是 AI 題材。' },
+
+  TER:{ biz:'Teradyne —— 半導體自動測試設備（ATE），另有工業機器人（Universal Robots）。',
+       pos:'【晶片做完之後的測試】跟 AEHR（老化測試）、FORM（探針卡）同一段；AI 晶片越複雜，測試時間越長。' },
+
+  ONTO:{ biz:'Onto Innovation —— 製程控制與檢測設備：量測晶圓缺陷與膜厚，含先進封裝檢測。',
+       pos:'【製程檢測】同類有 KLAC（更大）、CAMT、NVMI；ONTO 的特色是對先進封裝檢測的曝險。' },
+
+  KLIC:{ biz:'Kulicke & Soffa —— 打線接合（wire bonding）設備與相關封裝設備。',
+       pos:'【後段封裝設備】較傳統的封裝，客戶是 AMKR、ASX 這些封測廠；在設備板塊裡跟 ONTO、TER 同走「晶片做完之後」這一段，不像 AMAT、LRCX 做前段製程；景氣循環明顯，跟車用與工業需求連動。' },
+
+  CAMT:{ biz:'Camtek —— 以色列，晶圓與先進封裝的光學檢測設備。',
+       pos:'【檢測設備】跟同樣是以色列的 NVMI、以及 ONTO 同屬檢測；HBM 與先進封裝的檢測需求是題材。' },
+
+  ENTG:{ biz:'Entegris —— 半導體製程的材料與污染控制：過濾器、特殊化學品、晶圓載具。',
+       pos:'【耗材與材料】賣的是每片晶圓都會用掉的東西，不像 AMAT、LRCX 靠設備循環，較穩；跟 MKSI 同屬供應鏈的零組件層。' },
+
+  MKSI:{ biz:'MKS Instruments —— 半導體設備裡的關鍵子系統：電源、真空、氣體控制，另有電子與特殊化學製程。',
+       pos:'【設備的零組件】是 AMAT、LRCX 的供應商，業績跟著設備商訂單走；跟 ENTG 同屬供應鏈零組件層。' },
+
+  FORM:{ biz:'FormFactor —— 晶圓測試用的探針卡，DRAM／HBM 探針卡是主力。',
+       pos:'【晶圓測試耗材】跟 AEHR、TER 同一段；受記憶體景氣（MU、SNDK）連動。' },
+
+  NVMI:{ biz:'Nova —— 以色列，製程量測（光學計量）設備。',
+       pos:'【量測設備】跟 KLAC、ONTO、CAMT 同屬檢測與量測；Nova 專攻量測，不是缺陷檢測。' },
+
+  ACMR:{ biz:'ACM Research —— 晶圓清洗設備，營收大部分來自中國。',
+       pos:'【清洗設備】對手是 LRCX 的清洗產品線；風險是中國營收佔比與出口管制。' },
+
+  MTSI:{ biz:'MACOM —— 射頻、類比與光通訊晶片（雷射驅動、放大器等）。',
+       pos:'【光模組的類比零件】賣給 COHR、LITE、AAOI 這些模組廠，比它們更上游；跟 SMTC、MXL 同屬訊號晶片。' },
+
+  VIAV:{ biz:'Viavi —— 網路測試與量測設備，另有光學薄膜（濾光鍍膜）。',
+       pos:'【賣測試的人】AAOI、LITE、COHR 賣光模組，VIAV 賣測試那些模組的儀器。每個新速率鋪開前，產線要先買測試設備，所以它的訂單通常領先模組廠的出貨。' },
+
+  CLS:{ biz:'Celestica —— 加拿大電子製造代工（EMS），替超大規模雲端業者做 AI 資料中心的伺服器與交換器。',
+       pos:'【AI 硬體代工】類似 SMCI、DELL 賣伺服器，但 CLS 接單代工、品牌不是自己的；跟 ANET 這種自有品牌的網路設備商不同；客戶集中在少數雲端大廠。' },
+
+  SMTC:{ biz:'Semtech —— 類比晶片與 LoRa 物聯網，另有資料中心光通訊用的驅動晶片。',
+       pos:'【訊號晶片】跟 MTSI、MXL、CRDO 同類；業務較雜，資料中心光通訊那塊是題材。' },
+
+  MXL:{ biz:'MaxLinear —— 寬頻、Wi-Fi 晶片，以及資料中心光模組用的 DSP。',
+       pos:'【光模組的 DSP】跟 MRVL 的光 DSP 同一類，但規模小很多；另有寬頻晶片業務。' },
+
+  APH:{ biz:'Amphenol —— 連接器與線纜，用在資料中心、車用、工業、軍工。',
+       pos:'【機櫃裡的線】AI 伺服器的高速連接器與線纜；跟 ALAB、CRDO 這種晶片式連接不同，是實體零件，景氣比它們穩。' },
+
+  RMBS:{ biz:'Rambus —— 記憶體介面晶片（DDR5 模組用）與專利授權。',
+       pos:'【記憶體周邊】MU、SNDK 賣記憶體，RMBS 賣記憶體模組上的介面晶片；跟 ALAB 同有 CXL 記憶體互連的題材。' },
+
+  PENG:{ biz:'Penguin Solutions（前 SMART Global）—— 高效能運算與 AI 基礎設施系統整合，另有特殊記憶體模組。',
+       pos:'【AI 系統整合】像 SMCI、DELL 的小型版本，加上一塊記憶體模組業務。' },
+
+  SIMO:{ biz:'Silicon Motion —— NAND 快閃記憶體的控制晶片（SSD 控制器）。',
+       pos:'【NAND 的控制器】SNDK、MU 做 NAND 顆粒，SIMO 做控制器；NAND 價格與需求漲跌會影響它。' },
+
+  VST:{ biz:'Vistra —— 美國獨立發電商（天然氣、核能、煤、電池儲能）兼零售電力。',
+       pos:'【發電端】跟 CEG、TLN、NRG 同類，賣電給資料中心；VRT、ETN 賣的是機房設備，VST 賣的是電本身。' },
+
+  NRG:{ biz:'NRG Energy —— 發電加零售電力，以德州為主。',
+       pos:'【發電端】跟 VST、CEG 同類；零售電力那塊讓它比 CEG 更受一般用戶電價影響。' },
+
+  MOD:{ biz:'Modine —— 熱管理：資料中心冷卻（冷卻分配單元、機房空調），另有車用與商用暖通。',
+       pos:'【散熱設備】跟 VRT 同在機房冷卻，但規模小、還有傳統業務；MOD 的散熱是機房蓋好之後的事。' },
+
+  NVT:{ biz:'nVent —— 電氣連接與防護、機櫃層級的液冷。',
+       pos:'【機房內的電與冷】跟 VRT、ETN 同一層；液冷業務較新。' },
+
+  AAON:{ biz:'AAON —— 商用暖通空調（HVAC），含資料中心用的機房空調。',
+       pos:'【機房空調】跟 MOD、VRT 同一段，規模較小；訂單靠資料中心。' },
+
+  POWL:{ biz:'Powell Industries —— 客製化配電設備（開關櫃、電力控制室），賣給工業與電力公司。',
+       pos:'【配電】VRT 的機櫃、MOD 的散熱都是機房蓋好之後的事，POWL 的配電要更早進場，訂單比伺服器早一到兩年。電力時間軸：STRL 整地 → POWL 配電 → FIX 機電 → VRT 機櫃 → 伺服器進場。' },
+
+  FIX:{ biz:'Comfort Systems USA —— 機電工程承包（暖通、電氣、管線），近年大量承接資料中心工程。',
+       pos:'【機電施工】在電力時間軸上排在 POWL 配電之後、VRT 機櫃之前；跟 STRL（整地）是前後手。' },
+
+  STRL:{ biz:'Sterling Infrastructure —— 土木與基礎工程：整地、排水、廠房地基，含資料中心廠房。',
+       pos:'【最早進場】電力時間軸的第一步：STRL 整地 → POWL 配電 → FIX 機電 → VRT 機櫃 → 伺服器進場。看它就知道建置潮才剛開始還是已到後段。' },
+
+  BWXT:{ biz:'BWX Technologies —— 核子反應器與零組件，主要是美國海軍核動力，另有民用與醫療同位素。',
+       pos:'【核能供應鏈，賣鏟子】跟 OKLO、SMR、NNE 這種尚未量產的小型反應器新創不同，BWXT 有海軍長期合約與現金流。' },
+
+  CW:{ biz:'Curtiss-Wright —— 國防與核電零組件：艦艇、航空、核電廠設備。',
+       pos:'【核與國防零件】跟 BWXT 同為核能供應鏈與海軍相關，另有航空國防業務；比 OKLO、SMR 這類新創穩。' },
+
+  RDW:{ biz:'Redwire —— 太空基礎設施：太陽能板、機構零件、在軌製造，客戶是 NASA 與國防單位。',
+       pos:'【太空零件與平台】跟 RKLB 的零組件業務重疊；規模較小。' },
+
+  FLY:{ biz:'Firefly Aerospace —— 運載火箭（Alpha）與月球登陸器（Blue Ghost）。',
+       pos:'【火箭加登月】RKLB 的小型火箭對手，登月那塊又跟 LUNR 直接競爭；上市時間短，交易歷史少。' },
+
+  KRMN:{ biz:'Karman Holdings —— 飛彈、太空發射與國防系統的子系統與零組件。',
+       pos:'【國防供應鏈】是 LMT、RTX 這些大廠的供應商，性質接近 KTOS、AVAV；上市不久。' },
+
+  VOYG:{ biz:'Voyager Technologies —— 太空與國防技術：商業太空站（Starlab）、國防電子、太空系統。',
+       pos:'【太空站與國防】不同於 RKLB 做火箭，Voyager 主打商業太空站合資；上市不久。' },
+
+  ONDS:{ biz:'Ondas Holdings —— 工業無線網路，以及無人機與反無人機系統。',
+       pos:'【無人機小型股】跟 AVAV、RCAT 同屬無人機，規模更小、波動更大。' },
+
+  AXON:{ biz:'Axon —— 警用電擊槍（Taser）、隨身攝影機、雲端證據管理軟體。',
+       pos:'【執法科技】不是傳統國防；軟體訂閱佔比高，性質上比較像 PLTR 那種「政府的軟體」，跟 LMT、RTX 不同。' },
+
+  MRCY:{ biz:'Mercury Systems —— 國防用嵌入式運算與電子模組，用在軍機與飛彈。',
+       pos:'【國防電子】是 LMT、RTX、NOC 的供應商；跟 KTOS、LDOS 不同，賣的是電子硬體。' },
+
+  NOC:{ biz:'Northrop Grumman —— B-21 轟炸機、飛彈、太空系統與核子威懾。',
+       pos:'【國防五大之一】跟 LMT、RTX、GD、LHX 同類；B-21 與洲際飛彈是長期合約。' },
+
+  GD:{ biz:'General Dynamics —— 潛艦與軍艦、Gulfstream 商務機、地面戰車與 IT 服務。',
+       pos:'【國防五大之一】跟 LMT、NOC、RTX、LHX 同類；特色是海軍造艦與商務機。' },
+
+  LHX:{ biz:'L3Harris —— 軍用通訊、電子戰、感測系統與飛彈推進。',
+       pos:'【國防電子】跟 NOC、LMT 同為大型承包商，偏電子與通訊；MRCY 是它更小的近親。' },
+
+  AMGN:{ biz:'Amgen —— 大型生技藥廠，主力藥品有 Repatha、Prolia、Enbrel 等，減重藥在臨床階段。',
+       pos:'【大型生技】減重藥領先的是 LLY、NVO，AMGN 是追趕者；VRTX 則是專精單一疾病的另一種型態。' },
+
+  SYK:{ biz:'Stryker —— 骨科植入物、手術機器人（Mako）與醫療設備。',
+       pos:'【醫材 · 骨科】ISRG 做軟組織手術機器人，SYK 做骨科關節機器人；MDT 是更廣的同類。' },
+
+  MDT:{ biz:'Medtronic —— 心臟節律器、糖尿病器材、神經調節與手術器械。',
+       pos:'【大型醫材】成長比 ISRG 慢，更像穩定的大型股；跟 SYK 同屬傳統醫材。' },
+
+  NTLA:{ biz:'Intellia —— CRISPR 基因編輯，做體內（in vivo）療法。',
+       pos:'【基因編輯 · 臨床期】跟 CRSP、BEAM 同類；沒有量產營收，股價靠臨床數據。' },
+
+  BEAM:{ biz:'Beam Therapeutics —— 鹼基編輯（base editing），比 CRISPR 切斷 DNA 更精準的一步。',
+       pos:'【基因編輯 · 臨床期】跟 CRSP、NTLA 同類；沒有量產營收，股價靠臨床數據。' },
+
+  ARWR:{ biz:'Arrowhead —— RNAi（小干擾 RNA）療法。',
+       pos:'【RNA 藥】跟 ALNY、IONS 同類；ALNY 已有上市藥品營收，ARWR 較靠合作里程碑。' },
+
+  IONS:{ biz:'Ionis —— 反義寡核苷酸（antisense）藥物。',
+       pos:'【RNA 藥】跟 ALNY、ARWR 同類；營收多來自授權與合作。' },
+
+  VRTX:{ biz:'Vertex —— 囊性纖維化藥物的壟斷者，同時開發止痛藥與其他療法。',
+       pos:'【單一疾病壟斷】現金流強，跟 AMGN、LLY 不同，靠囊性纖維化當基本盤。' },
+
+  GH:{ biz:'Guardant Health —— 液態切片：抽血檢測癌症（Guardant360、大腸癌篩檢）。',
+       pos:'【診斷】跟 NTRA、TEM 同屬基因檢測；ILMN 賣定序儀給它們這類公司。' },
+
+  ILMN:{ biz:'Illumina —— DNA 定序儀與耗材。',
+       pos:'【診斷的上游，賣鏟子】GH、NTRA、TEM 都是定序儀的客戶。' },
+
+  ARCC:{ biz:'Ares Capital —— 最大的上市 BDC（商業發展公司），放私募信貸給中型企業。',
+       pos:'【私募信貸】JPM、BAC 那幾家放的是受監管的銀行信用，ARCC 放的是私募信貸 —— 規模最大、透明度最低的一塊。它是少數每天報價、可以即時觀察的私募信貸代理部位。它不是拿來買的，是拿來讀的。' },
+
+  APO:{ biz:'Apollo —— 另類資產管理，特別是私募信貸與保險（Athene）。',
+       pos:'【另類資產管理】跟 KKR、BX 同類；特色是信貸與保險。' },
+
+  SYF:{ biz:'Synchrony —— 零售商聯名信用卡與消費貸款。',
+       pos:'【消費信貸】跟 COF、ALLY 一樣看失業率與壞帳；V、MA 不放款，SYF 是自己放款。' },
+
+  ALLY:{ biz:'Ally Financial —— 汽車貸款與網路銀行。',
+       pos:'【汽車信貸】看消費者違約風險；跟 SYF、COF 同看消費者健康。' },
+
+  AXP:{ biz:'American Express —— 自己發卡，也自己經營支付網路，主攻高端客群。',
+       pos:'【發卡加網路】V、MA 只做網路，AXP 兩邊都做；客群偏高所得。' },
+
+  COF:{ biz:'Capital One —— 信用卡與汽車貸款，收購 Discover 後擁有自己的支付網路。',
+       pos:'【信用卡放款】跟 SYF、AXP 同屬信用卡；收購 Discover 後也有網路端，往 V、MA 的領域延伸。' },
+
+  MA:{ biz:'Mastercard —— 支付網路，收交易手續費，不放款。',
+       pos:'【支付網路】V 是直接對手；不承擔壞帳，跟 SYF、COF、AXP 的放款生意不同。' },
+
+  CME:{ biz:'CME Group —— 期貨與選擇權交易所：利率、股指、能源、農產品。',
+       pos:'【交易所】市場波動大、成交量高時受益；不放款，跟銀行 JPM、BAC 是不同生意。' },
+
+  SPGI:{ biz:'S&P Global —— 信用評等、指數授權（含 S&P 500）與市場資料。',
+       pos:'【資料與評等】跟 MA、V 同屬輕資產、抽成型生意；不承擔信用風險。' },
+
+  BAC:{ biz:'Bank of America —— 美國第二大銀行，消費銀行與財富管理。',
+       pos:'【受監管的大型銀行】跟 JPM 同類，對利率敏感；跟 ARCC 那種私募信貸是銀行信用的另一端。' },
+
+  QUBT:{ biz:'Quantum Computing Inc —— 薄膜鈮酸鋰光子晶片代工與光子量子設備。',
+       pos:'【量子小型股】IONQ、RGTI、QBTS 走離子阱、超導、退火路線，QUBT 走光子；營收極小。' },
+
+  LAES:{ biz:'SEALSQ —— 安全晶片與後量子密碼（PQC）晶片。',
+       pos:'【量子安全題材】不做量子電腦，做「量子時代防被破解」的安全晶片；跟 ARQQ 同類，跟 IONQ、RGTI 是不同路線。' },
+
+  ARQQ:{ biz:'Arqit Quantum —— 英國，後量子加密軟體。',
+       pos:'【量子安全題材】跟 LAES 同類，不做量子電腦；營收很小。' },
+
+  MSFT:{ biz:'Microsoft —— Azure 雲端、Microsoft 365、Windows、LinkedIn、GitHub，也是 OpenAI 的大股東。',
+       pos:'【七巨頭 · 雲端加軟體】AMZN、GOOGL 是雲端對手；也是 NVDA 的大客戶（買 GPU）。' },
+
+  GOOGL:{ biz:'Alphabet A 股 —— 搜尋廣告、YouTube、Google Cloud、Android，加上自研 TPU 晶片。',
+       pos:'【跟 GOOG 是同一家公司】只差在投票權，不要當兩檔看；雲端對手是 AMZN、MSFT。' },
+
+  AMZN:{ biz:'Amazon —— 電商加 AWS 雲端（利潤主力），另有廣告與物流。',
+       pos:'【七巨頭 · 雲端】AWS 是 MSFT、GOOGL 的對手，同時是 NVDA 與自研晶片的大客戶。' }
 };
 
 function profLoad(){
