@@ -267,7 +267,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.2</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.3</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1893,8 +1893,11 @@ var PROFILE_DEFAULT = {
   MKSI:{ biz:'MKS Instruments —— 半導體設備裡的關鍵子系統：電源、真空、氣體控制，另有電子與特殊化學製程。',
        pos:'【設備的零組件】是 AMAT、LRCX 的供應商，業績跟著設備商訂單走；跟 ENTG 同屬供應鏈零組件層。' },
 
-  FORM:{ biz:'FormFactor —— 晶圓測試用的探針卡，DRAM／HBM 探針卡是主力。',
-       pos:'【晶圓測試耗材】跟 AEHR、TER 同一段；受記憶體景氣（MU、SNDK）連動。' },
+  FORM:{ biz:'FormFactor —— 晶圓測試用的探針卡，DRAM／HBM 探針卡是主力；另有測試系統。',
+       pos:'【晶圓測試耗材】跟 AEHR、TER 同一段；受記憶體景氣（MU、SNDK）連動。',
+       cust:'記憶體廠（DRAM／HBM）、晶圓代工與邏輯晶片廠。',
+       story:'2026 年 Q2 營收創高 $258.2M（年增 31.9%），調整後 EPS $0.82，遠高於市場預期的 $0.61。HBM 約占 DRAM 營收三分之二；共封裝光學（CPO）比預期快，今年可能超過原先預估的 $10–20M。Q3 指引營收 $270M 上下。',
+       risk:'營收跟記憶體資本支出連動，記憶體景氣一轉弱，探針卡訂單會跟著降。毛利率 53% 裡含一次性的關稅退款，管理層自己說可持續的水準約 51%。財報後股價先跌後漲，波動大。' },
 
   NVMI:{ biz:'Nova —— 以色列，製程量測（光學計量）設備。',
        pos:'【量測設備】跟 KLAC、ONTO、CAMT 同屬檢測與量測；Nova 專攻量測，不是缺陷檢測。' },
@@ -2065,7 +2068,13 @@ var PROFILE_DEFAULT = {
        pos:'【跟 GOOG 是同一家公司】只差在投票權，不要當兩檔看；雲端對手是 AMZN、MSFT。' },
 
   AMZN:{ biz:'Amazon —— 電商加 AWS 雲端（利潤主力），另有廣告與物流。',
-       pos:'【七巨頭 · 雲端】AWS 是 MSFT、GOOGL 的對手，同時是 NVDA 與自研晶片的大客戶。' }
+       pos:'【七巨頭 · 雲端】AWS 是 MSFT、GOOGL 的對手，同時是 NVDA 與自研晶片的大客戶。' },
+
+  ROG:{ biz:'Rogers —— 特殊工程材料：高頻電路板材料、陶瓷散熱基板（給電動車與電力模組）、矽膠與聚氨酯發泡材料。',
+       pos:'【材料端 · 工業與車用為主】不做晶片也不做伺服器，賣的是別人零件裡的材料。AI 只是它「正在爭取」的新題材（散熱與高頻板材），目前還不是主要營收。',
+       cust:'車廠與車用零件商、工業與軌道設備、電信設備、航太與國防。營收大約：工業 37%、車用 25%、電子與通訊 18%、航太國防 15%。',
+       story:'2026 年 Q2 營收 $216.8M（年增 6.9%）。9/30 投資人日提出 2030 目標：營收 $1.5B、調整後 EPS $14（2025 年是 $2.39），主要靠三個新領域，AI 資料中心排第一（微通道散熱器、高頻電路材料）。股價當天漲約 11%。',
+       risk:'AI 那條線還在送樣與測試，公司自己說設計定案要等後面幾季、營收約 2027 年底才開始。目前營收成長只有個位數，EPS 目標要翻近 6 倍，是「故事先行」。車用（電動車）需求偏弱，原物料短缺與中國廠產能利用率低也在壓毛利。' }
 };
 
 function profLoad(){
