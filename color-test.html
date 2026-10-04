@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>顏色回測 color-test v1</title>
+<title>顏色回測 color-test v2</title>
 <style>
 :root{--bg:#0f1419;--card:#1a2129;--line:#2b3641;--tx:#e6edf3;--mut:#8b98a5;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
 *{box-sizing:border-box}
@@ -28,24 +28,24 @@ th{color:var(--mut);font-weight:500}
 </style>
 </head>
 <body>
-<h1>顏色回測 color-test <span style="font-size:13px;color:var(--mut)">v1</span></h1>
-<div class="sub">問題：stocks.html 的卡片「第一次變深綠」那天，之後的表現有沒有比平常日好？深綠當天可不可以當進場訊號？<br>這支只讀資料、不改任何東西，跟 stocks.html 用同一個 Worker 和同一套評分程式。</div>
+<h1>顏色回測 color-test <span style="font-size:13px;color:var(--mut)">v2</span></h1>
+<div class="sub">v1 的結論：只看「變深綠」沒有優勢，離前高的距離才重要。v2 要回答兩個更細的問題：<br>① 同樣離前高 0~3%，「變深綠」比「隨便哪一天」好嗎？（把顏色和位置拆開）<br>② 你的想法：「前一天是藍色、隔天變深綠」是不是特別好？</div>
 
 <div class="card">
 <h2>跑之前先寫死的規則（跑完不改）</h2>
-<div class="read"><b>事件</b>：某檔股票「過去 10 個交易日都不是深綠，今天收盤變深綠（分數 ≥ 8 且沒被過熱／空頭覆蓋）」。進場價 = 當天收盤價（最理想的情況，實際只會更差）。</div>
-<div class="read"><b>通過標準（每一組都要全部過才算「可以當進場訊號」）</b></div>
+<div class="read"><b>事件</b>：過去 10 個交易日都不是深綠，今天收盤變深綠。進場價 = 當天收盤。</div>
+<div class="read"><b>「顏色有貢獻」的標準</b>（拿深綠新事件，跟「同一個位置分組、任何顏色的平常日」比）：</div>
 <ol class="crit read">
-<li>樣本 ≥ 30 次（太少不下結論）</li>
-<li>20 天後的中位數報酬 &gt; 0</li>
-<li>10 天內最低價碰到 −8% 的比例 ≤ 30%（接近你的停損上限）</li>
-<li>20 天後的中位數報酬要<b>高過「平常日」</b>（不然只是大環境好，跟顏色無關）</li>
+<li>樣本 ≥ 30 次</li>
+<li>20 天後中位數要比平常日<b>高至少 1.0 個百分點</b>（差不到 1 個百分點算雜訊）</li>
+<li>10 天內最低價碰到 −8% 的比例要比平常日<b>低至少 3 個百分點</b></li>
 </ol>
-<div class="small">「離前高多遠」這一欄用「收盤相對前 60 個交易日最高收盤」來近似 pivot，不是 dna 的 VCP pivot，只是粗略參考。</div>
+<div class="read">逐年檢查：有 30 次以上樣本的年份，至少 2/3 要是「深綠比平常日好」，才算不是只靠某一段行情。</div>
+<div class="small">位置分組仍用「收盤相對前 60 個交易日最高收盤」近似 pivot，不是 dna 的 VCP pivot。</div>
 </div>
 
 <div class="card">
-<button id="go" onclick="runAll()">開始回測（約 197 檔，可能要幾分鐘）</button>
+<button id="go" onclick="runAll()">開始回測 v2（約 197 檔，要幾分鐘）</button>
 <button class="sec" id="cp" onclick="copyReport()" style="display:none">複製結果文字</button>
 <div class="bar"><i id="pf"></i></div>
 <div class="small" id="pt">還沒開始</div>
@@ -334,8 +334,8 @@ function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ====== 回測專用 ======
-const BT = { MIN_N:30, STOP:-8, STOP_MAX_RATE:30, FRESH_GAP:10, PIV_WIN:60, WARMUP:199 };
+// ====== 回測 v2 ======
+const BT = { STOP:-8, FRESH_GAP:10, PIV_WIN:60, WARMUP:199, MIN_N:30, EDGE_PP:1.0, HIT_PP:3 };
 const PROXY = u => `https://gstock-proxy.cykjas.workers.dev/?url=${encodeURIComponent(u)}`;
 let REPORT = '';
 
@@ -374,146 +374,166 @@ function colorAt(sym, d, i, spyByDate) {
   const advice = genAdvice(sym, scores, slice, getClass(sym), threshold, change, 0);
   const hasBear = advice.technical.includes('空頭訊號確認') || advice.technical.includes('跌破MA200');
   const hasFire = advice.fireLv >= 3;
-  const hasFireWarn = advice.fireLv >= 1 && advice.fireLv < 3;
   let w;
   if (hasBear) w = { cardCls:'card-red-light' };
   else if (hasFire) w = { cardCls:'card-orange' };
   else if (advice.noMA200) w = { cardCls:'card-gray' };
   else { w = getWeather(total10, threshold); }
-  return { band: bandOf(w.cardCls), deep: w.cardCls === 'card-green-dark', total10 };
+  return { band: bandOf(w.cardCls), cls: w.cardCls, deep: w.cardCls === 'card-green-dark', total10 };
 }
 
 const median = a => { if (!a.length) return null; const s = [...a].sort((x,y)=>x-y), m = s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
 const pct = x => x == null ? '—' : (x>=0?'+':'') + x.toFixed(1) + '%';
+const pp = x => x == null ? '—' : (x>=0?'+':'') + x.toFixed(1);
 const rate = (n, d) => d ? n/d*100 : null;
+const f0 = x => x == null ? '—' : x.toFixed(0) + '%';
 
 const GROUPS = [
-  { key:'g1', name:'收盤創前高 +0~3%（剛突破）', f:x=>x>=0 && x<3 },
-  { key:'g2', name:'高過前高 +3~5%', f:x=>x>=3 && x<5 },
-  { key:'g3', name:'高過前高 +5% 以上（已跑遠）', f:x=>x>=5 },
-  { key:'g4', name:'還在前高下方 0~5%（快到）', f:x=>x<0 && x>=-5 },
-  { key:'g5', name:'離前高下方 5% 以上', f:x=>x<-5 },
+  { name:'剛突破：高過前高 0~3%', f:x=>x>=0 && x<3 },
+  { name:'高過前高 3~5%', f:x=>x>=3 && x<5 },
+  { name:'已跑遠：高過前高 5% 以上', f:x=>x>=5 },
+  { name:'快到：還在前高下方 0~5%', f:x=>x<0 && x>=-5 },
+  { name:'離前高下方 5% 以上', f:x=>x<-5 },
 ];
+const gOf = x => GROUPS.findIndex(g => g.f(x));
+// 淺綠=1 深綠=2 藍=3 其他=0
+const bcode = (band, deep) => deep ? 2 : band === 'green' ? 1 : band === 'blue' ? 3 : 0;
 
-function analyzeOne(sym, d, spyByDate, ev, base) {
+function analyzeOne(sym, d, spyByDate, ev, days) {
   const n = d.closes.length;
-  let freshLast = -999, runLen = 0, inRun = false, runStart = -1, prevBandBeforeRun = null;
-  let lastBand = null;
+  let freshLast = -999, inRun = false, runStart = -1, lastBand = null, lastBc = 0;
+  let fromAtRun = null;
   for (let i = BT.WARMUP; i < n; i++) {
     const col = colorAt(sym, d, i, spyByDate);
     const e = d.closes[i];
-    // 平常日基準
+    const date = dayKey(d.timestamps[i]);
+    let hi = -Infinity; for (let k=Math.max(0,i-BT.PIV_WIN); k<i; k++) if (d.closes[k] > hi) hi = d.closes[k];
+    const dist = (e/hi - 1)*100, g = gOf(dist);
+    const bc = bcode(col.band, col.deep);
+    let r20 = null, hit10 = null, dd20 = null, r5=null, r10=null;
+    if (i + 5 < n) r5 = (d.closes[i+5]/e - 1)*100;
+    if (i + 10 < n) r10 = (d.closes[i+10]/e - 1)*100;
     if (i + 20 < n) {
-      const r20 = (d.closes[i+20]/e - 1)*100;
+      r20 = (d.closes[i+20]/e - 1)*100;
       let mn = Infinity; for (let k=i+1;k<=i+10;k++) if (d.lows[k] < mn) mn = d.lows[k];
-      const hit = (mn/e - 1)*100 <= BT.STOP;
-      base.all.r20.push(r20); base.all.hit.push(hit?1:0);
-      const ma200 = avg(d.closes.slice(i-199, i+1));
-      if (e > ma200) { base.up.r20.push(r20); base.up.hit.push(hit?1:0); }
+      hit10 = (mn/e - 1)*100 <= BT.STOP ? 1 : 0;
+      let m2 = Infinity; for (let k=i+1;k<=i+20;k++) if (d.lows[k] < m2) m2 = d.lows[k];
+      dd20 = (m2/e - 1)*100;
+      days.push({ y: date.slice(0,4), date, g, b: bc, r20, hit: hit10 });
     }
-    const isFresh = col.deep && !inRun && (i - freshLast > BT.FRESH_GAP);
-    if (col.deep) {
-      if (!inRun) { inRun = true; runStart = i; prevBandBeforeRun = lastBand; }
-    } else if (inRun) {
-      // 這一段深綠結束
+    if (col.deep && !inRun) { inRun = true; runStart = i; fromAtRun = lastBand; }
+    else if (!col.deep && inRun) {
       if (ev.length && ev[ev.length-1].sym === sym && ev[ev.length-1].i === runStart) ev[ev.length-1].dur = i - runStart;
       inRun = false;
     }
+    const isFresh = col.deep && runStart === i && (i - freshLast > BT.FRESH_GAP);
     if (isFresh) {
       freshLast = i;
-      let hi = -Infinity; for (let k=Math.max(0,i-BT.PIV_WIN); k<i; k++) if (d.closes[k] > hi) hi = d.closes[k];
-      const dist = (e/hi - 1)*100;
-      const o = { sym, i, date: dayKey(d.timestamps[i]), dist, from: prevBandBeforeRun || lastBand, dur: null };
-      if (i+5 < n)  o.r5  = (d.closes[i+5]/e - 1)*100;
-      if (i+10 < n) o.r10 = (d.closes[i+10]/e - 1)*100;
-      if (i+20 < n) o.r20 = (d.closes[i+20]/e - 1)*100;
-      if (i+10 < n) { let mn=Infinity; for (let k=i+1;k<=i+10;k++) if (d.lows[k]<mn) mn=d.lows[k]; o.hit10 = (mn/e-1)*100 <= BT.STOP ? 1 : 0; }
-      if (i+20 < n) { let mn=Infinity; for (let k=i+1;k<=i+20;k++) if (d.lows[k]<mn) mn=d.lows[k]; o.dd20 = (mn/e-1)*100; }
-      ev.push(o);
+      ev.push({ sym, i, date, y: date.slice(0,4), g, dist, from: fromAtRun || '?', r5, r10, r20, hit: hit10, dd20, dur: null });
     }
     lastBand = col.band;
   }
-  if (inRun && ev.length && ev[ev.length-1].sym === sym && ev[ev.length-1].i === runStart) ev[ev.length-1].dur = null; // 還沒結束
 }
 
-function stat(list) {
-  const r5 = list.filter(x=>x.r5!=null).map(x=>x.r5);
-  const r10 = list.filter(x=>x.r10!=null).map(x=>x.r10);
-  const r20 = list.filter(x=>x.r20!=null).map(x=>x.r20);
-  const h = list.filter(x=>x.hit10!=null);
-  const dd = list.filter(x=>x.dd20!=null).map(x=>x.dd20);
-  return {
-    n: list.length, n20: r20.length,
-    m5: median(r5), m10: median(r10), m20: median(r20),
-    win20: rate(r20.filter(x=>x>0).length, r20.length),
-    hit: rate(h.filter(x=>x.hit10).length, h.length), nh: h.length,
-    dd: median(dd),
-  };
+function S(list) {
+  const r = list.filter(x=>x.r20!=null);
+  const h = list.filter(x=>x.hit!=null);
+  return { n: r.length, m20: median(r.map(x=>x.r20)),
+           win: rate(r.filter(x=>x.r20>0).length, r.length),
+           hit: rate(h.filter(x=>x.hit).length, h.length),
+           m5: median(list.filter(x=>x.r5!=null).map(x=>x.r5)),
+           m10: median(list.filter(x=>x.r10!=null).map(x=>x.r10)),
+           dd: median(list.filter(x=>x.dd20!=null).map(x=>x.dd20)) };
 }
 
-function verdict(s, b) {
-  const fails = [];
-  if (s.n20 < BT.MIN_N) return { ok:null, text:`樣本只有 ${s.n20} 次，不到 ${BT.MIN_N}，不能下結論` };
-  if (!(s.m20 > 0)) fails.push('20 天後中位數沒有賺');
-  if (s.hit > BT.STOP_MAX_RATE) fails.push(`10 天內碰到 −8% 的比例 ${s.hit.toFixed(0)}% 太高（要 ≤${BT.STOP_MAX_RATE}%）`);
-  if (!(s.m20 > b.m20)) fails.push(`沒有比平常日好（平常日 ${pct(b.m20)}）`);
-  return fails.length ? { ok:false, text:'未通過：' + fails.join('；') } : { ok:true, text:'通過全部 4 條' };
+// 深綠事件 vs 平常日：顏色有沒有貢獻
+function edge(sEv, sBase) {
+  if (sEv.n < BT.MIN_N) return { ok:null, text:`樣本只有 ${sEv.n} 次，不到 ${BT.MIN_N}，不下結論`, d20:null, dh:null };
+  const d20 = sEv.m20 - sBase.m20, dh = sBase.hit - sEv.hit;   // dh 正 = 深綠比較安全
+  const okA = d20 >= BT.EDGE_PP, okB = dh >= BT.HIT_PP;
+  const parts = [];
+  parts.push(`20 天中位數 ${pp(d20)} 個百分點${okA?'（夠）':'（不到 1.0，算雜訊）'}`);
+  parts.push(`碰 −8% 的比例${dh>=0?'低了':'高了'} ${Math.abs(dh).toFixed(0)} 個百分點${okB?'（夠）':'（不到 3，算雜訊）'}`);
+  return { ok: okA && okB, text: parts.join('；'), d20, dh };
 }
-
-function reading(s, b) {
-  if (s.n20 < 5) return '樣本太少，數字沒有參考價值。';
-  const diff = s.m20 - b.m20;
-  const t1 = `20 天後一半的案例漲幅高於 ${pct(s.m20)}，平常日是 ${pct(b.m20)}，${diff>0?'高':'低'}了 ${Math.abs(diff).toFixed(1)} 個百分點；`;
-  const t2 = `其中 ${s.win20.toFixed(0)}% 是賺的。`;
-  const t3 = s.hit != null ? `買進後 10 天內最低價碰到 −8% 的有 ${s.hit.toFixed(0)}%（平常日 ${b.hit.toFixed(0)}%）。` : '';
-  return t1 + t2 + t3;
-}
-
+const tag = v => v.ok===true ? '<span class="pass">顏色有貢獻</span>' : v.ok===false ? '<span class="fail">沒有</span>' : '<span class="na">樣本不足</span>';
+const tagTxt = v => v.ok===true ? '顏色有貢獻' : v.ok===false ? '沒有' : '樣本不足';
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
-function render(ev, base, meta) {
-  const bAll = { m20: median(base.all.r20), hit: rate(base.all.hit.reduce((a,b)=>a+b,0), base.all.hit.length), n: base.all.r20.length };
-  const bUp  = { m20: median(base.up.r20),  hit: rate(base.up.hit.reduce((a,b)=>a+b,0),  base.up.hit.length),  n: base.up.r20.length };
-  const all = stat(ev);
+function perDateMedian(list) {
+  const m = {};
+  list.forEach(x => { if (x.r20 != null) (m[x.date] = m[x.date] || []).push(x.r20); });
+  return median(Object.values(m).map(median));
+}
+
+function render(ev, days, meta) {
+  let txt = `顏色回測 color-test v2　${new Date().toLocaleString()}\n股票 ${meta.ok} 檔成功 / ${meta.fail} 檔失敗\n深綠新事件 ${ev.length} 次；全部日子樣本 ${days.length}\n\n`;
+  let h = '';
+  const sAll = S(days), sEvAll = S(ev);
   const dates = new Set(ev.map(e=>e.date)).size;
-  const durs = ev.filter(e=>e.dur!=null).map(e=>e.dur);
-  const fromCnt = {}; ev.forEach(e => { const k = e.from || '?'; fromCnt[k] = (fromCnt[k]||0)+1; });
-  const names = { green:'淺綠/達標', blue:'藍（中性）', red:'紅（走弱）', orange:'橘（過熱）', gray:'灰（新上市）', '?':'不明' };
-  let txt = `顏色回測 color-test v1　${new Date().toLocaleString()}\n股票 ${meta.ok} 檔成功 / ${meta.fail} 檔失敗；每檔約 ${meta.avgBars} 根日線\n深綠新事件 ${all.n} 次（發生在 ${dates} 個不同日期）\n平常日基準：所有交易日 20天中位數 ${pct(bAll.m20)}、10天碰−8% ${bAll.hit.toFixed(0)}%（${bAll.n} 個樣本）；站上MA200的日子 ${pct(bUp.m20)}、${bUp.hit.toFixed(0)}%\n\n`;
-  let h = `<div class="card"><h2>總覽</h2>
-  <div class="read">共抓到 <b>${all.n}</b> 次「第一次變深綠」，集中在 <b>${dates}</b> 個不同日期（日期越少，代表很多檔同一天一起變，樣本其實沒那麼獨立）。</div>
-  <div class="read">平常日基準（同一批股票、任何一天買進）：20 天後中位數 <b>${pct(bAll.m20)}</b>，10 天內碰 −8% 的機率 <b>${bAll.hit.toFixed(0)}%</b>。只算股價在 MA200 上方的日子：<b>${pct(bUp.m20)}</b>、<b>${bUp.hit.toFixed(0)}%</b>。</div>
-  <div class="read">變深綠前一天的顏色：${Object.entries(fromCnt).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${names[k]||k} ${v} 次`).join('、')}。</div>
-  <div class="read">深綠通常維持多久：中位數 <b>${durs.length?median(durs):'—'}</b> 個交易日（共 ${durs.length} 段已結束的）。${durs.length && median(durs)<=3?'這代表顏色翻得很快，深綠大多撐不久。':''}</div>
-  </div>`;
-  txt += `前一天顏色：${Object.entries(fromCnt).map(([k,v])=>`${names[k]||k} ${v}`).join('、')}\n深綠持續中位數 ${durs.length?median(durs):'—'} 天（${durs.length} 段）\n\n`;
+  h += `<div class="card"><h2>總覽</h2>
+  <div class="read">深綠新事件 <b>${ev.length}</b> 次（${dates} 個不同日期）。全部日子（任何股票、任何顏色）當基準：20 天後中位數 <b>${pct(sAll.m20)}</b>，10 天內碰 −8% 的機率 <b>${f0(sAll.hit)}</b>。</div></div>`;
+  txt += `基準(全部日子)：20天${pct(sAll.m20)} 碰−8% ${f0(sAll.hit)}\n深綠事件全體：20天${pct(sEvAll.m20)} 碰−8% ${f0(sEvAll.hit)}（n=${sEvAll.n}）\n\n`;
 
-  h += `<div class="card"><h2>依「離前高多遠」分組（你最在意的）</h2><div class="wrap"><table><tr><th>分組</th><th>次數</th><th>5天</th><th>10天</th><th>20天</th><th>20天賺%</th><th>10天碰−8%</th><th>判定</th></tr>`;
-  const rows = [{ name:'全部事件', list: ev }].concat(GROUPS.map(g => ({ name:g.name, list: ev.filter(e=>g.f(e.dist)) })));
+  // A. 位置 × 顏色
+  h += `<div class="card"><h2>① 同一個位置，深綠比「平常日」「淺綠日」好嗎？</h2><div class="wrap"><table><tr><th>位置 / 顏色</th><th>次數</th><th>20天中位數</th><th>20天賺%</th><th>碰−8%</th><th>深綠 vs 平常日</th></tr>`;
+  txt += '【① 同位置：平常日 / 淺綠日 / 深綠新事件】\n';
   let reads = '';
-  rows.forEach(r => {
-    const s = stat(r.list), v = verdict(s, bAll);
-    const cls = v.ok===true?'pass':v.ok===false?'fail':'na';
-    h += `<tr><td>${esc(r.name)}</td><td>${s.n}</td><td>${pct(s.m5)}</td><td>${pct(s.m10)}</td><td>${pct(s.m20)}</td><td>${s.win20==null?'—':s.win20.toFixed(0)+'%'}</td><td>${s.hit==null?'—':s.hit.toFixed(0)+'%'}</td><td class="${cls}">${v.ok===true?'過':v.ok===false?'沒過':'樣本不足'}</td></tr>`;
-    reads += `<div class="read"><b>${esc(r.name)}</b>（${s.n} 次）：${esc(reading(s, bAll))}<br><span class="${cls}">${esc(v.text)}</span></div>`;
-    txt += `${r.name}｜${s.n}次｜5天${pct(s.m5)} 10天${pct(s.m10)} 20天${pct(s.m20)}｜20天賺${s.win20==null?'—':s.win20.toFixed(0)+'%'}｜碰−8% ${s.hit==null?'—':s.hit.toFixed(0)+'%'}｜最大回檔中位數${pct(s.dd)}｜${v.text}\n`;
+  GROUPS.forEach((g, gi) => {
+    const base = S(days.filter(x=>x.g===gi));
+    const lg = S(days.filter(x=>x.g===gi && x.b===1));
+    const evs = S(ev.filter(x=>x.g===gi));
+    const v = edge(evs, base);
+    h += `<tr><td colspan="6" style="color:var(--acc);font-weight:600;padding-top:10px">${esc(g.name)}</td></tr>`;
+    [['平常日（任何顏色）',base],['淺綠日',lg],['深綠新事件',evs]].forEach(([nm,s],k) => {
+      h += `<tr><td>　${nm}</td><td>${s.n}</td><td>${pct(s.m20)}</td><td>${f0(s.win)}</td><td>${f0(s.hit)}</td><td>${k===2?tag(v):''}</td></tr>`;
+      txt += `${g.name}｜${nm}｜n=${s.n}｜20天${pct(s.m20)}｜賺${f0(s.win)}｜碰−8% ${f0(s.hit)}${k===2?'｜'+tagTxt(v)+'：'+v.text:''}\n`;
+    });
+    reads += `<div class="read"><b>${esc(g.name)}</b>：${esc(v.text)}</div>`;
   });
-  h += `</table></div><div class="small">表內數字都是「中位數」：5/10/20 天是進場後第幾個交易日收盤相對進場價的漲跌；進場價 = 變深綠當天收盤。</div></div>`;
-  h += `<div class="card"><h2>白話解讀</h2>${reads}</div>`;
+  h += `</table></div><div class="small">這張表是整份的重點：如果「深綠新事件」跟「平常日」差不多，就代表好壞是位置決定的，跟顏色無關。</div>${reads}</div>`;
+  txt += '\n';
 
-  // 依年度（看會不會只有某一段行情有效）
-  const byYear = {};
-  ev.forEach(e => { const y = e.date.slice(0,4); (byYear[y] = byYear[y] || []).push(e); });
-  h += `<div class="card"><h2>依年份拆開看</h2><div class="wrap"><table><tr><th>年</th><th>次數</th><th>20天中位數</th><th>10天碰−8%</th></tr>`;
-  Object.keys(byYear).sort().forEach(y => { const s = stat(byYear[y]); h += `<tr><td>${y}</td><td>${s.n}</td><td>${pct(s.m20)}</td><td>${s.hit==null?'—':s.hit.toFixed(0)+'%'}</td></tr>`; txt += `${y}｜${s.n}次｜20天${pct(s.m20)}｜碰−8% ${s.hit==null?'—':s.hit.toFixed(0)+'%'}\n`; });
-  h += `</table></div><div class="small">如果只有某一年好、其他年份差，代表是行情好，不是顏色有用。</div></div>`;
+  // B. 前一天顏色
+  const fromName = { blue:'前一天是藍色', green:'前一天是淺綠', other:'前一天是其他（紅/橘/灰）' };
+  const fromKey = f => f === 'blue' ? 'blue' : f === 'green' ? 'green' : 'other';
+  h += `<div class="card"><h2>② 你的想法：前一天藍色、隔天變深綠，特別好嗎？</h2><div class="wrap"><table><tr><th>前一天顏色 / 位置</th><th>次數</th><th>20天中位數</th><th>碰−8%</th><th>對照的平常日</th><th>判定</th></tr>`;
+  txt += '【② 前一天顏色】\n';
+  let reads2 = '';
+  [['blue'],['green'],['other']].forEach(([fk]) => {
+    const list = ev.filter(e => fromKey(e.from) === fk);
+    const sets = [['全部位置', list, sAll], ...[0,3].map(gi => [GROUPS[gi].name, list.filter(e=>e.g===gi), S(days.filter(x=>x.g===gi))])];
+    h += `<tr><td colspan="6" style="color:var(--acc);font-weight:600;padding-top:10px">${fromName[fk]}</td></tr>`;
+    sets.forEach(([nm, l, bs], k) => {
+      const s = S(l), v = edge(s, bs);
+      h += `<tr><td>　${esc(nm)}</td><td>${s.n}</td><td>${pct(s.m20)}</td><td>${f0(s.hit)}</td><td>${pct(bs.m20)} / ${f0(bs.hit)}</td><td>${tag(v)}</td></tr>`;
+      txt += `${fromName[fk]}｜${nm}｜n=${s.n}｜20天${pct(s.m20)}｜碰−8% ${f0(s.hit)}｜對照${pct(bs.m20)}/${f0(bs.hit)}｜${tagTxt(v)}：${v.text}\n`;
+      if (k === 0) reads2 += `<div class="read"><b>${fromName[fk]}</b>（${s.n} 次）：${esc(v.text)}</div>`;
+    });
+  });
+  h += `</table></div>${reads2}</div>`;
+  txt += '\n';
 
-  h += `<div class="card"><h2>這份結果的限制（一定要記得）</h2>
-  <div class="read">1. <b>倖存者偏差</b>：只測「現在還在名單裡」的股票，已經掉出名單或下市的沒測到，結果會偏樂觀。<br>
-  2. <b>同一天一起變</b>：大盤一天大漲，很多檔會同時變深綠，這些其實是同一個事件，不是獨立樣本。<br>
-  3. <b>「大盤」那一項很吵</b>：它主要是 SPY 當天漲跌，所以顏色可能一天一變，事件裡有一部分是這種雜訊。<br>
-  4. 進場價用當天收盤、停損看盤中最低價，沒算滑價與跳空。<br>
-  5. 近似 pivot 不等於 dna 的 pivot；真正能不能買，還是看 dna 的 pivot、停損與 1% 規則。</div></div>`;
+  // C. 逐年
+  const years = [...new Set(days.map(x=>x.y))].sort();
+  h += `<div class="card"><h2>③ 逐年：是不是只有某一段行情有效？</h2><div class="wrap"><table><tr><th>年</th><th>深綠次數</th><th>深綠20天</th><th>平常日20天</th><th>深綠碰−8%</th><th>平常日碰−8%</th><th>判定</th></tr>`;
+  txt += '【③ 逐年（全部位置）】\n';
+  let okY = 0, nY = 0;
+  years.forEach(y => {
+    const s = S(ev.filter(x=>x.y===y)), b = S(days.filter(x=>x.y===y)), v = edge(s, b);
+    if (s.n >= BT.MIN_N) { nY++; if (v.d20 > 0 && v.dh > 0) okY++; }
+    h += `<tr><td>${y}${y===years[0]?'（下半年）':''}</td><td>${s.n}</td><td>${pct(s.m20)}</td><td>${pct(b.m20)}</td><td>${f0(s.hit)}</td><td>${f0(b.hit)}</td><td>${tag(v)}</td></tr>`;
+    txt += `${y}｜n=${s.n}｜深綠20天${pct(s.m20)} vs 平常日${pct(b.m20)}｜碰−8% ${f0(s.hit)} vs ${f0(b.hit)}｜${tagTxt(v)}\n`;
+  });
+  h += `</table></div><div class="small">看「深綠」跟「平常日」在同一年的差距：如果某年平常日碰 −8% 的比例本來就高，那是那一年市場震盪，不是顏色的問題。有 30 次以上樣本的 ${nY} 個年份中，深綠比平常日報酬高且更安全的有 ${okY} 個。</div></div>`;
+  txt += `逐年：${nY} 個有效年份中 ${okY} 個深綠比平常日更好（報酬較高且碰−8%較少）\n\n`;
+
+  // D. 去重疊
+  const pdE = perDateMedian(ev), pdB = perDateMedian(days);
+  h += `<div class="card"><h2>④ 去重疊檢查</h2><div class="read">同一天很多檔一起變深綠，算多筆其實是同一個事件。改成「每個日期只算一個中位數，再取中位數」：深綠 <b>${pct(pdE)}</b>，所有日子 <b>${pct(pdB)}</b>，差 <b>${pp(pdE-pdB)}</b> 個百分點。${Math.abs(pdE-pdB) < BT.EDGE_PP ? '差距不到 1.0，跟上面的結論一致：顏色本身沒有明顯優勢。' : '差距有 1.0 以上，要再留意。'}</div></div>`;
+  txt += `【④ 去重疊】每日期中位數：深綠${pct(pdE)} vs 所有日子${pct(pdB)}（差${pp(pdE-pdB)}）\n`;
+
+  h += `<div class="card"><h2>限制（要記得）</h2><div class="read">倖存者偏差（只測現在在名單內的股票）；同日重疊；「大盤」那一項是 SPY 單日漲跌，所以顏色很吵；進場價用當天收盤、停損看盤中最低價，沒算滑價跳空；近似 pivot 不是 dna 的 VCP pivot；中位數沒有算誤差範圍，所以我把「差不到 1 個百分點」當雜訊。</div></div>`;
   document.getElementById('out').innerHTML = h;
   REPORT = txt;
   document.getElementById('cp').style.display = '';
@@ -532,16 +552,16 @@ async function runAll() {
     const spy = await fetchFull('SPY');
     spyByDate = {}; spy.closes.forEach((c,k) => { spyByDate[dayKey(spy.timestamps[k])] = c; });
   } catch(e) { log('SPY 抓不到（' + (e.message||e) + '），大盤那一項會用中性值，結果會失真'); }
-  const ev = [], base = { all:{r20:[],hit:[]}, up:{r20:[],hit:[]} };
-  let done = 0, ok = 0, fail = 0, bars = 0, idx = 0;
+  const ev = [], days = [];
+  let done = 0, ok = 0, fail = 0, idx = 0;
   async function worker() {
     while (idx < syms.length) {
       const sym = syms[idx++];
       try {
         const d = await fetchFull(sym);
         if (d.closes.length < 260) throw new Error('資料不足');
-        analyzeOne(sym, d, spyByDate, ev, base);
-        ok++; bars += d.closes.length;
+        analyzeOne(sym, d, spyByDate, ev, days);
+        ok++;
       } catch(e) { fail++; log(sym + ' 略過：' + (e.message||e)); }
       done++;
       pf.style.width = (done/syms.length*100) + '%';
@@ -552,7 +572,7 @@ async function runAll() {
   await Promise.all([worker(), worker()]);
   if (!ok) { pt.textContent = '全部失敗，可能是 Worker 連不上，稍後再試'; btn.disabled = false; return; }
   pt.textContent = `完成：成功 ${ok} 檔、略過 ${fail} 檔`;
-  render(ev, base, { ok, fail, avgBars: Math.round(bars/ok) });
+  render(ev, days, { ok, fail });
   btn.disabled = false; btn.textContent = '重新跑一次';
 }
 
