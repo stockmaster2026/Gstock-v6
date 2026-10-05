@@ -785,7 +785,10 @@ function trailHtml(S){
   const t=S && S.trl;
   if(!t) return '';
   const p=(typeof posOf==='function')? posOf(S.tk) : null;
-  if(!p) return '';   // 只認「真正有部位」(dna_positions)；isHeld 是「重點追蹤」，V96.89 已正名，不能混用
+  // 20MA 規則不需要成本，所以「真有部位」或「在持股清單」都顯示；沒填成本就少「成本線」那一行。
+  //   (isHeld 是「重點追蹤」清單、不一定都是真持股 —— 這裡只是看停利線，不影響任何買進判斷；標題會標出有沒有部位)
+  const tracked=(typeof isHeld==='function' && isHeld(S.tk));
+  if(!p && !tracked) return '';
   const px=(S.px!=null)?S.px:t.last;
   const cost=(p && p.cost!=null)?p.cost:null;
   const sg=(x)=>(x>=0?'+':'')+x.toFixed(1)+'%';
@@ -807,7 +810,7 @@ function trailHtml(S){
     sayA='收盤已經<b>連續 '+t.c20+' 天</b>在 20MA 下方 —— <b>照你的規則，這是出場訊號</b>（站回 '+t.m20+' 之上才算解除）。';
   }
   let h='<div style="margin-top:8px;padding:9px 12px;border:1px solid #30363d;border-left:5px solid '+colA+';border-radius:8px;background:#151a20">'
-    +'<div style="font-size:12.5px;color:#58a6ff;font-weight:700;letter-spacing:1px;margin-bottom:4px">📉 移動停利參考（你有這一檔）</div>';
+    +'<div style="font-size:12.5px;color:#58a6ff;font-weight:700;letter-spacing:1px;margin-bottom:4px">📉 移動停利參考（'+(p?'你有這一檔':'持股清單裡的這一檔 · 沒填部位，所以沒有成本線')+'）</div>';
   h+=row('你的規則 · 20MA 連 3 天',String(t.m20),sayA);
   if(cost!=null && px>cost){
     h+=row('成本線（賺錢後停損上移到這）',String(cost),
@@ -9434,6 +9437,7 @@ async function go(){
         +   '<div style="color:#6e7681;margin-top:2px">這兩個數字就是上面所有判詞的來源 —— 對不上就別信結論。</div>'
         + '</div>'
         + holdHtml(S, S.tk)
+        + (typeof trailHtml==='function' ? trailHtml(S) : '')   // V97.2 單檔卡也要看得到移動停利
         + radarHtml()
         + (S.s2Txt?'<div style="font-size:13px;line-height:1.75;margin:6px 0 2px;padding:7px 10px;border-left:3px solid '
             +((S.pullState==='pull'||S.pullState==='deep')?'#58a6ff':(S.pullState==='broken'?'#f85149'
