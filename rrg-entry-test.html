@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RRG 動能×買點測試 rrg-entry-test v1</title>
+<style>
+:root{--bg:#0f1419;--card:#1a2129;--line:#2b3641;--tx:#e6edf3;--mut:#8b98a5;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.65 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:16px;max-width:900px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 2px}h2{font-size:16px;margin:0 0 8px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.crit li{margin:4px 0}
+button{background:var(--acc);color:#04111f;border:0;border-radius:10px;padding:12px 18px;font-size:16px;font-weight:600}
+button.sec{background:#2b3641;color:var(--tx)}button:disabled{opacity:.5}
+.bar{height:10px;background:#2b3641;border-radius:6px;overflow:hidden;margin:10px 0 4px}
+.bar>i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{color:var(--mut);font-weight:500}
+.wrap{overflow-x:auto}
+.pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}.na{color:var(--warn);font-weight:700}
+.read{font-size:14px;color:#c9d4de;margin:6px 0}
+.small{font-size:12.5px;color:var(--mut)}
+#log{font-size:12px;color:var(--mut);max-height:120px;overflow:auto;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>RRG 動能×買點測試 rrg-entry-test <span style="font-size:13px;color:var(--mut)">v1</span></h1>
+<div class="sub">問題：股票在「突破」或「快到 pivot」那天，如果你的 RRG 顯示它動能強，後面是不是真的比較好？<br>做法：翻過去五年的假想買點，按當天 RRG 的位置分組，比後面的表現。只讀資料、不改任何東西。</div>
+
+<div class="card">
+<h2>跑之前先寫死的規則（跑完不改）</h2>
+<div class="read"><b>RRG 算法</b>：照你 rrg.html v2.9.5 的公式（對 SPY 的對數相對強度、63 根均線偏離、10 根變化量、normalize），每天只用當天以前的資料算。象限用 100 當分界，沒有套你工具的邊界死區（為了簡單、分組才夠大）。</div>
+<div class="read"><b>四個位置</b>：①強且變強（RS-Ratio≥100、RS-Momentum≥100）　②強但變弱（Ratio≥100、Momentum&lt;100）　③弱但變強（Ratio&lt;100、Momentum≥100）　④弱且變弱。另外再看「只看動能」：動能≥100 vs &lt;100，以及動能最強 1/3 vs 最弱 1/3（用這批買點自己排）。</div>
+<div class="read"><b>兩批買點</b>：</div>
+<ol class="crit read">
+<li><b>A 突破日</b>：收盤創近 60 日收盤新高，且收盤&gt;150 日線、&gt;200 日線、50 日線&gt;150 日線；同一檔 20 天內只算一次。</li>
+<li><b>C 快到 pivot</b>：同樣的趨勢條件，收盤還沒創新高，但離近 60 日收盤最高點不到 3%；同一檔 20 天內只算一次。</li>
+</ol>
+<div class="read"><b>看什麼</b>：買進後 10／20／60 天，比大盤 SPY 多賺多少（超額報酬，這樣不會因為大盤好就誤以為是這組強）；買進後 10 天內有沒有碰到 −8%（用盤中最低價）；以及用你的賣法（連 3 天收在 20 日線下賣、−8% 停損）的平均每筆。</div>
+<div class="read"><b>怎麼判斷「這組有沒有比較好」</b>：這組的「20 天超額報酬」比其他組平均多（或少）≥ 1.0 個百分點、<b>且</b>超過 3 倍標準誤（同一天很多檔會重疊，所以我把門檻抓比平常嚴）、<b>且</b>前半段與後半段時間方向一致，才寫「比較好／比較差」；否則寫「差不多」。「10 天內碰 −8%」同樣規則，但門檻是差 3 個百分點。樣本少於 100 筆的組不下判定。</div>
+<div class="read"><b>結果怎麼用</b>：只有「比較好」而且在 A 和 C 兩批都成立，我才會建議放進工具；只有一批成立當作線索；都沒有就不加。</div>
+</div>
+
+<div class="card">
+<button id="go" onclick="runAll()">開始（約 197 檔，要幾分鐘）</button>
+<button class="sec" id="cp" onclick="copyReport()" style="display:none">複製結果文字</button>
+<div class="bar"><i id="pf"></i></div>
+<div class="small" id="pt">還沒開始</div>
+<div id="log"></div>
+</div>
+
+<div id="out"></div>
+
+<script>
+const SECTORS = {
+  '七巨頭':        { emoji:'🤖', stocks:['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'] },
+  'AI 晶片':       { emoji:'🧠', stocks:['NVDA','AVGO','AMD','TSM','ARM','MPWR','INTC','QCOM','SITM','LSCC','TSEM','GFS','ASX'] },
+  '半導體設備':    { emoji:'🏭', stocks:['ASML','AMAT','LRCX','KLAC','AEHR','TER','ONTO','KLIC','CAMT','ENTG','MKSI','FORM','NVMI','ACMR'] },
+  '光通訊':        { emoji:'📡', stocks:['COHR','LITE','AAOI','CIEN','FN','AXTI','MRVL','GLW','ANET','POET','ALAB','CRDO','MTSI','VIAV','CLS','SMTC','MXL','APH'] },
+  '記憶體與儲存':  { emoji:'💾', stocks:['MU','SNDK','WDC','STX','NTAP','P','SMCI','DELL','HPE','AMKR','RMBS','PENG','SIMO'] },
+  'AI 電力與散熱': { emoji:'⚡', stocks:['VRT','BE','OKLO','GEV','PWR','ETN','CEG','TLN','SMR','NNE','VST','NRG','MOD','NVT','AAON','POWL','FIX','STRL','BWXT','CW'] },
+  '太空與國防':    { emoji:'🚀', stocks:['RKLB','LUNR','ASTS','PL','KTOS','AVAV','LDOS','RCAT','LMT','RTX','RDW','FLY','KRMN','VOYG','VSAT','ONDS','AXON','MRCY','PLTR','NOC','GD','LHX'] },
+  '量子運算':      { emoji:'⚛️', stocks:['IONQ','RGTI','QBTS','QUBT','LAES','ARQQ'] },
+  '生技與醫材':    { emoji:'🧬', stocks:['LLY','NVO','ISRG','TEM','CRSP','NTRA','HIMS','RXRX','VKTX','ALNY','AMGN','SYK','MDT','NTLA','BEAM','ARWR','IONS','VRTX','GH','ILMN'] },
+  '資安':          { emoji:'🛡️', stocks:['CRWD','PANW','ZS','S','FTNT','NET','OKTA','RBRK','TENB','QLYS','CHKP','SAIL','CVLT','VRNS','FFIV','AKAM','GEN'] },
+  '軟體 SaaS':     { emoji:'💻', stocks:['NOW','CRM','DDOG','SNOW','MDB','TEAM','HUBS','WDAY','ADBE','INTU','PLTR','ORCL','DT','ESTC','NTNX','GTLB','VEEV'] },
+  '金融':          { emoji:'🏦', stocks:['JPM','GS','MS','BLK','KKR','BX','SCHW','COIN','HOOD','V','ARCC','APO','SYF','ALLY','AXP','COF','MA','CME','SPGI','BAC'] },
+  '貴金屬/礦業':   { emoji:'🥇', stocks:['NEM','AEM','WPM','B','HL','FNV','KGC','AU','AGI','PAAS'] },
+};
+
+const CLASS_A = ['NVDA','AMD','MU','WDC','COHR','STX','SNDK','MSFT','AAPL','GOOGL','META','AMZN','TSLA','NEM','LRCX','AVGO','IBM','VRT','ETN','CEG','VST'];
+function getClass(sym) { return CLASS_A.includes(sym) ? 'A' : 'B'; }
+// 門檻統一用10分制：A類6.5分，B類7.0分
+function getThreshold(sym) { return getClass(sym) === 'A' ? 6.5 : 7.0; }
+
+
+
+function isPartialBar(tLast, nowMs) {
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const parts = x => { const o = {}; fmt.formatToParts(new Date(x)).forEach(p => { o[p.type] = p.value; }); return o; };
+  const a = parts(tLast * 1000), n = parts(nowMs);
+  if (a.year + a.month + a.day !== n.year + n.month + n.day) return false;   // 最後一根不是今天
+  return (+n.hour) * 60 + (+n.minute) < 16 * 60;                              // 美東 16:00 收盤前
+}
+
+function dayKey(t) { return new Date(t * 1000).toISOString().slice(0, 10); }
+
+function bandOf(cls) {
+  if (/green/.test(cls)) return 'green';
+  if (/blue/.test(cls))  return 'blue';
+  if (/orange/.test(cls)) return 'orange';
+  if (/gray/.test(cls))  return 'gray';
+  return 'red';
+}
+
+function genAdvice(sym, scores, d, stockClass, threshold, change, whaleScore=0) {
+  const closes = d.closes;
+  const volumes = d.volumes;
+  const price = closes[closes.length-1];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+  const rsi = calcRSI(closes);
+
+  const aboveMA20 = ma20 && price > ma20;
+  const aboveMA50 = ma50 && price > ma50;
+  const aboveMA200 = ma200 && price > ma200;
+  const ma50AboveMA200 = ma50 && ma200 && ma50 > ma200;
+
+  const ma50now = ma50;
+  const ma50_5ago = closes.length >= 55 ? avg(closes.slice(-55,-5)) : null;
+  const ma50Slope = ma50now && ma50_5ago ? (ma50now - ma50_5ago) / ma50_5ago * 100 : 0;
+  const ma50Declining = ma50Slope < -0.5;
+
+  function ema(arr, p) {
+    const k = 2/(p+1); let r = [arr[0]];
+    for (let i=1;i<arr.length;i++) r.push(arr[i]*k+r[i-1]*(1-k));
+    return r;
+  }
+  const ema12 = ema(closes, 12); const ema26 = ema(closes, 26);
+  const macdNow = ema12[ema12.length-1] - ema26[ema26.length-1];
+  const macdBelowZero = macdNow < 0;
+
+  let consolidDays = 0;
+  for (let i = closes.length-1; i >= closes.length-15 && i >= 1; i--) {
+    const slice = closes.slice(i-4 >= 0 ? i-4 : 0, i+1);
+    const h = Math.max(...slice); const l = Math.min(...slice);
+    if ((h-l)/l < 0.08) consolidDays++; else break;
+  }
+
+  const rsiHigh = rsi && rsi > 75;
+  const rsiVeryHigh = rsi && rsi > 85;
+  let fireLv = 0;
+  if (rsiVeryHigh) fireLv = 3;
+  else if (rsiHigh && scores.champ >= 80) fireLv = 2;
+  else if (rsiHigh) fireLv = 1;
+
+  const avgVol20 = avg(volumes.slice(-20));
+  const todayVol = volumes[volumes.length-1];
+  const volShrinking = todayVol < avgVol20 * 0.8;
+  const volExpanding = todayVol > avgVol20 * 1.3;
+  const risingSignal = aboveMA20 && aboveMA50 && aboveMA200 && ma50AboveMA200 && !macdBelowZero && volShrinking;
+  const breakoutSignal = aboveMA20 && aboveMA50 && volExpanding && change > 2;
+  const bearSignal = macdBelowZero && ma50Declining && consolidDays >= 5;
+
+  let technical = '';
+  if (fireLv === 3) {
+    technical = `RSI高達${rsi ? Math.round(rsi) : '--'}，嚴重過熱，股價嚴重偏離均線。`;
+  } else if (fireLv === 2) {
+    technical = `RSI持續在75以上，過熱跡象明顯，注意回調風險。`;
+  } else if (fireLv === 1) {
+    technical = `RSI達${rsi ? Math.round(rsi) : '--'}，開始進入過熱區間，留意訊號變化。`;
+  } else if (bearSignal) {
+    technical = `MACD在零軸下，MA50向下，股價窄幅盤整${consolidDays}天沒有突破，空頭訊號確認。`;
+  } else if (breakoutSignal) {
+    technical = `股價放量突破，漲幅${change.toFixed(1)}%，均線多排，突破訊號出現。`;
+  } else if (risingSignal) {
+    technical = '均線多排，縮量整理，MACD在零軸上，起漲準備訊號。';
+  } else if (aboveMA20 && aboveMA50 && aboveMA200 && ma50AboveMA200) {
+    technical = '均線完全多排，股價在所有均線上方，趨勢強勁。';
+  } else if (aboveMA200 && ma50AboveMA200) {
+    technical = `股價在MA200上方，但短期跌破MA${aboveMA50?'20':'50'}，動能略顯不足。`;
+  } else if (!ma200) {
+    technical = '上市還不滿200個交易日，長期均線（MA200）算不出來，只能看短期走勢。';
+  } else if (!aboveMA200) {
+    technical = `股價跌破MA200，均線${ma50Declining?'空頭排列':'趨勢轉弱'}，長期偏空。`;
+  } else {
+    technical = '技術面中性，方向待確認。';
+  }
+
+  // ★ 行動建議：只講「這檔值不值得看、能不能追」。
+  //   不給倉位百分比、不拿 MA 當停損、不叫人加碼 —— 那些跟你自己定的規則互相衝突：
+  //   買價／停損／股數 = dna 的 pivot 與平台低點 + 每筆風險 1% 的公式；停損距離超過約 10% 就不做這一筆。
+  //   出場 = 你自己的出場規則（漲 30% 賣 1/3；跌破 20 日線 3 天沒站回，或離開 Stage 2 超過 5 個交易日，就全部出場）。
+  //   6 個月內禁止加碼。
+  const total10 = scores.total / 10;
+  let action = '';
+  if (fireLv === 3) {
+    action = '🔥🔥🔥 三把火極度過熱！空手者絕對不追高；持倉者照你的獲利了結規則（漲 30% 賣 1/3，消息利多跳空先鎖一大部分）。';
+  } else if (fireLv === 2) {
+    action = '🔥🔥 二把火過熱！空手者不追高，等回測 MA20 之後有新的 pivot 再看；持倉者續抱，但不加碼，出場照你的規則。';
+  } else if (fireLv === 1) {
+    action = '🔥 一把火初次過熱。空手者等回調、等新的 pivot，不追；持倉者續抱但不加碼。';
+  } else if (bearSignal) {
+    action = '⚠️ 空頭警示（MACD 在零軸下、MA50 向下、盤整沒突破）。空手者不開新倉；持倉者對照你的出場規則：跌破 20 日線 3 天沒站回、或離開 Stage 2 超過 5 個交易日，就出場。';
+  } else if (breakoutSignal) {
+    action = '📈 放量突破訊號。可列入買進候選；買價與停損請用 dna 的 pivot 與平台低點，股數用每筆風險 1% 來算，停損距離超過約 10% 就不做這一筆。';
+  } else if (risingSignal) {
+    action = '📈 起漲準備（均線多排、縮量整理、MACD 在零軸上）。先列入觀察，等放量突破 pivot 再進場；不要在整理中途試單（停損會放得太遠）。';
+  } else if (total10 >= 8.0) {
+    action = '趨勢很強。持倉者續抱（出場看你的規則，不因分數高就加碼）；空手者分數高代表可能已經漲了一段，要進場請等 dna 的 pivot，不要直接追。';
+  } else if (total10 >= threshold) {
+    action = `達到${stockClass}類門檻（${threshold.toFixed(1)}分），可列入買進候選。買價、停損與股數請用 dna 的 pivot 與每筆風險 1% 的公式算；停損距離超過約 10% 就不做這一筆。`;
+  } else if (total10 >= 5.0) {
+    action = `中性偏強。持倉者繼續持有；空手者還沒到候選門檻（${stockClass}類要${threshold.toFixed(1)}分）。`;
+  } else if (total10 >= 4.0) {
+    action = '中性偏弱。持倉者確認停損還在、對照你的出場規則；空手者繼續等待。';
+  } else if (total10 >= 2.5) {
+    action = '走弱。持倉者對照你的出場規則（跌破 20 日線 3 天沒站回、或離開 Stage 2 超過 5 個交易日就出場）；空手者不開新倉，等新的 Stage 2。';
+  } else {
+    action = '⛈️ 危險區間。空手者絕對不抄底；持倉者對照你的出場規則，該出就出。';
+  }
+
+  const whaleStrong = whaleScore >= 7;
+  const whaleMed = whaleScore >= 4;
+  // 過熱／空頭警示優先：鯨魚訊號只能「補充說明」，不能蓋掉警示、更不能叫人加碼
+  if (fireLv >= 1 || bearSignal) {
+    if (whaleStrong) {
+      action = action + ' 🐋 另外：量能顯示有明顯買盤，但這不改變上面的判斷（過熱／空頭警示優先，不因此加碼）。';
+    } else if (!whaleMed && total10 >= 7.5) {
+      action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
+    }
+  } else if (whaleStrong && total10 >= threshold) {
+    action = '🐋🐋🐋 量能偏多、吸籌跡象強！' + action + ' 信心比較高，但股數仍由停損距離決定，不因此加大。';
+  } else if (whaleStrong && total10 >= 4.0) {
+    action = '🐋🐋🐋 技術面偏弱，但量能顯示有買盤進場。先列入觀察，等 pivot 出現再進場；不要在整理中途試單（停損會放得太遠）。';
+  } else if (whaleStrong && total10 < 4.0) {
+    action = '🐋 量能有買盤跡象，但技術面仍弱。持倉者不加碼；空手者觀察是否形成底部型態。';
+  } else if (whaleMed && total10 >= threshold) {
+    action = action + ' 🐋🐋 量能有買盤跡象，訊號可信度提高。';
+  } else if (!whaleMed && total10 >= 7.5) {
+    action = action + ' ⚠️ 注意：主力吸籌訊號弱，上漲可能缺乏持續性，謹慎追高。';
+  }
+
+  // 新上市（不滿200個交易日）：長期均線算不出來，分數只由不完整的資料算出 → 不給進出場建議
+  if (!ma200 && fireLv === 0 && !bearSignal) {
+    action = '🆕 新上市，歷史資料還不夠（不滿200個交易日），這張卡的分數只供參考。先看短期走勢與量能，等滿200個交易日再用這套評分。';
+  }
+  return { technical, action, fireLv, bearSignal, noMA200: !ma200 };
+}
+
+function getWeather(score10, threshold) {
+  if (score10 >= 8.0) return { icon:'🌟', label:'強勢 — 趨勢很強', cardCls:'card-green-dark' };
+  if (score10 >= threshold) return { icon:'☀️', label:'達標 — 列入候選', cardCls:'card-green-light' };
+  if (score10 >= 5.0) return { icon:'⛅', label:'中性偏強 — 觀望', cardCls:'card-blue-dark' };
+  if (score10 >= 4.0) return { icon:'☁️', label:'中性偏弱 — 注意', cardCls:'card-blue-light' };
+  if (score10 >= 2.5) return { icon:'🌧️', label:'走弱 — 不開新倉', cardCls:'card-red-light' };
+  return { icon:'⛈️', label:'危險 — 不開新倉，檢查持股', cardCls:'card-red-dark' };
+}
+
+function calcScore(d, spyChange) {
+  const closes = d.closes;
+  const price = closes[closes.length-1];
+  const ma20 = avg(closes.slice(-20));
+  const ma50 = closes.length >= 50 ? avg(closes.slice(-50)) : null;
+  const ma200 = closes.length >= 200 ? avg(closes.slice(-200)) : null;
+
+  let champ = 0;
+  if (ma200 && price > ma200) champ += 35;
+  if (ma50 && ma200 && ma50 > ma200) champ += 30;
+  if (ma20 && ma50 && ma20 > ma50) champ += 20;
+  if (ma200) champ += 15;
+  champ = Math.min(100, champ);
+
+  let marketBase = spyChange == null ? 50 : 50 + (spyChange > 1 ? 30 : spyChange > 0 ? 15 : spyChange > -1 ? -10 : -25);
+  let rs = 50;
+  if (closes.length >= 20) {
+    const stockRet20 = (price - closes[closes.length-20]) / closes[closes.length-20] * 100;
+    if (stockRet20 > 15) rs = 90;
+    else if (stockRet20 > 8) rs = 75;
+    else if (stockRet20 > 3) rs = 65;
+    else if (stockRet20 > 0) rs = 55;
+    else if (stockRet20 > -3) rs = 45;
+    else if (stockRet20 > -8) rs = 35;
+    else rs = 20;
+  }
+  let market = Math.round(marketBase * 0.70 + rs * 0.30);
+  market = Math.min(100, Math.max(0, market));
+
+  const volumes = d.volumes;
+  const avgVol = avg(volumes.slice(-20));
+  const todayVol = volumes[volumes.length-1];
+  const change = d.prev ? ((price - d.prev) / d.prev * 100) : 0;
+  let volume = 50;
+  if (change > 0 && todayVol > avgVol * 1.4) volume += 30;
+  else if (change > 0 && todayVol > avgVol) volume += 15;
+  else if (change < 0 && todayVol > avgVol * 1.4) volume -= 20;
+  volume = Math.min(100, Math.max(0, volume));
+
+  const rsi = calcRSI(closes);
+  let indicator = 50;
+  if (rsi && rsi > 50) indicator += 20;
+  if (rsi && rsi > 60 && rsi < 80) indicator += 15;
+  if (ma20 && ma50 && ma20 > ma50 && price > ma20) indicator += 15;
+  indicator = Math.min(100, Math.max(0, indicator));
+
+  // ★ 第五維度：短期動能(15%)
+  let momentum = 50;
+  if (closes.length >= 6) {
+    const ret5 = (price - closes[closes.length-6]) / closes[closes.length-6] * 100;
+    if (ret5 > 8) momentum = 95;
+    else if (ret5 > 4) momentum = 80;
+    else if (ret5 > 1) momentum = 65;
+    else if (ret5 > -1) momentum = 50;
+    else if (ret5 > -4) momentum = 35;
+    else if (ret5 > -8) momentum = 20;
+    else momentum = 5;
+    let downDays = 0;
+    for (let i = closes.length-1; i >= closes.length-5 && i >= 1; i--) {
+      if (closes[i] < closes[i-1]) downDays++; else break;
+    }
+    if (downDays >= 4) momentum = Math.min(momentum, 20);
+    else if (downDays >= 3) momentum = Math.min(momentum, 35);
+  }
+  momentum = Math.min(100, Math.max(0, momentum));
+
+  // ★ 新權重：冠軍30% 大盤25% 量能18% 指標12% 短期動能15%
+  const total = Math.round(champ*0.30 + market*0.25 + volume*0.18 + indicator*0.12 + momentum*0.15);
+  return { total, champ, market, volume, indicator, momentum };
+}
+
+function calcRSI(closes, period=14) {
+  if (closes.length < period+1) return null;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gain += diff; else loss -= diff;
+  }
+  let avgG = gain / period, avgL = loss / period;
+  for (let i = period+1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    avgG = (avgG * (period-1) + (diff > 0 ? diff : 0)) / period;
+    avgL = (avgL * (period-1) + (diff < 0 ? -diff : 0)) / period;
+  }
+  if (avgL === 0) return avgG === 0 ? 50 : 100;
+  return 100 - 100 / (1 + avgG / avgL);
+}
+
+function calcWhale(d) {
+  const closes = d.closes;
+  const volumes = d.volumes;
+  const len = closes.length;
+  if (len < 21) return 0;
+  let score = 0;
+  let upVol = 0, downVol = 0;
+  for (let i = len-20; i < len; i++) {
+    if (closes[i] > closes[i-1]) upVol += volumes[i];
+    else downVol += volumes[i];
+  }
+  const volRatio = upVol / (downVol || 1);
+  if (volRatio > 2.0) score += 3;
+  else if (volRatio > 1.5) score += 2;
+  else if (volRatio > 1.2) score += 1;
+  const avgVol20 = volumes.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const avgVol5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
+  const volShrink = avgVol5 / avgVol20;
+  if (volShrink < 0.5) score += 3;
+  else if (volShrink < 0.7) score += 2;
+  else if (volShrink < 0.85) score += 1;
+  const priceChange20 = (closes[len-1] - closes[len-20]) / closes[len-20] * 100;
+  if (priceChange20 > 10) score += 2;
+  else if (priceChange20 > 3) score += 1;
+  const todayVol = volumes[len-1];
+  const todayChange = (closes[len-1] - closes[len-2]) / closes[len-2] * 100;
+  if (todayChange > 2 && todayVol > avgVol20 * 1.5) score += 2;
+  else if (todayChange > 0 && todayVol > avgVol20 * 1.2) score += 1;
+  return Math.min(10, score);
+}
+
+function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+const BT = { STOP:-8, WARMUP:210, NEAR:20, DIFF_PP:1.0, STOP_PP:3.0, SE_K:3, MIN_G:100, PIV:0.03, H:[10,20,60], TOUCH_D:10, LR_WIN:63, MOM_SPAN:10, NORM_WIN:252, NORM_MIN:40, GAIN_MAX:4, CLAMP:40 };
+const PROXY = u => `https://gstock-proxy.cykjas.workers.dev/?url=${encodeURIComponent(u)}`;
+let REPORT = '';
+
+async function fetchFull(sym) {
+  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5y`;
+  const ctrl = new AbortController(); const tm = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(PROXY(url), { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    const r = j.chart.result[0], q = r.indicators.quote[0];
+    const rows = [];
+    for (let k = 0; k < r.timestamp.length; k++) {
+      if (q.close[k] == null || q.low[k] == null) continue;
+      rows.push({ c: q.close[k], v: q.volume[k] || 0, l: q.low[k], t: r.timestamp[k] });
+    }
+    if (rows.length > 2 && isPartialBar(rows[rows.length-1].t, Date.now())) rows.pop();
+    return { closes: rows.map(x=>x.c), volumes: rows.map(x=>x.v), lows: rows.map(x=>x.l), timestamps: rows.map(x=>x.t) };
+  } finally { clearTimeout(tm); }
+}
+
+
+const median = a => { if (!a.length) return null; const s = [...a].sort((x,y)=>x-y), m = s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const sd = a => { const m = mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/Math.max(1,a.length-1)); };
+const pct = x => x == null ? '—' : (x>=0?'+':'') + x.toFixed(1) + '%';
+const f0 = x => x == null ? '—' : x.toFixed(0) + '%';
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+
+function clampAxis(v){ if(!isFinite(v)) return 100; return Math.max(100-BT.CLAMP, Math.min(100+BT.CLAMP, v)); }
+function winMean(arr,i,n){ if(i-n+1<0) return null; let s=0; for(let k=i-n+1;k<=i;k++){ const v=arr[k]; if(v===null||!isFinite(v)) return null; s+=v; } return s/n; }
+function trailStd(arr,i,maxN,minN){ const v=[]; for(let k=i;k>=0&&v.length<maxN;k--){ const x=arr[k]; if(x!==null&&isFinite(x)) v.push(x); } if(v.length<minN) return null; let m=0; v.forEach(x=>m+=x); m/=v.length; let s2=0; v.forEach(x=>s2+=(x-m)*(x-m)); const q=Math.sqrt(s2/(v.length-1)); return (isFinite(q)&&q>0)?q:null; }
+// 與 rrg.html calculateRRG 同一套公式，回傳每一天的 ratio / mom（逐日、只用過去）
+function rrgSeries(c, spy){
+  const N=c.length, lr=[];
+  for(let i=0;i<N;i++) lr.push((c[i]>0&&spy[i]>0)? Math.log(c[i]/spy[i])*100 : null);
+  const dev=[]; for(let j=0;j<N;j++){ const m=winMean(lr,j,BT.LR_WIN); dev.push((m===null||lr[j]===null)?null:lr[j]-m); }
+  const ratio=dev.map(v=>v===null?null:clampAxis(100+v));
+  const momRaw=[]; for(let q=0;q<N;q++){ const a=dev[q], b=(q-BT.MOM_SPAN>=0)?dev[q-BT.MOM_SPAN]:null; momRaw.push((a===null||b===null)?null:a-b); }
+  const mom=[]; for(let t=0;t<N;t++){ const mr=momRaw[t]; if(mr===null){ mom.push(null); continue; }
+    const sdR=trailStd(dev,t,BT.NORM_WIN,BT.NORM_MIN), sdM=trailStd(momRaw,t,BT.NORM_WIN,BT.NORM_MIN);
+    let g=1; if(sdR!==null&&sdM!==null) g=Math.min(sdR/sdM, BT.GAIN_MAX); mom.push(clampAxis(100+mr*g)); }
+  return { ratio, mom };
+}
+
+async function fetchSpy(){ const d=await fetchFull('SPY'); const m={}; d.timestamps.forEach((t,k)=>{ m[dayKey(t)]=d.closes[k]; }); return m; }
+
+function alignSpy(d, spyMap){ let last=null; return d.timestamps.map(t=>{ const v=spyMap[dayKey(t)]; if(v>0) last=v; return last; }); }
+
+function analyzeOne(sym, d, store, spyMap) {
+  const n = d.closes.length, c = d.closes, spy = alignSpy(d, spyMap);
+  const R = rrgSeries(c, spy);
+  const P = [0]; for (let i = 0; i < n; i++) P.push(P[i] + c[i]);
+  const maF = w => { const a = new Array(n).fill(null); for (let i = w-1; i < n; i++) a[i] = (P[i+1]-P[i+1-w])/w; return a; };
+  const m20 = maF(20), m50 = maF(50), m150 = maF(150), m200 = maF(200);
+  function mk(i, kind){
+    const date = dayKey(d.timestamps[i]);
+    const rec = { date, kind, ratio:R.ratio[i], mom:R.mom[i], ex:{}, touch:null, her:null };
+    if (rec.ratio==null || rec.mom==null || spy[i]==null) return null;
+    BT.H.forEach(h => { rec.ex[h] = (i+h<n && spy[i+h]!=null) ? ((c[i+h]/c[i]) - (spy[i+h]/spy[i])) * 100 : null; });
+    if (i + BT.TOUCH_D < n) { let t = 0; for (let k=i+1;k<=i+BT.TOUCH_D;k++) if (d.lows[k] <= c[i]*(1+BT.STOP/100)) { t = 1; break; } rec.touch = t; }
+    // 你的賣法：連 3 天收在 20 日線下賣；−8% 停損；最長 150 天
+    { const e=c[i], stopPx=e*(1+BT.STOP/100); let below=0, res=null;
+      for (let k=i+1;k<n;k++){ if (d.lows[k] <= stopPx){ res=BT.STOP; break; } below = c[k] < m20[k] ? below+1 : 0; if (below>=3 || (k-i)>=150){ res=(c[k]/e-1)*100; break; } }
+      if (res===null) res=(c[n-1]/e-1)*100; rec.her=res; }
+    return rec;
+  }
+  let lastA = -999, lastC = -999;
+  for (let i = BT.WARMUP; i < n - 1; i++) {
+    const up = m150[i]!=null && m200[i]!=null && c[i] > m150[i] && c[i] > m200[i] && m50[i] > m150[i];
+    if (!up) continue;
+    let hi = -Infinity; for (let k = i-60; k < i; k++) if (c[k] > hi) hi = c[k];
+    if (c[i] > hi && i - lastA >= BT.NEAR) { lastA = i; const r = mk(i,'A'); if (r) store.A.push(r); }
+    else if (c[i] <= hi && c[i] >= hi*(1-BT.PIV) && i - lastC >= BT.NEAR) { lastC = i; const r = mk(i,'C'); if (r) store.C.push(r); }
+  }
+}
+
+const GROUPS = [
+  { id:'all', name:'全部（基準）', f:()=>true },
+  { id:'q1', name:'①強且變強', f:e=>e.ratio>=100 && e.mom>=100 },
+  { id:'q2', name:'②強但變弱', f:e=>e.ratio>=100 && e.mom<100 },
+  { id:'q3', name:'③弱但變強', f:e=>e.ratio<100 && e.mom>=100 },
+  { id:'q4', name:'④弱且變弱', f:e=>e.ratio<100 && e.mom<100 },
+  { id:'mu', name:'動能≥100（不看強弱）', f:e=>e.mom>=100 },
+  { id:'md', name:'動能<100（不看強弱）', f:e=>e.mom<100 },
+  { id:'top', name:'動能最強 1/3', f:null },
+  { id:'bot', name:'動能最弱 1/3', f:null },
+];
+
+function cmp(list, inG, val, thr, mid) {
+  const g = list.filter(e => inG(e) && val(e)!=null).map(val), o = list.filter(e => !inG(e) && val(e)!=null).map(val);
+  if (g.length < 2 || o.length < 2) return null;
+  const m = mean(g) - mean(o), se = Math.sqrt(sd(g)**2/g.length + sd(o)**2/o.length);
+  const half = (cond) => { const gg = list.filter(e=>inG(e)&&val(e)!=null&&cond(e)).map(val), oo = list.filter(e=>!inG(e)&&val(e)!=null&&cond(e)).map(val); return (gg.length>=10&&oo.length>=10) ? mean(gg)-mean(oo) : null; };
+  const d1 = half(e=>e.date<mid), d2 = half(e=>e.date>=mid);
+  const big = Math.abs(m) >= thr && Math.abs(m) > BT.SE_K*se;
+  const same = d1!=null && d2!=null && Math.sign(d1)===Math.sign(m) && Math.sign(d2)===Math.sign(m);
+  return { m, se, d1, d2, big, same, n: g.length };
+}
+
+function block(list, label, txtArr) {
+  const dates = list.map(e=>e.date).sort(), mid = dates[dates.length>>1];
+  const moms = list.map(e=>e.mom).sort((a,b)=>a-b), lo = moms[Math.floor(moms.length/3)], hiC = moms[Math.floor(moms.length*2/3)];
+  const topF = e => e.mom >= hiC, botF = e => e.mom <= lo;
+  const gl = GROUPS.map(g => g.id==='top' ? {...g,f:topF} : g.id==='bot' ? {...g,f:botF} : g);
+  const ex = h => e => e.ex[h], tch = e => e.touch==null ? null : e.touch*100, her = e => e.her;
+  let h = `<div class="card"><h2>${label}（${list.length} 筆）</h2><div class="wrap"><table><tr><th>位置</th><th>筆數</th><th>10天超額</th><th>20天超額</th><th>60天超額</th><th>10天內碰−8%</th><th>你的賣法平均每筆</th><th>20天超額 比其他組</th><th>前半／後半</th><th>判定</th><th>碰−8% 比其他組</th><th>判定</th></tr>`;
+  txtArr.push(`【${label}｜${list.length} 筆】`);
+  const out = [];
+  gl.forEach(g => {
+    const L = list.filter(g.f), n = L.length;
+    const mv = fn => { const v = L.map(fn).filter(x=>x!=null); return v.length ? mean(v) : null; };
+    let c20 = g.id==='all' ? '（基準）' : '—', hv = '—', v20 = '—', cls20 = '', ct = g.id==='all' ? '（基準）' : '—', vt = '—', clst = '';
+    if (g.id !== 'all') {
+      if (n < BT.MIN_G) { v20 = '樣本太少'; vt = '樣本太少'; }
+      else {
+        const C = cmp(list, g.f, ex(20), BT.DIFF_PP, mid), T = cmp(list, g.f, tch, BT.STOP_PP, mid);
+        if (C) { c20 = `${pct(C.m)}（±${(BT.SE_K*C.se).toFixed(1)}）`; hv = `${C.d1==null?'—':pct(C.d1)} ／ ${C.d2==null?'—':pct(C.d2)}`;
+          if (C.big && C.same) { v20 = C.m>0 ? '比較好' : '比較差'; cls20 = C.m>0 ? 'pass':'fail'; } else { v20 = '差不多'; cls20 = 'na'; } }
+        if (T) { ct = `${pct(T.m)}（±${(BT.SE_K*T.se).toFixed(1)}）`;
+          if (T.big && T.same) { vt = T.m<0 ? '比較少碰' : '比較常碰'; clst = T.m<0 ? 'pass':'fail'; } else { vt = '差不多'; clst = 'na'; } }
+        out.push({ g, v20, vt, C, T });
+      }
+    }
+    const tchm = mv(tch);
+    h += `<tr><td>${esc(g.name)}</td><td>${n}</td><td>${pct(mv(ex(10)))}</td><td>${pct(mv(ex(20)))}</td><td>${pct(mv(ex(60)))}</td><td>${tchm==null?'—':f0(tchm)}</td><td>${pct(mv(her))}</td><td>${c20}</td><td>${hv}</td><td class="${cls20}">${v20}</td><td>${ct}</td><td class="${clst}">${vt}</td></tr>`;
+    txtArr.push(`${g.name}｜${n}筆｜超額10天${pct(mv(ex(10)))}｜20天${pct(mv(ex(20)))}｜60天${pct(mv(ex(60)))}｜碰−8%${tchm==null?'—':f0(tchm)}｜你的賣法${pct(mv(her))}｜20天比其他組${c20}｜前/後半${hv}｜${v20}｜碰−8%比其他組${ct}｜${vt}`);
+  });
+  h += `</table></div><div class="small">超額＝比同期 SPY 多賺（正）或少賺（負）幾個百分點。「比其他組」＝這組的平均減去不在這組的平均，括號是 3 倍誤差範圍：差距沒超過它就當雜訊。</div></div>`;
+  txtArr.push('');
+  return { h, out };
+}
+
+function render(store, meta) {
+  let txt = [`RRG 動能×買點測試 rrg-entry-test v1　${new Date().toLocaleString()}`, `股票 ${meta.ok} 檔；A 突破日 ${store.A.length} 筆；C 快到 pivot ${store.C.length} 筆`, ''];
+  const a = block(store.A, 'A 突破日', txt), c = block(store.C, 'C 快到 pivot（還沒突破、離高點不到 3%）', txt);
+  const rd = o => { const good = o.filter(x=>x.v20==='比較好').map(x=>x.g.name), bad = o.filter(x=>x.v20==='比較差').map(x=>x.g.name);
+    return `20 天超額「比較好」：${good.length?good.map(esc).join('、'):'沒有'}。　「比較差」：${bad.length?bad.map(esc).join('、'):'沒有'}。`; };
+  let h = `<div class="card"><h2>白話總結</h2><div class="read"><b>A 突破日</b>：${rd(a.out)}</div><div class="read"><b>C 快到 pivot</b>：${rd(c.out)}</div><div class="small">只有 A 和 C 兩批都說「比較好」才比較可信；只有一批當線索；「差不多」代表這個位置分組沒有帶來可靠的差別。</div></div>` + a.h + c.h;
+  h += `<div class="card"><h2>限制</h2><div class="read">倖存者偏差；同一天很多檔重疊（誤差範圍仍然偏樂觀）；樣本集中在 AI／成長股且偏多頭；進場是簡化版突破／接近高點，不是 dna 的 pivot；象限用 100 分界，沒有套 RRG 工具的邊界死區；60 天超額的筆數比 10、20 天少（最近的買點還沒走完）；沒算手續費與滑價；這個測試只回答「RRG 位置有沒有預測力」，不代表 RRG 沒有其他用途（例如看板塊輪動）。</div></div>`;
+  document.getElementById('out').innerHTML = h;
+  REPORT = txt.join('\n');
+  document.getElementById('cp').style.display = '';
+}
+
+function log(m){ const el = document.getElementById('log'); el.textContent += m + '\n'; el.scrollTop = el.scrollHeight; }
+
+async function runAll() {
+  const btn = document.getElementById('go'); btn.disabled = true;
+  document.getElementById('log').textContent = '';
+  const pt = document.getElementById('pt'), pf = document.getElementById('pf');
+  let spyMap;
+  try { pt.textContent = '先抓大盤 SPY…'; spyMap = await fetchSpy(); }
+  catch(e) { pt.textContent = '抓不到 SPY（Worker 可能連不上），稍後再試'; btn.disabled = false; return; }
+  const syms = [...new Set(Object.values(SECTORS).flatMap(s => s.stocks))].filter(x => x !== 'SPY');
+  const store = { A:[], C:[] };
+  let done = 0, ok = 0, fail = 0, idx = 0;
+  async function worker() {
+    while (idx < syms.length) {
+      const sym = syms[idx++];
+      try {
+        const d = await fetchFull(sym);
+        if (d.closes.length < 300) throw new Error('資料不足');
+        analyzeOne(sym, d, store, spyMap);
+        ok++;
+      } catch(e) { fail++; log(sym + ' 略過：' + (e.message||e)); }
+      done++;
+      pf.style.width = (done/syms.length*100) + '%';
+      pt.textContent = `進度 ${done}/${syms.length}（成功 ${ok}、略過 ${fail}）`;
+      await sleep(0);
+    }
+  }
+  await Promise.all([worker(), worker()]);
+  if (!ok) { pt.textContent = '全部失敗，可能是 Worker 連不上，稍後再試'; btn.disabled = false; return; }
+  pt.textContent = `完成：成功 ${ok} 檔、略過 ${fail} 檔`;
+  render(store, { ok, fail });
+  btn.disabled = false; btn.textContent = '重新跑一次';
+}
+
+async function copyReport() {
+  try { await navigator.clipboard.writeText(REPORT); document.getElementById('cp').textContent = '已複製 ✓'; }
+  catch(e) { prompt('長按全選複製：', REPORT); }
+}
+</script>
+</body>
+</html>
