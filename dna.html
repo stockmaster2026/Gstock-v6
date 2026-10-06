@@ -6161,7 +6161,7 @@ function tblRender(){
                       // V97.3: 不用一個「品質好」概括 —— 列出實際擋路的五關，打勾／打叉，並寫明幾關全過才能買。
                       //   五關＝判決（👉 那一行）實際使用的五個條件，一個都沒多、沒少。
                       const G=[ ['Stage 2', r.inS2!==false],
-                                ['pivot 合格', !pvFlaw(P)],
+                                ['pivot 型態合格', !pvFlaw(P)],
                                 ['突破量夠', !!K.volOK],
                                 ['收在上緣', !!K.posOK],
                                 ['停損≤10%', K.riskOK!==false] ];
@@ -10098,7 +10098,7 @@ function gates5(r){
   const P=r.pivot||null, K=r.brk||null;
   const out=[];
   out.push(['Stage 2', r.inS2!==false ? 1 : 0]);
-  out.push(['pivot 合格', P ? (pvFlaw(P)?0:1) : 0]);
+  out.push(['pivot 型態合格', P ? (pvFlaw(P)?0:1) : 0]);
   if(K){ out.push(['突破量夠', K.volOK?1:0]); out.push(['收在上緣', K.posOK?1:0]); out.push(['停損≤10%', K.riskOK===false?0:1]); }
   else{ out.push(['突破量夠', -1]); out.push(['收在上緣', -1]); out.push(['停損≤10%', (P && P.riskOK!=null) ? (P.riskOK?1:0) : -1]); }
   return out;
@@ -10134,7 +10134,11 @@ async function asOfRun(){
         + '<div style="font-size:12.5px;margin-top:3px;color:#c9d1d9">'+(P ? 'pivot <b>'+P.px+'</b>'
             +(P.over!=null && P.over>0 ? '，收盤已高出 '+P.over+'%' : (P.gap!=null?'，還差 '+P.gap+'%':''))
             +(P.risk!=null?'，停損 '+(P.stop!=null?P.stop:'—')+'（風險 '+P.risk+'%）':'') : '<b style="color:#f85149">當時沒有合格的 pivot</b>')+'</div>'
-        + '<div style="margin-top:4px">'+gatesHtml(gates5(r))+'</div></div>';
+        + '<div style="margin-top:4px">'+gatesHtml(gates5(r))+'</div>'
+        + ((P && pvFlaw(P)) ? '<div style="margin-top:5px;font-size:12.5px;color:#f0883e"><b>❌「pivot 型態合格」沒過的原因：</b>'+pvFlawHead(P)
+            + (pvPos(P) && pvPos(P).why ? '<div style="font-size:12px;color:#c9d1d9;margin-top:2px">'+pvPos(P).why.join('；')+'</div>' : '')
+            + '<div style="font-size:11.5px;color:#8b949e;margin-top:2px">意思是：這個 pivot 前面的整理（base）本身不夠格 —— 不是價格或量的問題，是「整理得夠不夠久、夠不夠乾淨」。</div></div>' : '')
+        + '</div>';
     };
     const dd=function(x){return x||'—';};
     res.innerHTML = '<div style="font-size:12.5px;color:#c9d1d9">'+tk+' 回看：你的買進日 <b>'+d+'</b>'
