@@ -293,10 +293,11 @@
       <div class="fld"><label>&nbsp;</label><button id="run">跑回測</button></div>
     </div>
     <details id="asOfBox" style="margin-top:8px">
-      <summary style="cursor:pointer;font-size:12.5px;color:#79c0ff">⏪ 回到某一天 —— 回看當時五關過了沒（用上面的代號）</summary>
+      <summary style="cursor:pointer;font-size:12.5px;color:#79c0ff">⏪ 回到某一天 —— 回看當時五關過了沒</summary>
       <div style="margin-top:6px;font-size:12px;color:#8b949e;line-height:1.7">
         把那天<b>之後</b>的資料全部藏起來，只用當時看得到的資料重算。<b>不會寫進累積總表</b>。會看兩個時間點：前一個交易日收盤後（你當晚能看到的）、買進當天收盤後。</div>
       <div class="row" style="margin-top:6px">
+        <div class="fld"><label>代號</label><input id="asOfTk" placeholder="例 P" autocomplete="off" spellcheck="false" style="width:80px"></div>
         <div class="fld"><label>買進日期</label><input id="asOfDate" type="date" style="min-width:150px"></div>
         <div class="fld"><label>買進價（選填）</label><input id="asOfBuy" inputmode="decimal" placeholder="例 109.44" style="width:110px"></div>
         <div class="fld"><label>&nbsp;</label><button id="asOfRun">回看</button></div>
@@ -10112,6 +10113,7 @@ function gatesHtml(G){
     + '</div>';
 }
 async function asOfRun(){
+  const _own=$('asOfTk').value.trim().toUpperCase(); if(_own) $('tk').value=_own;   // 這一格有填就用這一格，沒填才用最上面的
   const tk=$('tk').value.trim().toUpperCase(), dv=$('asOfDate').value, res=$('asOfRes');
   if(!tk||!dv){ res.innerHTML='<span style="color:#d29922">先填代號與買進日期。</span>'; return; }
   const d=dv.slice(2).replace(/-/g,'/'), buy=parseFloat($('asOfBuy').value);
