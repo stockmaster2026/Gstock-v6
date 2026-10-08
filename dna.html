@@ -10581,15 +10581,17 @@ nmRender();
 //     停損被碰到就出場（開盤直接跳空破了就用開盤價）；出場線＝收盤跌破該均線，隔天開盤出場；最長抱 60 個交易日。
 //   ⚠ 不含手續費與滑價；實際盤中買的價格會不同。
 var BT_RULE='ema21';
-var BT_RULES=[['ema10','收盤跌破 10 日線就走'],['ema21','收盤跌破 21 日線就走'],['sma50','收盤跌破 50 日線就走'],['fix20','不設出場線，抱滿 20 天（只靠停損）']];
+var BT_RULES=[['ema10','收盤跌破 10 日線就走'],['ema21','收盤跌破 21 日線就走'],['sma50','收盤跌破 50 日線就走'],['fix20','不設出場線，抱滿 20 天（只靠停損）'],['tgt15','賺 15% 就走（沒到就照 21 日線）'],['tgt25','賺 25% 就走（沒到就照 21 日線）'],['tgt30','賺 30% 就走（沒到就照 21 日線）']];
 function btSim(bars,i,stop,rule,ma){
   var entry=bars[i].c, risk=entry-stop;
   if(!(stop>0) || !(risk>0) || risk/entry<0.005) return null;
   var last=bars.length-1; if(bars[last].live) last--;
   var maxJ=Math.min(i+60,last);
+  var tp=(rule.slice(0,3)==='tgt')?entry*(1+parseInt(rule.slice(3))/100):null;
   for(var j=i+1;j<=maxJ;j++){
     var b=bars[j];
     if(b.l<=stop){ var px=Math.min(b.o,stop); return {r:+((px-entry)/risk).toFixed(2), d:j-i, w:'停損'}; }
+    if(tp!=null && b.h>=tp){ var px2=Math.max(b.o,tp); return {r:+((px2-entry)/risk).toFixed(2), d:j-i, w:'目標'}; }
     if(rule==='fix20'){
       if(j-i>=20) return {r:+((b.c-entry)/risk).toFixed(2), d:j-i, w:'滿20天'};
     }else{
@@ -10689,7 +10691,7 @@ async function btRun(){
           if(spyS200[si]!=null) e.m200=spy[si].c>spyS200[si]?1:0;
           var stp=(S.pivot&&S.pivot.stop!=null&&isFinite(S.pivot.stop))?+S.pivot.stop:((S.brk.risk!=null&&isFinite(S.brk.risk))?bars[i2].c*(1-S.brk.risk/100):null);
           e.stop=stp!=null?+(+stp).toFixed(2):null; e.x={};
-          if(stp!=null) BT_RULES.forEach(function(rl){ var o=btSim(bars,i2,stp,rl[0],MAS[rl[0]]); if(o) e.x[rl[0]]=o; });
+          if(stp!=null) BT_RULES.forEach(function(rl){ var o=btSim(bars,i2,stp,rl[0],MAS[rl[0]]||MAS.ema21); if(o) e.x[rl[0]]=o; });
         }catch(_){}
         if(idx[e.id]!=null) all[idx[e.id]]=e; else { idx[e.id]=all.length; all.push(e); added++; }
       }
@@ -10805,11 +10807,13 @@ function btRender(){
     t+=btTableR('⑭ 前半段 vs 後半段',[['前半（較早）',srt.slice(0,mid)],['後半（較近）',srt.slice(mid)]],rule,'');
     // 白話
     var base=btRStat(XR,rule), f=function(x){return (x>0?'+':'')+x.toFixed(2);};
+    if(!base){ t+='<div style="margin-top:10px;padding:7px 10px;border-radius:6px;background:rgba(210,153,34,.12);font-size:13px;color:#d29922">這個出場規則是新加的，舊結果裡沒有算。<b>把「全部板塊」再跑一次</b>就會有（同一筆會覆蓋）。</div></div>'; h+=t; return; }
     var cmp=[];
     six.concat([['專家',[]]]).forEach(function(g){ var st=btRStat(g[1],rule); if(st&&st.n>=20) cmp.push([g[0],st]); });
     var big=null; for(var p=0;p<cmp.length;p++) for(var q=p+1;q<cmp.length;q++){ var dd=Math.abs(cmp[p][1].mean-cmp[q][1].mean), er=2*Math.sqrt(cmp[p][1].se*cmp[p][1].se+cmp[q][1].se*cmp[q][1].se); if(!big||dd-er>big.v) big={a:cmp[p],b:cmp[q],d:dd,e:er,v:dd-er}; }
     var rd='全部 '+base.n+' 筆，賺的機率 '+base.win+'%，賺的時候平均 '+f(base.aw)+'R、賠的時候平均 '+f(base.al)+'R，<b>每筆平均 '+f(base.mean)+'R</b>'+(Math.abs(base.mean)>=2*base.se?(base.mean>0?'（有賺）':'（有賠）'):'（誤差 ±'+(2*base.se).toFixed(2)+'R，跟 0 分不出來）')+'。';
     if(big){ rd+=(big.v>0?'六關各組之間<b>有看得出來的差別</b>：「'+big.a[0]+'」'+f(big.a[1].mean)+'R 對「'+big.b[0]+'」'+f(big.b[1].mean)+'R（差 '+big.d.toFixed(2)+'R，超過誤差 '+big.e.toFixed(2)+'R）。':'六關各組之間<b>差距都在誤差範圍內</b>（最大差 '+big.d.toFixed(2)+'R，誤差 ±'+big.e.toFixed(2)+'R），分不出哪一組比較好。'); }
+    if(rule.slice(0,3)==='tgt'){ var hit=XR.filter(function(e){return e.x&&e.x[rule]&&e.x[rule].w==='目標';}).length; rd+=' 真的漲到目標價的有 <b>'+hit+' 筆（'+Math.round(100*hit/base.n)+'%）</b>，其餘是被停損、跌破21日線或抱滿60天出場的。'; }
     if(base.open) rd+=' 其中 '+base.open+' 筆資料到今天還沒出場，用最新收盤估算。';
     t+='<div style="margin-top:10px;padding:7px 10px;border-radius:6px;background:rgba(121,192,255,.1);font-size:13px;line-height:1.7;color:#c9d1d9"><b>白話：</b>'+rd+'<br><span style="color:#8b949e">「誤差」是用筆數算的粗略範圍：平均要比誤差大才算看得出來。同一段行情裡很多筆互相有關，實際誤差比這個大。換不同的出場規則（上面選單）看結論有沒有跟著變，變很多就代表結果主要來自出場規則，不是進場條件。</span></div>';
     t+='</div>';
