@@ -10632,7 +10632,8 @@ function btTableR(title,rows,rule,note){
   return t+'</table>';
 }
 var BT_KEY='dnaBT_v1', BT_STOP=false, BT_RSKEY='dnaBTrs_v1';
-function btHotTog(i){ var n=DNA_SECTORS[i]&&DNA_SECTORS[i].n; if(!n) return; var H=(window.BT_HOT||[]).slice(); var k=H.indexOf(n); if(k>=0) H.splice(k,1); else H.push(n); window.BT_HOT=H; try{ localStorage.setItem('dnaBTHot_v1',JSON.stringify(H)); }catch(e){} btRender(); }
+function btSecs(){ try{ return DNA_SECTORS; }catch(e){ return null; } }
+function btHotTog(i){ var SS=btSecs()||[]; var n=SS[i]&&SS[i].n; if(!n) return; var H=(window.BT_HOT||[]).slice(); var k=H.indexOf(n); if(k>=0) H.splice(k,1); else H.push(n); window.BT_HOT=H; try{ localStorage.setItem('dnaBTHot_v1',JSON.stringify(H)); }catch(e){} btRender(); }
 function btRsLoad(){ try{ var o=JSON.parse(localStorage.getItem(BT_RSKEY)||'{}'); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }catch(e){ return {}; } }
 function btRsSave(o){ try{ localStorage.setItem(BT_RSKEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
 function btLoad(){ try{ var a=JSON.parse(localStorage.getItem(BT_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
@@ -10856,10 +10857,10 @@ function btRender(){
   })();
   // V98.9: ⑯ 熱門板塊（同板塊前 3 週有幾檔也突破）
   (function(){
-    if(!U.length || typeof DNA_SECTORS==='undefined') return;
+    var SECS; if(!U.length || !(SECS=btSecs())) return;
     var pd=function(d){ var m=/^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d||''); return m?Date.UTC(2000+ +m[1],+m[2]-1,+m[3]):null; };
     var DAY=86400000, tk2sec={};
-    DNA_SECTORS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!tk2sec[t]) tk2sec[t]=x.n; }); });
+    SECS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!tk2sec[t]) tk2sec[t]=x.n; }); });
     var ts=U.map(function(e){return pd(e.date);}).filter(function(x){return x!=null;}); if(ts.length<5) return;
     var t0=Math.min.apply(null,ts), t1=Math.max.apply(null,ts), span=0;
     for(var t=t0;t<=t1;t+=DAY){ var wd=new Date(t).getUTCDay(); if(wd!==0&&wd!==6) span++; }
@@ -10891,11 +10892,11 @@ function btRender(){
   })();
   // V99.0: ⑰ 熱門板塊（用 RRG 的精神：板塊相對大盤的強弱 + 方向）
   (function(){
-    if(typeof DNA_SECTORS==='undefined' || !U.length) return;
+    var SECS; if(!(SECS=btSecs()) || !U.length) return;
     var RSM=btRsLoad(); if(!Object.keys(RSM).length){ h+='<div style="margin-top:12px;font-size:12.5px;color:#d29922">⑰（用跟 RRG 同一個精神的「板塊強弱」判斷熱門板塊）需要重算：<b>把「全部板塊」再跑一次</b>（同一筆會覆蓋）。</div>'; return; }
     var pd=function(d){ var m=/^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d||''); return m?Date.UTC(2000+ +m[1],+m[2]-1,+m[3]):null; }, DAY=86400000;
     var tk2sec={}, members={};
-    DNA_SECTORS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!tk2sec[t]){ tk2sec[t]=x.n; (members[x.n]=members[x.n]||[]).push(t); } }); });
+    SECS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!tk2sec[t]){ tk2sec[t]=x.n; (members[x.n]=members[x.n]||[]).push(t); } }); });
     var SER={}; Object.keys(RSM).forEach(function(tk){ SER[tk]=(RSM[tk]||[]).map(function(r){return [pd(r[0]),r[1]];}).filter(function(r){return r[0]!=null;}); });
     var at=function(tk,t){ var a=SER[tk]; if(!a) return null; var b=null; for(var i=0;i<a.length;i++){ if(a[i][0]<=t) b=a[i]; else break; } return (b&&t-b[0]<=9*DAY)?b[1]:null; };
     var secRS=function(sec,t){ var v=[]; (members[sec]||[]).forEach(function(tk){ var x=at(tk,t); if(x!=null) v.push(x); }); return v.length>=3?v.reduce(function(a,b){return a+b;},0)/v.length:null; };
@@ -10922,14 +10923,14 @@ function btRender(){
   })();
   // V99.1: ⑱ 你選的熱門板塊 vs 其他板塊，以及每個板塊各自的表現
   (function(){
-    if(typeof DNA_SECTORS==='undefined' || !U.length) return;
+    var SECS; if(!(SECS=btSecs()) || !U.length) return;
     var pd=function(d){ var m=/^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d||''); return m?Date.UTC(2000+ +m[1],+m[2]-1,+m[3]):null; };
     var ts=U.map(function(e){return pd(e.date);}).filter(function(x){return x!=null;}); if(ts.length<5) return;
     var t0=Math.min.apply(null,ts), t1=Math.max.apply(null,ts), span=0; for(var t=t0;t<=t1;t+=86400000){ var wd=new Date(t).getUTCDay(); if(wd!==0&&wd!==6) span++; }
     if(span<5) return;
-    var names=DNA_SECTORS.map(function(x){return x.n;}), HOT=window.BT_HOT;
+    var names=SECS.map(function(x){return x.n;}), HOT=window.BT_HOT;
     if(!HOT){ try{ HOT=JSON.parse(localStorage.getItem('dnaBTHot_v1')||'null'); }catch(e){ HOT=null; } if(!Array.isArray(HOT)) HOT=['七巨頭','AI 晶片','半導體設備','記憶體與儲存','光通訊'].filter(function(n){return names.indexOf(n)>=0;}); window.BT_HOT=HOT; }
-    var mem={}, tk2secs={}; DNA_SECTORS.forEach(function(x){ var l=String(x.s||'').split(/\s+/).filter(Boolean); mem[x.n]=l.length; l.forEach(function(t){ (tk2secs[t]=tk2secs[t]||[]).push(x.n); }); });
+    var mem={}, tk2secs={}; SECS.forEach(function(x){ var l=String(x.s||'').split(/\s+/).filter(Boolean); mem[x.n]=l.length; l.forEach(function(t){ (tk2secs[t]=tk2secs[t]||[]).push(x.n); }); });
     var tkOf=function(e){ return e.tk||String(e.id||'').split('|')[0]; };
     var rule=BT_RULE, ruleName=''; BT_RULES.forEach(function(r){ if(r[0]===rule) ruleName=r[1]; });
     var f=function(x,d){ return (x>0?'+':'')+x.toFixed(d==null?2:d); }, fmt=function(x){return x<10?x.toFixed(1):Math.round(x);};
@@ -10942,8 +10943,8 @@ function btRender(){
     var inHot=function(e){ return (tk2secs[tkOf(e)]||[]).some(function(n){return HOT.indexOf(n)>=0;}); };
     var hotL=U.filter(inHot), othL=U.filter(function(e){ return !inHot(e); });
     var hotM=0; HOT.forEach(function(n){ hotM+=mem[n]||0; });
-    var totM=0; var seenT={}; DNA_SECTORS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!seenT[t]){ seenT[t]=1; totM++; } }); });
-    var hotT={}; HOT.forEach(function(n){ var x=DNA_SECTORS.filter(function(y){return y.n===n;})[0]; if(x) String(x.s||'').split(/\s+/).forEach(function(t){ if(t) hotT[t]=1; }); }); var hm=Object.keys(hotT).length;
+    var totM=0; var seenT={}; SECS.forEach(function(x){ String(x.s||'').split(/\s+/).forEach(function(t){ if(t&&!seenT[t]){ seenT[t]=1; totM++; } }); });
+    var hotT={}; HOT.forEach(function(n){ var x=SECS.filter(function(y){return y.n===n;})[0]; if(x) String(x.s||'').split(/\s+/).forEach(function(t){ if(t) hotT[t]=1; }); }); var hm=Object.keys(hotT).length;
     var rows=line('你選的熱門板塊（合計）',hotL,hm,true)+line('其他板塊（合計）',othL,Math.max(0,totM-hm),true);
     var per=names.map(function(n){ return [n,U.filter(function(e){ return (tk2secs[tkOf(e)]||[]).indexOf(n)>=0; })]; });
     per.sort(function(a,b){ var sa=btRStat(a[1],rule), sb=btRStat(b[1],rule); return (sb?sb.mean:-99)-(sa?sa.mean:-99); });
