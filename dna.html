@@ -10632,6 +10632,9 @@ function btTableR(title,rows,rule,note){
   return t+'</table>';
 }
 var BT_KEY='dnaBT_v1', BT_STOP=false, BT_RSKEY='dnaBTrs_v1';
+function btHotReset(){ window.BT_HOT=['七巨頭','AI 晶片','半導體設備','記憶體與儲存','光通訊']; try{ localStorage.setItem('dnaBTHot_v1',JSON.stringify(window.BT_HOT)); }catch(e){} btRender(); }
+function btExtraTd(L,rule,st){ var v=L.filter(function(e){return e.x&&e.x[rule];}); var stop=v.filter(function(e){return e.x[rule].w==='停損';}).length; var f=function(x){return (x>0?'+':'')+x.toFixed(2);};
+  return '<td>'+st.win+'%</td><td>'+f(st.aw)+'R</td><td>'+(v.length?Math.round(100*stop/v.length)+'%':'—')+'</td>'; }
 function btSecs(){ try{ return DNA_SECTORS; }catch(e){ return null; } }
 function btHotTog(i){ var SS=btSecs()||[]; var n=SS[i]&&SS[i].n; if(!n) return; var H=(window.BT_HOT||[]).slice(); var k=H.indexOf(n); if(k>=0) H.splice(k,1); else H.push(n); window.BT_HOT=H; try{ localStorage.setItem('dnaBTHot_v1',JSON.stringify(H)); }catch(e){} btRender(); }
 function btRsLoad(){ try{ var o=JSON.parse(localStorage.getItem(BT_RSKEY)||'{}'); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }catch(e){ return {}; } }
@@ -10879,15 +10882,15 @@ function btRender(){
     var f=function(x,d){ return (x>0?'+':'')+x.toFixed(d==null?2:d); }, fmt=function(x){return x<10?x.toFixed(1):Math.round(x);};
     var rows='';
     grp.forEach(function(g){
-      var n=g[1].length, st=btRStat(g[1],rule), pf='<td>—</td><td>—</td><td>—</td>';
+      var n=g[1].length, st=btRStat(g[1],rule), pf='<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
       if(st){ var sig=Math.abs(st.mean)>=2*st.se, col=!sig?'#8b949e':(st.mean>0?'#3fb950':'#f85149');
-        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td><td style="color:'+col+'">'+(!sig?'分不出來（誤差 ±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
+        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td>'+btExtraTd(g[1],rule,st)+'<td style="color:'+col+'">'+(!sig?'分不出來（誤差 ±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
       rows+='<tr style="border-top:1px solid #30363d"><td style="padding:4px 6px 4px 0"><b>'+g[0]+'</b></td><td>'+n+'</td><td>'+(n?'約每 '+fmt(span/n)+' 天':'—')+'</td>'+pf+'</tr>';
     });
     h+='<div style="margin-top:14px;padding:8px 10px;border:1px solid #30363d;border-radius:8px">'
       +'<div style="font-size:14px;font-weight:700;color:#c9d1d9">⑯ 在熱門板塊裡突破，會不會走得比較遠？</div>'
       +'<div style="font-size:12.5px;color:#8b949e;line-height:1.7;margin-top:3px">「熱門」的算法：突破那一天往前 3 週，<b>同一個板塊裡還有幾檔別的股票也突破</b>（只看突破前已經發生的，不偷看之後）。越多代表整個板塊在動。出場規則：<b>'+ruleName+'</b>。</div>'
-      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:4px"><tr style="color:#8b949e;text-align:left"><th>組別</th><th>筆數</th><th>多久出一檔</th><th>每筆平均</th><th>每抱一天賺</th><th>判讀</th></tr>'+rows+'</table>'
+      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:4px"><tr style="color:#8b949e;text-align:left"><th>組別</th><th>筆數</th><th>多久出一檔</th><th>每筆平均</th><th>每抱一天賺</th><th>賺錢的機率</th><th>賺的時候平均</th><th>被停損洗出去</th><th>判讀</th></tr>'+rows+'</table>'
       +'<div style="margin-top:7px;padding:6px 9px;border-radius:6px;background:rgba(121,192,255,.1);font-size:12.5px;color:#c9d1d9;line-height:1.7"><b>白話：</b>如果越熱門的板塊每筆平均越高，而且超過誤差，才算「熱門板塊」真的有幫助；如果都分不出來，就別把它當成選股條件。這是我們自己定的「熱門」算法（不是專家原文），而且同一個板塊的突破常常是同一段行情的重複樣本，實際誤差比表上寫的大。板塊分類用目前的板塊清單，一檔股票屬多個板塊時只取第一個。</div></div>';
   })();
   // V99.0: ⑰ 熱門板塊（用 RRG 的精神：板塊相對大盤的強弱 + 方向）
@@ -10910,15 +10913,15 @@ function btRender(){
     var f=function(x,d){ return (x>0?'+':'')+x.toFixed(d==null?2:d); }, fmt=function(x){return x<10?x.toFixed(1):Math.round(x);};
     var grp=[['領先（強於大盤，而且還在變強）',Q.lead],['轉弱中（強於大盤，但在退）',Q.weak],['改善中（弱於大盤，但在回升）',Q.impr],['落後（弱於大盤，還在退）',Q.lag]], rows='';
     grp.forEach(function(g){
-      var n=g[1].length, st=btRStat(g[1],rule), pf='<td>—</td><td>—</td><td>—</td>';
+      var n=g[1].length, st=btRStat(g[1],rule), pf='<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
       if(st){ var sig=Math.abs(st.mean)>=2*st.se, col=!sig?'#8b949e':(st.mean>0?'#3fb950':'#f85149');
-        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td><td style="color:'+col+'">'+(!sig?'分不出來（誤差 ±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
+        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td>'+btExtraTd(g[1],rule,st)+'<td style="color:'+col+'">'+(!sig?'分不出來（誤差 ±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
       rows+='<tr style="border-top:1px solid #30363d"><td style="padding:4px 6px 4px 0"><b>'+g[0]+'</b></td><td>'+n+'</td><td>'+(n&&span>=5?'約每 '+fmt(span/n)+' 天':'—')+'</td>'+pf+'</tr>';
     });
     h+='<div style="margin-top:14px;padding:8px 10px;border:1px solid #30363d;border-radius:8px">'
       +'<div style="font-size:14px;font-weight:700;color:#c9d1d9">⑰ 突破那天，這個板塊是不是 RRG 的「領先」？走得有沒有比較遠？</div>'
       +'<div style="font-size:12.5px;color:#8b949e;line-height:1.7;margin-top:3px">跟 RRG 同一個精神：<b>板塊相對大盤的強弱</b>（板塊裡各檔過去一季漲幅減 SPY 的平均）加上<b>方向</b>（跟兩週前比有沒有變強）。出場規則：<b>'+ruleName+'</b>。'+(none?'（有 '+none+' 筆因為板塊資料不夠，沒有放進來。）':'')+'</div>'
-      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:4px"><tr style="color:#8b949e;text-align:left"><th>突破那天的板塊狀態</th><th>筆數</th><th>多久出一檔</th><th>每筆平均</th><th>每抱一天賺</th><th>判讀</th></tr>'+rows+'</table>'
+      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:4px"><tr style="color:#8b949e;text-align:left"><th>突破那天的板塊狀態</th><th>筆數</th><th>多久出一檔</th><th>每筆平均</th><th>每抱一天賺</th><th>賺錢的機率</th><th>賺的時候平均</th><th>被停損洗出去</th><th>判讀</th></tr>'+rows+'</table>'
       +'<div style="margin-top:7px;padding:6px 9px;border-radius:6px;background:rgba(121,192,255,.1);font-size:12.5px;color:#c9d1d9;line-height:1.7"><b>白話：</b>如果「領先」那一列每筆平均明顯比其他列高、而且超過誤差，代表「只買領先板塊」值得當條件；如果分不出來，就代表在這批資料裡看不出來，不要硬說有用。這是我們用板塊成員算出來的近似值，不是 RRG 本身的數字（RRG 是用板塊 ETF），也包含該檔自己；同一板塊的突破常常是同一段行情的重複樣本，實際誤差比表上寫的大。</div></div>';
   })();
   // V99.1: ⑱ 你選的熱門板塊 vs 其他板塊，以及每個板塊各自的表現
@@ -10935,9 +10938,9 @@ function btRender(){
     var rule=BT_RULE, ruleName=''; BT_RULES.forEach(function(r){ if(r[0]===rule) ruleName=r[1]; });
     var f=function(x,d){ return (x>0?'+':'')+x.toFixed(d==null?2:d); }, fmt=function(x){return x<10?x.toFixed(1):Math.round(x);};
     var line=function(label,L,m,bold){
-      var n=L.length, st=btRStat(L,rule), pf='<td>—</td><td>—</td><td>—</td>';
+      var n=L.length, st=btRStat(L,rule), pf='<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
       if(st){ var sig=Math.abs(st.mean)>=2*st.se, col=!sig?'#8b949e':(st.mean>0?'#3fb950':'#f85149');
-        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td><td style="color:'+col+'">'+(!sig?'分不出來（±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
+        pf='<td><b style="color:'+col+'">'+f(st.mean)+'R</b></td><td>'+(st.days>0?f(st.mean/st.days,3)+'R':'—')+'</td>'+btExtraTd(L,rule,st)+'<td style="color:'+col+'">'+(!sig?'分不出來（±'+(2*st.se).toFixed(2)+'R）':(st.mean>0?'有賺':'有賠'))+'</td>'; }
       return '<tr style="border-top:1px solid #30363d"><td style="padding:4px 6px 4px 0">'+(bold?'<b>'+label+'</b>':label)+'</td><td>'+n+'</td><td>'+(n?'約每 '+fmt(span/n)+' 天':'—')+'</td><td>'+(m?(n/m).toFixed(1)+' 次':'—')+'</td>'+pf+'</tr>';
     };
     var inHot=function(e){ return (tk2secs[tkOf(e)]||[]).some(function(n){return HOT.indexOf(n)>=0;}); };
@@ -10949,13 +10952,13 @@ function btRender(){
     var per=names.map(function(n){ return [n,U.filter(function(e){ return (tk2secs[tkOf(e)]||[]).indexOf(n)>=0; })]; });
     per.sort(function(a,b){ var sa=btRStat(a[1],rule), sb=btRStat(b[1],rule); return (sb?sb.mean:-99)-(sa?sa.mean:-99); });
     var prow=per.map(function(p){ return line((HOT.indexOf(p[0])>=0?'🔥 ':'')+p[0],p[1],mem[p[0]],false); }).join('');
-    var chk=names.map(function(n,i){ var on=HOT.indexOf(n)>=0; return '<label style="display:inline-block;margin:2px 10px 2px 0;font-size:12.5px;color:#c9d1d9;white-space:nowrap"><input type="checkbox" '+(on?'checked ':'')+'onchange="btHotTog('+i+')"> '+n+'</label>'; }).join('');
+    var chk=names.map(function(n,i){ var on=HOT.indexOf(n)>=0; return '<label style="display:inline-flex;align-items:center;gap:5px;margin:3px 12px 3px 0;font-size:13px;color:#c9d1d9;white-space:nowrap;cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="btHotTog('+i+')" style="position:static;width:18px;height:18px;min-width:18px;margin:0;padding:0;flex:none"><span>'+n+'</span></label>'; }).join('');
     h+='<div style="margin-top:14px;padding:8px 10px;border:1px solid #30363d;border-radius:8px">'
       +'<div style="font-size:14px;font-weight:700;color:#c9d1d9">⑱ 熱門板塊 vs 其他板塊：多久出一檔？賺多少？</div>'
       +'<div style="font-size:12.5px;color:#8b949e;line-height:1.7;margin-top:3px">打勾的是你認定的熱門板塊（預設：七巨頭、AI 晶片、半導體設備、記憶體與儲存、光通訊，可自己改，會記住）。出場規則：<b>'+ruleName+'</b>。</div>'
-      +'<div style="margin-top:4px">'+chk+'</div>'
-      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:6px"><tr style="color:#8b949e;text-align:left"><th>板塊</th><th>筆數</th><th>多久出一檔</th><th>平均每檔幾次</th><th>每筆平均</th><th>每抱一天賺</th><th>判讀</th></tr>'+rows+'<tr><td colspan="7" style="padding-top:8px;color:#8b949e;border-top:2px solid #484f58">各板塊分開看（依每筆平均由高到低；一檔股票屬於多個板塊時，每個板塊都會算一次）</td></tr>'+prow+'</table>'
-      +'<div style="margin-top:7px;padding:6px 9px;border-radius:6px;background:rgba(121,192,255,.1);font-size:12.5px;color:#c9d1d9;line-height:1.7"><b>白話：</b>「多久出一檔」是整個板塊合起來；「平均每檔幾次」是把板塊成員數考慮進去（成員多的板塊本來就比較常出訊號）。要看熱門板塊有沒有比較賺，比的是「每筆平均」，而且差距要超過誤差才算數。板塊裡的股票是現在的熱門名單，熱門板塊的樣本會偏樂觀（倖存者偏差）；也包含近期正好是熱門的那段行情，所以結果代表「這段時間」，不代表一直都是這樣。</div></div>';
+      +'<div style="margin-top:4px">'+chk+' <button type="button" onclick="btHotReset()" style="font-size:12.5px;padding:4px 10px;margin-left:4px;background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:6px">還原成預設五個</button></div>'
+      +'<table style="border-collapse:collapse;font-size:12.5px;width:100%;margin-top:6px"><tr style="color:#8b949e;text-align:left"><th>板塊</th><th>筆數</th><th>多久出一檔</th><th>平均每檔幾次</th><th>每筆平均</th><th>每抱一天賺</th><th>賺錢的機率</th><th>賺的時候平均</th><th>被停損洗出去</th><th>判讀</th></tr>'+rows+'<tr><td colspan="10" style="padding-top:8px;color:#8b949e;border-top:2px solid #484f58">各板塊分開看（依每筆平均由高到低；一檔股票屬於多個板塊時，每個板塊都會算一次）</td></tr>'+prow+'</table>'
+      +'<div style="margin-top:7px;padding:6px 9px;border-radius:6px;background:rgba(121,192,255,.1);font-size:12.5px;color:#c9d1d9;line-height:1.7"><b>白話：</b>「多久出一檔」是整個板塊合起來；「平均每檔幾次」是把板塊成員數考慮進去（成員多的板塊本來就比較常出訊號）。「賺錢的機率」＝這一筆出場時有賺的比例（也就是你說的突破成功機率）；「賺的時候平均」＝賺的那些平均賺幾 R（走得遠不遠）；「被停損洗出去」＝多少比例直接碰到停損。要看熱門板塊有沒有比較好，比的是這幾欄跟「其他板塊」的差距，而且「每筆平均」要超過誤差才算數。板塊裡的股票是現在的熱門名單，熱門板塊的樣本會偏樂觀（倖存者偏差）；也包含近期正好是熱門的那段行情，所以結果代表「這段時間」，不代表一直都是這樣。</div></div>';
   })();
   // 10/40 天（收起）
   var d2='';
@@ -10969,6 +10972,7 @@ $('btClr').addEventListener('click',function(){ if(confirm('清空歷史回放�
 $('btFillSec').addEventListener('click',function(){ $('btBox2').value=$('secBox').value; });
 $('btFillWl').addEventListener('click',function(){ $('btBox2').value=$('wlBox').value; });
 btRender();
+window.addEventListener('load',function(){ try{ btRender(); }catch(e){} });
 
 const CCKEY='dna_cardOpen';
 function ccMk(sum){
