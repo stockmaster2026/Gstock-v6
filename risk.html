@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>風險儀表板 V1.0</title>
+<style>
+:root{--bg:#fdf6e3;--card:#fffdf5;--ink:#2b2b2b;--mut:#6b6b6b;--line:#e4dcc3;--ok:#1a7f37;--warn:#b7791f;--bad:#c62828;--blue:#1f5fbf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:14px 16px 60px;max-width:880px;margin:0 auto}
+h1{font-size:19px;margin:6px 0 2px}
+.sub{color:var(--mut);font-size:12.5px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+label{font-size:13px;color:var(--mut);display:block;margin-bottom:3px}
+input,textarea{width:100%;font:16px inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+textarea{min-height:64px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:130px}
+button{font:600 15px inherit;padding:10px 16px;border:0;border-radius:10px;background:var(--blue);color:#fff}
+button:disabled{opacity:.5}
+.verdict{border-radius:14px;padding:14px 16px;margin:12px 0;border:2px solid}
+.verdict .big{font-size:24px;font-weight:900;line-height:1.3}
+.verdict .why{font-size:14px;margin-top:6px}
+.v-ok{background:#e8f5e9;border-color:var(--ok);color:var(--ok)}
+.v-warn{background:#fff4dc;border-color:var(--warn);color:#7a5200}
+.v-bad{background:#fdeaea;border-color:var(--bad);color:var(--bad)}
+.v-na{background:#eee;border-color:#aaa;color:#555}
+.bar{height:14px;background:#eadfbd;border-radius:7px;overflow:hidden;position:relative;margin:6px 0}
+.bar i{display:block;height:100%}
+.small{font-size:12.5px;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:6px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:600;font-size:12px}
+.tw{overflow-x:auto}
+.tag{display:inline-block;padding:0 6px;border-radius:6px;font-size:12px;background:#eadfbd;color:#5b4a14;margin-right:3px}
+.hot{background:#ffe1c2;color:#8a3b00}
+details summary{cursor:pointer;color:var(--blue);font-size:13.5px}
+.red{color:var(--bad)}.grn{color:var(--ok)}.amb{color:var(--warn)}
+</style>
+</head>
+<body>
+<h1>🛡 整體風險儀表板</h1>
+<div class="sub">回答一個問題：<b>手上全部加起來，扛得住嗎？可以再開新單嗎？</b>　（單一股票能不能買，請看 dna，這頁不管）</div>
+
+<div class="card">
+  <label>持股（跟 dna 同一份；格式 代號@成本x股數，例：NVDA@120x50）</label>
+  <textarea id="posBox" placeholder="例：MU@900x5 GLW@120x20"></textarea>
+  <div class="row" style="margin-top:8px">
+    <div><label>總資金（美元，含現金）</label><input id="capBox" inputmode="decimal" placeholder="例：30000"></div>
+    <div><label>每筆風險 %</label><input id="rBox" inputmode="decimal" placeholder="1"></div>
+  </div>
+  <div class="small" style="margin-top:6px">這三格存在你這台 iPad 的瀏覽器裡，跟 dna 的對應格子是同一份：在這裡改，dna 也會跟著變。</div>
+  <div style="margin-top:10px"><button id="go">更新現價並計算</button> <span id="st" class="small"></span></div>
+</div>
+
+<div id="out"></div>
+
+<div class="card small">
+<b>怎麼算的（點開看）</b>
+<details><summary>停損線、風險金額、各種上限</summary>
+<ul>
+<li><b>預設停損線 = 20 日均線</b>：你的出場規則是「收盤連 3 天在 20 日均線之下才出」，所以均線就是你實際會走的位置。這是估計；你也可以在表裡自己填每檔的停損價，填了就用你的。</li>
+<li><b>這檔的風險 = (現價 − 停損線) × 股數</b>：意思是「從現在開始，如果真的走到停損線，會再虧多少錢」。已經賺的獲利不算在內。</li>
+<li><b>總風險上限 6%、單檔占比上限 25%、每筆 1%</b>：來自你自己定的規則（跟 dna 一樣）。</li>
+<li><b>板塊分類</b>：複製自 dna 的板塊名單（某天的版本），dna 之後改板塊，這頁不會自動跟著改。不在名單裡的股票顯示「未分類」。</li>
+<li><b>熱門板塊</b>：AI 晶片、半導體設備、光通訊、記憶體與儲存（你 10/7 定的，七巨頭不算）。</li>
+</ul></details>
+</div>
+
+<script>
+const POS_KEY='dna_positions', CAPKEY='dnaCapital_v1', RKEY='dnaRiskPct_v1', STOPKEY='riskStops_v1';
+const RISK_CAP=6, POS_CAP=25;
+const HOT=['AI 晶片','半導體設備','光通訊','記憶體與儲存'];
+const SECTORS=[
+  {n:'資安', s:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'},
+  {n:'軟體 SaaS', s:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV'},
+  {n:'AI 晶片', s:'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX'},
+  {n:'半導體設備', s:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'},
+  {n:'光通訊', s:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'},
+  {n:'記憶體與儲存', s:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'},
+  {n:'AI 電力與散熱', s:'VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW'},
+  {n:'太空與國防', s:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'},
+  {n:'生技與醫材', s:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN'},
+  {n:'金融', s:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'},
+  {n:'量子運算', s:'IONQ RGTI QBTS QUBT LAES ARQQ'},
+  {n:'七巨頭', s:'AAPL MSFT GOOGL AMZN NVDA META TSLA'}
+];
+const PROXY=u=>"https://gstock-proxy.cykjas.workers.dev/?url="+encodeURIComponent(u);
+const $=id=>document.getElementById(id);
+const ls={g(k){try{return localStorage.getItem(k)}catch(e){return null}},s(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+function parsePos(raw){
+  const out={};
+  (raw||'').toUpperCase().split(/[\s,;]+/).filter(Boolean).forEach(tok=>{
+    const m=/^([A-Z0-9.\-]+)(?:@([0-9]*\.?[0-9]+))?(?:[X*]([0-9]+))?$/.exec(tok);
+    if(!m) return;
+    out[m[1]]={cost:m[2]?parseFloat(m[2]):null, sh:m[3]?parseInt(m[3],10):null};
+  });
+  return out;
+}
+function secsOf(tk){ return SECTORS.filter(x=>(' '+x.s+' ').indexOf(' '+tk+' ')>=0).map(x=>x.n); }
+function getStops(){ try{return JSON.parse(ls.g(STOPKEY)||'{}')||{}}catch(e){return {}} }
+function setStop(tk,v){ const o=getStops(); const n=parseFloat(v); if(n>0) o[tk]=n; else delete o[tk]; ls.s(STOPKEY,JSON.stringify(o)); render(); }
+window.setStop=setStop;
+
+let PX={}; // tk -> {px, ma20, err}
+async function fetchOne(tk){
+  const u='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(tk)+'?range=6mo&interval=1d&_='+Date.now();
+  const r=await fetch(PROXY(u)); if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json(); const res=j&&j.chart&&j.chart.result&&j.chart.result[0];
+  if(!res) throw new Error('沒有資料');
+  const cl=(res.indicators.quote[0].close||[]).filter(x=>x!=null);
+  if(cl.length<20) throw new Error('資料不足');
+  const px=(res.meta&&res.meta.regularMarketPrice)||cl[cl.length-1];
+  const ma20=cl.slice(-20).reduce((a,b)=>a+b,0)/20;
+  return {px, ma20};
+}
+async function refresh(){
+  const P=parsePos($('posBox').value); const tks=Object.keys(P);
+  if(!tks.length){ $('st').textContent='先在上面填持股'; return; }
+  $('go').disabled=true; let ok=0;
+  for(let i=0;i<tks.length;i++){
+    $('st').textContent='抓價中 '+(i+1)+'/'+tks.length+'：'+tks[i];
+    try{ PX[tks[i]]=await fetchOne(tks[i]); ok++; }catch(e){ PX[tks[i]]={err:String(e.message||e)}; }
+  }
+  $('go').disabled=false;
+  const t=new Date().toLocaleString('zh-TW',{timeZone:'America/Los_Angeles',hour12:false});
+  $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+'）'; render();
+}
+const money=n=>'$'+Math.round(n).toLocaleString();
+const pct=(n,d=1)=>n.toFixed(d)+'%';
+
+function render(){
+  const P=parsePos($('posBox').value), cap=parseFloat($('capBox').value), r=parseFloat($('rBox').value)||1;
+  const tks=Object.keys(P), stops=getStops(), out=$('out');
+  if(!tks.length){ out.innerHTML='<div class="verdict v-na"><div class="big">還沒填持股</div><div class="why">在上面填完按「更新現價並計算」。</div></div>'; return; }
+  const rows=[]; const issues=[];
+  tks.forEach(tk=>{
+    const p=P[tk], q=PX[tk]||null; const o={tk,cost:p.cost,sh:p.sh,secs:secsOf(tk)};
+    if(!p.sh){ o.miss='缺股數'; }
+    else if(!q){ o.miss='還沒抓價'; }
+    else if(q.err){ o.miss='抓價失敗：'+q.err; }
+    else{
+      o.px=q.px; o.ma20=q.ma20; o.val=q.px*p.sh;
+      const own=stops[tk]>0;
+      o.stop=own?stops[tk]:q.ma20; o.own=own;
+      o.below=o.stop>=o.px; // 已跌破停損線
+      o.risk=o.below?0:(o.px-o.stop)*p.sh;
+      o.pl=(p.cost!=null)?(o.px-p.cost)*p.sh:null;
+    }
+    rows.push(o);
+  });
+  const ok=rows.filter(x=>x.val!=null), bad=rows.filter(x=>x.val==null);
+  bad.forEach(x=>issues.push(x.tk+'：'+x.miss));
+  let html='';
+  if(!(cap>0)){
+    html+='<div class="verdict v-na"><div class="big">請先填總資金</div><div class="why">沒有總資金就算不出占比和 6% 上限。</div></div>';
+  }
+  if(!ok.length){
+    out.innerHTML=html+(issues.length?'<div class="card amb">'+issues.join('<br>')+'</div>':'')+'<div class="card small">按「更新現價並計算」抓價。</div>'; return;
+  }
+  const totRisk=ok.reduce((a,x)=>a+x.risk,0), totVal=ok.reduce((a,x)=>a+x.val,0);
+  if(cap>0){
+    const rp=totRisk/cap*100, room=RISK_CAP-rp, perTrade=r;
+    const big=ok.filter(x=>x.val/cap*100>POS_CAP);
+    let cls,head,why;
+    const canNew=room>=perTrade;
+    if(rp>RISK_CAP){ cls='v-bad'; head='🔴 風險已超過上限，不要再開新單'; why='如果全部都走到停損線，會再虧 '+money(totRisk)+'，是總資金的 '+pct(rp)+'，超過你定的 '+RISK_CAP+'%。'; }
+    else if(big.length){ cls='v-bad'; head='🔴 有單一持股太重，不要再開新單'; why=big.map(x=>x.tk+' 占總資金 '+pct(x.val/cap*100)).join('、')+'，超過你定的 '+POS_CAP+'% 上限。總風險 '+pct(rp)+'（上限 '+RISK_CAP+'%）。'; }
+    else if(!canNew){ cls='v-warn'; head='🟡 還沒超標，但空間不夠再開一筆'; why='目前總風險 '+pct(rp)+'，離 '+RISK_CAP+'% 上限只剩 '+pct(room)+'，不夠再放一筆 '+perTrade+'% 的新單。'; }
+    else { cls='v-ok'; head='🟢 風險在你的規則內，可以再開新單'; why='目前總風險 '+pct(rp)+'，離 '+RISK_CAP+'% 上限還有 '+pct(room)+'，大約還能再放 '+Math.floor(room/perTrade)+' 筆 '+perTrade+'% 的新單（前提是新單本身通過 dna）。'; }
+    const brk=ok.filter(x=>x.below);
+    if((issues.length||brk.length)&&cls==='v-ok'){ cls='v-warn'; head='🟡 規則內，但有檔數字不完整，先別當成可以開新單'; }
+    if(brk.length) why+='<br>另外 '+brk.map(x=>x.tk).join('、')+' 現價已在停損線下方，風險算成 0，但這不代表安全，是出場條件已經在倒數。';
+    html+='<div class="verdict '+cls+'"><div class="big">'+head+'</div><div class="why">'+why+(issues.length?'<br>算不到的：'+issues.join('、')+'。它們的風險沒算進去，實際可能更高。':'')+'</div></div>';
+    // 風險條
+    const w=Math.min(100,rp/RISK_CAP*100), col=rp>RISK_CAP?'var(--bad)':(w>=80?'var(--warn)':'var(--ok)');
+    html+='<div class="card"><b>① 總風險：已用 '+pct(rp)+' ／ 上限 '+RISK_CAP+'%</b>'
+      +'<div class="bar"><i style="width:'+w+'%;background:'+col+'"></i></div>'
+      +'<div class="small">白話：全部持股都走到停損線，會再虧 <b>'+money(totRisk)+'</b>。上限等於 '+money(cap*RISK_CAP/100)+'。這是「從現在起」的風險，已經賺到的不算。</div></div>';
+    // 單檔占比
+    const sorted=ok.slice().sort((a,b)=>b.val-a.val);
+    html+='<div class="card"><b>② 單一持股占比（上限 '+POS_CAP+'%）</b>';
+    sorted.slice(0,6).forEach(x=>{ const p=x.val/cap*100; const c=p>POS_CAP?'var(--bad)':(p>POS_CAP*0.8?'var(--warn)':'var(--ok)');
+      html+='<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:5px"><span>'+x.tk+'</span><span>'+pct(p)+'　'+money(x.val)+'</span></div><div class="bar" style="height:8px"><i style="width:'+Math.min(100,p/POS_CAP*100)+'%;background:'+c+'"></i></div>'; });
+    html+='<div class="small">條的長度是「占上限的幾成」，滿格＝剛好 '+POS_CAP+'%。持股總市值約 '+money(totVal)+'，占總資金 '+pct(totVal/cap*100)+'，其餘 '+pct(Math.max(0,100-totVal/cap*100))+' 是現金（若總資金填的是含現金）。</div></div>';
+  } else {
+    html+='<div class="card small">總風險（走到停損線會再虧）：<b>'+money(totRisk)+'</b>。填了總資金才能跟 6% 上限比。</div>';
+  }
+  // ③ 集中度（只提醒，不影響上面的紅黃綠）
+  const bySec={}; let hotVal=0;
+  ok.forEach(x=>{ const ss=x.secs.length?x.secs:['未分類']; const hot=x.secs.some(s=>HOT.indexOf(s)>=0); if(hot) hotVal+=x.val;
+    const nm=(x.secs.filter(s=>s!=='七巨頭')[0])||ss[0]; bySec[nm]=(bySec[nm]||0)+x.val; });
+  const secArr=Object.entries(bySec).sort((a,b)=>b[1]-a[1]);
+  html+='<div class="card"><b>③ 會不會押在同一個地方</b>';
+  secArr.forEach(([n,v])=>{ html+='<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:3px"><span>'+(HOT.indexOf(n)>=0?'<span class="tag hot">熱門</span>':'')+n+'</span><span>'+pct(v/totVal*100,0)+' 的持股</span></div>'; });
+  const hp=hotVal/totVal*100;
+  html+='<div class="small" style="margin-top:6px">四個熱門板塊（AI 晶片、半導體設備、光通訊、記憶體與儲存）合計占你持股的 <b>'+pct(hp,0)+'</b>。'
+    +(hp>=70?'<span class="amb">　白話：持股幾乎全押在同一條故事線上，這個題材一起轉弱時，你的「分散」其實是假的，幾檔會一起跌。</span>':hp>=40?'　白話：有明顯偏重，但還不到全押。':'　白話：沒有過度集中在熱門板塊。')
+    +'<br>這一項只是提醒，不影響上面的紅黃綠（因為你的規則裡沒有板塊上限，我不替你訂）。</div></div>';
+  // 明細
+  html+='<div class="card"><b>各檔明細</b><div class="small">停損價可自己改；沒填就用 20 日均線（標「估」）。</div><div class="tw"><table><tr><th>代號</th><th>現價</th><th>停損線</th><th>走到停損<br>會再虧</th><th>占總資金</th><th>目前賺賠</th></tr>';
+  rows.forEach(x=>{
+    if(x.val==null){ html+='<tr><td>'+x.tk+'</td><td colspan="5" class="amb" style="text-align:left">'+x.miss+'</td></tr>'; return; }
+    html+='<tr><td>'+x.tk+'</td><td>'+x.px.toFixed(2)+'</td>'
+      +'<td><input style="width:84px;padding:4px" inputmode="decimal" value="'+(x.own?x.stop:'')+'" placeholder="'+x.ma20.toFixed(2)+'估" onchange="setStop(\''+x.tk+'\',this.value)"></td>'
+      +'<td>'+(x.below?'<span class="red">已跌破</span>':money(x.risk))+'</td>'
+      +'<td>'+(cap>0?pct(x.val/cap*100):'-')+'</td>'
+      +'<td class="'+(x.pl==null?'':x.pl>=0?'grn':'red')+'">'+(x.pl==null?'沒填成本':(x.pl>=0?'+':'')+money(x.pl))+'</td></tr>';
+  });
+  html+='</table></div><div class="small">「已跌破」＝現價已在停損線下方：如果你用 20 日均線，要看是不是連 3 天收在下面（規則是連 3 天才出）。</div></div>';
+  out.innerHTML=html;
+}
+['posBox','capBox','rBox'].forEach(id=>$(id).addEventListener('input',()=>{
+  ls.s(id==='posBox'?POS_KEY:id==='capBox'?CAPKEY:RKEY,$(id).value); render();
+}));
+$('go').addEventListener('click',refresh);
+$('posBox').value=ls.g(POS_KEY)||''; $('capBox').value=ls.g(CAPKEY)||''; $('rBox').value=ls.g(RKEY)||'';
+render();
+</script>
+</body>
+</html>
