@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>箱型×大盤環境 box-test v1</title>
+<style>
+:root{--bg:#0f1419;--card:#1a2129;--line:#2b3641;--tx:#e6edf3;--mut:#8b98a5;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.65 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:16px;max-width:900px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 2px}h2{font-size:16px;margin:0 0 8px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.crit li{margin:4px 0}
+button{background:var(--acc);color:#04111f;border:0;border-radius:10px;padding:12px 18px;font-size:16px;font-weight:600}
+button.sec{background:#2b3641;color:var(--tx)}button:disabled{opacity:.5}
+.bar{height:10px;background:#2b3641;border-radius:6px;overflow:hidden;margin:10px 0 4px}
+.bar>i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{color:var(--mut);font-weight:500}
+.wrap{overflow-x:auto}
+.pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}.na{color:var(--warn);font-weight:700}
+.read{font-size:14px;color:#c9d4de;margin:6px 0}
+.small{font-size:12.5px;color:var(--mut)}
+#log{font-size:12px;color:var(--mut);max-height:120px;overflow:auto;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>箱型 × 大盤環境 box-test <span style="font-size:13px;color:var(--mut)">v1</span></h1>
+<div class="sub">問題：大盤強的時候和弱的時候，「突破買」和「箱型買」各自表現差多少？有沒有一種環境，其中一種做法明顯比較好？<br>這是研究用的測試頁，不是買賣工具，不影響 dna。</div>
+
+<div class="card">
+<h2>跑之前先寫死的規則（跑完不改）</h2>
+<div class="read"><b>① 怎麼分「大盤強」和「大盤弱」</b>（用 SPY，當天收盤後就能知道，不看未來）：</div>
+<ol class="crit read">
+<li><b>強</b>：SPY 收盤在 50 日線上方，<b>而且</b> 50 日線比 20 天前高（均線往上）。</li>
+<li><b>弱</b>：其餘全部（包含盤整、下跌、剛反彈但均線還沒翻上）。</li>
+</ol>
+<div class="read"><b>② 箱子怎麼畫</b>（客觀版，類似 Darvas，但不是原版）：</div>
+<ol class="crit read">
+<li>看進場日之前的 25 根日線，<b>箱頂＝這段最高價，箱底＝這段最低價</b>。</li>
+<li>箱子寬度（箱頂比箱底高多少）要在 6%～20% 之間；太窄是雜訊、太寬不算箱子。</li>
+<li>箱頂和箱底都要是至少 3 天前形成的（避免剛創新高、剛破底就算進去）。</li>
+</ol>
+<div class="read"><b>③ 四種做法</b>（全部以當天收盤進場，同一檔 10 天內只算一次）：</div>
+<ol class="crit read">
+<li><b>S0 突破買（對照組）</b>：收盤創近 60 日收盤新高，且收盤&gt;150 日線、&gt;200 日線、50 日線&gt;150 日線。停損 −8%，收盤跌破 50 日線就賣。（這跟先前 ma-exit-test 的進場 A 同一套。）</li>
+<li><b>S1 箱頂突破買（Darvas 式）</b>：上升趨勢條件同 S0，今天收盤剛突破箱頂（昨天還在箱頂下）。停損放箱底，收盤跌破 50 日線也賣。</li>
+<li><b>S2 箱底附近買（區間操作）</b>：上升趨勢條件同 S0，收盤在箱子下 1/4 區、且今天收盤比昨天高（有止跌跡象）。停損放箱底下 1%，<b>碰到箱頂就賣（賺）</b>，20 天到了還沒到就收盤賣。</li>
+<li><b>S2n 同 S2 但不要求上升趨勢</b>：只要有箱子、在箱底附近、今天收高就買。這是為了看「大盤弱、很多股票沒有上升趨勢」時，箱型買能不能獨立存在。</li>
+</ol>
+<div class="read"><b>④ 共同規則</b>：停損距離要在 3%～12% 之間才算（太近＝雜訊、太遠＝風險太大），進出場各扣 0.1% 成本。所有結果用 <b>R</b> 表示：<b>1R＝當初願意賠的金額</b>（停損距離）。最長抱 150 天。</div>
+<div class="read"><b>⑤ 怎麼判斷「強弱環境有差」</b>：同一種做法，強勢期與弱勢期兩邊都要有 30 筆以上，平均 R 的差距要<b>超過誤差範圍的 2 倍</b>才算「明顯有差」；否則一律寫「看不出差別」。</div>
+<div class="read"><b>⚠ 這個測試的限制（先講清楚）</b>：①只用日線，停損被觸發時假設剛好成交在停損價，真實有跳空會更差（箱底停損比 −8% 更容易被跳空吃掉）；②名單是你現在挑的 190 多檔，很多是後來變強的股票，會讓所有做法都偏好看；③同一天很多檔一起觸發，樣本不是互相獨立的，實際的誤差比表上的大，所以「沒有明顯差別」比「有明顯差別」更可信；④五年裡有幾個大行情，結論可能被它們主導。</div>
+</div>
+
+<div class="card">
+<button id="go" onclick="runAll()">開始（約 190 檔，要幾分鐘）</button>
+<button class="sec" id="cp" onclick="copyReport()" style="display:none">複製結果文字</button>
+<div class="bar"><i id="pf"></i></div>
+<div class="small" id="pt">還沒開始</div>
+<div id="log"></div>
+</div>
+
+<div id="out"></div>
+
+<script>
+const SECTORS = {
+  '七巨頭':        { emoji:'🤖', stocks:['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'] },
+  'AI 晶片':       { emoji:'🧠', stocks:['NVDA','AVGO','AMD','TSM','ARM','MPWR','INTC','QCOM','SITM','LSCC','TSEM','GFS','ASX'] },
+  '半導體設備':    { emoji:'🏭', stocks:['ASML','AMAT','LRCX','KLAC','AEHR','TER','ONTO','KLIC','CAMT','ENTG','MKSI','FORM','NVMI','ACMR'] },
+  '光通訊':        { emoji:'📡', stocks:['COHR','LITE','AAOI','CIEN','FN','AXTI','MRVL','GLW','ANET','POET','ALAB','CRDO','MTSI','VIAV','CLS','SMTC','MXL','APH'] },
+  '記憶體與儲存':  { emoji:'💾', stocks:['MU','SNDK','WDC','STX','NTAP','P','SMCI','DELL','HPE','AMKR','RMBS','PENG','SIMO'] },
+  'AI 電力與散熱': { emoji:'⚡', stocks:['VRT','BE','OKLO','GEV','PWR','ETN','CEG','TLN','SMR','NNE','VST','NRG','MOD','NVT','AAON','POWL','FIX','STRL','BWXT','CW'] },
+  '太空與國防':    { emoji:'🚀', stocks:['RKLB','LUNR','ASTS','PL','KTOS','AVAV','LDOS','RCAT','LMT','RTX','RDW','FLY','KRMN','VOYG','VSAT','ONDS','AXON','MRCY','PLTR','NOC','GD','LHX'] },
+  '量子運算':      { emoji:'⚛️', stocks:['IONQ','RGTI','QBTS','QUBT','LAES','ARQQ'] },
+  '生技與醫材':    { emoji:'🧬', stocks:['LLY','NVO','ISRG','TEM','CRSP','NTRA','HIMS','RXRX','VKTX','ALNY','AMGN','SYK','MDT','NTLA','BEAM','ARWR','IONS','VRTX','GH','ILMN'] },
+  '資安':          { emoji:'🛡️', stocks:['CRWD','PANW','ZS','S','FTNT','NET','OKTA','RBRK','TENB','QLYS','CHKP','SAIL','CVLT','VRNS','FFIV','AKAM','GEN'] },
+  '軟體 SaaS':     { emoji:'💻', stocks:['NOW','CRM','DDOG','SNOW','MDB','TEAM','HUBS','WDAY','ADBE','INTU','PLTR','ORCL','DT','ESTC','NTNX','GTLB','VEEV'] },
+  '金融':          { emoji:'🏦', stocks:['JPM','GS','MS','BLK','KKR','BX','SCHW','COIN','HOOD','V','ARCC','APO','SYF','ALLY','AXP','COF','MA','CME','SPGI','BAC'] },
+  '貴金屬/礦業':   { emoji:'🥇', stocks:['NEM','AEM','WPM','B','HL','FNV','KGC','AU','AGI','PAAS'] },
+};
+
+function isPartialBar(tLast, nowMs) {
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const parts = x => { const o = {}; fmt.formatToParts(new Date(x)).forEach(p => { o[p.type] = p.value; }); return o; };
+  const a = parts(tLast * 1000), n = parts(nowMs);
+  if (a.year + a.month + a.day !== n.year + n.month + n.day) return false;   // 最後一根不是今天
+  return (+n.hour) * 60 + (+n.minute) < 16 * 60;                              // 美東 16:00 收盤前
+}
+
+function dayKey(t) { return new Date(t * 1000).toISOString().slice(0, 10); }
+
+const PROXY = u => `https://gstock-proxy.cykjas.workers.dev/?url=${encodeURIComponent(u)}`;
+const CFG = { WARMUP:210, L:25, WMIN:0.06, WMAX:0.20, RMIN:3, RMAX:12, COST:0.2, CAP:150, COOL:10, TMAX:20, MIN_N:30 };
+let REPORT = '';
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const median = a => { if(!a.length) return null; const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+const sd = a => { const m=mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/Math.max(1,a.length-1)); };
+const fR = x => x==null?'—':(x>=0?'+':'')+x.toFixed(2)+'R';
+const f0 = x => x==null?'—':x.toFixed(0)+'%';
+function log(m){ const el=document.getElementById('log'); el.textContent+=m+'\n'; el.scrollTop=el.scrollHeight; }
+
+async function fetchFull(sym){
+  const url=`https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5y`;
+  const ctrl=new AbortController(); const tm=setTimeout(()=>ctrl.abort(),20000);
+  try{
+    const res=await fetch(PROXY(url),{signal:ctrl.signal}); if(!res.ok) throw new Error('HTTP '+res.status);
+    const j=await res.json(); const r=j.chart.result[0], q=r.indicators.quote[0]; const rows=[];
+    for(let k=0;k<r.timestamp.length;k++){ if(q.close[k]==null||q.low[k]==null||q.high[k]==null) continue;
+      rows.push({c:q.close[k],h:q.high[k],l:q.low[k],t:r.timestamp[k]}); }
+    if(rows.length>2 && isPartialBar(rows[rows.length-1].t,Date.now())) rows.pop();
+    return { c:rows.map(x=>x.c), h:rows.map(x=>x.h), l:rows.map(x=>x.l), t:rows.map(x=>x.t) };
+  } finally { clearTimeout(tm); }
+}
+function maOf(c,w){ const n=c.length, a=new Array(n).fill(null); let s=0; for(let i=0;i<n;i++){ s+=c[i]; if(i>=w) s-=c[i-w]; if(i>=w-1) a[i]=s/w; } return a; }
+
+// SPY 環境表：date -> true(強)/false(弱)
+function buildRegime(spy){
+  const m50=maOf(spy.c,50), out={}; let strong=0, weak=0;
+  for(let i=70;i<spy.c.length;i++){
+    const s = spy.c[i]>m50[i] && m50[i]>m50[i-20];
+    out[dayKey(spy.t[i])] = s;
+    if(i>=CFG.WARMUP){ if(s) strong++; else weak++; }
+  }
+  return { map:out, strong, weak };
+}
+
+// 單一交易模擬。kind: 'ma' 用 50 日線，'box' 用箱頂目標
+function simTrade(d, m50, i0, stopPx, targetPx, useMa, tmax){
+  const n=d.c.length, e=d.c[i0];
+  for(let k=i0+1;k<n;k++){
+    if(d.l[k]<=stopPx) return { px:stopPx, days:k-i0, why:'stop' };
+    if(targetPx!=null && d.h[k]>=targetPx) return { px:targetPx, days:k-i0, why:'target' };
+    if(useMa && m50[k]!=null && d.c[k]<m50[k]) return { px:d.c[k], days:k-i0, why:'ma' };
+    if(tmax && (k-i0)>=tmax) return { px:d.c[k], days:k-i0, why:'time' };
+    if((k-i0)>=CFG.CAP) return { px:d.c[k], days:k-i0, why:'cap' };
+  }
+  return { px:d.c[n-1], days:n-1-i0, why:'end' };
+}
+function mk(e, ex, riskPct, date, regime){
+  const ret=(ex.px/e-1)*100 - CFG.COST;
+  return { date, y:date.slice(0,4), strong:regime, R:ret/riskPct, ret, days:ex.days, why:ex.why };
+}
+
+function analyzeOne(d, REG, store){
+  const n=d.c.length, c=d.c;
+  const m50=maOf(c,50), m150=maOf(c,150), m200=maOf(c,200);
+  const last={S0:-999,S1:-999,S2:-999,S2n:-999};
+  for(let i=CFG.WARMUP;i<n-1;i++){
+    const date=dayKey(d.t[i]); const regime=REG.map[date]; if(regime===undefined) continue;
+    const up = c[i]>m150[i] && c[i]>m200[i] && m50[i]>m150[i];
+    const e=c[i];
+    // S0
+    if(up && i-last.S0>=CFG.COOL){
+      let hi=-Infinity; for(let k=i-60;k<i;k++) if(c[k]>hi) hi=c[k];
+      if(c[i]>hi){ last.S0=i; const ex=simTrade(d,m50,i,e*0.92,null,true,0); store.S0.push(mk(e,ex,8,date,regime)); }
+    }
+    // 箱子
+    let top=-Infinity,bot=Infinity,it=-1,ib=-1;
+    for(let k=i-CFG.L;k<i;k++){ if(d.h[k]>top){top=d.h[k];it=k;} if(d.l[k]<bot){bot=d.l[k];ib=k;} }
+    const w=(top-bot)/bot;
+    const box = w>=CFG.WMIN && w<=CFG.WMAX && (i-it)>=3 && (i-ib)>=3;
+    if(!box) continue;
+    // S1
+    if(up && c[i]>top && c[i-1]<=top && i-last.S1>=CFG.COOL){
+      const risk=(e-bot)/e*100;
+      if(risk>=CFG.RMIN && risk<=CFG.RMAX){ last.S1=i; const ex=simTrade(d,m50,i,bot,null,true,0); store.S1.push(mk(e,ex,risk,date,regime)); }
+    }
+    // S2 / S2n：箱底附近買
+    const pos=(e-bot)/(top-bot);
+    if(c[i]<=top && c[i]>bot && pos<=0.25 && c[i]>c[i-1]){
+      const stop=bot*0.99, risk=(e-stop)/e*100;
+      if(risk>=CFG.RMIN && risk<=CFG.RMAX){
+        if(up && i-last.S2>=CFG.COOL){ last.S2=i; const ex=simTrade(d,m50,i,stop,top,false,CFG.TMAX); store.S2.push(mk(e,ex,risk,date,regime)); }
+        if(i-last.S2n>=CFG.COOL){ last.S2n=i; const ex=simTrade(d,m50,i,stop,top,false,CFG.TMAX); store.S2n.push(mk(e,ex,risk,date,regime)); }
+      }
+    }
+  }
+}
+
+const STRATS=[
+  {id:'S0',name:'S0 突破買（對照）'},
+  {id:'S1',name:'S1 箱頂突破買'},
+  {id:'S2',name:'S2 箱底附近買（上升趨勢中）'},
+  {id:'S2n',name:'S2n 箱底附近買（不管趨勢）'},
+];
+function stat(list){
+  const R=list.map(x=>x.R), n=R.length;
+  if(!n) return {n:0};
+  const w=list.filter(x=>x.R>0), l=list.filter(x=>x.R<=0);
+  return { n, win:w.length/n*100, mean:mean(R), med:median(R), se:sd(R)/Math.sqrt(n),
+    avgW:w.length?mean(w.map(x=>x.R)):null, avgL:l.length?mean(l.map(x=>x.R)):null,
+    days:mean(list.map(x=>x.days)), q10:list.filter(x=>x.days<=10).length/n*100,
+    stopP:list.filter(x=>x.why==='stop').length/n*100 };
+}
+function reading(s){
+  if(!s.n) return '沒有樣本';
+  if(s.n<CFG.MIN_N) return `只有 ${s.n} 筆，太少，不下結論`;
+  const side=s.mean>=0?'賺':'賠';
+  const sig=Math.abs(s.mean)>=2*s.se;
+  return `每冒 1 元風險，平均${side} ${Math.abs(s.mean).toFixed(2)} 元`+(sig?'（超過誤差範圍，但樣本互相重疊，別太當真）':'（誤差範圍內，跟 0 分不出來）')
+    +`；${s.win.toFixed(0)}% 的交易賺錢`;
+}
+function compare(a,b){
+  if(a.n<CFG.MIN_N||b.n<CFG.MIN_N) return '其中一邊樣本不足，不比';
+  const diff=a.mean-b.mean, se=Math.sqrt(a.se*a.se+b.se*b.se);
+  if(Math.abs(diff)<2*se) return `強勢期和弱勢期看不出差別（差 ${Math.abs(diff).toFixed(2)}R，在誤差內）`;
+  return diff>0?`強勢期明顯較好（高出 ${diff.toFixed(2)}R）`:`弱勢期明顯較好（高出 ${(-diff).toFixed(2)}R）`;
+}
+
+function render(store, REG, meta){
+  const txt=[]; let h='';
+  const tot=REG.strong+REG.weak;
+  const head=`測試範圍：成功 ${meta.ok} 檔、略過 ${meta.fail} 檔。這段期間 SPY 有 ${(REG.strong/tot*100).toFixed(0)}% 的交易日是「強」、${(REG.weak/tot*100).toFixed(0)}% 是「弱」。`;
+  h+=`<div class="card"><h2>先看環境分布</h2><div class="read">${head}</div><div class="small">如果「弱」的天數很少，弱勢期的結論參考價值就低。</div></div>`;
+  txt.push('【box-test v1】'+head);
+  h+='<div class="card"><h2>結果：每種做法 × 大盤環境</h2><div class="wrap"><table><tr><th>做法 / 環境</th><th>筆數</th><th>勝率</th><th>平均</th><th>中位數</th><th>十天內結束</th><th>被停損</th><th>平均抱幾天</th></tr>';
+  const verdicts=[];
+  STRATS.forEach(S=>{
+    const L=store[S.id], A=stat(L), SS=stat(L.filter(x=>x.strong)), WW=stat(L.filter(x=>!x.strong));
+    h+=`<tr><td colspan="8" style="color:var(--acc);font-weight:600;padding-top:12px">${S.name}</td></tr>`;
+    txt.push('\n'+S.name);
+    [['全部',A],['大盤強',SS],['大盤弱',WW]].forEach(([nm,s])=>{
+      if(!s.n){ h+=`<tr><td>${nm}</td><td colspan="7">沒有樣本</td></tr>`; txt.push(`  ${nm}：沒有樣本`); return; }
+      h+=`<tr><td>${nm}</td><td>${s.n}</td><td>${f0(s.win)}</td><td>${fR(s.mean)}</td><td>${fR(s.med)}</td><td>${f0(s.q10)}</td><td>${f0(s.stopP)}</td><td>${s.days.toFixed(0)}</td></tr>`;
+      h+=`<tr><td colspan="8" class="small" style="text-align:left;white-space:normal;border-bottom:1px dashed var(--line)">　→ ${reading(s)}</td></tr>`;
+      txt.push(`  ${nm}：${s.n} 筆 勝率 ${f0(s.win)} 平均 ${fR(s.mean)} 中位 ${fR(s.med)} 十天內結束 ${f0(s.q10)} 被停損 ${f0(s.stopP)} 平均抱 ${s.days.toFixed(0)} 天 ｜ ${reading(s)}`);
+    });
+    const cmp=compare(SS,WW); verdicts.push([S.name,cmp]);
+    h+=`<tr><td colspan="8" style="text-align:left;white-space:normal"><b>強 vs 弱：${cmp}</b></td></tr>`;
+    txt.push('  強 vs 弱：'+cmp);
+  });
+  h+='</table></div></div>';
+  // 做法之間在同一環境的比較
+  h+='<div class="card"><h2>白話小結</h2>';
+  verdicts.forEach(v=>{ h+=`<div class="read">· <b>${v[0]}</b>：${v[1]}</div>`; });
+  const W={}, Sx={}; STRATS.forEach(S=>{ W[S.id]=stat(store[S.id].filter(x=>!x.strong)); Sx[S.id]=stat(store[S.id].filter(x=>x.strong)); });
+  const best=(obj)=>STRATS.filter(S=>obj[S.id].n>=CFG.MIN_N).sort((a,b)=>obj[b.id].mean-obj[a.id].mean)[0];
+  const bw=best(W), bs=best(Sx);
+  h+=`<div class="read">· 大盤弱的時候，平均 R 最高的是：<b>${bw?bw.name+'（'+fR(W[bw.id].mean)+'）':'樣本都不足'}</b>；大盤強的時候是：<b>${bs?bs.name+'（'+fR(Sx[bs.id].mean)+'）':'樣本都不足'}</b>。</div>`;
+  h+='<div class="small">「最高」只是排名，不代表明顯比別的好，要回頭看上面的表，兩者差距有沒有超過誤差。這份結果不會改變 dna 的任何規則，只是決定值不值得往下研究。</div></div>';
+  txt.push('\n小結：'+verdicts.map(v=>v[0]+'＝'+v[1]).join('；'));
+  txt.push(`弱勢期最高：${bw?bw.name+' '+fR(W[bw.id].mean):'樣本不足'}；強勢期最高：${bs?bs.name+' '+fR(Sx[bs.id].mean):'樣本不足'}`);
+  // 年度
+  const years=[...new Set(STRATS.flatMap(S=>store[S.id].map(x=>x.y)))].sort();
+  h+='<div class="card"><h2>分年看（結論會不會只來自某一年）</h2><div class="wrap"><table><tr><th>做法</th>'+years.map(y=>`<th>${y}</th>`).join('')+'</tr>';
+  txt.push('\n分年平均R（筆數）');
+  STRATS.forEach(S=>{
+    h+=`<tr><td>${S.name}</td>`; let line=S.name+'：';
+    years.forEach(y=>{ const s=stat(store[S.id].filter(x=>x.y===y)); const t=s.n>=10?fR(s.mean)+`<span class="small">(${s.n})</span>`:'<span class="small">太少</span>'; h+=`<td>${t}</td>`; line+=y+' '+(s.n>=10?fR(s.mean)+'('+s.n+')':'太少')+'　'; });
+    h+='</tr>'; txt.push(line);
+  });
+  h+='</table></div><div class="small">每格是「平均 R（筆數）」，筆數不到 10 不顯示。</div></div>';
+  document.getElementById('out').innerHTML=h;
+  REPORT=txt.join('\n'); document.getElementById('cp').style.display='';
+}
+
+async function runAll(){
+  const btn=document.getElementById('go'); btn.disabled=true; document.getElementById('log').textContent='';
+  const pt=document.getElementById('pt'), pf=document.getElementById('pf');
+  let spy; try{ pt.textContent='先抓 SPY（判斷大盤強弱）…'; spy=await fetchFull('SPY'); }catch(e){ pt.textContent='抓不到 SPY：'+(e.message||e); btn.disabled=false; return; }
+  const REG=buildRegime(spy);
+  const syms=[...new Set(Object.values(SECTORS).flatMap(s=>s.stocks))].filter(s=>s!=='SPY');
+  const store={S0:[],S1:[],S2:[],S2n:[]};
+  let done=0, ok=0, fail=0, idx=0;
+  async function worker(){
+    while(idx<syms.length){
+      const sym=syms[idx++];
+      try{ const d=await fetchFull(sym); if(d.c.length<300) throw new Error('資料不足'); analyzeOne(d,REG,store); ok++; }
+      catch(e){ fail++; log(sym+' 略過：'+(e.message||e)); }
+      done++; pf.style.width=(done/syms.length*100)+'%'; pt.textContent=`進度 ${done}/${syms.length}（成功 ${ok}、略過 ${fail}）`;
+      await sleep(0);
+    }
+  }
+  await Promise.all([worker(),worker()]);
+  if(!ok){ pt.textContent='全部失敗，可能是 Worker 連不上，稍後再試'; btn.disabled=false; return; }
+  pt.textContent=`完成：成功 ${ok} 檔、略過 ${fail} 檔`;
+  render(store,REG,{ok,fail}); btn.disabled=false; btn.textContent='重新跑一次';
+}
+async function copyReport(){
+  try{ await navigator.clipboard.writeText(REPORT); document.getElementById('cp').textContent='已複製 ✓'; }
+  catch(e){ prompt('長按全選複製：',REPORT); }
+}
+</script>
+</body>
+</html>
