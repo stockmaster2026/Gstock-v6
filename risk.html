@@ -120,7 +120,7 @@ function statusCard(ok){
     if(bd>=3){ lv=0; col='var(--bad)'; txt='🔴 你的出場條件到了：已連續 '+bd+' 天收在 20 日線下面。'; }
     else if(bd>=1){ lv=1; col='var(--warn)'; txt='🟡 注意：已有 '+bd+' 天收在 20 日線下面，規則是連 3 天才出，還差 '+(3-bd)+' 天。'; }
     else if(below){ lv=1; col='var(--warn)'; txt='🟡 現價已經低於 20 日線，但最近的收盤還沒算跌破，今天收盤很關鍵。'; }
-    else { lv=2; col='var(--ok)'; txt='🟢 還在 20 日線上方'+(gap<3?'，但只剩 '+gap.toFixed(1)+'%，很貼近':'，離它還有 '+gap.toFixed(1)+'%')+'。'; }
+    else { lv=2; col='var(--ok)'; txt='🟢 照你的規則：繼續持有。還在 20 日線上方'+(gap<3?'，但只剩 '+gap.toFixed(1)+'%，很貼近，要留意':'，離它還有 '+gap.toFixed(1)+'%')+'。（繼續持有不等於可以加碼，加碼只看系統給的買點。）'; }
     return {lv,tk:x.tk,txt,col}; }).sort((a,b)=>a.lv-b.lv);
   let h='<div class="card"><b>今天每檔的狀態（照你自己的出場規則）</b>';
   rows.forEach(r=>{ h+='<div style="margin-top:6px;font-size:14px"><b>'+r.tk+'</b>　<span style="color:'+r.col+'">'+r.txt+'</span></div>'; });
@@ -166,7 +166,7 @@ function allocCard(ok,cap,r,P){
   h+='<div class="read"><b>但硬幣的另一面：</b>如果每一檔都被打到停損，系統版會虧 <b>'+money(sysLoss)+'</b>（'+pct(sysLoss/cap*100)+' 總資金），你實際的配置會虧 '+money(myLoss)+'（'+pct(myLoss/cap*100)+'）。系統這麼買的設計重點，是讓<b>每一筆最多賠 '+r+'%</b>，不是讓你多賺。</div>';
   if(sysCost>cap) h+='<div class="read amb">⚠ 系統版總共要 '+money(sysCost)+'，超過你的總資金 '+money(cap)+'。也就是說這些全部同時照系統買，錢是不夠的；這張表是「理想值」，不是你當時做得到的事。</div>';
   if(sysLoss/cap*100>RISK_CAP) h+='<div class="read amb">⚠ 全部同時打到停損的總虧損超過你的 '+RISK_CAP+'% 上限，表示這些部位<b>不能同時</b>都開到系統量，實際上要少買幾檔或錯開。</div>';
-  window.__lastAlloc={my:myGain,sys:sysGain,myPct:myGain/cap*100,sysPct:sysGain/cap*100};
+  window.__lastAlloc={my:myGain,sys:sysGain,myPct:myGain/cap*100,sysPct:sysGain/cap*100,cap:cap};
   h+='<div class="small" style="margin-top:6px"><b>這張表看的時候請記得：</b><br>'
    +'· 只含你<b>還持有</b>的股票。已經賣掉的（尤其賠錢賣的）不在裡面，所以系統版會看起來比實際好看。要公平，賣掉的也要算進來。<br>'
    +'· 「當時停損」沒填的用買價 −8% 估（標「估」），最準的是填 dna「回到某一天」當天顯示的停損價。<br>'
@@ -175,23 +175,27 @@ function allocCard(ok,cap,r,P){
   // ⑤ 賺賠比例 + 每日紀錄
   h+='<div class="card"><b>⑤ 賺賠比例：從買價到現在</b>';
   h+='<div class="small">每一檔漲跌幅，你和系統版是<b>一樣的</b>（同一檔股票）；差別只在買得多或少，對整體資金的影響。兩邊都以「你當時買的股數、都沒賣過」為準。</div>';
-  h+='<div class="tw"><table><tr><th>代號</th><th>從買價<br>漲跌</th><th>你：占總資金<br>賺賠</th><th>系統版：占總資金<br>賺賠</th></tr>';
+  h+='<div class="tw"><table><tr><th>代號</th><th>從買價<br>漲跌</th><th>你：賺賠金額</th><th>你：占總資金</th><th>系統版：賺賠金額</th><th>系統版：占總資金</th></tr>';
   rows.forEach(o=>{ const chg=(o.px/o.cost-1)*100;
     h+='<tr><td>'+o.tk+'</td><td class="'+(chg>=0?'grn':'red')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'%</td>'
+      +'<td class="'+(o.mg>=0?'grn':'red')+'">'+(o.mg>=0?'+':'-')+money(Math.abs(o.mg))+'</td>'
       +'<td class="'+(o.mg>=0?'grn':'red')+'">'+(o.mg>=0?'+':'')+(o.mg/cap*100).toFixed(2)+'%</td>'
+      +'<td class="'+(o.sg>=0?'grn':'red')+'">'+(o.sg>=0?'+':'-')+money(Math.abs(o.sg))+'</td>'
       +'<td class="'+(o.sg>=0?'grn':'red')+'">'+(o.sg>=0?'+':'')+(o.sg/cap*100).toFixed(2)+'%</td></tr>'; });
   h+='<tr style="font-weight:700"><td>合計</td><td>'+(myCost>0?((myGain/myCost)*100>=0?'+':'')+(myGain/myCost*100).toFixed(1)+'%':'-')+'</td>'
+    +'<td class="'+(myGain>=0?'grn':'red')+'">'+(myGain>=0?'+':'-')+money(Math.abs(myGain))+'</td>'
     +'<td class="'+(myGain>=0?'grn':'red')+'">'+(myGain>=0?'+':'')+(myGain/cap*100).toFixed(2)+'%</td>'
+    +'<td class="'+(sysGain>=0?'grn':'red')+'">'+(sysGain>=0?'+':'-')+money(Math.abs(sysGain))+'</td>'
     +'<td class="'+(sysGain>=0?'grn':'red')+'">'+(sysGain>=0?'+':'')+(sysGain/cap*100).toFixed(2)+'%</td></tr></table></div>';
   h+='<div class="read" style="margin-top:6px"><b>白話：</b>整體來說，你投入的錢現在比買價'+(myGain>=0?'高':'低')+'約 '+Math.abs(myGain/Math.max(1,myCost)*100).toFixed(1)+'%，換算成總資金是 '+(myGain>=0?'賺':'賠')+' '+Math.abs(myGain/cap*100).toFixed(2)+'%；如果照系統配置，同一批股票會是 '+(sysGain>=0?'賺':'賠')+' '+Math.abs(sysGain/cap*100).toFixed(2)+'%。</div>';
-  const snaps=getJ(SNAPKEY), ds=Object.keys(snaps).sort().reverse().slice(0,14);
+  const snaps=getJ(SNAPKEY), ds=Object.keys(snaps).sort().reverse();
   h+='<div style="margin-top:10px"><b>每日紀錄</b>（每次按「更新現價並計算」記一筆，同一天重按會蓋掉）</div>';
   if(!ds.length) h+='<div class="small">還沒有紀錄。按一次「更新現價並計算」就會開始記。</div>';
-  else { h+='<div class="tw"><table><tr><th>日期</th><th>你：占總資金</th><th>系統版：占總資金</th><th>差距</th></tr>';
-    ds.forEach(d=>{ const x=snaps[d]; const df=x.sysPct-x.myPct;
-      h+='<tr><td>'+d+'</td><td>'+(x.myPct>=0?'+':'')+x.myPct.toFixed(2)+'%</td><td>'+(x.sysPct>=0?'+':'')+x.sysPct.toFixed(2)+'%</td><td>'+(df>=0?'+':'')+df.toFixed(2)+'%</td></tr>'; });
+  else { h+='<div class="tw"><table><tr><th>日期</th><th>總資金<br>（你填的）</th><th>總資金<br>比上一筆</th><th>你：金額</th><th>你：占總資金</th><th>系統版：金額</th><th>系統版：占總資金</th><th>差距</th></tr>';
+    ds.forEach((d,i)=>{ const x=snaps[d]; const df=x.sysPct-x.myPct; const pv=snaps[ds[i+1]]; const cd=(x.cap!=null&&pv&&pv.cap!=null)?x.cap-pv.cap:null;
+      h+='<tr><td>'+d+'</td><td>'+(x.cap!=null?money(x.cap):'-')+'</td><td class="'+(cd==null?'':cd>=0?'grn':'red')+'">'+(cd==null?'-':(cd>=0?'+':'-')+money(Math.abs(cd)))+'</td><td>'+(x.my==null?'-':(x.my>=0?'+':'-')+money(Math.abs(x.my)))+'</td><td>'+(x.myPct>=0?'+':'')+x.myPct.toFixed(2)+'%</td><td>'+(x.sys==null?'-':(x.sys>=0?'+':'-')+money(Math.abs(x.sys)))+'</td><td>'+(x.sysPct>=0?'+':'')+x.sysPct.toFixed(2)+'%</td><td>'+(df>=0?'+':'')+df.toFixed(2)+'%</td></tr>'; });
     h+='</table></div>'; }
-  h+='<div class="small">這份紀錄只存在這台 iPad 的瀏覽器裡，換瀏覽器或清除網站資料就會消失。每次紀錄用的是當天填的停損價和股數；你中途改過這些，前後的紀錄不能嚴格比較。</div></div>';
+  h+='<div class="small">這份紀錄只存在這台 iPad 的瀏覽器裡，換瀏覽器或清除網站資料就會消失。「總資金」是你當天在上面填的數字：想看每月實際增值，就請在按更新前先把它改成券商帳戶當天的總資產（含現金）；中間如果有存入或提出現金，增減就不是績效。每次紀錄用的是當天填的停損價和股數；你中途改過這些，前後的紀錄不能嚴格比較。</div></div>';
   return h;
 }
 
