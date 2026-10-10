@@ -55,6 +55,13 @@ details summary{cursor:pointer;color:var(--blue);font-size:13.5px}
 
 <div id="out"></div>
 
+<div class="card">
+<b>備份／還原（每日紀錄、停損、當時股數）</b>
+<div class="small" style="margin:4px 0 8px">這些只存在這台 iPad 的瀏覽器裡。按「複製備份」，貼到備忘錄存起來；換瀏覽器或資料被清掉時，把那一長串貼回下面的框按「還原」。建議每週備份一次。</div>
+<textarea id="bkBox" rows="3" placeholder="備份內容會出現在這裡；要還原就把備份貼在這裡" style="width:100%;box-sizing:border-box"></textarea>
+<div style="margin-top:8px"><button id="bkCopy">複製備份</button> <button id="bkRestore">還原</button> <span id="bkSt" class="small"></span></div>
+</div>
+
 <div class="card small">
 <b>怎麼算的（點開看）</b>
 <details><summary>停損線、風險金額、各種上限</summary>
@@ -307,6 +314,24 @@ function render(){
 $('go').addEventListener('click',refresh);
 $('posBox').value=ls.g(POS_KEY)||''; $('capBox').value=ls.g(CAPKEY)||''; $('rBox').value=ls.g(RKEY)||'';
 render();
+
+const BK_KEYS=[STOPKEY,ESKEY,ORKEY,SNAPKEY];
+$('bkCopy').onclick=async()=>{
+  const o={v:1}; BK_KEYS.forEach(k=>{ o[k]=getJ(k); });
+  const t=JSON.stringify(o); $('bkBox').value=t;
+  let ok=false; try{ await navigator.clipboard.writeText(t); ok=true; }catch(e){}
+  if(!ok){ try{ $('bkBox').focus(); $('bkBox').select(); ok=document.execCommand('copy'); }catch(e){} }
+  const n=Object.keys(o[SNAPKEY]||{}).length;
+  $('bkSt').textContent=(ok?'已複製。':'沒能自動複製，請長按框內文字全選複製。')+'含 '+n+' 天紀錄。';
+};
+$('bkRestore').onclick=()=>{
+  let o; try{ o=JSON.parse($('bkBox').value.trim()); }catch(e){ $('bkSt').textContent='貼的內容不是備份（格式讀不懂），沒有動任何資料。'; return; }
+  if(!o||o.v!==1||BK_KEYS.some(k=>typeof o[k]!=='object'||!o[k])){ $('bkSt').textContent='貼的內容不是這頁的備份，沒有動任何資料。'; return; }
+  const cur=Object.keys(getJ(SNAPKEY)).length, nw=Object.keys(o[SNAPKEY]).length;
+  if(cur>0 && !confirm('現在有 '+cur+' 天紀錄，備份裡有 '+nw+' 天。還原會用備份蓋掉目前的停損、股數和紀錄，確定嗎？')) return;
+  BK_KEYS.forEach(k=>ls.s(k,JSON.stringify(o[k])));
+  $('bkSt').textContent='已還原（'+nw+' 天紀錄）。'; render();
+};
 </script>
 </body>
 </html>
