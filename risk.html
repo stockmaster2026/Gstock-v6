@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>風險儀表板 V1.0</title>
+<title>風險儀表板 V1.2</title>
 <style>
 :root{--bg:#fdf6e3;--card:#fffdf5;--ink:#2b2b2b;--mut:#6b6b6b;--line:#e4dcc3;--ok:#1a7f37;--warn:#b7791f;--bad:#c62828;--blue:#1f5fbf}
 *{box-sizing:border-box}
@@ -68,7 +68,7 @@ details summary{cursor:pointer;color:var(--blue);font-size:13.5px}
 </div>
 
 <script>
-const POS_KEY='dna_positions', CAPKEY='dnaCapital_v1', RKEY='dnaRiskPct_v1', STOPKEY='riskStops_v1';
+const POS_KEY='dna_positions', CAPKEY='dnaCapital_v1', RKEY='dnaRiskPct_v1', STOPKEY='riskStops_v1', ESKEY='riskEntryStop_v1', ORKEY='riskOrig_v1', SNAPKEY='riskSnap_v1';
 const RISK_CAP=6, POS_CAP=25;
 const HOT=['AI 晶片','半導體設備','光通訊','記憶體與儲存'];
 const SECTORS=[
@@ -102,6 +102,91 @@ function secsOf(tk){ return SECTORS.filter(x=>(' '+x.s+' ').indexOf(' '+tk+' ')>
 function getStops(){ try{return JSON.parse(ls.g(STOPKEY)||'{}')||{}}catch(e){return {}} }
 function setStop(tk,v){ const o=getStops(); const n=parseFloat(v); if(n>0) o[tk]=n; else delete o[tk]; ls.s(STOPKEY,JSON.stringify(o)); render(); }
 window.setStop=setStop;
+function getJ(k){ try{return JSON.parse(ls.g(k)||'{}')||{}}catch(e){return {}} }
+function setJ(k,tk,v,isInt){ const o=getJ(k); const n=parseFloat(v); if(n>0) o[tk]=isInt?Math.round(n):n; else delete o[tk]; ls.s(k,JSON.stringify(o)); render(); }
+window.setES=(tk,v)=>setJ(ESKEY,tk,v,false); window.setOR=(tk,v)=>setJ(ORKEY,tk,v,true);
+
+// 每檔狀態（你的規則：收盤連 3 天在 20 日線下才出）
+function statusCard(ok){
+  const rows=ok.map(x=>{ const bd=x.bd||0, below=x.px<x.ma20, gap=(x.px/x.ma20-1)*100;
+    let lv,txt,col;
+    if(bd>=3){ lv=0; col='var(--bad)'; txt='🔴 你的出場條件到了：已連續 '+bd+' 天收在 20 日線下面。'; }
+    else if(bd>=1){ lv=1; col='var(--warn)'; txt='🟡 注意：已有 '+bd+' 天收在 20 日線下面，規則是連 3 天才出，還差 '+(3-bd)+' 天。'; }
+    else if(below){ lv=1; col='var(--warn)'; txt='🟡 現價已經低於 20 日線，但最近的收盤還沒算跌破，今天收盤很關鍵。'; }
+    else { lv=2; col='var(--ok)'; txt='🟢 還在 20 日線上方'+(gap<3?'，但只剩 '+gap.toFixed(1)+'%，很貼近':'，離它還有 '+gap.toFixed(1)+'%')+'。'; }
+    return {lv,tk:x.tk,txt,col}; }).sort((a,b)=>a.lv-b.lv);
+  let h='<div class="card"><b>今天每檔的狀態（照你自己的出場規則）</b>';
+  rows.forEach(r=>{ h+='<div style="margin-top:6px;font-size:14px"><b>'+r.tk+'</b>　<span style="color:'+r.col+'">'+r.txt+'</span></div>'; });
+  h+='<div class="small" style="margin-top:6px">這只回答「你的規則有沒有被觸發」，不是叫你賣或不賣。用的是日線；盤中如果價格已經大跌，這裡要等收盤才會算進去。賣不賣最後是你的決定。</div></div>';
+  return h;
+}
+
+// 配置回推：如果當時照系統的公式配置
+function allocCard(ok,cap,r,P){
+  window.__lastAlloc=null;
+  if(!(cap>0)) return '<div class="card small">④ 配置回推需要先填總資金。</div>';
+  const ES=getJ(ESKEY), OR=getJ(ORKEY), budget=cap*r/100;
+  const rows=[]; let sysCost=0,myCost=0,sysGain=0,myGain=0,sysLoss=0,myLoss=0;
+  ok.forEach(x=>{
+    if(x.cost==null) return;
+    const own=ES[x.tk]>0; const stop=own?ES[x.tk]:x.cost*0.92;
+    const per=x.cost-stop; if(!(per>0)) return;
+    const orig=OR[x.tk]>0?OR[x.tk]:x.sh;
+    const shRisk=Math.floor(budget/per), shCap=Math.floor(cap*POS_CAP/100/x.cost);
+    const sys=Math.max(0,Math.min(shRisk,shCap)); const bind=shCap<shRisk?'占資金上限':'風險預算';
+    const o={tk:x.tk,cost:x.cost,px:x.px,stop,own,orig,sys,bind,ratio:orig/Math.max(1,sys),
+      sg:(x.px-x.cost)*sys, mg:(x.px-x.cost)*orig, sl:per*sys, ml:per*orig};
+    sysCost+=x.cost*sys; myCost+=x.cost*orig; sysGain+=o.sg; myGain+=o.mg; sysLoss+=o.sl; myLoss+=o.ml; rows.push(o);
+  });
+  if(!rows.length) return '<div class="card small">④ 配置回推：持股沒填成本價（代號@成本x股數），算不出來。</div>';
+  let h='<div class="card"><b>④ 配置回推：如果當時照系統的公式買</b>';
+  h+='<div class="small">公式：願意賠的錢（總資金 '+money(cap)+' × '+r+'% ＝ '+money(budget)+'）÷（買價 − 停損價），再套 '+POS_CAP+'% 單檔上限。用你<b>現在</b>的總資金算，不是當時的。</div>';
+  h+='<div class="tw"><table><tr><th>代號</th><th>買價</th><th>當時停損</th><th>系統會買</th><th>你當時買</th><th>系統版<br>現在賺賠</th><th>你的<br>現在賺賠</th><th>被停損<br>系統版虧</th><th>被停損<br>你虧</th></tr>';
+  rows.forEach(o=>{
+    h+='<tr><td>'+o.tk+'</td><td>'+o.cost.toFixed(2)+'</td>'
+     +'<td><input style="width:78px;padding:4px" inputmode="decimal" value="'+(o.own?o.stop:'')+'" placeholder="'+o.stop.toFixed(2)+'估" onchange="setES(\''+o.tk+'\',this.value)"></td>'
+     +'<td>'+o.sys+' 股<div class="small">（'+o.bind+'）</div></td>'
+     +'<td><input style="width:62px;padding:4px" inputmode="numeric" value="'+(OR[o.tk]>0?OR[o.tk]:'')+'" placeholder="'+o.orig+'" onchange="setOR(\''+o.tk+'\',this.value)"><div class="small">占系統量 '+pct(o.ratio*100,0)+'</div></td>'
+     +'<td class="'+(o.sg>=0?'grn':'red')+'">'+(o.sg>=0?'+':'')+money(o.sg)+'</td>'
+     +'<td class="'+(o.mg>=0?'grn':'red')+'">'+(o.mg>=0?'+':'')+money(o.mg)+'</td>'
+     +'<td>'+money(o.sl)+'</td><td>'+money(o.ml)+'</td></tr>';
+  });
+  h+='</table></div>';
+  const more=sysGain-myGain;
+  h+='<div class="read" style="margin-top:8px"><b>白話：</b>'
+   +'如果這些持股當時全照系統買，總共要投入約 <b>'+money(sysCost)+'</b>（占總資金 '+pct(sysCost/cap*100,0)+'），你實際當時買的是 '+money(myCost)+'。'
+   +'到現在，系統版帳面比你多'+(more>=0?'賺':'賠')+' <b>'+money(Math.abs(more))+'</b>。</div>';
+  h+='<div class="read"><b>但硬幣的另一面：</b>如果每一檔都被打到停損，系統版會虧 <b>'+money(sysLoss)+'</b>（'+pct(sysLoss/cap*100)+' 總資金），你實際的配置會虧 '+money(myLoss)+'（'+pct(myLoss/cap*100)+'）。系統這麼買的設計重點，是讓<b>每一筆最多賠 '+r+'%</b>，不是讓你多賺。</div>';
+  if(sysCost>cap) h+='<div class="read amb">⚠ 系統版總共要 '+money(sysCost)+'，超過你的總資金 '+money(cap)+'。也就是說這些全部同時照系統買，錢是不夠的；這張表是「理想值」，不是你當時做得到的事。</div>';
+  if(sysLoss/cap*100>RISK_CAP) h+='<div class="read amb">⚠ 全部同時打到停損的總虧損超過你的 '+RISK_CAP+'% 上限，表示這些部位<b>不能同時</b>都開到系統量，實際上要少買幾檔或錯開。</div>';
+  window.__lastAlloc={my:myGain,sys:sysGain,myPct:myGain/cap*100,sysPct:sysGain/cap*100};
+  h+='<div class="small" style="margin-top:6px"><b>這張表看的時候請記得：</b><br>'
+   +'· 只含你<b>還持有</b>的股票。已經賣掉的（尤其賠錢賣的）不在裡面，所以系統版會看起來比實際好看。要公平，賣掉的也要算進來。<br>'
+   +'· 「當時停損」沒填的用買價 −8% 估（標「估」），最準的是填 dna「回到某一天」當天顯示的停損價。<br>'
+   +'· 「你當時買」沒填就用你現在持有的股數；如果你賣過一部分（例如 P 買 40 賣 20），請填原本買的股數，這樣兩邊才比得公平。已賣掉那部分的賺賠這裡沒算。<br>'
+   +'· 這能證明的是「風險怎麼算」，不能證明「系統選的股票會贏」。選股有沒有用，要看觀察簿累積的紀錄。</div></div>';
+  // ⑤ 賺賠比例 + 每日紀錄
+  h+='<div class="card"><b>⑤ 賺賠比例：從買價到現在</b>';
+  h+='<div class="small">每一檔漲跌幅，你和系統版是<b>一樣的</b>（同一檔股票）；差別只在買得多或少，對整體資金的影響。兩邊都以「你當時買的股數、都沒賣過」為準。</div>';
+  h+='<div class="tw"><table><tr><th>代號</th><th>從買價<br>漲跌</th><th>你：占總資金<br>賺賠</th><th>系統版：占總資金<br>賺賠</th></tr>';
+  rows.forEach(o=>{ const chg=(o.px/o.cost-1)*100;
+    h+='<tr><td>'+o.tk+'</td><td class="'+(chg>=0?'grn':'red')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'%</td>'
+      +'<td class="'+(o.mg>=0?'grn':'red')+'">'+(o.mg>=0?'+':'')+(o.mg/cap*100).toFixed(2)+'%</td>'
+      +'<td class="'+(o.sg>=0?'grn':'red')+'">'+(o.sg>=0?'+':'')+(o.sg/cap*100).toFixed(2)+'%</td></tr>'; });
+  h+='<tr style="font-weight:700"><td>合計</td><td>'+(myCost>0?((myGain/myCost)*100>=0?'+':'')+(myGain/myCost*100).toFixed(1)+'%':'-')+'</td>'
+    +'<td class="'+(myGain>=0?'grn':'red')+'">'+(myGain>=0?'+':'')+(myGain/cap*100).toFixed(2)+'%</td>'
+    +'<td class="'+(sysGain>=0?'grn':'red')+'">'+(sysGain>=0?'+':'')+(sysGain/cap*100).toFixed(2)+'%</td></tr></table></div>';
+  h+='<div class="read" style="margin-top:6px"><b>白話：</b>整體來說，你投入的錢現在比買價'+(myGain>=0?'高':'低')+'約 '+Math.abs(myGain/Math.max(1,myCost)*100).toFixed(1)+'%，換算成總資金是 '+(myGain>=0?'賺':'賠')+' '+Math.abs(myGain/cap*100).toFixed(2)+'%；如果照系統配置，同一批股票會是 '+(sysGain>=0?'賺':'賠')+' '+Math.abs(sysGain/cap*100).toFixed(2)+'%。</div>';
+  const snaps=getJ(SNAPKEY), ds=Object.keys(snaps).sort().reverse().slice(0,14);
+  h+='<div style="margin-top:10px"><b>每日紀錄</b>（每次按「更新現價並計算」記一筆，同一天重按會蓋掉）</div>';
+  if(!ds.length) h+='<div class="small">還沒有紀錄。按一次「更新現價並計算」就會開始記。</div>';
+  else { h+='<div class="tw"><table><tr><th>日期</th><th>你：占總資金</th><th>系統版：占總資金</th><th>差距</th></tr>';
+    ds.forEach(d=>{ const x=snaps[d]; const df=x.sysPct-x.myPct;
+      h+='<tr><td>'+d+'</td><td>'+(x.myPct>=0?'+':'')+x.myPct.toFixed(2)+'%</td><td>'+(x.sysPct>=0?'+':'')+x.sysPct.toFixed(2)+'%</td><td>'+(df>=0?'+':'')+df.toFixed(2)+'%</td></tr>'; });
+    h+='</table></div>'; }
+  h+='<div class="small">這份紀錄只存在這台 iPad 的瀏覽器裡，換瀏覽器或清除網站資料就會消失。每次紀錄用的是當天填的停損價和股數；你中途改過這些，前後的紀錄不能嚴格比較。</div></div>';
+  return h;
+}
 
 let PX={}; // tk -> {px, ma20, err}
 async function fetchOne(tk){
@@ -113,7 +198,8 @@ async function fetchOne(tk){
   if(cl.length<20) throw new Error('資料不足');
   const px=(res.meta&&res.meta.regularMarketPrice)||cl[cl.length-1];
   const ma20=cl.slice(-20).reduce((a,b)=>a+b,0)/20;
-  return {px, ma20};
+  let bd=0; for(let k=cl.length-1;k>=19;k--){ const m=cl.slice(k-19,k+1).reduce((a,b)=>a+b,0)/20; if(cl[k]<m) bd++; else break; }
+  return {px, ma20, bd};
 }
 async function refresh(){
   const P=parsePos($('posBox').value); const tks=Object.keys(P);
@@ -126,6 +212,7 @@ async function refresh(){
   $('go').disabled=false;
   const t=new Date().toLocaleString('zh-TW',{timeZone:'America/Los_Angeles',hour12:false});
   $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+'）'; render();
+  try{ if(window.__lastAlloc && ok===tks.length){ const d=new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'}); const o=getJ(SNAPKEY); o[d]=window.__lastAlloc; ls.s(SNAPKEY,JSON.stringify(o)); render(); } }catch(e){}
 }
 const money=n=>'$'+Math.round(n).toLocaleString();
 const pct=(n,d=1)=>n.toFixed(d)+'%';
@@ -141,7 +228,7 @@ function render(){
     else if(!q){ o.miss='還沒抓價'; }
     else if(q.err){ o.miss='抓價失敗：'+q.err; }
     else{
-      o.px=q.px; o.ma20=q.ma20; o.val=q.px*p.sh;
+      o.px=q.px; o.ma20=q.ma20; o.bd=q.bd; o.val=q.px*p.sh;
       const own=stops[tk]>0;
       o.stop=own?stops[tk]:q.ma20; o.own=own;
       o.below=o.stop>=o.px; // 已跌破停損線
@@ -173,6 +260,7 @@ function render(){
     if((issues.length||brk.length)&&cls==='v-ok'){ cls='v-warn'; head='🟡 規則內，但有檔數字不完整，先別當成可以開新單'; }
     if(brk.length) why+='<br>另外 '+brk.map(x=>x.tk).join('、')+' 現價已在停損線下方，風險算成 0，但這不代表安全，是出場條件已經在倒數。';
     html+='<div class="verdict '+cls+'"><div class="big">'+head+'</div><div class="why">'+why+(issues.length?'<br>算不到的：'+issues.join('、')+'。它們的風險沒算進去，實際可能更高。':'')+'</div></div>';
+    html+=statusCard(ok);
     // 風險條
     const w=Math.min(100,rp/RISK_CAP*100), col=rp>RISK_CAP?'var(--bad)':(w>=80?'var(--warn)':'var(--ok)');
     html+='<div class="card"><b>① 總風險：已用 '+pct(rp)+' ／ 上限 '+RISK_CAP+'%</b>'
@@ -185,6 +273,7 @@ function render(){
       html+='<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:5px"><span>'+x.tk+'</span><span>'+pct(p)+'　'+money(x.val)+'</span></div><div class="bar" style="height:8px"><i style="width:'+Math.min(100,p/POS_CAP*100)+'%;background:'+c+'"></i></div>'; });
     html+='<div class="small">條的長度是「占上限的幾成」，滿格＝剛好 '+POS_CAP+'%。持股總市值約 '+money(totVal)+'，占總資金 '+pct(totVal/cap*100)+'，其餘 '+pct(Math.max(0,100-totVal/cap*100))+' 是現金（若總資金填的是含現金）。</div></div>';
   } else {
+    html+=statusCard(ok);
     html+='<div class="card small">總風險（走到停損線會再虧）：<b>'+money(totRisk)+'</b>。填了總資金才能跟 6% 上限比。</div>';
   }
   // ③ 集中度（只提醒，不影響上面的紅黃綠）
@@ -209,6 +298,7 @@ function render(){
       +'<td class="'+(x.pl==null?'':x.pl>=0?'grn':'red')+'">'+(x.pl==null?'沒填成本':(x.pl>=0?'+':'')+money(x.pl))+'</td></tr>';
   });
   html+='</table></div><div class="small">「已跌破」＝現價已在停損線下方：如果你用 20 日均線，要看是不是連 3 天收在下面（規則是連 3 天才出）。</div></div>';
+  html+=allocCard(ok,cap,r,P);
   out.innerHTML=html;
 }
 ['posBox','capBox','rBox'].forEach(id=>$(id).addEventListener('input',()=>{
