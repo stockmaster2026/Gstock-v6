@@ -1,0 +1,13 @@
+{
+  "name": "市場情報站",
+  "short_name": "市場情報",
+  "start_url": "news.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8ecf0",
+  "theme_color": "#0066bb",
+  "icons": [
+    {"src": "news-icon-180.png", "sizes": "180x180", "type": "image/png"},
+    {"src": "news-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
