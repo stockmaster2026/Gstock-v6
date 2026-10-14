@@ -221,12 +221,24 @@ async function fetchOne(tk){
   for(let i=0;i<_cr.length;i++){ if(_cr[i]==null) continue;
     const d=_ts[i]?new Date(_ts[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}):('i'+i);
     if(!(d in _byDay)) _days.push(d); _byDay[d]=_cr[i]; }
-  const cl=_days.map(d=>_byDay[d]); const lastDate=_days[_days.length-1];
+  const cl=_days.map(d=>_byDay[d]); let lastDate=_days[_days.length-1];
   if(cl.length<20) throw new Error('資料不足');
   const px=(res.meta&&res.meta.regularMarketPrice)||cl[cl.length-1];
+  /* 補今天的收盤：剛收盤後 Yahoo 的日線有時還沒更新到今天（少一根），
+     這會讓「連續幾天收在 20 日線下面」少算 1 天。
+     只在「已收盤、現價屬於今天、日線卻停在前一天」時，用現價補上今天這一根。 */
+  let filled=false;
+  try{
+    const m=res.meta||{}, rt=m.regularMarketTime, endT=m.currentTradingPeriod&&m.currentTradingPeriod.regular&&m.currentTradingPeriod.regular.end;
+    if(rt&&endT&&m.regularMarketPrice!=null){
+      const mDate=new Date(rt*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+      const closed=(Date.now()/1000)>=endT;
+      if(closed && mDate>lastDate){ cl.push(m.regularMarketPrice); lastDate=mDate; filled=true; }
+    }
+  }catch(e){}
   const ma20=cl.slice(-20).reduce((a,b)=>a+b,0)/20;
   let bd=0; for(let k=cl.length-1;k>=19;k--){ const m=cl.slice(k-19,k+1).reduce((a,b)=>a+b,0)/20; if(cl[k]<m) bd++; else break; }
-  return {px, ma20, bd, lastDate};
+  return {px, ma20, bd, lastDate, filled};
 }
 async function refresh(){
   const P=parsePos($('posBox').value); const tks=Object.keys(P);
@@ -239,7 +251,7 @@ async function refresh(){
   $('go').disabled=false;
   const t=new Date().toLocaleString('zh-TW',{timeZone:'America/Los_Angeles',hour12:false});
   let _ld=''; tks.forEach(k=>{ const q=PX[k]; if(q&&q.lastDate&&q.lastDate>_ld) _ld=q.lastDate; });
-  $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+(_ld?'；最後一根日線 '+_ld:'')+'）'; render();
+  $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+(_ld?'；最後一根日線 '+_ld:'')+(tks.some(k=>PX[k]&&PX[k].filled)?'；今天的收盤用現價補上（Yahoo 日線還沒更新）':'')+'）'; render();
   try{ if(window.__lastAlloc && ok===tks.length){ const d=new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'}); const o=getJ(SNAPKEY); o[d]=window.__lastAlloc; ls.s(SNAPKEY,JSON.stringify(o)); render(); } }catch(e){}
 }
 const money=n=>'$'+Math.round(n).toLocaleString();
