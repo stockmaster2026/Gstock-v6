@@ -54,6 +54,37 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .wi{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:9px 14px;color:#1a202c;font-size:11px;outline:none;margin-bottom:8px;box-sizing:border-box;}
 .wi:focus{border-color:#0066bb;}
 .fb{width:100%;background:#ffffff;border:1px solid #0066bb;border-radius:8px;color:#0066bb;padding:9px;font-size:12px;cursor:pointer;}
+.wres{display:none}.wres.on{display:block}
+.wg-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.wg-pill{flex:1 1 22%;min-width:70px;background:#fff;border:1px solid #c8d0dc;border-radius:10px;padding:7px 4px;font-size:12px;color:#4a5568;cursor:pointer;text-align:center;line-height:1.3}
+.wg-pill.on{border-color:#0066bb;background:#e6f0fa;color:#0066bb;font-weight:700}
+.wg-pill small{display:block;font-size:10px;font-weight:400;color:#718096}
+.wg-ed textarea{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:9px 12px;color:#1a202c;font-size:13px;outline:none;margin-bottom:6px;min-height:58px;font-family:inherit}
+.wg-ed input.wn{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:6px}
+.wg-ed select{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:8px;font-size:12px;margin-bottom:6px;color:#1a202c}
+.wg-hint{font-size:11px;color:#718096;margin-bottom:8px;line-height:1.5}
+.wg-st{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.08);overflow:hidden}
+.wg-st-h{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#edf2f7;border-bottom:1px solid #c8d0dc;flex-wrap:wrap}
+.wg-st-h .sy{font-weight:700;font-size:15px;color:#1a202c}
+.wg-st-h .pc{font-weight:700;font-size:14px}
+.wg-st-h .pp{font-size:12px;color:#4a5568}
+.wg-tag{margin-left:auto;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.wg-up{color:#1a7f37}.wg-dn{color:#c62828}
+.wg-tag.s{background:#dcf5e3;color:#1a7f37}.wg-tag.w{background:#fde2e2;color:#c62828}.wg-tag.n{background:#edf2f7;color:#4a5568}
+.wg-k{display:flex;gap:12px;padding:10px 14px;align-items:flex-start}
+.wg-k ul{margin:0;padding-left:16px;font-size:13px;color:#2d3748;line-height:1.6;flex:1}
+.wg-news{border-top:1px solid #e2e8f0}
+.wg-news>summary{padding:9px 14px;font-size:12.5px;color:#0066bb;cursor:pointer}
+.wg-news .nn{padding:6px 10px 10px;display:flex;flex-direction:column;gap:8px}
+.rd-sec{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.rd-h{padding:10px 14px;background:#edf2f7;border-bottom:1px solid #c8d0dc}
+.rd-h b{font-size:14px;color:#1a202c}.rd-h div{font-size:11.5px;color:#4a5568;margin-top:3px;line-height:1.5}
+.rd-row{padding:9px 14px;border-bottom:1px solid #edf2f7;font-size:13px;color:#2d3748;line-height:1.6}
+.rd-row:last-child{border-bottom:0}
+.rd-row .sy{font-weight:700;color:#1a202c;margin-right:6px}
+.rd-none{padding:12px 14px;font-size:12.5px;color:#718096}
+.rd-ck{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:13px}
+.rd-ck label{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:6px 10px}
 .sg{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
 .sh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#edf2f7;border-bottom:1px solid #c8d0dc;}
 .ss{font-size:18px;font-weight:700;color:#744210;}
@@ -290,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.5</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.6</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -328,36 +359,27 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </div>
 <div class="panel" id="panel-watchlist">
   <div class="ph">
-    <div class="ph-left"><div class="pt">MY WATCHLIST</div><div class="pm">個股最新動態（每次最多15支）</div></div>
+    <div class="ph-left"><div class="pt">MY WATCHLIST</div><div class="pm">持倉：四個盒子，每盒最多 15 檔，各自查詢</div></div>
     <div class="ph-btns">
       <button class="tr-btn" id="tr-watchlist" onclick="translatePanel('watchlist')" style="display:none">🌐 翻譯標題</button>
-      <button class="rb" id="rw" onclick="loadWatch()">↻</button>
+      <button class="rb" id="rw" onclick="wgQuery(WG.active)">↻</button>
     </div>
   </div>
-  <div style="padding:12px 16px 0;">
-    <input class="wi" id="wi" placeholder="股票代碼，逗號分開（最多15支）…">
-    <button class="fb" onclick="loadWatch()">抓取個股新聞</button>
+  <div id="wg-ui" style="padding:12px 16px 0;"></div>
+  <div id="wc" style="margin-top:8px;">
+    <div id="wres0" class="wres"></div><div id="wres1" class="wres"></div><div id="wres2" class="wres"></div><div id="wres3" class="wres"></div>
   </div>
-  <div id="wc" style="margin-top:8px;"><div class="empty">點「抓取個股新聞」開始</div></div>
 </div>
 <div class="panel" id="panel-radar">
   <div class="ph">
-    <div class="ph-left"><div class="pt">MOVE RADAR</div><div class="pm">今日異動（每次最多25支）</div></div>
+    <div class="ph-left"><div class="pt">MOVE RADAR</div><div class="pm">異動雷達：往前看 —— 哪些股票這幾天該多看一眼</div></div>
     <div class="ph-btns">
-      <button class="tr-btn" id="tr-radar" onclick="translatePanel('radar')" style="display:none">🌐 翻譯標題</button>
-      <button class="rb" id="rr" onclick="loadRadar()">↻</button>
+      <button class="rb" id="rr" onclick="wgRadar()">↻</button>
     </div>
   </div>
-  <div style="padding:12px 16px 0;">
-    <input class="wi" id="ri" placeholder="股票代碼，逗號分開（最多25支）…">
-    <button class="fb" onclick="loadRadar()">掃描異動</button>
-    <div style="margin-top:7px;font-size:11.5px;color:#4a5568;">
-      只掃你填的這幾檔 —— 翻譯額度會花在你真正在看的股票上。
-      <a href="javascript:void(0)" onclick="radarReset()" style="color:#0066bb;text-decoration:none;">回到預設 41 檔</a>
-    </div>
-  </div>
+  <div id="rd-ui" style="padding:12px 16px 0;"></div>
   <div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#edf2f7;border-top:1px solid #c8d0dc;border-bottom:1px solid #c8d0dc;"><strong id="rm2">尚未掃描</strong></div>
-  <div id="radc"><div class="empty">點右上角 ↻ 開始掃描</div></div>
+  <div id="radc"><div class="empty">選好要掃的盒子，按「開始掃描」</div></div>
 </div>
 
 <div class="panel" id="panel-fund">
@@ -393,7 +415,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
       逗號或空白分開，最多 15 支。</span>
     </div>
     <div style="display:flex;gap:7px;align-items:center">
-      <input class="wi" id="fi" style="flex:1"
+      <input class="wi" id="fi" style="flex:1" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
              placeholder="例如：ANET, HPE, FTNT　（可自己打，不一定要按板塊）">
       <button type="button" id="fiClr"
         style="flex:0 0 auto;background:#eceff3;color:#5a6b7d;border:1px solid #c8d0dc;
@@ -557,48 +579,14 @@ const DW_DEFAULT=['AAPL','TSLA','PL','LUNR','RKLB','VSAT','RCAT','AAOI','AXTI','
    今天 MyMemory 額度被吃掉大半就是這樣來的。
    → 改成輸入框, 記在 localStorage, 想換一批就直接改。
      保留「回到預設」按鈕, 想全掃的時候一鍵切回去。          */
-function radarSyms(){
-  var el=document.getElementById('ri');
-  var v=el?el.value:'';
-  try{ localStorage.setItem('radar_syms', v); }catch(e){}
-  return v.split(/[,\s]+/).map(function(x){return x.trim().toUpperCase();})
-          .filter(Boolean).slice(0,25);
-}
-function radarReset(){
-  var el=document.getElementById('ri');
-  if(!el) return;
-  el.value=DW_DEFAULT.join(', ');
-  try{ localStorage.setItem('radar_syms', el.value); }catch(e){}
-  loadRadar();
-}
-/* ═══ 持股輸入記住, 不再每次開頁面就蓋掉 ═══════════════════════
-   舊版這一行寫死 8 檔, 每次重新整理都把使用者打的清單覆蓋掉 ——
-   所以「試著要增加也都不行」。上限本來就不是 8, 是這一行在蓋。   */
-(function(){
-  var el=document.getElementById('wi'), saved='';
-  try{ saved=localStorage.getItem('watch_syms')||''; }catch(e){}
-  el.value = saved || 'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL';
-})();
-
 function ago(u){const d=Math.floor(Date.now()/1000-u);if(d<3600)return Math.floor(d/60)+'分前';if(d<86400)return Math.floor(d/3600)+'小時前';return Math.floor(d/86400)+'天前';}
 function src(s){if(!s)return'NEWS';return s.replace(/^https?:\/\/(www\.)?/,'').split('/')[0].toUpperCase().slice(0,12);}
 function spn(id,on){const b=document.getElementById(id);if(b)on?b.classList.add('spin'):b.classList.remove('spin');}
 async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
   const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+k,{cache:'no-store'});
   if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
-function syms(){var v=document.getElementById('wi').value;
-  try{ localStorage.setItem('watch_syms', v); }catch(e){}
-  return v.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,15);}
-function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market')(function(){
-  var el=document.getElementById('ri'); if(!el) return;
-  var sv=''; try{ sv=localStorage.getItem('radar_syms')||''; }catch(e){}
-  el.value = sv || DW_DEFAULT.join(', ');
-})();
-
-/* ⚠ 9/15 修：原本 loadMkt()/loadMarket() 沒有被 if 包住，
-   點任何一個分頁都會重抓一次 Finnhub 新聞＋四檔指數，白白燒額度。 */
-if(t==='market'){ loadMkt(); loadMarket(); }
-if(t==='radar')loadRadar();}
+function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market'){ loadMkt(); loadMarket(); }
+if(t==='watchlist'||t==='radar') wgInit();}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
    Jasmine 9/11 晚上實測: Google 那個未公開介面【整個 IP 被封】——
@@ -715,7 +703,7 @@ async function tr(text){
      全失敗  → ⚠ 翻譯失敗
    而且面板上方另外印一條橫幅說明 —— 按鈕字太小, 你不會盯著它看。
    ⚠ 已經翻好的卡片會【跳過】, 所以再按一次只補沒翻到的, 很便宜。   */
-var TR_BOX={market:'ml', watchlist:'wc', radar:'radc'};
+var TR_BOX={market:'ml', watchlist:'wc'};
 
 function trBanner(panelName, cls, html){
   var box=document.getElementById(TR_BOX[panelName]);
@@ -735,7 +723,7 @@ async function translatePanel(panelName){
   if(!btn)return;
   btn.disabled=true;
   var panel=document.getElementById('panel-'+panelName);
-  var cards=panel.querySelectorAll('.card');
+  var cards=Array.prototype.filter.call(panel.querySelectorAll('.card'),function(c){return c.offsetParent!==null;});
   var total=cards.length;
   if(!total){ btn.disabled=false; btn.textContent='🌐 翻譯標題'; return; }
 
@@ -1138,74 +1126,349 @@ async function loadMarket(){
   spn('rm',false);
 }
 
-async function loadWatch(){
-  var s=syms();
-  if(!s.length)return;
-  spn('rw',true);cardIdx=0;
-  document.getElementById('tr-watchlist').style.display='none';
-  var _tw=document.getElementById('trmsg-watchlist'); if(_tw) _tw.remove();
-  var to=new Date().toISOString().split('T')[0];
-  var from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
-  var res=[];
-  for(var i=0;i<s.length;i++){
-    var sym=s[i];
-    document.getElementById('wc').innerHTML='<div class="empty">抓取中 '+(i+1)+'/'+s.length+' ('+sym+')…</div>';
-    try{
-      var d=await api('/company-news?symbol='+sym+'&from='+from+'&to='+to);
-      res.push({sym:sym,d:Array.isArray(d)?d:[]});
-    }catch(e){res.push({sym:sym,d:[]});}
-    await new Promise(function(r){setTimeout(r,300);});
+/* ═══ 持倉四盒 + 異動雷達（V56 改版）════════════════════════════
+   Jasmine 10/14：持倉與雷達內容一樣、15 檔不夠看。
+   分工：【持倉】= 今天這根 K 棒的白話讀法 + 新聞（回頭看今天發生什麼）
+         【雷達】= 往前看：財報倒數、量價異常、板塊同步、分析師評等變化
+   ⚠ 免費 API 拿不到「分析師調高目標價」(Finnhub price-target = 403 付費)，
+     所以雷達只放「買進/持有/賣出人數的變化」，不假裝有目標價。            */
+var WG_KEY='wg_v1';
+var WG={boxes:[],active:0,rsel:[1,1,1,1]};
+var WG_INIT=false;
+function wgLoad(){
+  var o=null; try{ o=JSON.parse(localStorage.getItem(WG_KEY)||'null'); }catch(e){}
+  if(o && o.boxes && o.boxes.length===4){ WG=o; if(!WG.rsel) WG.rsel=[1,1,1,1]; }
+  else{
+    var old=''; try{ old=localStorage.getItem('watch_syms')||''; }catch(e){}
+    WG={boxes:[{n:'持股',s:old||'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL'},{n:'板塊 A',s:''},{n:'板塊 B',s:''},{n:'觀察',s:''}],active:0,rsel:[1,1,1,1]};
   }
-  var html=res.map(function(item){
-    var items2=(item.d||[]).slice(0,3);
-    if(!items2.length)return '<div class="sg"><div class="sh"><span class="ss">$'+item.sym+'</span><span style="font-size:11px;color:#6e7681">近7日無新聞</span></div></div>';
-    return '<div class="sg"><div class="sh"><span class="ss">$'+item.sym+'</span><span style="font-size:10px;color:#6e7681">'+items2.length+' 則</span></div><div style="padding:8px 10px;display:flex;flex-direction:column;gap:8px">'+items2.map(function(n){return card(n);}).join('')+'</div></div>';
-  }).join('');
-  document.getElementById('wc').innerHTML='<div style="padding:10px 16px;display:flex;flex-direction:column;gap:10px">'+html+'</div>';
-  document.getElementById('tr-watchlist').style.display='inline-block';
-  document.getElementById('tr-watchlist').disabled=false;
-  document.getElementById('tr-watchlist').textContent='🌐 翻譯標題';
-  spn('rw',false);
+  WG.active=WG.active||0;
+}
+function wgSave(){ try{ localStorage.setItem(WG_KEY,JSON.stringify(WG)); }catch(e){} }
+function wgAll(s){
+  var seen={};
+  return String(s||'').split(/[,\s]+/).map(function(x){return x.trim().toUpperCase().replace(/^\$/,'');})
+    .filter(function(x){ if(!x||seen[x]||!/^[A-Z][A-Z.\-]{0,5}$/.test(x)) return false; seen[x]=1; return true; });
+}
+function wgParse(s){ return wgAll(s).slice(0,15); }
+function wgInit(){
+  if(WG_INIT){ wgRenderUI(); return; }
+  WG_INIT=true; wgLoad(); wgRenderUI();
+}
+function wgSecChunks(){
+  var out=[];
+  if(typeof SECTORS==='undefined') return out;
+  SECTORS.forEach(function(sc){
+    var a=wgAll(sc.s);
+    for(var i=0;i<a.length;i+=15){
+      var part=a.slice(i,i+15);
+      out.push({v:sc.k+'|'+(i/15), l:sc.n+(a.length>15?('（第 '+(i+1)+'–'+(i+part.length)+' 檔／共 '+a.length+'）'):('（'+a.length+' 檔）')), n:sc.n+(a.length>15?(' '+(i/15+1)):''), s:part.join(', ')});
+    }
+  });
+  return out;
+}
+function wgRenderUI(){
+  var ui=document.getElementById('wg-ui'); if(!ui) return;
+  var b=WG.boxes[WG.active];
+  var pills='<div class="wg-pills">'+WG.boxes.map(function(x,i){
+    var n=wgAll(x.s).length;
+    return '<div class="wg-pill'+(i===WG.active?' on':'')+'" onclick="wgSwitch('+i+')">'+esc2(x.n||('盒'+(i+1)))+'<small>'+n+' 檔'+(WG['done'+i]?' ✓':'')+'</small></div>';
+  }).join('')+'</div>';
+  var opts='<option value="">⚡ 從板塊快速帶入（會取代這個盒子的名單）</option>'+wgSecChunks().map(function(c){return '<option value="'+c.v+'">'+c.l+'</option>';}).join('');
+  var cnt=wgAll(b.s).length;
+  ui.innerHTML=pills+'<div class="wg-ed">'
+    +'<input class="wn" id="wg-name" value="'+esc2(b.n)+'" placeholder="盒子名稱" oninput="wgName(this.value)">'
+    +'<textarea id="wg-syms" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="股票代碼，逗號或空白分開（最多 15 檔）" oninput="wgSyms(this.value)">'+esc2(b.s)+'</textarea>'
+    +'<select onchange="wgSector(this.value);this.value=\'\'">'+opts+'</select>'
+    +'<div class="wg-hint" id="wg-hint">'+wgHint(cnt)+'</div>'
+    +'<button class="fb" onclick="wgQuery('+WG.active+')">查詢「'+esc2(b.n)+'」（只查這一盒，其他盒不受影響）</button>'
+    +'</div>';
+  document.querySelectorAll('.wres').forEach(function(el,i){ el.classList.toggle('on',i===WG.active); });
+  var rd=document.getElementById('rd-ui');
+  if(rd){
+    rd.innerHTML='<div class="wg-hint">雷達自動讀「我的持倉」四個盒子，不用另外輸入。勾選這次要掃哪幾盒：</div>'
+      +'<div class="rd-ck">'+WG.boxes.map(function(x,i){
+        var n=wgAll(x.s).length;
+        return '<label><input type="checkbox" '+(WG.rsel[i]&&n?'checked':'')+(n?'':' disabled')+' onchange="wgRsel('+i+',this.checked)"> '+esc2(x.n)+'（'+n+'）</label>';
+      }).join('')+'</div>'
+      +'<button class="fb" onclick="wgRadar()">開始掃描</button>';
+  }
+}
+function wgHint(cnt){
+  return cnt>15 ? '<span style="color:#c62828">⚠ 你填了 '+cnt+' 檔，只會查前 15 檔。多的請放到別的盒子。</span>' : ('目前 '+cnt+' 檔（上限 15）。');
+}
+function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function wgSwitch(i){ WG.active=i; wgSave(); wgRenderUI(); }
+function wgName(v){ WG.boxes[WG.active].n=v; wgSave(); /* 只更新標籤，避免打字時整個重畫掉游標 */
+  var p=document.querySelectorAll('.wg-pill')[WG.active]; if(p){ p.firstChild.nodeValue=v||('盒'+(WG.active+1)); } }
+function wgSyms(v){ WG.boxes[WG.active].s=v; wgSave();
+  var c=wgAll(v).length, h=document.getElementById('wg-hint'); if(h) h.innerHTML=wgHint(c);
+  var p=document.querySelectorAll('.wg-pill small')[WG.active]; if(p) p.textContent=c+' 檔'+(WG['done'+WG.active]?' ✓':''); }
+function wgSector(v){
+  if(!v) return;
+  var c=wgSecChunks().filter(function(x){return x.v===v;})[0]; if(!c) return;
+  var b=WG.boxes[WG.active]; b.s=c.s;
+  if(!b.n || /^(板塊 [AB]|持股|觀察|盒\d)$/.test(b.n)) b.n=c.n;
+  wgSave(); wgRenderUI();
+}
+function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
+function sleep2(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+async function apiR(ep){
+  try{ return await api(ep); }
+  catch(e){ if(/429/.test(e.message)){ await sleep2(3500); return await api(ep); } throw e; }
 }
 
-async function loadRadar(){
-  spn('rr',true);cardIdx=0;
-  document.getElementById('radc').innerHTML='<span class="sp"></span>';
-  document.getElementById('tr-radar').style.display='none';
-  var _tb=document.getElementById('trmsg-radar'); if(_tb) _tb.remove();
-  var to=new Date().toISOString().split('T')[0];
-  var from=new Date(Date.now()-86400000).toISOString().split('T')[0];
-  var res=[];
-  var DW=radarSyms();
-  if(!DW.length){ document.getElementById('radc').innerHTML='<div class="empty">先在上面填股票代碼</div>'; spn('rr',false); return; }
-  document.getElementById('rm2').textContent='掃描 '+DW.length+' 支';
-  for(var i=0;i<DW.length;i+=10){
-    var br=await Promise.all(DW.slice(i,i+10).map(async function(sym){
-      try{
-        var q=await api('/quote?symbol='+sym);
-        var n=await api('/company-news?symbol='+sym+'&from='+from+'&to='+to);
-        return{sym:sym,q:q,news:(n||[]).slice(0,1)};
-      }catch(e){return{sym:sym,q:{dp:0,c:0},news:[]};}
-    }));
-    res.push.apply(res,br);
-    if(i+10<DW.length)await new Promise(function(r){setTimeout(r,300);});
+/* ── Yahoo 日線（走自建 Worker，不吃 Finnhub 額度）── 5 分鐘快取 */
+var YF_C={};
+async function yfStat(t){
+  var hit=YF_C[t]; if(hit && Date.now()-hit.at<300000) return hit.v;
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=1y';
+  var r=await fetch(MKT_PROXY+encodeURIComponent(base),{cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json();
+  var res=d.chart&&d.chart.result&&d.chart.result[0];
+  if(!res) throw new Error('沒有資料');
+  var ts=res.timestamp||[], q=res.indicators.quote[0], by={}, days=[];
+  for(var i=0;i<ts.length;i++){
+    if(q.close[i]==null) continue;
+    var dd=new Date(ts[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+    if(!(dd in by)) days.push(dd);
+    by[dd]={d:dd,o:q.open[i],h:q.high[i],l:q.low[i],c:q.close[i],v:q.volume[i]||0};
   }
-  res.sort(function(a,b){return Math.abs(b.q.dp||0)-Math.abs(a.q.dp||0);});
-  var movers=res.filter(function(r){return Math.abs(r.q.dp||0)>=1||r.news.length>0;});
-  if(!movers.length){document.getElementById('radc').innerHTML='<div class="empty">今日無明顯異動</div>';spn('rr',false);return;}
-  var html='<div class="mg">'+movers.map(function(r){
-    var dp=r.q.dp||0,c=r.q.c||0,up=dp>=0,n=r.news[0];
-    return '<div class="mv">'
-      +'<div class="mt"><span class="ms">$'+r.sym+'</span><span class="mc '+(up?'up':'dn')+'">'+(up?'+':'')+dp.toFixed(2)+'%</span></div>'
-      +'<div class="mp">$'+c.toFixed(2)+'</div>'
-      +(n?card(n):'<div style="font-size:12px;color:#6e7681">今日暫無新聞</div>')
-      +'</div>';
-  }).join('')+'</div>';
-  document.getElementById('radc').innerHTML=html;
-  document.getElementById('tr-radar').style.display='inline-block';
-  document.getElementById('tr-radar').disabled=false;
-  document.getElementById('tr-radar').textContent='🌐 翻譯標題';
-  spn('rr',false);
+  var bars=days.map(function(x){return by[x];});
+  var m=res.meta||{}, filled=false;
+  try{
+    var endT=m.currentTradingPeriod&&m.currentTradingPeriod.regular&&m.currentTradingPeriod.regular.end;
+    var mD=m.regularMarketTime?new Date(m.regularMarketTime*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}):null;
+    if(bars.length && mD && endT && m.regularMarketPrice!=null && Date.now()/1000>=endT && mD>bars[bars.length-1].d){
+      bars.push({d:mD,o:null,h:m.regularMarketDayHigh,l:m.regularMarketDayLow,c:m.regularMarketPrice,v:m.regularMarketVolume||0}); filled=true;
+    }
+  }catch(e){}
+  if(bars.length<22) throw new Error('資料不足');
+  var n=bars.length, last=bars[n-1], prev=bars[n-2];
+  var vs=0; for(var k=n-21;k<n-1;k++) vs+=bars[k].v; var avgv=vs/20;
+  var cs=0; for(var k2=n-20;k2<n;k2++) cs+=bars[k2].c; var ma20=cs/20;
+  var hi=0; bars.slice(-252).forEach(function(b){ if((b.h||b.c)>hi) hi=(b.h||b.c); });
+  var v={t:t,date:last.d,o:last.o,h:last.h,l:last.l,c:last.c,v:last.v,pc:prev.c,chg:(last.c/prev.c-1)*100,
+         avgv:avgv,vr:avgv>0?last.v/avgv:null,ma20:ma20,dMA:(last.c/ma20-1)*100,hi52:hi,fromHi:(last.c/hi-1)*100,filled:filled};
+  YF_C[t]={at:Date.now(),v:v};
+  return v;
+}
+async function yfMany(list,onProg){
+  var out={}, done=0;
+  for(var j=0;j<list.length;j+=5){
+    await Promise.all(list.slice(j,j+5).map(async function(t){
+      try{ out[t]=await yfStat(t); }catch(e){ out[t]={err:e.message}; }
+      done++; if(onProg) onProg(done,list.length);
+    }));
+  }
+  return out;
+}
+
+/* ── K 棒白話 ── */
+function kBar(st){
+  var h=st.h, l=st.l, c=st.c, o=st.o, rng=(h!=null&&l!=null)?(h-l):0;
+  var pos=rng>0?(c-l)/rng:null;
+  var tag,cls;
+  if(st.chg>0 && pos!=null && pos>=0.6){ tag='今天偏強'; cls='s'; }
+  else if(st.chg<0 && pos!=null && pos<=0.4){ tag='今天偏弱'; cls='w'; }
+  else { tag='今天拉鋸'; cls='n'; }
+  var L=[];
+  L.push('<b>'+(st.chg>=0?'漲 ':'跌 ')+Math.abs(st.chg).toFixed(2)+'%</b>（昨收 $'+st.pc.toFixed(2)+' → 今收 $'+st.c.toFixed(2)+'）');
+  if(pos!=null){
+    var pt = pos>=0.75?'收在當天價格區間的<b>高檔</b>（買方撐到最後）': pos<=0.25?'收在當天價格區間的<b>低檔</b>（賣方壓到最後）':'收在當天區間<b>中間</b>（多空拉鋸）';
+    L.push(pt+'；最高 $'+h.toFixed(2)+'、最低 $'+l.toFixed(2));
+    if(o!=null && rng>0){
+      var up=(h-Math.max(o,c))/rng, lo=(Math.min(o,c)-l)/rng;
+      if(up>=0.5) L.push('<b>上影線很長</b>：盤中衝上去又被賣回來（上方有賣壓）');
+      else if(lo>=0.5) L.push('<b>下影線很長</b>：盤中殺下去又被買回來（下方有人接）');
+    }
+  }
+  if(st.vr!=null){
+    var vt = st.vr>=1.5?'<b>爆量</b>':st.vr<=0.7?'量縮':'量正常';
+    L.push('成交量 '+vt+'：是近 20 天平均的 <b>'+st.vr.toFixed(1)+' 倍</b>'+(st.filled?'':'（盤中看到的量會偏低）'));
+  }
+  L.push('收盤在 20 日均線'+(st.dMA>=0?'<b>上方 ':'<b>下方 ')+Math.abs(st.dMA).toFixed(1)+'%</b>');
+  return {tag:tag,cls:cls,lines:L,pos:pos};
+}
+function kSvg(st,pos){
+  var W=30,H=64,top=4,bot=H-4;
+  if(st.h==null||st.l==null||st.h<=st.l) return '';
+  var sc=function(p){ return top+(st.h-p)/(st.h-st.l)*(bot-top); };
+  var up=st.c>=st.pc, col=up?'#1a7f37':'#c62828';
+  var s='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="flex:none"><line x1="15" x2="15" y1="'+top+'" y2="'+bot+'" stroke="'+col+'" stroke-width="2"/>';
+  if(st.o!=null){
+    var y1=sc(Math.max(st.o,st.c)), y2=sc(Math.min(st.o,st.c)); if(y2-y1<2) y2=y1+2;
+    s+='<rect x="7" y="'+y1+'" width="16" height="'+(y2-y1)+'" fill="'+col+'"/>';
+  }else{
+    var y=sc(st.c); s+='<line x1="7" x2="23" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="3"/>';
+  }
+  return s+'</svg>';
+}
+
+function wgStock(t,st,news){
+  var h='<div class="wg-st"><div class="wg-st-h"><span class="sy">$'+t+'</span>';
+  if(st && !st.err){
+    var k=kBar(st);
+    h+='<span class="pc '+(st.chg>=0?'wg-up':'wg-dn')+'">'+(st.chg>=0?'+':'')+st.chg.toFixed(2)+'%</span><span class="pp">$'+st.c.toFixed(2)+' · '+st.date.slice(5)+'</span><span class="wg-tag '+k.cls+'">'+k.tag+'</span></div>'
+      +'<div class="wg-k">'+kSvg(st,k.pos)+'<ul>'+k.lines.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul></div>';
+  }else{
+    h+='<span class="pp">價格抓不到（'+esc2(st&&st.err||'未知')+'）</span></div>';
+  }
+  if(news==null){ h+='<div class="rd-none">新聞抓取失敗</div>'; }
+  else if(!news.length){ h+='<div class="rd-none">近 7 日沒有新聞</div>'; }
+  else{
+    var first=news.slice(0,3).map(card).join(''), more=news.slice(3,6);
+    h+='<details class="wg-news"><summary>📰 近 7 日新聞 '+news.length+' 則（點開看）</summary><div class="nn">'+first
+      +(more.length?'<details><summary style="font-size:12px;color:#718096;cursor:pointer;padding:2px 4px">更多 '+more.length+' 則</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+more.map(card).join('')+'</div></details>':'')
+      +'</div></details>';
+  }
+  return h+'</div>';
+}
+
+var WG_BUSY=false;
+async function wgQuery(i){
+  var out=document.getElementById('wres'+i), box=WG.boxes[i], list=wgParse(box.s);
+  if(!out) return;
+  if(!list.length){ out.innerHTML='<div class="empty">這個盒子還沒有股票</div>'; return; }
+  if(WG_BUSY){ return; }
+  WG_BUSY=true; spn('rw',true);
+  document.getElementById('tr-watchlist').style.display='none';
+  var _tw=document.getElementById('trmsg-watchlist'); if(_tw) _tw.remove();
+  try{
+    out.innerHTML='<div class="empty">查價格中…</div>';
+    var stats=await yfMany(list,function(d,n){ out.innerHTML='<div class="empty">查價格 '+d+'/'+n+'…</div>'; });
+    var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+    var news={}, failN=0;
+    for(var j=0;j<list.length;j++){
+      out.innerHTML='<div class="empty">抓新聞 '+(j+1)+'/'+list.length+'（'+list[j]+'）…</div>';
+      try{ var d=await apiR('/company-news?symbol='+list[j]+'&from='+from+'&to='+to); news[list[j]]=Array.isArray(d)?d:[]; }
+      catch(e){ news[list[j]]=null; failN++; }
+      await sleep2(450);
+    }
+    /* 依今天強弱排：偏強的在前，偏弱的在後，無資料最後 */
+    var ord=list.slice().sort(function(a,b){
+      var sa=stats[a]&&!stats[a].err?stats[a].chg:-999, sb=stats[b]&&!stats[b].err?stats[b].chg:-999; return sb-sa; });
+    var asof=''; ord.forEach(function(t){ if(!asof && stats[t]&&!stats[t].err) asof=stats[t].date; });
+    var ups=ord.filter(function(t){return stats[t]&&!stats[t].err&&stats[t].chg>0;}).length;
+    var head='<div class="wg-hint" style="margin:0 16px;padding-top:4px"><b>'+esc2(box.n)+'</b>：'+list.length+' 檔，今天 '+ups+' 檔上漲、'+(list.length-ups)+' 檔下跌或沒資料。依漲跌由高到低排。資料日：'+asof+'。'
+      +(failN?' <span style="color:#c62828">⚠ '+failN+' 檔新聞沒抓到（可能額度，稍後再按 ↻）</span>':'')
+      +'<br>「今天偏強／偏弱／拉鋸」規則：漲且收在當天區間上 40% → 偏強；跌且收在下 40% → 偏弱；其他 → 拉鋸。這只描述今天，不是買賣訊號。</div>';
+    out.innerHTML=head+ord.map(function(t){ return wgStock(t,stats[t],news[t]); }).join('')+'<div style="height:12px"></div>';
+    WG['done'+i]=1; wgRenderUI();
+    var tb=document.getElementById('tr-watchlist'); tb.style.display='inline-block'; tb.disabled=false; tb.textContent='🌐 翻譯標題';
+  }catch(e){
+    out.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>';
+  }
+  WG_BUSY=false; spn('rw',false);
+}
+
+
+/* 股票代碼輸入框：自動轉大寫、關閉 iPad 自動更正（它會把 ionq 改成英文字）*/
+document.addEventListener('input',function(e){
+  var el=e.target; if(!el||(el.id!=='wg-syms'&&el.id!=='fi')) return;
+  var u=el.value.toUpperCase();
+  if(u!==el.value){ var a=el.selectionStart,b=el.selectionEnd; el.value=u; try{el.setSelectionRange(a,b);}catch(x){} }
+},true);
+/* ═══ 異動雷達（往前看）═══ */
+var RD_BUSY=false;
+function recShare(r){ var tot=r.strongBuy+r.buy+r.hold+r.sell+r.strongSell; return tot?{tot:tot,buy:(r.strongBuy+r.buy)/tot*100,sell:(r.sell+r.strongSell)/tot*100,r:r}:null; }
+async function wgRadar(){
+  if(RD_BUSY) return;
+  var sel=[]; WG.boxes.forEach(function(b,i){ if(WG.rsel[i] && wgAll(b.s).length) sel.push(i); });
+  var set={}, all=[];
+  sel.forEach(function(i){ wgParse(WG.boxes[i].s).forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
+  var box=document.getElementById('radc'), msg=document.getElementById('rm2');
+  if(!all.length){ box.innerHTML='<div class="empty">沒有選到有股票的盒子</div>'; return; }
+  RD_BUSY=true; spn('rr',true);
+  var rec={}, cal=null, calErr=null;
+  try{
+    msg.textContent='1/3 查價量 0/'+all.length;
+    var stats=await yfMany(all,function(d,n){ msg.textContent='1/3 查價量 '+d+'/'+n; });
+    msg.textContent='2/3 查財報日…';
+    try{
+      var f=new Date().toISOString().split('T')[0], t2=new Date(Date.now()+14*86400000).toISOString().split('T')[0];
+      var c=await apiR('/calendar/earnings?from='+f+'&to='+t2);
+      cal=(c&&c.earningsCalendar)||[];
+    }catch(e){ calErr=e.message; }
+    wgRadarRender(sel,all,stats,cal,calErr,rec,false);
+    /* 分析師評等：每檔一次呼叫，間隔 1.1 秒（免費額度每分鐘約 60 次） */
+    for(var i=0;i<all.length;i++){
+      msg.textContent='3/3 分析師評等 '+(i+1)+'/'+all.length+'（'+all[i]+'）…前面的結果已經可以先看';
+      try{ var r=await apiR('/stock/recommendation?symbol='+all[i]); rec[all[i]]=Array.isArray(r)?r:[]; }
+      catch(e){ rec[all[i]]=null; }
+      await sleep2(1100);
+    }
+    wgRadarRender(sel,all,stats,cal,calErr,rec,true);
+    msg.textContent='掃描完成：'+all.length+' 檔（'+sel.map(function(i){return WG.boxes[i].n;}).join('、')+'）';
+  }catch(e){ box.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>'; msg.textContent='掃描失敗'; }
+  RD_BUSY=false; spn('rr',false);
+}
+function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
+  var ok=function(t){return stats[t]&&!stats[t].err;};
+  var H='';
+  function sec(title,sub,rows,none){
+    return '<div class="rd-sec"><div class="rd-h"><b>'+title+'</b><div>'+sub+'</div></div>'
+      +(rows.length?rows.map(function(r){return '<div class="rd-row">'+r+'</div>';}).join(''):'<div class="rd-none">'+none+'</div>')+'</div>';
+  }
+  /* 1 財報倒數 */
+  var today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  var er=[];
+  if(cal){
+    var set={}; all.forEach(function(t){set[t]=1;});
+    cal.filter(function(e){return set[e.symbol];}).sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(e){
+      var dd=Math.round((new Date(e.date)-new Date(today))/86400000);
+      var when=e.hour==='bmo'?'盤前':e.hour==='amc'?'盤後':'';
+      er.push('<span class="sy">$'+e.symbol+'</span>'+(dd===0?'<b style="color:#c62828">今天</b>':dd===1?'<b style="color:#c62828">明天</b>':'<b>'+dd+' 天後</b>')+'（'+e.date.slice(5)+when+'）'
+        +(e.epsEstimate!=null?'　分析師預估每股盈餘 '+Number(e.epsEstimate).toFixed(2):'')
+        +(e.revenueEstimate!=null?'、營收 '+(e.revenueEstimate>=1e9?(e.revenueEstimate/1e9).toFixed(2)+'B':(e.revenueEstimate/1e6).toFixed(0)+'M'):''));
+    });
+  }
+  H+=sec('📅 財報倒數（14 天內）','財報公布日常出現比平常大很多的跳空。這是「該提早想好」的提醒，不是買賣訊號。',er,
+    calErr?'⚠ 財報日程抓取失敗（'+esc2(calErr)+'）':'這幾盒在 14 天內都沒有財報。');
+  /* 2 量價異常 */
+  var vr=[];
+  all.filter(ok).forEach(function(t){
+    var s=stats[t]; if(s.vr==null||s.vr<1.8) return;
+    var tx = Math.abs(s.chg)<1.5 ? '量大但價格幾乎沒動 —— 有人在大量換手，常是方向出來前的跡象，但<b>還不能判斷往哪邊</b>' : s.chg>0 ? '量大且上漲 —— 資金在追' : '量大且下跌 —— 有人在大量出貨';
+    vr.push('<span class="sy">$'+t+'</span>量是平常的 <b>'+s.vr.toFixed(1)+' 倍</b>，'+(s.chg>=0?'漲 ':'跌 ')+Math.abs(s.chg).toFixed(1)+'%。'+tx+'。');
+    s._o=s.vr;
+  });
+  H+=sec('🔊 量價異常','今天成交量 ≥ 近 20 天平均的 1.8 倍。盤中看到的量還沒累積完，會偏低。',vr,'今天沒有股票爆量。');
+  /* 3 接近 52 週高 */
+  var nh=all.filter(ok).filter(function(t){return stats[t].fromHi>=-3;}).sort(function(a,b){return stats[b].fromHi-stats[a].fromHi;}).map(function(t){
+    var s=stats[t]; return '<span class="sy">$'+t+'</span>離一年最高價只差 <b>'+Math.abs(s.fromHi).toFixed(1)+'%</b>'+(s.fromHi>=-0.05?'（今天就在高點）':'')+'。';
+  });
+  var nhMore=nh.length>8?nh.length-8:0; nh=nh.slice(0,8); if(nhMore) nh.push('另外還有 '+nhMore+' 檔也在 3% 內（只列最接近的 8 檔）。');
+  H+=sec('📍 逼近一年高點（3% 內）','離 52 週最高價 3% 以內。接近前高 = 接下來要嘛突破、要嘛被賣壓擋下，值得盯。',nh,'沒有股票靠近一年高點。');
+  /* 4 板塊同步 */
+  var gr=sel.map(function(i){
+    var L=wgParse(WG.boxes[i].s).filter(ok); if(!L.length) return null;
+    var up=L.filter(function(t){return stats[t].chg>0;}).length, ab=L.filter(function(t){return stats[t].dMA>=0;}).length;
+    var avg=L.reduce(function(a,t){return a+stats[t].chg;},0)/L.length;
+    var srt=L.slice().sort(function(a,b){return stats[b].chg-stats[a].chg;});
+    var rd = up/L.length>=0.75?'整組一起走強':up/L.length<=0.25?'整組一起走弱':'各走各的，沒有一致方向';
+    return '<span class="sy">'+esc2(WG.boxes[i].n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b>'+rd+'</b>。'
+      +'<br>領漲 $'+srt[0]+' '+(stats[srt[0]].chg>=0?'+':'')+stats[srt[0]].chg.toFixed(1)+'%；落後 $'+srt[srt.length-1]+' '+(stats[srt[srt.length-1]].chg>=0?'+':'')+stats[srt[srt.length-1]].chg.toFixed(1)+'%';
+  }).filter(Boolean);
+  H+=sec('🧭 盒內同步度','同一盒的股票是一起動還是各走各的。一起轉強通常是板塊資金在動；只有一檔強，多半是個股消息。',gr,'沒有資料。');
+  /* 5 分析師評等變化 */
+  var an=[], pend=0;
+  all.forEach(function(t){
+    var a=rec[t]; if(a===undefined){ pend++; return; } if(!a||a.length<2) return;
+    a=a.slice().sort(function(x,y){return x.period<y.period?1:-1;});
+    var n=recShare(a[0]), o=recShare(a[Math.min(3,a.length-1)]); if(!n||!o||n.tot<3) return;
+    var d=n.buy-o.buy; if(Math.abs(d)<8) return;
+    an.push({d:d,h:'<span class="sy">$'+t+'</span>建議買進的分析師比例 <b>'+o.buy.toFixed(0)+'% → '+n.buy.toFixed(0)+'%</b>（'+(d>0?'上升 ':'下降 ')+Math.abs(d).toFixed(0)+' 個百分點；共 '+n.tot+' 位，'+o.r.period.slice(0,7)+' → '+n.r.period.slice(0,7)+'）。'+(d>0?'愈來愈多分析師看好。':'有分析師轉謹慎。')});
+  });
+  an.sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d);});
+  var anH=an.map(function(x){return x.h;}); if(anH.length>10){ var extra=anH.length-10; anH=anH.slice(0,10); anH.push('另外還有 '+extra+' 檔有變動（只列變動最大的 10 檔）。'); }
+  H+=sec('🧑‍💼 分析師評等變化','「買進／強力買進」占全部分析師的比例，比 3 個月前變動 8 個百分點以上才列出。⚠ 免費資料看不到「調高目標價」，這裡只有人數比例。',
+    anH, recDone?'沒有明顯變化的股票。':'查詢中…');
+  if(!recDone) H+='<div class="wg-hint" style="margin:6px 16px">分析師評等還在逐檔查（約每檔 1 秒），上面其他四塊已經是完整的。</div>';
+  var bad=all.filter(function(t){return !ok(t);});
+  if(bad.length) H+='<div class="wg-hint" style="margin:8px 16px;color:#c62828">⚠ 這幾檔價格沒抓到，沒有納入：'+bad.join('、')+'</div>';
+  document.getElementById('radc').innerHTML=H+'<div style="height:12px"></div>';
 }
 
 
