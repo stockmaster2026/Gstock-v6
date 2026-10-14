@@ -215,12 +215,18 @@ async function fetchOne(tk){
   const r=await fetch(PROXY(u)); if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json(); const res=j&&j.chart&&j.chart.result&&j.chart.result[0];
   if(!res) throw new Error('沒有資料');
-  const cl=(res.indicators.quote[0].close||[]).filter(x=>x!=null);
+  /* 同一天只留最後一根：Yahoo 偶爾會在剛收盤後多給一根同日的資料，
+     多一根就會讓「連續幾天收在 20 日線下面」多算 1 天（出場規則靠這個數字）。 */
+  const _ts=res.timestamp||[], _cr=res.indicators.quote[0].close||[], _byDay={}, _days=[];
+  for(let i=0;i<_cr.length;i++){ if(_cr[i]==null) continue;
+    const d=_ts[i]?new Date(_ts[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}):('i'+i);
+    if(!(d in _byDay)) _days.push(d); _byDay[d]=_cr[i]; }
+  const cl=_days.map(d=>_byDay[d]); const lastDate=_days[_days.length-1];
   if(cl.length<20) throw new Error('資料不足');
   const px=(res.meta&&res.meta.regularMarketPrice)||cl[cl.length-1];
   const ma20=cl.slice(-20).reduce((a,b)=>a+b,0)/20;
   let bd=0; for(let k=cl.length-1;k>=19;k--){ const m=cl.slice(k-19,k+1).reduce((a,b)=>a+b,0)/20; if(cl[k]<m) bd++; else break; }
-  return {px, ma20, bd};
+  return {px, ma20, bd, lastDate};
 }
 async function refresh(){
   const P=parsePos($('posBox').value); const tks=Object.keys(P);
@@ -232,7 +238,8 @@ async function refresh(){
   }
   $('go').disabled=false;
   const t=new Date().toLocaleString('zh-TW',{timeZone:'America/Los_Angeles',hour12:false});
-  $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+'）'; render();
+  let _ld=''; tks.forEach(k=>{ const q=PX[k]; if(q&&q.lastDate&&q.lastDate>_ld) _ld=q.lastDate; });
+  $('st').textContent='完成 '+ok+'/'+tks.length+'（美西 '+t+(_ld?'；最後一根日線 '+_ld:'')+'）'; render();
   try{ if(window.__lastAlloc && ok===tks.length){ const d=new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'}); const o=getJ(SNAPKEY); o[d]=window.__lastAlloc; ls.s(SNAPKEY,JSON.stringify(o)); render(); } }catch(e){}
 }
 const money=n=>'$'+Math.round(n).toLocaleString();
