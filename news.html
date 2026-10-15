@@ -73,7 +73,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .wg-tag.s{background:#dcf5e3;color:#1a7f37}.wg-tag.w{background:#fde2e2;color:#c62828}.wg-tag.n{background:#edf2f7;color:#4a5568}
 .wg-k{display:flex;gap:12px;padding:10px 14px;align-items:flex-start}
 .wg-k ul{margin:0;padding-left:16px;font-size:13px;color:#2d3748;line-height:1.6;flex:1}
-.wg-news{border-top:1px solid #e2e8f0}
+.wg-newsw{position:relative;border-top:1px solid #e2e8f0}.wg-trb{position:absolute;right:10px;top:6px;z-index:2;padding:5px 12px!important;font-size:12px!important}.wg-news{border-top:0}
 .wg-news>summary{padding:9px 14px;font-size:12.5px;color:#0066bb;cursor:pointer}
 .wg-news .nn{padding:6px 10px 10px;display:flex;flex-direction:column;gap:8px}
 .rd-sec{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08)}
@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.8</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.9</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -720,14 +720,15 @@ function trBanner(panelName, cls, html){
   el.innerHTML=html;
 }
 
-async function translatePanel(panelName){
-  var btn=document.getElementById('tr-'+panelName);
+async function translatePanel(panelName, scope, btnEl){
+  var btn=btnEl||document.getElementById('tr-'+panelName);
   if(!btn)return;
+  var trBanner = scope ? function(){} : window.trBanner;   /* 單檔翻譯：不印整頁橫幅 */
   btn.disabled=true;
-  var panel=document.getElementById('panel-'+panelName);
-  var cards=Array.prototype.filter.call(panel.querySelectorAll('.card'),function(c){return c.offsetParent!==null;});
+  var panel=scope||document.getElementById('panel-'+panelName);
+  var cards=Array.prototype.filter.call(panel.querySelectorAll('.card'),function(c){return scope?true:c.offsetParent!==null;});
   var total=cards.length;
-  if(!total){ btn.disabled=false; btn.textContent='🌐 翻譯標題'; return; }
+  if(!total){ btn.disabled=false; btn.textContent=scope?'🌐 翻譯':'🌐 翻譯標題'; return; }
 
   TR_STREAK=0; TR_GOOGLE_DEAD=false;
   TR_VIA={google:0, mymemory:0};
@@ -1323,13 +1324,18 @@ function wgStock(t,st,news){
   else if(!news.length){ h+='<div class="rd-none">近 7 日沒有新聞</div>'; }
   else{
     var first=news.slice(0,3).map(card).join(''), more=news.slice(3,6);
-    h+='<details class="wg-news"><summary>📰 近 7 日新聞 '+news.length+' 則（點開看）</summary><div class="nn">'+first
+    h+='<div class="wg-newsw"><button class="tr-btn wg-trb" onclick="wgTr(this)">🌐 翻譯</button><details class="wg-news"><summary>📰 近 7 日新聞 '+news.length+' 則（點開看）</summary><div class="nn">'+first
       +(more.length?'<details><summary style="font-size:12px;color:#718096;cursor:pointer;padding:2px 4px">更多 '+more.length+' 則</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+more.map(card).join('')+'</div></details>':'')
-      +'</div></details>';
+      +'</div></details></div>';
   }
   return h+'</div>';
 }
 
+function wgTr(btn){
+  var st=btn.closest('.wg-st'); if(!st) return;
+  st.querySelectorAll('details').forEach(function(d){ d.open=true; });
+  translatePanel('watchlist', st, btn);
+}
 var WG_BUSY=false;
 async function wgQuery(i){
   var out=document.getElementById('wres'+i), box=WG.boxes[i], list=wgParse(box.s);
