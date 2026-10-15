@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.9</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.0</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1244,7 +1244,27 @@ async function yfStat(t){
     var endT=m.currentTradingPeriod&&m.currentTradingPeriod.regular&&m.currentTradingPeriod.regular.end;
     var mD=m.regularMarketTime?new Date(m.regularMarketTime*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}):null;
     if(bars.length && mD && endT && m.regularMarketPrice!=null && Date.now()/1000>=endT && mD>bars[bars.length-1].d){
-      bars.push({d:mD,o:null,h:m.regularMarketDayHigh,l:m.regularMarketDayLow,c:m.regularMarketPrice,v:m.regularMarketVolume||0}); filled=true;
+      var nb={d:mD,o:null,h:m.regularMarketDayHigh,l:m.regularMarketDayLow,c:m.regularMarketPrice,v:m.regularMarketVolume||0};
+      /* Yahoo 日線還沒長出今天這根 → 用 5 分鐘線拼出真正的開盤、最高、最低（不然 K 棒只剩一條線）*/
+      try{
+        var b5='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=5m&range=1d';
+        var r5=await fetch(MKT_PROXY+encodeURIComponent(b5),{cache:'no-store'});
+        if(r5.ok){
+          var d5=await r5.json(), x5=d5.chart&&d5.chart.result&&d5.chart.result[0];
+          if(x5&&x5.indicators&&x5.timestamp){
+            var q5=x5.indicators.quote[0], o5=null, h5=-1e18, l5=1e18, v5=0, any=false;
+            for(var z=0;z<x5.timestamp.length;z++){
+              if(q5.close[z]==null) continue; any=true;
+              if(o5==null && q5.open[z]!=null) o5=q5.open[z];
+              if(q5.high[z]!=null && q5.high[z]>h5) h5=q5.high[z];
+              if(q5.low[z]!=null && q5.low[z]<l5) l5=q5.low[z];
+              v5+=q5.volume[z]||0;
+            }
+            if(any && o5!=null){ nb.o=o5; if(h5>-1e17) nb.h=h5; if(l5<1e17) nb.l=l5; if(v5>0) nb.v=v5; }
+          }
+        }
+      }catch(e5){}
+      bars.push(nb); filled=true;
     }
   }catch(e){}
   if(bars.length<22) throw new Error('資料不足');
