@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.7</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.8</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1201,7 +1201,7 @@ function wgHint(cnt){
 }
 function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function wgSwitch(i){ WG.active=i; wgSave(); wgRenderUI(); }
-function wgName(v){ WG.boxes[WG.active].n=v; wgSave(); /* 只更新標籤，避免打字時整個重畫掉游標 */
+function wgName(v){ WG.boxes[WG.active].n=v; WG.boxes[WG.active].nc=1; wgSave(); /* 只更新標籤，避免打字時整個重畫掉游標 */
   var p=document.querySelectorAll('.wg-pill')[WG.active]; if(p){ p.firstChild.nodeValue=v||('盒'+(WG.active+1)); } }
 function wgSyms(v){ WG.boxes[WG.active].s=v; wgSave();
   var c=wgAll(v).length, h=document.getElementById('wg-hint'); if(h) h.innerHTML=wgHint(c);
@@ -1210,7 +1210,7 @@ function wgSector(v){
   if(!v) return;
   var c=wgSecChunks().filter(function(x){return x.v===v;})[0]; if(!c) return;
   var b=WG.boxes[WG.active]; b.s=c.s;
-  if(!b.n || /^(板塊 [AB]|持股|觀察|盒\d)$/.test(b.n)) b.n=c.n;
+  if(!b.nc) b.n=c.n;  /* 你自己改過名字就不動它，否則每次帶入板塊都跟著換名 */
   wgSave(); wgRenderUI();
 }
 function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
