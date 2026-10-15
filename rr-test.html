@@ -97,20 +97,41 @@ function simTrade(P,ei,rule){
   var b=P.bars, entry=b[ei].o; if(!(entry>0)) return null;
   var stopP=entry*(1-rule.s), tgtP=rule.t!=null?entry*(1+rule.t):null, below=0;
   var last=Math.min(b.length-1, ei+400);
+  var frac=rule.frac||0, partial=false, partRet=0;   /* 分批：碰到停利先賣 frac，剩下繼續 */
+  function fin(restPx,why,exitIdx,days){
+    var ret = partial ? (frac*partRet + (1-frac)*(restPx/entry-1)) : (restPx/entry-1);
+    return {ret:ret-2*COST, days:days, why:(partial&&why!=='timeout'?why+'+':why), exitIdx:exitIdx, part:partial};
+  }
   for(var d=ei; d<=last; d++){
-    var o=b[d].o,h=b[d].h,l=b[d].l,cl=b[d].c, px=null, why=null;
-    if(o<=stopP){ px=o; why='stop'; }
-    else if(tgtP!=null && o>=tgtP){ px=o; why='target'; }
-    else if(tgtP!=null && l<=stopP && h>=tgtP){ px=stopP; why='stop'; }   /* 同一天兩邊都碰到：保守算停損先 */
-    else if(l<=stopP){ px=stopP; why='stop'; }
-    else if(tgtP!=null && h>=tgtP){ px=tgtP; why='target'; }
-    if(px!=null) return {ret:px/entry-1-2*COST, days:d-ei+1, why:why, exitIdx:d};
-    if(rule.ma){
+    var o=b[d].o,h=b[d].h,l=b[d].l,cl=b[d].c;
+    if(!partial){
+      var px=null, why=null;
+      if(o<=stopP){ px=o; why='stop'; }
+      else if(tgtP!=null && o>=tgtP){ px=o; why='target'; }
+      else if(tgtP!=null && l<=stopP && h>=tgtP){ px=stopP; why='stop'; }
+      else if(l<=stopP){ px=stopP; why='stop'; }
+      else if(tgtP!=null && h>=tgtP){ px=tgtP; why='target'; }
+      if(px!=null){
+        if(why==='target' && frac>0){            /* 先賣一部分，剩下續抱，從這天收盤開始數 20 日線 */
+          partial=true; partRet=px/entry-1; below=0;
+          if(rule.be) stopP=entry;
+          if(rule.ma){ if(P.s20[d]!=null && cl<P.s20[d]) below++; }
+          continue;
+        }
+        return {ret:px/entry-1-2*COST, days:d-ei+1, why:why, exitIdx:d, part:false};
+      }
+    } else {
+      /* 剩下的部位：停損（成本或原停損）＋ 20 日線 3 天規則 */
+      var px2=null;
+      if(o<=stopP) px2=o; else if(l<=stopP) px2=stopP;
+      if(px2!=null) return fin(px2,'rest-stop',d,d-ei+1);
+    }
+    if(rule.ma && (partial || rule.t==null)){
       if(P.s20[d]!=null && cl<P.s20[d]) below++; else below=0;
-      if(below>=3 && d+1<b.length) return {ret:b[d+1].o/entry-1-2*COST, days:d+1-ei+1, why:'ma', exitIdx:d+1};
+      if(below>=3 && d+1<b.length) return fin(b[d+1].o,'ma',d+1,d+1-ei+1);
     }
   }
-  var ex=b[last].c; return {ret:ex/entry-1-2*COST, days:last-ei+1, why:'timeout', exitIdx:last};
+  return fin(b[last].c,'timeout',last,last-ei+1);
 }
 /* 單檔：同一時間只持一筆（持倉鎖） */
 function runTicker(P,mode,rule,fromIdx,opt){
@@ -130,8 +151,11 @@ function stats(trs,s){
   var w=rets.filter(function(x){return x>0;}), l=rets.filter(function(x){return x<=0;});
   var sum=rets.reduce(function(a,b){return a+b;},0);
   var streak=0,mx=0; trs.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(x){ if(x.ret<=0){streak++; if(streak>mx)mx=streak;} else streak=0; });
-  var why={stop:0,target:0,ma:0,timeout:0}; trs.forEach(function(x){why[x.why]++;});
-  return {n:n,win:w.length/n,avg:sum/n,med:median(rets),ev:s?sum/n/s:null,
+  var why={stop:0,target:0,ma:0,timeout:0,'rest-stop':0,'target+':0,'ma+':0,'rest-stop+':0}; trs.forEach(function(x){ why[x.why]=(why[x.why]||0)+1; });
+  var gw=w.reduce(function(a,b){return a+b;},0), gl=-l.reduce(function(a,b){return a+b;},0);
+  var mxW=Math.max.apply(null,rets), mnL=Math.min.apply(null,rets);
+  return {pf:gl>0?gw/gl:null,mxW:mxW,mnL:mnL,topShare:(gw>0?mxW/gw:null),
+          n:n,win:w.length/n,avg:sum/n,med:median(rets),ev:s?sum/n/s:null,
           avgW:w.length?w.reduce(function(a,b){return a+b;},0)/w.length:0,
           avgL:l.length?l.reduce(function(a,b){return a+b;},0)/l.length:0,
           streak:mx,hold:trs.reduce(function(a,x){return a+x.days;},0)/n,why:why,total:sum};
@@ -170,12 +194,12 @@ async function runAll(){
     }));
   }
   var cut=new Date(Date.now()-yrs*365.25*86400000).toISOString().slice(0,10);
-  function run(rule,f2){
-    var useSt2=(f2==null)?st2:f2;
+  function run(rule,f2,m2){
+    var useSt2=(f2==null)?st2:f2, useMode=m2||mode;
     var all=[], per={};
     Object.keys(P).forEach(function(t){
       var from=0; for(var k=0;k<P[t].bars.length;k++){ if(P[t].bars[k].d>=cut){from=k;break;} }
-      var tr=runTicker(P[t],mode,rule,from,{st2:useSt2}); tr.forEach(function(x){x.t=t;}); per[t]=tr; all=all.concat(tr);
+      var tr=runTicker(P[t],useMode,rule,from,{st2:useSt2}); tr.forEach(function(x){x.t=t;}); per[t]=tr; all=all.concat(tr);
     });
     return {all:all,per:per};
   }
@@ -184,7 +208,10 @@ async function runAll(){
     {name:'固定 −'+S100+'% / +'+T100+'%（你問的）',s:S,t:T,main:1},
     {name:'−'+S100+'% / +'+(2*S100)+'%（1:2）',s:S,t:2*S},
     {name:'−'+S100+'% / +'+S100+'%（1:1）',s:S,t:S},
-    {name:'只設停損 −'+S100+'%，3 天收盤跌破 20 日線才賣（你的風險儀表板規則）',s:S,t:null,ma:true}
+    {name:'只設停損 −'+S100+'%，3 天收盤跌破 20 日線才賣（你的風險儀表板規則）',s:S,t:null,ma:true},
+    {name:'賺 +'+T100+'% 先賣 1/3，剩下停損移到成本、跌破 20 日線才賣',s:S,t:T,frac:1/3,be:true,ma:true},
+    {name:'賺 +'+T100+'% 先賣 1/2，剩下停損移到成本、跌破 20 日線才賣',s:S,t:T,frac:1/2,be:true,ma:true},
+    {name:'賺 +'+T100+'% 先賣 1/3，剩下停損不動（仍是 −'+S100+'%）、跌破 20 日線才賣',s:S,t:T,frac:1/3,be:false,ma:true}
   ];
   var R=rules.map(function(r){ var x=run(r); return {r:r,res:x,st:stats(x.all,r.s)}; });
   var main=R[0], mn=main.st;
@@ -203,7 +230,7 @@ async function runAll(){
   lines.push('共 <b>'+mn.n+'</b> 筆；勝率 <b>'+pct(mn.win)+'</b>。損益兩平勝率是 <b>'+pct(be)+'</b>（停損 '+S100+'%、停利 '+T100+'%，不含成本）→ 實際勝率'+(mn.win>be?'<b>高於</b>':'<b>低於</b>')+'兩平點 '+Math.abs((mn.win-be)*100).toFixed(1)+' 個百分點。');
   lines.push('平均每筆 <b>'+sg(mn.avg,2)+'</b>（賺的平均 '+sg(mn.avgW)+'、賠的平均 '+sg(mn.avgL)+'），期望值 <b>'+(mn.ev>=0?'+':'')+mn.ev.toFixed(2)+'R</b>；中位數 '+sg(mn.med)+'；最大連虧 '+mn.streak+'；平均持有 '+mn.hold.toFixed(0)+' 天。');
   lines.push('怎麼出場的：被停損 <b>'+pct(mn.why.stop/mn.n,0)+'</b>、碰到停利 <b>'+pct(mn.why.target/mn.n,0)+'</b>、其他（到期未出）'+pct(mn.why.timeout/mn.n,0)+'。');
-  lines.push('四種出場法裡，平均每筆最好的是：<b>'+R[bestI].r.name+'</b>（'+sg(R[bestI].st.avg,2)+'）'+(bestI===0?'。':'；你問的 1:3 不是最好的。'));
+  lines.push('七種出場法裡，平均每筆最好的是：<b>'+R[bestI].r.name+'</b>（'+sg(R[bestI].st.avg,2)+'）'+(bestI===0?'。':'；你問的 1:3 不是最好的。'));
   if(R[3].st.n && R[3].st.avg>mn.avg) lines.push('你的 20 日線追蹤規則（不設停利）比固定停利好 '+((R[3].st.avg-mn.avg)*100).toFixed(2)+' 個百分點／筆 —— 代表<b>固定停利把大贏家提早截掉</b>了。');
   else if(R[3].st.n) lines.push('固定停利比 20 日線追蹤好 '+((mn.avg-R[3].st.avg)*100).toFixed(2)+' 個百分點／筆。');
   if(mode==='any') lines.push('⚠ 目前進場方式是「每天都進」＝亂買基準，這只能回答「1:3 這個出場法本身有沒有魔力」，不是進場有沒有邊。');
@@ -214,30 +241,38 @@ async function runAll(){
    +chk('中位數報酬','> 0',sg(mn.med),mn.med>0)+chk('最大連虧','≤ 6',mn.streak,mn.streak<=6)+'</table>'
    +'<div class="note">白話：勝率只有三成上下的策略，<b>多數單子是賠的</b>，所以「中位數 &gt; 0」幾乎不可能過 —— 這不代表它不能賺，代表你要吞得下大半時間在賠的心理。你之前測固定停利的出場（X1、X2）也是這個形狀。</div></div>';
   /* Stage 2 有無對照 */
-  var oa=run(rules[0],true), ob=run(rules[0],false), sa=stats(oa.all,S), sb=stats(ob.all,S);
+  var oa=run(rules[0],true), ob=run(rules[0],false,mode==='st2new'?'any':null), sa=stats(oa.all,S), sb=stats(ob.all,S), oc=(mode==='st2new')?run(rules[0],true,'any'):null, sc=oc?stats(oc.all,S):null;
   var inSt=0,totD=0; Object.keys(P).forEach(function(t){ for(var k=160;k<P[t].bars.length;k++){ if(P[t].bars[k].d>=cut){ totD++; if(P[t].st2[k]) inSt++; } } });
   function rw(nm,s){ return '<tr><td style="text-align:left">'+nm+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win):'-')+'</td><td class="'+(s.n&&s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td><td>'+(s.n?(s.ev>=0?'+':'')+s.ev.toFixed(2)+'R':'-')+'</td><td>'+(s.n?s.streak:'-')+'</td></tr>'; }
   h+='<div class="card"><h2>③ 有沒有「週線 Stage 2」差多少</h2><table><tr><th>進場條件</th><th>筆數</th><th>勝率</th><th>平均每筆</th><th>期望值</th><th>連虧</th></tr>'
-    +rw('只在週線 Stage 2 時進場',sa)+rw('不管 Stage 2（任何時候）',sb)+'</table>'
+    +(mode==='st2new'?rw('剛進入 Stage 2 的那天買（你的做法）',sa)+rw('Stage 2 期間隨時進場',sc)+rw('完全不管 Stage 2，每天都進',sb):rw('只在週線 Stage 2 時進場',sa)+rw('不管 Stage 2（任何時候）',sb))+'</table>'
     +'<div class="note">這些股票在回測期間，<b>'+pct(totD?inSt/totD:0,0)+'</b> 的交易日處在週線 Stage 2（週收盤在 30 週線上、30 週線比 4 週前高；用「上一個收完的週」判斷，不偷看本週）。<br>白話：左邊那一列才是你真正的做法 —— 先挑出週線 Stage 2 的股票，才考慮進場；右邊是對照，看這個篩選到底有沒有加分。</div></div>';
   /* 對照 */
-  h+='<div class="card"><h2>④ 同一批進場，四種出場法</h2><div class="scroll"><table><tr><th>出場法</th><th>筆數</th><th>勝率</th><th>平均每筆</th><th>賺均</th><th>賠均</th><th>中位數</th><th>連虧</th><th>持有天</th></tr>'
+  h+='<div class="card"><h2>④ 同一批進場，七種出場法</h2><div class="scroll"><table><tr><th>出場法</th><th>筆數</th><th>勝率</th><th>平均每筆</th><th>賺均</th><th>賠均</th><th>中位數</th><th>連虧</th><th>持有天</th></tr>'
    +R.map(function(x,i){ var s=x.st; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win):'-')+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td><td>'+(s.n?sg(s.avgW):'-')+'</td><td>'+(s.n?sg(s.avgL):'-')+'</td><td>'+(s.n?sg(s.med):'-')+'</td><td>'+(s.n?s.streak:'-')+'</td><td>'+(s.n?s.hold.toFixed(0):'-')+'</td></tr>'; }).join('')
    +'</table></div><div class="note">「平均每筆」是扣掉成本後、每一筆交易平均賺賠多少 %，不同出場法可以直接比大小。</div></div>';
+  /* 獲利結構：賺多少 % */
+  var B=[['≤ −10%',-1e9,-0.0999],['−10%～0',-0.0999,0],['0～+10%',0,0.10],['+10%～+30%',0.10,0.30],['+30%～+60%',0.30,0.60],['> +60%',0.60,1e9]];
+  h+='<div class="card"><h2>⑤ 到底賺多少 %（不只看勝率）</h2><div class="scroll"><table><tr><th>出場法</th><th>平均每筆</th><th>賺的總和 ÷ 賠的總和</th><th>最大賺一筆</th><th>最大賠一筆</th><th>若每筆風險 1% 資金，累計約</th></tr>'
+   +R.map(function(x,i){ var s=x.st; if(!s.n) return ''; var cum=(s.total/ S)*0.01; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</td><td>'+(s.pf==null?'∞':s.pf.toFixed(2))+'</td><td>'+sg(s.mxW,0)+'</td><td>'+sg(s.mnL,1)+'</td><td class="'+(cum>0?'ok':'no')+'">'+sg(cum,0)+'</td></tr>'; }).join('')
+   +'</table></div><div class="note"><b>怎麼讀：</b>「賺的總和 ÷ 賠的總和」大於 1 才是整體賺錢，2 以上算很不錯。「若每筆風險 1% 資金」＝ 每一筆交易如果剛好賠一次停損就是帳戶賠 1%，把所有筆的 R 倍數加起來（不含複利，也假設各筆不同時重疊），讓你有個「五年下來帳戶大概多少 %」的概念；實際持倉重疊時風險會疊加，所以這是粗估。</div>'
+   +'<h2 style="margin-top:14px">每一筆的結局落在哪（占全部交易的 %）</h2><div class="scroll"><table><tr><th>出場法</th>'+B.map(function(b){return '<th>'+b[0]+'</th>';}).join('')+'</tr>'
+   +R.map(function(x,i){ var n=x.res.all.length; if(!n) return ''; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td>'+B.map(function(b){ var c=x.res.all.filter(function(t){return t.ret>b[1]&&t.ret<=b[2] || (b[1]<-1e8&&t.ret<=b[2]);}).length; return '<td>'+pct(c/n,0)+'</td>'; }).join('')+'</tr>'; }).join('')
+   +'</table></div><div class="note">看右邊兩欄（＋30% 以上）佔多少：分批賣出的目的就是讓這兩欄變大 —— 大贏家不被截掉，同時前面的獲利已經先落袋。</div></div>';
   /* 網格 */
   var stops=[0.07,0.10,0.15], tgts=[0.15,0.20,0.30,0.45];
-  h+='<div class="card"><h2>⑤ 停損 × 停利：敏感度</h2><div class="scroll"><table><tr><th>停損＼停利</th>'+tgts.map(function(t){return '<th>+'+Math.round(t*1000)/10+'%</th>';}).join('')+'</tr>';
+  h+='<div class="card"><h2>⑥ 停損 × 停利：敏感度（固定停利那一種）</h2><div class="scroll"><table><tr><th>停損＼停利</th>'+tgts.map(function(t){return '<th>+'+Math.round(t*1000)/10+'%</th>';}).join('')+'</tr>';
   stops.forEach(function(s){
     h+='<tr><td>−'+Math.round(s*1000)/10+'%</td>'+tgts.map(function(t){ var x=run({s:s,t:t}), st=stats(x.all,s); return '<td class="'+(st.n&&st.avg>0?'ok':'no')+'">'+(st.n?sg(st.avg,2)+'<div class="mut" style="font-size:11px;font-weight:400">勝率'+pct(st.win,0)+'・'+st.n+'筆</div>':'-')+'</td>'; }).join('')+'</tr>';
   });
   h+='</table></div><div class="note">每格上面是平均每筆報酬，下面是勝率和筆數。看的是「<b>是不是整片都差不多</b>」：只有一格特別好，多半是巧合（調參數）；整片都是負的，代表這個出場結構本身沒有邊。</div></div>';
   /* 出場原因＋年份 */
   var yrsT={}; main.res.all.forEach(function(x){ (yrsT[x.year]=yrsT[x.year]||[]).push(x); });
-  h+='<div class="card"><h2>⑥ 依年份</h2><table><tr><th>年</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
+  h+='<div class="card"><h2>⑦ 依年份</h2><table><tr><th>年</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
    +Object.keys(yrsT).sort().map(function(y){ var s=stats(yrsT[y],S); return '<tr><td>'+y+'</td><td>'+s.n+'</td><td>'+pct(s.win,0)+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</td></tr>'; }).join('')+'</table></div>';
   /* 集中度 */
   var tk=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];});
-  h+='<div class="card"><h2>⑦ 靠誰賺的</h2><div class="scroll"><table><tr><th>股票</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
+  h+='<div class="card"><h2>⑧ 靠誰賺的</h2><div class="scroll"><table><tr><th>股票</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
    +tk.map(function(t){ var s=stats(main.res.per[t],S); return '<tr><td>'+t+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win,0):'-')+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td></tr>'; }).join('')
    +'</table></div><div class="note">抽掉最大貢獻者 '+top+' 之後：'+st2.n+' 筆、勝率 '+pct(st2.win,0)+'、平均每筆 '+sg(st2.avg,2)+'、期望值 '+(st2.ev>=0?'+':'')+st2.ev.toFixed(2)+'R。差多少量的是策略脆不脆弱，不是那檔股票好不好；而且是事後看，不能拿來挑未來要買誰。</div></div>';
   h+='<div class="card note"><b>這份回測的限制（誠實講）</b><br>① 股票清單是你「今天」挑的，會偏好這幾年漲過的股票（倖存者偏誤）。② 進場是簡化版，不是 dna 的 pivot。③ 日線看不到盤中先後：同一天停損停利都碰到，我一律算停損先，這對 1:3 偏不利但較真實。④ 股價資料是 Yahoo 調整後的 OHLC，個別股票可能有缺漏。'+(bad.length?'<br>⚠ 沒抓到：'+bad.join('、'):'')+'</div>';
