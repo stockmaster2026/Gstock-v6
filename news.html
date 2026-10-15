@@ -321,11 +321,12 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.1</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.3</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
   <button class="tab active" onclick="go('market')" id="tab-market">📡 今日市場</button>
+  <button class="tab" onclick="go('intel')" id="tab-intel">🔎 個股即時情報</button>
   <button class="tab" onclick="go('watchlist')" id="tab-watchlist">👁 我的持倉</button>
   <button class="tab" onclick="go('radar')" id="tab-radar">⚡ 異動雷達</button>
   <button class="tab" onclick="go('fund')" id="tab-fund">📊 財報體檢</button>
@@ -359,6 +360,27 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <div id="mdig"></div>
   <div class="nl" id="ml"><span class="sp"></span></div>
 </div>
+<div class="panel" id="panel-intel">
+  <div class="ph">
+    <div class="ph-left"><div class="pt">STOCK INTEL</div><div class="pm">個股即時情報：打一檔代號，今天的 K 線、新聞、財報一次看完</div></div>
+    <div class="ph-btns"><button class="rb" id="ri" onclick="intelRun()">↻</button></div>
+  </div>
+  <div style="padding:12px 16px 0;">
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <input class="wi" id="ii" style="flex:1;font-size:16px;margin-bottom:0" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="打一檔代號，例如 QLYS" onkeydown="if(event.key==='Enter'){intelRun();}">
+      <button type="button" id="ibtn" onclick="intelRun()" style="flex:0 0 auto;background:#0066bb;color:#fff;border:0;border-radius:8px;padding:0 22px;font-size:15px;font-weight:700;cursor:pointer">查詢</button>
+    </div>
+    <div id="ihist" style="margin:8px 0 0"></div>
+    <div id="imsg" style="font-size:12.5px;color:#c62828;margin:6px 0 0"></div>
+  </div>
+  <div id="isum"></div>
+  <div id="ires"><div class="empty">打一檔你正在注意的股票，按「查詢」。這裡不用先放進任何板塊或盒子。</div></div>
+  <div class="fdis">
+    這一頁把<b>今天的走勢、近 7 日新聞、財報</b>放在同一個畫面，方便你快速弄清楚「這檔最近發生什麼事」。<br>
+    它只描述現況，<b>不回答能不能買</b> —— 買價與停損一律看 dna.html 的 pivot。<br>
+    財報與新聞用的是 Finnhub 的 API key（跟「財報體檢」同一把，貼過一次就會記住）；今天的價格與 K 線走自建 Worker。
+  </div>
+</div>
 <div class="panel" id="panel-watchlist">
   <div class="ph">
     <div class="ph-left"><div class="pt">MY WATCHLIST</div><div class="pm">持倉：四個盒子，每盒最多 15 檔，各自查詢</div></div>
@@ -381,7 +403,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   </div>
   <div id="rd-ui" style="padding:12px 16px 0;"></div>
   <div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#edf2f7;border-top:1px solid #c8d0dc;border-bottom:1px solid #c8d0dc;"><strong id="rm2">尚未掃描</strong></div>
-  <div id="radc"><div class="empty">選好要掃的盒子，按「開始掃描」</div></div>
+  <div id="radc"><div class="empty">勾選要掃的盒子、填「我的持股」、或選一個板塊，按「開始掃描」</div></div>
 </div>
 
 <div class="panel" id="panel-fund">
@@ -588,7 +610,8 @@ async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
   const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+k,{cache:'no-store'});
   if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market'){ loadMkt(); loadMarket(); loadPressure(); }
-if(t==='watchlist'||t==='radar') wgInit();}
+if(t==='watchlist'||t==='radar') wgInit();
+if(t==='intel'){ intelHistPaint(); }}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
    Jasmine 9/11 晚上實測: Google 那個未公開介面【整個 IP 被封】——
@@ -1146,6 +1169,7 @@ function wgLoad(){
     WG={boxes:[{n:'持股',s:old||'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL'},{n:'板塊 A',s:''},{n:'板塊 B',s:''},{n:'觀察',s:''}],active:0,rsel:[1,1,1,1]};
   }
   WG.active=WG.active||0;
+  try{ rdLoad(); }catch(e){}
 }
 function wgSave(){ try{ localStorage.setItem(WG_KEY,JSON.stringify(WG)); }catch(e){} }
 function wgAll(s){
@@ -1156,7 +1180,7 @@ function wgAll(s){
 function wgParse(s){ return wgAll(s).slice(0,15); }
 function wgInit(){
   if(WG_INIT){ wgRenderUI(); return; }
-  WG_INIT=true; wgLoad(); wgRenderUI();
+  WG_INIT=true; wgLoad(); rdLoad(); wgRenderUI();
 }
 function wgSecChunks(){
   var out=[];
@@ -1189,11 +1213,19 @@ function wgRenderUI(){
   document.querySelectorAll('.wres').forEach(function(el,i){ el.classList.toggle('on',i===WG.active); });
   var rd=document.getElementById('rd-ui');
   if(rd){
-    rd.innerHTML='<div class="wg-hint">雷達自動讀「我的持倉」四個盒子，不用另外輸入。勾選這次要掃哪幾盒：</div>'
+    var nh=wgAll(RD.hold).length;
+    var secOpts='<option value="">（不加）</option>'+(typeof SECTORS!=='undefined'?SECTORS.map(function(c){ return '<option value="'+c.k+'"'+(RD.sec===c.k?' selected':'')+'>'+esc2(c.n)+'（'+wgAll(c.s).length+' 檔）</option>'; }).join(''):'');
+    rd.innerHTML='<div class="wg-hint">雷達可以同時掃三種來源，勾選要掃的、按「開始掃描」：<br>① 「我的持倉」四個盒子　② 你的持股（下面自己打）　③ 整個板塊（下面下拉選）</div>'
       +'<div class="rd-ck">'+WG.boxes.map(function(x,i){
         var n=wgAll(x.s).length;
         return '<label><input type="checkbox" '+(WG.rsel[i]&&n?'checked':'')+(n?'':' disabled')+' onchange="wgRsel('+i+',this.checked)"> '+esc2(x.n)+'（'+n+'）</label>';
-      }).join('')+'</div>'
+      }).join('')
+      +'<label><input type="checkbox" id="rd-hcb" '+(RD.uh&&nh?'checked':'')+(nh?'':' disabled')+' onchange="rdUH(this.checked)"> 📌 我的持股<span id="rd-hn">（'+nh+'）</span></label></div>'
+      +'<div class="wg-hint" style="margin-top:10px"><b>📌 我的持股</b>：打你現在手上的股票，逗號或空白分開。這一格跟上面四個盒子分開，打完會自動記住。</div>'
+      +'<textarea id="rd-hold" class="wi" style="min-height:54px;font-size:14px" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="例如：MU, SNDK, PENG, HPE" oninput="rdHold(this.value)">'+esc2(RD.hold)+'</textarea>'
+      +'<div class="wg-hint" id="rd-hh">'+(nh>30?'<span style="color:#c62828">⚠ 你填了 '+nh+' 檔，只會掃前 30 檔。</span>':'目前 '+nh+' 檔（上限 30）。')+'</div>'
+      +'<div class="wg-hint" style="margin-top:6px"><b>📁 加掃一整個板塊</b>（不用先放進盒子；會跟上面勾的一起掃）：</div>'
+      +'<select class="wi" style="font-size:14px" onchange="rdSec(this.value)">'+secOpts+'</select>'
       +'<button class="fb" onclick="wgRadar()">開始掃描</button>';
   }
 }
@@ -1215,6 +1247,23 @@ function wgSector(v){
   wgSave(); wgRenderUI();
 }
 function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
+/* ═══ v6.3 雷達的另外兩個來源：「我的持股」框＋「整個板塊」（Jasmine 10/15）═══
+   原本雷達只讀「我的持倉」四個盒子；盒子要先一個一個帶入板塊才有東西可掃。
+   現在多兩個來源，跟四個盒子分開存、可以一起勾：
+   ① 📌 我的持股：自己打（最多 30 檔），自動記住
+   ② 📁 整個板塊：下拉選一個，直接掃整份名單，不必先塞進盒子 */
+var RD={hold:'',sec:'',uh:1};
+function rdLoad(){ try{ var o=JSON.parse(localStorage.getItem('rd_v1')||'null'); if(o) RD={hold:o.hold||'',sec:o.sec||'',uh:o.uh==null?1:o.uh}; }catch(e){} }
+function rdSave(){ try{ localStorage.setItem('rd_v1',JSON.stringify(RD)); }catch(e){} }
+function rdHold(v){
+  RD.hold=v; rdSave();
+  var n=wgAll(v).length, cb=document.getElementById('rd-hcb'), tx=document.getElementById('rd-hn'), h=document.getElementById('rd-hh');
+  if(cb){ cb.disabled=!n; cb.checked=!!(RD.uh&&n); }
+  if(tx) tx.textContent='（'+n+'）';
+  if(h) h.innerHTML= n>30 ? '<span style="color:#c62828">⚠ 你填了 '+n+' 檔，只會掃前 30 檔。</span>' : ('目前 '+n+' 檔（上限 30）。');
+}
+function rdUH(on){ RD.uh=on?1:0; rdSave(); }
+function rdSec(v){ RD.sec=v; rdSave(); }
 function sleep2(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
 async function apiR(ep){
   try{ return await api(ep); }
@@ -1405,9 +1454,106 @@ async function wgQuery(i){
 }
 
 
+/* ═══ 個股即時情報（v6.2）═══════════════════════════════════════
+   Jasmine 10/15：想要一個輸入區，打一檔股票就能快速看到相關新聞＋財報，
+   不用先放進板塊或持倉盒子。
+   做法：完全重用已驗證的零件 —— yfStat（今天價格）、kBar／wgStock（K 棒白話＋新聞＋翻譯＋收起）、
+   fundCard（財報體檢那張卡，含公司速寫），這裡只負責串起來、並在最上面加一個「一眼看」摘要。
+   ⚠ 摘要只描述現況（財報還有幾天、近四季有沒有超預期、有沒有新聞），不給買賣判決。 */
+var INTEL_BUSY=false, INTEL_HK='intel_hist_v1';
+function intelHist(){ try{ var a=JSON.parse(localStorage.getItem(INTEL_HK)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function intelHistAdd(t){ try{ var a=intelHist().filter(function(x){return x!==t;}); a.unshift(t); localStorage.setItem(INTEL_HK,JSON.stringify(a.slice(0,10))); }catch(e){} intelHistPaint(); }
+function intelHistPaint(){
+  var el=document.getElementById('ihist'); if(!el) return;
+  var a=intelHist();
+  el.innerHTML=a.length?('<span style="font-size:11.5px;color:#718096">最近查過：</span>'+a.map(function(t){
+    return '<button type="button" onclick="intelRun(\''+t+'\')" style="margin:2px 4px 2px 0;background:#eef2f7;border:1px solid #c8d0dc;border-radius:14px;padding:4px 11px;font-size:12.5px;font-weight:700;color:#12385e;cursor:pointer">'+t+'</button>'; }).join('')):'';
+}
+function intelSum(sym,st,news,R,sup){
+  var L=[];
+  /* 1 今天 */
+  if(st&&!st.err){
+    var k=kBar(st);
+    L.push(['今天','<b>'+(st.chg>=0?'+':'')+st.chg.toFixed(2)+'%</b>，收 $'+st.c.toFixed(2)+'（資料日 '+st.date+'）。K 棒看起來：<b>'+k.tag+'</b>。']);
+  }else{
+    L.push(['今天','價格抓不到（'+esc2(st&&st.err||'未知')+'），其他資料照常。']);
+  }
+  /* 2 財報日 */
+  var d=R&&R.days;
+  if(d==null) L.push(['財報日','近 4 個月內沒有查到已排定的財報日（可能還沒公布日期，或這次沒抓到）。']);
+  else{
+    var rd=d<=0?'今天或剛公布':(d+' 天後（'+(R.date||'')+'）');
+    var say=d<=0?'數字剛出來，通常這幾天波動最大，先看數字再看反應。'
+           :d<=7?'<b>一週內</b>。財報公布日常出現比平常大很多的跳空，若手上有部位，要先想好願不願意抱著過財報。'
+           :d<=21?'三週內，提早留意即可。':'還有一段時間，暫時不用管。';
+    L.push(['下次財報',rd+'。'+say]);
+  }
+  /* 3 近四季超預期 */
+  var b=0,c=0;
+  if(Array.isArray(sup)){ for(var i=0;i<Math.min(4,sup.length);i++){ var a=num(sup[i].actual), e=num(sup[i].estimate); if(a!==null&&e!==null&&e!==0){ c++; if(a>=e) b++; } } }
+  if(c){
+    var rs=(b===c)?'每一季都達到或超過分析師預期，交成績的紀錄很穩。'
+          :(b/c>=0.75)?'大部分時候都超過預期。'
+          :(b/c>=0.5)?'一半一半，不算穩定。':'常讓分析師失望，財報日風險比較高。';
+    L.push(['近 '+c+' 季成績','<b>'+b+'／'+c+'</b> 季達到或超過預期。'+rs]);
+  }
+  /* 4 新聞 */
+  if(news==null) L.push(['新聞','這次沒抓到（可能是額度，過一會兒再按 ↻）。']);
+  else if(!news.length) L.push(['新聞','近 7 日<b>沒有新聞</b>。今天的漲跌多半不是消息驅動。']);
+  else L.push(['新聞','近 7 日 <b>'+news.length+'</b> 則，在下面。標題可按「🌐 翻譯」。']);
+  return '<div style="margin:12px 16px 4px;background:#f0f6fc;border:1px solid #b9d3ee;border-radius:10px;padding:11px 14px">'
+    +'<div style="font-size:15px;font-weight:800;color:#12385e;margin-bottom:6px">$'+esc2(sym)+' 一眼看</div>'
+    +L.map(function(x){ return '<div style="font-size:13.5px;line-height:1.75;color:#1a202c"><span style="display:inline-block;min-width:84px;color:#5a6b7d;font-weight:700">'+x[0]+'</span>'+x[1]+'</div>'; }).join('')
+    +'</div>';
+}
+async function intelRun(sym){
+  if(INTEL_BUSY) return;
+  var inp=document.getElementById('ii'), msg=document.getElementById('imsg');
+  sym=String(sym||inp.value||'').split(/[,\s]+/).filter(Boolean)[0]||'';
+  sym=sym.replace(/^\$/,'').toUpperCase();
+  msg.textContent='';
+  if(!sym){ msg.textContent='先打一檔股票代號。'; inp.focus(); return; }
+  inp.value=sym;
+  if(!KEY()){ msg.textContent='還沒有 Finnhub key：先到「📊 財報體檢」貼一次 key（只存在這台裝置），回來就能用。'; return; }
+  INTEL_BUSY=true; spn('ri',true); document.getElementById('ibtn').disabled=true;
+  var out=document.getElementById('ires'); document.getElementById('isum').innerHTML='';
+  var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+  var cf=to, ct=new Date(Date.now()+120*86400000).toISOString().split('T')[0];
+  try{
+    out.innerHTML='<div class="empty">查 $'+esc2(sym)+' 的價格與 K 棒…</div>';
+    var stP=yfStat(sym).catch(function(e){ return {err:e.message}; });
+    var st=await stP;
+    var news=null, m=null, cal=null, rec=null, sup=null, q=null, bad=[];
+    out.innerHTML='<div class="empty">抓新聞…</div>';
+    try{ var d=await apiR('/company-news?symbol='+sym+'&from='+from+'&to='+to); news=Array.isArray(d)?d:[]; }catch(e){ news=null; }
+    await sleep2(350);
+    out.innerHTML='<div class="empty">抓財報資料…</div>';
+    try{ var dm=await apiR('/stock/metric?symbol='+sym+'&metric=all'); m=dm&&dm.metric?dm.metric:null;
+         if(m&&dm.series&&dm.series.quarterly&&dm.series.quarterly.grossMargin&&dm.series.quarterly.grossMargin.length){ var g0=dm.series.quarterly.grossMargin[0]; if(g0&&g0.v!=null) m._gmQ=g0.v*100; } }
+    catch(e){ bad.push('基本財務指標（'+e.message+'）'); }
+    await sleep2(350);
+    try{ cal=await apiR('/calendar/earnings?from='+cf+'&to='+ct+'&symbol='+sym); }catch(e){ bad.push('財報日期（'+e.message+'）'); }
+    await sleep2(350);
+    try{ rec=await apiR('/stock/recommendation?symbol='+sym); }catch(e){ bad.push('分析師（'+e.message+'）'); }
+    await sleep2(350);
+    try{ sup=await apiR('/stock/earnings?symbol='+sym); }catch(e){ bad.push('財報超預期（'+e.message+'）'); }
+    await sleep2(350);
+    try{ q=await apiR('/quote?symbol='+sym); }catch(e){ bad.push('報價（'+e.message+'）'); }
+    var R=fundCard(sym,m,cal,rec,sup,q), fh=R.html;
+    if(bad.length) fh=fh.replace(/<\/div>$/,'<div class="fnote fwarn">⚠ 這幾項沒抓到：'+bad.join('、')+'</div></div>');
+    document.getElementById('isum').innerHTML=intelSum(sym,st,news,R,sup);
+    out.innerHTML=wgStock(sym,st,news)
+      +'<div style="margin:14px 16px 6px;font-size:12.5px;font-weight:800;color:#12385e;letter-spacing:.5px">📊 財報與公司體質（同「財報體檢」那張卡）</div>'+fh
+      +'<div style="height:12px"></div>';
+    intelHistAdd(sym);
+  }catch(e){
+    out.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>';
+  }
+  INTEL_BUSY=false; spn('ri',false); document.getElementById('ibtn').disabled=false;
+}
 /* 股票代碼輸入框：自動轉大寫、關閉 iPad 自動更正（它會把 ionq 改成英文字）*/
 document.addEventListener('input',function(e){
-  var el=e.target; if(!el||(el.id!=='wg-syms'&&el.id!=='fi')) return;
+  var el=e.target; if(!el||(el.id!=='wg-syms'&&el.id!=='fi'&&el.id!=='ii'&&el.id!=='rd-hold')) return;
   var u=el.value.toUpperCase();
   if(u!==el.value){ var a=el.selectionStart,b=el.selectionEnd; el.value=u; try{el.setSelectionRange(a,b);}catch(x){} }
 },true);
@@ -1438,6 +1584,13 @@ async function loadPressure(){
   }catch(e){ why.innerHTML='<div class="mkt"><div class="mkt-v r">市場溫度載入失敗<div class="sub">'+esc2(e.message)+'</div></div></div>'; }
   PR_BUSY=false;
 }
+/* v6.3：把「在 20 日線上方 0.1%」換成看得到數字的版本（Jasmine 10/15：太抽象，要看到實際價位與差多少）*/
+function maTxt(x){
+  if(!x||x.ma20==null||x.c==null) return '';
+  var gap=x.c-x.ma20, up=gap>=0, pct=Math.abs(x.dMA!=null?x.dMA:(gap/x.ma20*100));
+  var near=pct<0.5?'（差距很小：只要一個小漲或小跌就會翻面）':'';
+  return '現價 <b>$'+x.c.toFixed(2)+'</b>，20 日線 <b>$'+x.ma20.toFixed(2)+'</b>，在它'+(up?'上方':'下方')+' <b>$'+Math.abs(gap).toFixed(2)+'</b>（'+pct.toFixed(2)+'%）'+near;
+}
 function pressWhy(el,S){
   var spy=S['SPY'], q=S['QQQ'], iw=S['IWM'], vx=S['^VIX'], ty=S['^TNX'], dx=S['DX-Y.NYB'];
   if(!spy){ el.innerHTML='<div class="mkt"><div class="mkt-v r">抓不到 SPY</div></div>'; return; }
@@ -1459,7 +1612,8 @@ function pressWhy(el,S){
     cls='g'; big='🟢 今天'+sev+'（SPY '+pf(spy.chg)+'%）';
     sub.push(dy!=null && dy<=-6 ? '殖利率回落約 '+Math.abs(dy).toFixed(0)+' 個基點，對成長股是順風。' : '看不出單一原因，沒有需要特別解釋的壓力。');
   }
-  var rows=[['SPY 大盤',spy.chg,'%'],['QQQ 科技',q&&q.chg,'%'],['IWM 小型股',iw&&iw.chg,'%'],['VIX 恐慌指數',vxc,'%',vx&&('水位 '+vx.c.toFixed(1))],
+  function _mb(x){ return x&&x.ma20!=null?('現價 $'+x.c.toFixed(2)+' · 20 日線 $'+x.ma20.toFixed(2)+' · '+(x.c>=x.ma20?'上方 ':'下方 ')+'$'+Math.abs(x.c-x.ma20).toFixed(2)):''; }
+  var rows=[['SPY 大盤',spy.chg,'%',_mb(spy)],['QQQ 科技',q&&q.chg,'%',_mb(q)],['IWM 小型股',iw&&iw.chg,'%',_mb(iw)],['VIX 恐慌指數',vxc,'%',vx&&('水位 '+vx.c.toFixed(1))],
             ['10 年期殖利率',dy,'bp',ty&&('目前 '+ty.c.toFixed(2)+'%')],['美元指數',dxy,'%',dx&&('目前 '+dx.c.toFixed(1))]];
   var tb='<table class="mkt-t"><tr><th>項目</th><th>今天</th><th>備註</th></tr>'+rows.map(function(r){
     if(r[1]==null) return '<tr><td class="nm">'+r[0]+'</td><td>—</td><td>沒抓到</td></tr>';
@@ -1468,7 +1622,7 @@ function pressWhy(el,S){
   }).join('')+'</table>';
   /* 要觀察的條件（不是預測）*/
   var w=[];
-  w.push('SPY 要站回 20 日線（約 <b>$'+spy.ma20.toFixed(2)+'</b>，現在在它'+(spy.dMA>=0?'上方 ':'下方 ')+Math.abs(spy.dMA).toFixed(1)+'%）才算短期止跌。');
+  w.push(spy.dMA>=0?'SPY 要守住 20 日線才算短期還穩：'+maTxt(spy)+'。':'SPY 要站回 20 日線才算短期止跌：'+maTxt(spy)+'。');
   if(vx && vx.c>=20) w.push('VIX 回到 20 以下，代表恐慌退潮（現在 '+vx.c.toFixed(1)+'）。');
   if(dy!=null && dy>0) w.push('殖利率要停止往上；只要還在漲，成長股的壓力就還在。');
   el.innerHTML='<div class="mkt"><div class="mkt-h"><div class="t">🔎 今天為什麼動　·　資料日 '+spy.date+'</div>'
@@ -1481,9 +1635,9 @@ function pressGauge(el,S,st,all){
   var okL=all.filter(function(t){return st[t]&&!st[t].err&&st[t].ab;});
   var n=okL.length, flags=[];
   function F(on,t,r){ flags.push({on:on,t:t,r:r}); }
-  if(spy) F(spy.dMA<0,'SPY 與 20 日線',spy.dMA<0?'在 20 日線下方 '+Math.abs(spy.dMA).toFixed(1)+'%，大盤短線轉弱':'在 20 日線上方 '+spy.dMA.toFixed(1)+'%，大盤短線還撐著');
-  if(q)   F(q.dMA<0,'QQQ（科技）與 20 日線',q.dMA<0?'在 20 日線下方 '+Math.abs(q.dMA).toFixed(1)+'%，科技股短線轉弱':'在 20 日線上方 '+q.dMA.toFixed(1)+'%');
-  if(iw)  F(iw.dMA<0,'IWM（小型股）與 20 日線',iw.dMA<0?'在 20 日線下方 '+Math.abs(iw.dMA).toFixed(1)+'%，小型股短線轉弱':'在 20 日線上方 '+iw.dMA.toFixed(1)+'%');
+  if(spy) F(spy.dMA<0,'SPY（大盤）與 20 日線',maTxt(spy)+(spy.dMA<0?' —— 大盤短線轉弱':' —— 大盤短線還撐著'));
+  if(q)   F(q.dMA<0,'QQQ（科技）與 20 日線',maTxt(q)+(q.dMA<0?' —— 科技股短線轉弱':''));
+  if(iw)  F(iw.dMA<0,'IWM（小型股）與 20 日線',maTxt(iw)+(iw.dMA<0?' —— 小型股短線轉弱':''));
   var p0=null,p5=null,p10=null,nb=0;
   if(n>=3){
     var c=function(k){ return okL.filter(function(t){return st[t].ab[k];}).length/n*100; };
@@ -1513,11 +1667,15 @@ var RD_BUSY=false;
 function recShare(r){ var tot=r.strongBuy+r.buy+r.hold+r.sell+r.strongSell; return tot?{tot:tot,buy:(r.strongBuy+r.buy)/tot*100,sell:(r.sell+r.strongSell)/tot*100,r:r}:null; }
 async function wgRadar(){
   if(RD_BUSY) return;
-  var sel=[]; WG.boxes.forEach(function(b,i){ if(WG.rsel[i] && wgAll(b.s).length) sel.push(i); });
+  var sel=[];   /* 每一組：{n:名稱, list:代號[]}；組別來源＝盒子／我的持股／整個板塊 */
+  WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
+  if(RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
+  if(RD.sec && typeof SECTORS!=='undefined'){ var sc=SECTORS.filter(function(c){return c.k===RD.sec;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }
   var set={}, all=[];
-  sel.forEach(function(i){ wgParse(WG.boxes[i].s).forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
+  sel.forEach(function(g){ g.list.forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
   var box=document.getElementById('radc'), msg=document.getElementById('rm2');
-  if(!all.length){ box.innerHTML='<div class="empty">沒有選到有股票的盒子</div>'; return; }
+  if(!all.length){ box.innerHTML='<div class="empty">還沒有選到任何要掃的股票：勾選盒子、填「我的持股」、或選一個板塊</div>'; return; }
+  var CAP=70, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
   RD_BUSY=true; spn('rr',true);
   var rec={}, cal=null, calErr=null;
   try{
@@ -1538,7 +1696,7 @@ async function wgRadar(){
       await sleep2(1100);
     }
     wgRadarRender(sel,all,stats,cal,calErr,rec,true);
-    msg.textContent='掃描完成：'+all.length+' 檔（'+sel.map(function(i){return WG.boxes[i].n;}).join('、')+'）';
+    msg.textContent='掃描完成：'+all.length+' 檔（'+sel.map(function(g){return g.n;}).join('、')+'）'+(capped?'。⚠ 一次最多掃 '+CAP+' 檔，後面 '+capped+' 檔沒掃，請分次掃。':'');
   }catch(e){ box.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>'; msg.textContent='掃描失敗'; }
   RD_BUSY=false; spn('rr',false);
 }
@@ -1580,16 +1738,16 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   var nhMore=nh.length>8?nh.length-8:0; nh=nh.slice(0,8); if(nhMore) nh.push('另外還有 '+nhMore+' 檔也在 3% 內（只列最接近的 8 檔）。');
   H+=sec('📍 逼近一年高點（3% 內）','離 52 週最高價 3% 以內。接近前高 = 接下來要嘛突破、要嘛被賣壓擋下，值得盯。',nh,'沒有股票靠近一年高點。');
   /* 4 板塊同步 */
-  var gr=sel.map(function(i){
-    var L=wgParse(WG.boxes[i].s).filter(ok); if(!L.length) return null;
+  var gr=sel.map(function(g){
+    var L=g.list.filter(ok); if(!L.length) return null;
     var up=L.filter(function(t){return stats[t].chg>0;}).length, ab=L.filter(function(t){return stats[t].dMA>=0;}).length;
     var avg=L.reduce(function(a,t){return a+stats[t].chg;},0)/L.length;
     var srt=L.slice().sort(function(a,b){return stats[b].chg-stats[a].chg;});
     var rd = up/L.length>=0.75?'整組一起走強':up/L.length<=0.25?'整組一起走弱':'各走各的，沒有一致方向';
-    return '<span class="sy">'+esc2(WG.boxes[i].n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b>'+rd+'</b>。'
+    return '<span class="sy">'+esc2(g.n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b>'+rd+'</b>。'
       +'<br>領漲 $'+srt[0]+' '+(stats[srt[0]].chg>=0?'+':'')+stats[srt[0]].chg.toFixed(1)+'%；落後 $'+srt[srt.length-1]+' '+(stats[srt[srt.length-1]].chg>=0?'+':'')+stats[srt[srt.length-1]].chg.toFixed(1)+'%';
   }).filter(Boolean);
-  H+=sec('🧭 盒內同步度','同一盒的股票是一起動還是各走各的。一起轉強通常是板塊資金在動；只有一檔強，多半是個股消息。',gr,'沒有資料。');
+  H+=sec('🧭 各組同步度','同一組（盒子／持股／板塊）的股票是一起動還是各走各的。一起轉強通常是板塊資金在動；只有一檔強，多半是個股消息。',gr,'沒有資料。');
   /* 5 分析師評等變化 */
   var an=[], pend=0;
   all.forEach(function(t){
