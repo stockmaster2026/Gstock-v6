@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>1:3 回測 rr-test v1</title>
+<title>1:3 回測 rr-test v7</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:14px 16px 60px;max-width:980px;margin:auto}
@@ -39,13 +39,15 @@ table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}th,td{
 <div><label>停利 %</label><input id="T" type="number" value="30"></div>
 </div>
 <div class="row"><label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="st2" checked style="width:auto"> 只在「週線 Stage 2」時才進場（你的選股前提）</label></div>
-<div class="row"><button class="sec" onclick="fillAll()">帶入全部板塊（約 150 檔）</button></div>
-<div class="row"><button id="go" onclick="runAll()">開始回測</button><button class="sec" id="cp" style="display:none" onclick="copyRep()">複製結果文字</button></div>
+<div class="row" style="margin-top:14px"><button id="go_mine" onclick="runAll('mine')" style="background:#0b61b3">🅰 跑我的名單（全部板塊約 180 檔，要幾分鐘）</button></div>
+<div class="row"><button id="go_ctrl" onclick="runAll('ctrl')" style="background:#6b3fa0">🅱 跑對照組（85 檔普通大型股，比較快）</button></div>
+<div class="note">兩個按鈕用上面同一組設定，結果各自存著、不會互相蓋掉；兩份都跑完，最上面會自動出現並排比較和白話結論。<b>想測自己的股票</b>：在上面框框打股票，按下面這顆。</div>
+<div class="row"><button class="sec" id="go_cust" onclick="runAll('cust')">跑上面框框裡的清單（自訂）</button><button class="sec" onclick="fillAll()">把全部板塊填進框框</button><button class="sec" id="cp" style="display:none" onclick="copyRep()">複製結果文字</button></div>
 <div class="note">通過標準（跑之前寫死，沿用你 cheat-test 的）：樣本 ≥30、每筆期望值 &gt; +0.3R（R＝停損幅度）、中位數報酬為正、最大連虧 ≤6。<br>
 假設：進場＝訊號隔天開盤；盤中同一天停損和停利都碰到→算停損先（保守）；開盤直接跳空穿過停損→照開盤價賠（不是剛好賠 10%）；每邊成本 0.1%；每檔同一時間只持一筆。</div>
 <div id="log"></div>
 </div>
-<div id="out"></div>
+<div id="cmp"></div><div id="out_mine"></div><div id="out_ctrl"></div><div id="out_cust"></div>
 <script>
 /* ── 引擎（純函數，Node 與瀏覽器共用）── */
 var COST = 0.001;   /* 每邊 0.1% */
@@ -181,11 +183,15 @@ async function fetchBars(sym,range){
   return days.map(function(d){return by[d];});
 }
 var REP='';
-async function runAll(){
-  var syms=[],seen={}; $('tk').value.toUpperCase().split(/[,\s]+/).forEach(function(x){ x=x.replace(/^\$/,''); if(x&&!seen[x]){seen[x]=1;syms.push(x);} });
+var CTRL='JPM BAC WFC C GS MS BLK SCHW AXP V MA COF USB PNC TFC WMT COST TGT HD LOW NKE SBUX MCD CMG KO PEP PG CL KMB MDLZ MO PM DIS NFLX CMCSA T VZ TMUS CAT DE HON UPS FDX UNP CSX GE MMM EMR ITW XOM CVX COP EOG SLB OXY LIN SHW APD ECL DD DOW PLD AMT O SPG EQIX PSA UNH JNJ PFE MRK ABT DAL UAL CCL RCL F GM MAR BKNG ABNB';
+var SUM={}, REPS={}, BUSY=false, TITLES={mine:'🅰 我的名單（news.html 全部板塊）',ctrl:'🅱 對照組（85 檔普通大型股，刻意沒有 AI／半導體／電力／國防）',cust:'自訂清單（上面框框裡的股票）'};
+async function runAll(which){
+  if(BUSY) return; which=which||'cust';
+  var OUTEL=$('out_'+which), srcTxt=(which==='mine')?ALL_SECT:(which==='ctrl')?CTRL:$('tk').value;
+  var syms=[],seen={}; srcTxt.toUpperCase().split(/[,\s]+/).forEach(function(x){ x=x.replace(/^\$/,''); if(x&&!seen[x]){seen[x]=1;syms.push(x);} });
   var st2=$('st2').checked, yrs=+$('yrs').value, mode=$('mode').value, S=(+$('S').value)/100, T=(+$('T').value)/100;
   if(!syms.length||!(S>0)||!(T>0)){ log('請填股票、停損、停利'); return; }
-  $('go').disabled=true; $('out').innerHTML=''; $('cp').style.display='none';
+  setBusy(true); OUTEL.innerHTML=''; delete SUM[which]; renderCmp();
   var range=(yrs+1)+'y', P={}, bad=[], done=0;
   for(var j=0;j<syms.length;j+=4){
     await Promise.all(syms.slice(j,j+4).map(async function(t){
@@ -215,8 +221,8 @@ async function runAll(){
   ];
   var R=rules.map(function(r){ var x=run(r); return {r:r,res:x,st:stats(x.all,r.s)}; });
   var main=R[0], mn=main.st;
-  var h='';
-  if(!mn.n){ $('out').innerHTML='<div class="card">沒有任何訊號/交易。換一種進場方式或加股票。</div>'; $('go').disabled=false; return; }
+  var h='<div class="card" style="background:#0b61b3;color:#fff;font-weight:800">'+TITLES[which]+'</div>';
+  if(!mn.n){ OUTEL.innerHTML='<div class="card">'+TITLES[which]+'：沒有任何訊號/交易。換一種進場方式或加股票。</div>'; setBusy(false); return; }
   /* 集中度 */
   var tot={}; main.res.all.forEach(function(x){ tot[x.t]=(tot[x.t]||0)+x.ret; });
   var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];})[0];
@@ -253,9 +259,9 @@ async function runAll(){
    +'</table></div><div class="note">「平均每筆」是扣掉成本後、每一筆交易平均賺賠多少 %，不同出場法可以直接比大小。</div></div>';
   /* 獲利結構：賺多少 % */
   var B=[['≤ −10%',-1e9,-0.0999],['−10%～0',-0.0999,0],['0～+10%',0,0.10],['+10%～+30%',0.10,0.30],['+30%～+60%',0.30,0.60],['> +60%',0.60,1e9]];
-  h+='<div class="card"><h2>⑤ 到底賺多少 %（不只看勝率）</h2><div class="scroll"><table><tr><th>出場法</th><th>平均每筆</th><th>賺的總和 ÷ 賠的總和</th><th>最大賺一筆</th><th>最大賠一筆</th><th>若每筆風險 1% 資金，累計約</th></tr>'
-   +R.map(function(x,i){ var s=x.st; if(!s.n) return ''; var cum=(s.total/ S)*0.01; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</td><td>'+(s.pf==null?'∞':s.pf.toFixed(2))+'</td><td>'+sg(s.mxW,0)+'</td><td>'+sg(s.mnL,1)+'</td><td class="'+(cum>0?'ok':'no')+'">'+sg(cum,0)+'</td></tr>'; }).join('')
-   +'</table></div><div class="note"><b>怎麼讀：</b>「賺的總和 ÷ 賠的總和」大於 1 才是整體賺錢，2 以上算很不錯。「若每筆風險 1% 資金」＝ 每一筆交易如果剛好賠一次停損就是帳戶賠 1%，把所有筆的 R 倍數加起來（不含複利，也假設各筆不同時重疊），讓你有個「五年下來帳戶大概多少 %」的概念；實際持倉重疊時風險會疊加，所以這是粗估。</div>'
+  h+='<div class="card"><h2>⑤ 到底賺多少 %（不只看勝率）</h2><div class="scroll"><table><tr><th>出場法</th><th>平均每筆</th><th>賺的總和 ÷ 賠的總和</th><th>最大賺一筆</th><th>最大賠一筆</th><th>平均每筆是幾 R</th><th>每年約幾筆訊號</th></tr>'
+   +R.map(function(x,i){ var s=x.st; if(!s.n) return ''; var yearsN=Math.max(1,yrs); return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</td><td>'+(s.pf==null?'∞':s.pf.toFixed(2))+'</td><td>'+sg(s.mxW,0)+'</td><td>'+sg(s.mnL,1)+'</td><td>'+(s.ev>=0?'+':'')+s.ev.toFixed(2)+'R</td><td>'+Math.round(s.n/yearsN)+'</td></tr>'; }).join('')
+   +'</table></div><div class="note"><b>怎麼讀：</b>「賺的總和 ÷ 賠的總和」大於 1 才是整體賺錢，2 以上算很不錯。「幾 R」＝ 以停損幅度為 1 單位：每筆平均賺 0.5R，代表平均每筆賺的是「停損金額的一半」。<b>不要把所有筆加總當成帳戶報酬</b> —— 回測是把全部股票所有訊號都算進來，現實中你不可能同時持有這麼多筆。「每年約幾筆」讓你知道這是多大的機會池。</div>'
    +'<h2 style="margin-top:14px">每一筆的結局落在哪（占全部交易的 %）</h2><div class="scroll"><table><tr><th>出場法</th>'+B.map(function(b){return '<th>'+b[0]+'</th>';}).join('')+'</tr>'
    +R.map(function(x,i){ var n=x.res.all.length; if(!n) return ''; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td>'+B.map(function(b){ var c=x.res.all.filter(function(t){return t.ret>b[1]&&t.ret<=b[2] || (b[1]<-1e8&&t.ret<=b[2]);}).length; return '<td>'+pct(c/n,0)+'</td>'; }).join('')+'</tr>'; }).join('')
    +'</table></div><div class="note">看右邊兩欄（＋30% 以上）佔多少：分批賣出的目的就是讓這兩欄變大 —— 大贏家不被截掉，同時前面的獲利已經先落袋。</div></div>';
@@ -276,10 +282,41 @@ async function runAll(){
    +tk.map(function(t){ var s=stats(main.res.per[t],S); return '<tr><td>'+t+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win,0):'-')+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td></tr>'; }).join('')
    +'</table></div><div class="note">抽掉最大貢獻者 '+top+' 之後：'+st2.n+' 筆、勝率 '+pct(st2.win,0)+'、平均每筆 '+sg(st2.avg,2)+'、期望值 '+(st2.ev>=0?'+':'')+st2.ev.toFixed(2)+'R。差多少量的是策略脆不脆弱，不是那檔股票好不好；而且是事後看，不能拿來挑未來要買誰。</div></div>';
   h+='<div class="card note"><b>這份回測的限制（誠實講）</b><br>① 股票清單是你「今天」挑的，會偏好這幾年漲過的股票（倖存者偏誤）。② 進場是簡化版，不是 dna 的 pivot。③ 日線看不到盤中先後：同一天停損停利都碰到，我一律算停損先，這對 1:3 偏不利但較真實。④ 股價資料是 Yahoo 調整後的 OHLC，個別股票可能有缺漏。'+(bad.length?'<br>⚠ 沒抓到：'+bad.join('、'):'')+'</div>';
-  $('out').innerHTML=h; $('go').disabled=false; log('完成：'+Object.keys(P).length+' 檔');
-  REP='1:3 回測 '+(st2?'Stage2 ':'')+mode+' '+yrs+'年 停損'+S100+'% 停利'+T100+'%\n'+main.res.all.length+'筆 勝率'+pct(mn.win)+' 平均每筆'+sg(mn.avg,2)+' EV '+mn.ev.toFixed(2)+'R 中位'+sg(mn.med)+' 連虧'+mn.streak+' → '+(pass?'通過':'不通過')+'\n'+R.map(function(x){return x.r.name+': n='+x.st.n+' 勝率'+pct(x.st.win,0)+' 平均'+sg(x.st.avg,2);}).join('\n');
+  OUTEL.innerHTML=h; setBusy(false); log('完成：'+TITLES[which]+'，'+Object.keys(P).length+' 檔');
+  SUM[which]={n:Object.keys(P).length, R:R.map(function(x){return {name:x.r.name,st:x.st};}), pass:pass, sa:sa, sb:sb, sc:sc, mode:mode, yrs:yrs, S100:S100, T100:T100, bad:bad.length};
+  renderCmp();
+  REPS[which]=TITLES[which]+'\n1:3 回測 '+(st2?'Stage2 ':'')+mode+' '+yrs+'年 停損'+S100+'% 停利'+T100+'%\n'+main.res.all.length+'筆 勝率'+pct(mn.win)+' 平均每筆'+sg(mn.avg,2)+' EV '+mn.ev.toFixed(2)+'R 中位'+sg(mn.med)+' 連虧'+mn.streak+' → '+(pass?'通過':'不通過')+'\n'+R.map(function(x){return x.r.name+': n='+x.st.n+' 勝率'+pct(x.st.win,0)+' 平均'+sg(x.st.avg,2);}).join('\n');
   $('cp').style.display='inline-block';
 }
 function chk(a,b,c,ok){ return '<tr><td>'+a+'</td><td>'+b+'</td><td>'+c+'</td><td class="'+(ok?'ok':'no')+'">'+(ok?'✓':'✗')+'</td></tr>'; }
-function copyRep(){ try{ navigator.clipboard.writeText(REP); $('cp').textContent='已複製'; }catch(e){ prompt('複製：',REP); } }
+function setBusy(b){ BUSY=b; ['go_mine','go_ctrl','go_cust'].forEach(function(i){ $(i).disabled=b; }); }
+function copyRep(){ var REP=['mine','ctrl','cust'].map(function(k){return REPS[k]||'';}).filter(Boolean).join('\n\n')+(window.CMPTXT?'\n\n'+window.CMPTXT:''); try{ navigator.clipboard.writeText(REP); $('cp').textContent='已複製'; }catch(e){ prompt('複製：',REP); } }
+function renderCmp(){
+  var A=SUM.mine, B=SUM.ctrl, el=$('cmp'); window.CMPTXT='';
+  if(!A&&!B){ el.innerHTML=''; return; }
+  function cell(s){ return s&&s.n?s:null; }
+  function row(lbl,fa,fb){ return '<tr><td style="text-align:left">'+lbl+'</td><td>'+fa+'</td><td>'+fb+'</td></tr>'; }
+  function f(s,k){ if(!s||!s.n) return '<span class="mut">還沒跑</span>'; if(k==='n') return s.n; if(k==='win') return pct(s.win,0); if(k==='avg') return '<b class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</b>'; if(k==='ev') return '<b class="'+(s.ev>0.3?'ok':'no')+'">'+(s.ev>=0?'+':'')+s.ev.toFixed(2)+'R</b>'; if(k==='med') return sg(s.med); if(k==='streak') return s.streak; if(k==='pf') return s.pf==null?'∞':s.pf.toFixed(2); return ''; }
+  var h='<div class="card" style="border:2px solid #0b61b3"><h2>🔍 兩份名單並排比較</h2>';
+  var items=[['固定 1:3（賺 30% 全賣）',0],['賺 30% 先賣 1/3，剩下看 20 日線（建議做法）',4]];
+  items.forEach(function(it){
+    var a=A&&cell(A.R[it[1]].st), b=B&&cell(B.R[it[1]].st);
+    h+='<div style="font-weight:700;margin-top:10px">'+it[0]+'</div><div class="scroll"><table><tr><th></th><th>我的名單</th><th>對照組（普通股）</th></tr>'
+     +row('交易筆數',f(a,'n'),f(b,'n'))+row('賺錢比例',f(a,'win'),f(b,'win'))+row('平均每筆',f(a,'avg'),f(b,'avg'))
+     +row('期望值（及格線 +0.30R）',f(a,'ev'),f(b,'ev'))+row('賺的總和 ÷ 賠的總和',f(a,'pf'),f(b,'pf'))+row('單筆中位數',f(a,'med'),f(b,'med'))+row('最大連虧',f(a,'streak'),f(b,'streak'))+'</table></div>';
+  });
+  var a=A&&cell(A.R[4].st), b=B&&cell(B.R[4].st), verdict='', cls='y';
+  if(a&&b){
+    var gap=a.avg-b.avg;
+    if(b.ev>0.3){ cls='g'; verdict='✅ <b>普通股也賺錢</b>：對照組平均每筆 '+sg(b.avg,2)+'（'+b.ev.toFixed(2)+'R），過了及格線 +0.30R。代表這套做法本身有用，不只是靠你挑的強勢股。'; }
+    else if(b.ev>0.15){ cls='y'; verdict='🟡 <b>普通股只小賺</b>：對照組平均每筆 '+sg(b.avg,2)+'（'+b.ev.toFixed(2)+'R，沒到 +0.30R），我的名單 '+sg(a.avg,2)+'（'+a.ev.toFixed(2)+'R）。意思是：方法有一點用，但大部分的好成績來自你挑的股票。選股才是主角。'; }
+    else { cls='r'; verdict='🔴 <b>普通股幾乎不賺</b>：對照組平均每筆 '+sg(b.avg,2)+'（'+b.ev.toFixed(2)+'R，接近打平或賠），我的名單 '+sg(a.avg,2)+'（'+a.ev.toFixed(2)+'R）。意思是：換成普通股，這套做法就沒有優勢了；成績主要來自股票本身（這幾年強勢股在漲），不是進出場規則。所以重點是持續挑對的股票、大盤弱時不要硬做。'; }
+    verdict+='<br><span class="mut">（比的是「賺 30% 先賣 1/3、剩下看 20 日線」這一種；兩份用同樣的設定與同樣的 Stage 2 條件。對照組名單也是現在還活著的大公司，仍有倖存者偏差，只是比你的名單輕。）</span>';
+    window.CMPTXT='【並排比較】建議做法 我的名單 n='+a.n+' 平均'+sg(a.avg,2)+' '+a.ev.toFixed(2)+'R；對照組 n='+b.n+' 平均'+sg(b.avg,2)+' '+b.ev.toFixed(2)+'R';
+    h+='<div class="verdict '+cls+'" style="margin-top:12px;font-size:15px">'+verdict+'</div>';
+  } else {
+    h+='<div class="note" style="margin-top:10px">⏳ 還差一份：兩份都跑完，這裡會出現白話結論。</div>';
+  }
+  h+='</div>'; el.innerHTML=h;
+}
 </script></body></html>
