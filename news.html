@@ -63,7 +63,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .wg-ed input.wn{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:6px}
 .wg-ed select{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:8px;font-size:12px;margin-bottom:6px;color:#1a202c}
 .wg-hint{font-size:11px;color:#718096;margin-bottom:8px;line-height:1.5}
-.wg-st{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.08);overflow:hidden}
+.wg-st{scroll-margin-top:110px;margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.08);overflow:hidden}
 .wg-st-h{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#edf2f7;border-bottom:1px solid #c8d0dc;flex-wrap:wrap}
 .wg-st-h .sy{font-weight:700;font-size:15px;color:#1a202c}
 .wg-st-h .pc{font-weight:700;font-size:14px}
@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.0</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.1</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1346,11 +1346,22 @@ function wgStock(t,st,news){
     var first=news.slice(0,3).map(card).join(''), more=news.slice(3,6);
     h+='<div class="wg-newsw"><button class="tr-btn wg-trb" onclick="wgTr(this)">🌐 翻譯</button><details class="wg-news"><summary>📰 近 7 日新聞 '+news.length+' 則（點開看）</summary><div class="nn">'+first
       +(more.length?'<details><summary style="font-size:12px;color:#718096;cursor:pointer;padding:2px 4px">更多 '+more.length+' 則</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+more.map(card).join('')+'</div></details>':'')
+      +'<button class="tr-btn" style="width:100%;padding:10px" onclick="wgFold(this)">▲ 收起這檔新聞</button>'
       +'</div></details></div>';
   }
   return h+'</div>';
 }
 
+function wgFold(btn){
+  var st=btn.closest('.wg-st'); if(!st) return;
+  st.querySelectorAll('details').forEach(function(d){ d.open=false; });
+  st.scrollIntoView({block:'start',behavior:'smooth'});
+}
+function wgFoldAll(i){
+  var box=document.getElementById('wres'+i); if(!box) return;
+  box.querySelectorAll('details').forEach(function(d){ d.open=false; });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function wgTr(btn){
   var st=btn.closest('.wg-st'); if(!st) return;
   st.querySelectorAll('details').forEach(function(d){ d.open=true; });
@@ -1381,7 +1392,7 @@ async function wgQuery(i){
       var sa=stats[a]&&!stats[a].err?stats[a].chg:-999, sb=stats[b]&&!stats[b].err?stats[b].chg:-999; return sb-sa; });
     var asof=''; ord.forEach(function(t){ if(!asof && stats[t]&&!stats[t].err) asof=stats[t].date; });
     var ups=ord.filter(function(t){return stats[t]&&!stats[t].err&&stats[t].chg>0;}).length;
-    var head='<div class="wg-hint" style="margin:0 16px;padding-top:4px"><b>'+esc2(box.n)+'</b>：'+list.length+' 檔，今天 '+ups+' 檔上漲、'+(list.length-ups)+' 檔下跌或沒資料。依漲跌由高到低排。資料日：'+asof+'。'
+    var head='<div style="margin:0 16px 6px"><button class="tr-btn" onclick="wgFoldAll('+i+')">▲ 全部收起新聞</button></div><div class="wg-hint" style="margin:0 16px;padding-top:4px"><b>'+esc2(box.n)+'</b>：'+list.length+' 檔，今天 '+ups+' 檔上漲、'+(list.length-ups)+' 檔下跌或沒資料。依漲跌由高到低排。資料日：'+asof+'。'
       +(failN?' <span style="color:#c62828">⚠ '+failN+' 檔新聞沒抓到（可能額度，稍後再按 ↻）</span>':'')
       +'<br>「今天偏強／偏弱／拉鋸」規則：漲且收在當天區間上 40% → 偏強；跌且收在下 40% → 偏弱；其他 → 拉鋸。這只描述今天，不是買賣訊號。</div>';
     out.innerHTML=head+ord.map(function(t){ return wgStock(t,stats[t],news[t]); }).join('')+'<div style="height:12px"></div>';
