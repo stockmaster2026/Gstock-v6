@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.6</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v5.7</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -353,6 +353,8 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
       <button class="rb" id="rm" onclick="loadMarket()">↻</button>
     </div>
   </div>
+  <div id="mwhy"></div>
+  <div id="mpress"></div>
   <div id="mkt"></div>
   <div id="mdig"></div>
   <div class="nl" id="ml"><span class="sp"></span></div>
@@ -585,7 +587,7 @@ function spn(id,on){const b=document.getElementById(id);if(b)on?b.classList.add(
 async function api(ep){var k=KEY();if(!k)throw new Error('沒有 API key');
   const r=await fetch('https://finnhub.io/api/v1'+ep+'&token='+k,{cache:'no-store'});
   if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
-function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market'){ loadMkt(); loadMarket(); }
+function go(t){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+t).classList.add('active');document.getElementById('tab-'+t).classList.add('active');if(t==='market'){ loadMkt(); loadMarket(); loadPressure(); }
 if(t==='watchlist'||t==='radar') wgInit();}
 
 /* ═══ 翻譯：兩層 ══════════════════════════════════════════════
@@ -1249,8 +1251,10 @@ async function yfStat(t){
   var vs=0; for(var k=n-21;k<n-1;k++) vs+=bars[k].v; var avgv=vs/20;
   var cs=0; for(var k2=n-20;k2<n;k2++) cs+=bars[k2].c; var ma20=cs/20;
   var hi=0; bars.slice(-252).forEach(function(b){ if((b.h||b.c)>hi) hi=(b.h||b.c); });
+  var ab=[]; for(var q2=0;q2<=10;q2++){ var e=n-1-q2; if(e<19){ab.push(false);continue;} var ss=0; for(var z=e-19;z<=e;z++) ss+=bars[z].c; ab.push(bars[e].c>=ss/20); }
+  var c10=bars[n-11].c;
   var v={t:t,date:last.d,o:last.o,h:last.h,l:last.l,c:last.c,v:last.v,pc:prev.c,chg:(last.c/prev.c-1)*100,
-         avgv:avgv,vr:avgv>0?last.v/avgv:null,ma20:ma20,dMA:(last.c/ma20-1)*100,hi52:hi,fromHi:(last.c/hi-1)*100,filled:filled};
+         avgv:avgv,vr:avgv>0?last.v/avgv:null,ma20:ma20,dMA:(last.c/ma20-1)*100,hi52:hi,fromHi:(last.c/hi-1)*100,filled:filled,ab:ab,c10:c10};
   YF_C[t]={at:Date.now(),v:v};
   return v;
 }
@@ -1370,6 +1374,103 @@ document.addEventListener('input',function(e){
   var u=el.value.toUpperCase();
   if(u!==el.value){ var a=el.selectionStart,b=el.selectionEnd; el.value=u; try{el.setSelectionRange(a,b);}catch(x){} }
 },true);
+/* ═══ 市場溫度：今天為什麼動 + 壓力計（V5.7）═══════════════════
+   Jasmine 10/14：今天大跌，我們有沒有地方說明原因、並提早看到溫度變化？
+   ⚠ 誠實界線：
+   ① 「為什麼」是用【同時發生的價格】推的（殖利率、美元、VIX、各指數強弱），
+     不是讀新聞，所以只能說「像是利率驅動」，不能說「就是因為 CPI」。
+   ② 壓力計的門檻是經驗值，還沒用她的名單回測過；它是「溫度計」，不是預言。
+   ③ 不預測後續，只列「要看哪幾件事」。                                    */
+async function pxSafe(t){ try{ return await yfStat(t); }catch(e){ return null; } }
+function pf(x,d){ return (x>=0?'+':'')+x.toFixed(d==null?2:d); }
+var PR_BUSY=false;
+async function loadPressure(){
+  if(PR_BUSY) return; PR_BUSY=true;
+  var why=document.getElementById('mwhy'), pr=document.getElementById('mpress');
+  if(!why||!pr){ PR_BUSY=false; return; }
+  why.innerHTML='<div class="mkt"><div class="mkt-v y">載入市場溫度…</div></div>'; pr.innerHTML='';
+  try{
+    var S={}; var names=['SPY','QQQ','IWM','^VIX','^TNX','DX-Y.NYB'];
+    var got=await Promise.all(names.map(pxSafe)); names.forEach(function(n,i){S[n]=got[i];});
+    /* 她的股票名單（四個盒子）*/
+    if(!WG_INIT){ WG_INIT=true; wgLoad(); }
+    var all=[], seen={}; WG.boxes.forEach(function(b){ wgParse(b.s).forEach(function(t){ if(!seen[t]){seen[t]=1;all.push(t);} }); });
+    var st=await yfMany(all);
+    pressWhy(why,S);
+    pressGauge(pr,S,st,all);
+  }catch(e){ why.innerHTML='<div class="mkt"><div class="mkt-v r">市場溫度載入失敗<div class="sub">'+esc2(e.message)+'</div></div></div>'; }
+  PR_BUSY=false;
+}
+function pressWhy(el,S){
+  var spy=S['SPY'], q=S['QQQ'], iw=S['IWM'], vx=S['^VIX'], ty=S['^TNX'], dx=S['DX-Y.NYB'];
+  if(!spy){ el.innerHTML='<div class="mkt"><div class="mkt-v r">抓不到 SPY</div></div>'; return; }
+  var dy=ty?(ty.c-ty.pc)*100:null, dxy=dx?dx.chg:null, vxc=vx?vx.chg:null;
+  var cls,big,sub=[];
+  var sev = spy.chg<=-1.5?'大跌':spy.chg<=-0.5?'下跌':spy.chg>=1.5?'大漲':spy.chg>=0.5?'上漲':'小幅波動';
+  if(Math.abs(spy.chg)<0.5){ cls='g'; big='⚪ 今天大盤沒有大動（SPY '+pf(spy.chg)+'%）'; sub.push('沒有需要解釋的大事件。'); }
+  else if(spy.chg<0){
+    if(dy!=null && dy>=6){ cls='r'; big='🔴 今天'+sev+'，看起來是「利率驅動」'; 
+      sub.push('10 年期公債殖利率今天上升約 <b>'+dy.toFixed(0)+' 個基點</b>（1 個基點 = 0.01%）。殖利率升 → 市場預期利率會維持高或再升 → 未來獲利折現變低、借錢變貴，<b>成長股和小型股最先被壓</b>。');
+      if(dxy!=null && dxy>=0.4) sub.push('美元同時走強 '+pf(dxy)+'%：「殖利率升 + 美元升」是典型的「升息預期升高」組合。'); }
+    else if(vxc!=null && vxc>=15){ cls='r'; big='🔴 今天'+sev+'，看起來是「恐慌式避險」（不是利率）';
+      sub.push('殖利率沒有明顯變動，但恐慌指數 VIX 跳升 <b>'+pf(vxc,0)+'%</b> —— 資金在躲，多半是突發消息或風險事件。'); }
+    else { cls='y'; big='🟡 今天'+sev+'，但看不出單一原因';
+      sub.push('殖利率、美元、VIX 都沒有明顯異動 —— 比較像是個別族群或消息面造成，請看下方新聞，或把消息貼給我讀。'); }
+    if(q && q.chg-spy.chg<=-0.3) sub.push('科技股（QQQ '+pf(q.chg)+'%）比大盤跌得多 —— 壓力集中在成長股。');
+    if(iw && iw.chg-spy.chg<=-0.3) sub.push('小型股（IWM '+pf(iw.chg)+'%）比大盤跌得多 —— 小型股對利率和風險偏好最敏感。');
+  } else {
+    cls='g'; big='🟢 今天'+sev+'（SPY '+pf(spy.chg)+'%）';
+    sub.push(dy!=null && dy<=-6 ? '殖利率回落約 '+Math.abs(dy).toFixed(0)+' 個基點，對成長股是順風。' : '看不出單一原因，沒有需要特別解釋的壓力。');
+  }
+  var rows=[['SPY 大盤',spy.chg,'%'],['QQQ 科技',q&&q.chg,'%'],['IWM 小型股',iw&&iw.chg,'%'],['VIX 恐慌指數',vxc,'%',vx&&('水位 '+vx.c.toFixed(1))],
+            ['10 年期殖利率',dy,'bp',ty&&('目前 '+ty.c.toFixed(2)+'%')],['美元指數',dxy,'%',dx&&('目前 '+dx.c.toFixed(1))]];
+  var tb='<table class="mkt-t"><tr><th>項目</th><th>今天</th><th>備註</th></tr>'+rows.map(function(r){
+    if(r[1]==null) return '<tr><td class="nm">'+r[0]+'</td><td>—</td><td>沒抓到</td></tr>';
+    var good = r[0].indexOf('VIX')===0||r[0].indexOf('殖利率')>=0||r[0].indexOf('美元')===0 ? r[1]<=0 : r[1]>=0;
+    return '<tr><td class="nm">'+r[0]+'</td><td class="'+(good?'mkt-ok':'mkt-no')+'">'+pf(r[1],r[2]==='bp'?0:2)+r[2]+'</td><td style="font-size:11.5px;color:#4a5568">'+(r[3]||'')+'</td></tr>';
+  }).join('')+'</table>';
+  /* 要觀察的條件（不是預測）*/
+  var w=[];
+  w.push('SPY 要站回 20 日線（約 <b>$'+spy.ma20.toFixed(2)+'</b>，現在在它'+(spy.dMA>=0?'上方 ':'下方 ')+Math.abs(spy.dMA).toFixed(1)+'%）才算短期止跌。');
+  if(vx && vx.c>=20) w.push('VIX 回到 20 以下，代表恐慌退潮（現在 '+vx.c.toFixed(1)+'）。');
+  if(dy!=null && dy>0) w.push('殖利率要停止往上；只要還在漲，成長股的壓力就還在。');
+  el.innerHTML='<div class="mkt"><div class="mkt-h"><div class="t">🔎 今天為什麼動　·　資料日 '+spy.date+'</div>'
+    +'<div class="s">用「同時發生的價格」推原因（殖利率、美元、VIX、各指數強弱）。<b>不是讀新聞</b>，所以只說「看起來像」，不說「就是因為」。</div></div>'
+    +'<div class="mkt-v '+cls+'">'+big+'<div class="sub">'+sub.join('<br>')+'</div></div>'+tb
+    +'<div class="mkt-p"><div class="ph">接下來看這幾件事（觀察條件，不是預測）</div><div class="pline">'+w.map(function(x){return '• '+x;}).join('<br>')+'</div></div></div>';
+}
+function pressGauge(el,S,st,all){
+  var spy=S['SPY'], q=S['QQQ'], iw=S['IWM'], vx=S['^VIX'], ty=S['^TNX'];
+  var okL=all.filter(function(t){return st[t]&&!st[t].err&&st[t].ab;});
+  var n=okL.length, flags=[];
+  function F(on,t,r){ flags.push({on:on,t:t,r:r}); }
+  if(spy) F(spy.dMA<0,'SPY 與 20 日線',spy.dMA<0?'在 20 日線下方 '+Math.abs(spy.dMA).toFixed(1)+'%，大盤短線轉弱':'在 20 日線上方 '+spy.dMA.toFixed(1)+'%，大盤短線還撐著');
+  if(q)   F(q.dMA<0,'QQQ（科技）與 20 日線',q.dMA<0?'在 20 日線下方 '+Math.abs(q.dMA).toFixed(1)+'%，科技股短線轉弱':'在 20 日線上方 '+q.dMA.toFixed(1)+'%');
+  if(iw)  F(iw.dMA<0,'IWM（小型股）與 20 日線',iw.dMA<0?'在 20 日線下方 '+Math.abs(iw.dMA).toFixed(1)+'%，小型股短線轉弱':'在 20 日線上方 '+iw.dMA.toFixed(1)+'%');
+  var p0=null,p5=null,p10=null,nb=0;
+  if(n>=3){
+    var c=function(k){ return okL.filter(function(t){return st[t].ab[k];}).length/n*100; };
+    p0=c(0); p5=c(5); p10=c(10);
+    nb=okL.filter(function(t){ var a=st[t].ab; return !a[0] && (a[1]||a[2]||a[3]||a[4]||a[5]); }).length;
+    F(p0<50,'你的名單：站在 20 日線上的比例','現在 '+p0.toFixed(0)+'% 的股票站在 20 日線上（5 天前 '+p5.toFixed(0)+'%、10 天前 '+p10.toFixed(0)+'%）；低於 50% 亮燈');
+    F(p5-p0>=20,'你的名單：惡化速度','5 天內比例 '+p5.toFixed(0)+'% → '+p0.toFixed(0)+'%（掉 20 個百分點以上亮燈）'+(p5-p0>=20?'，惡化得快':''));
+    F(nb/n>=0.25,'你的名單：剛跌破 20 日線的檔數','近 5 天內才跌破的有 '+nb+' 檔（'+(nb/n*100).toFixed(0)+'%；占 25% 以上亮燈）'+(nb/n>=0.25?' —— 領頭股先轉弱時常是這個樣子':''));
+  }
+  if(vx) F(vx.c>=20||vx.chg>=15,'VIX 恐慌指數','水位 '+vx.c.toFixed(1)+'，今天 '+pf(vx.chg,0)+'%（20 以上或單日 +15% 算警戒）');
+  if(ty){ var dy=(ty.c-ty.pc)*100, d10=(ty.c-ty.c10)*100; F(dy>=6||d10>=25,'10 年期殖利率','今天 '+pf(dy,0)+' bp、10 天 '+pf(d10,0)+' bp（單日 +6 或 10 天 +25 算警戒）'); }
+  var k=flags.filter(function(f){return f.on;}).length, tot=flags.length, cls,big,sub;
+  if(k<=1){ cls='g'; big='🟢 市場溫度正常（警戒 '+k+'/'+tot+'）'; sub='沒有明顯壓力累積。買點照 dna 的 pivot 與下面「大盤方向」走。'; }
+  else if(k<=3){ cls='y'; big='🟡 壓力在累積（警戒 '+k+'/'+tot+'）'; sub='還沒到恐慌，但溫度在升。<b>新進場縮小部位</b>，已持有的看緊自己的失效點（風險儀表板的 20 日線規則）。'; }
+  else { cls='r'; big='🔴 高壓（警戒 '+k+'/'+tot+'）'; sub='多個警戒同時亮起。<b>以保護本金為主</b>：不開新倉，已持有的照失效點執行，不要攤平。'; }
+  var list=flags.map(function(f){ return '<tr><td class="nm" style="white-space:normal">'+(f.on?'⚠ ':'✓ ')+f.t+'</td><td class="'+(f.on?'mkt-no':'mkt-ok')+'" style="text-align:right;white-space:normal;font-size:12px">'+(f.on?'亮':'正常')+'</td></tr>'
+    +'<tr><td colspan="2" style="font-size:11.5px;color:#4a5568;text-align:left;padding-top:0">'+f.r+'</td></tr>'; }).join('');
+  el.innerHTML='<div class="mkt"><div class="mkt-h"><div class="t">🌡 市場壓力計　·　溫度有沒有在升</div>'
+    +'<div class="s">把「指數、你自己的股票名單、VIX、殖利率」一共 '+tot+' 個警戒燈加起來。數的是<b>現在亮幾顆</b>，不預測會不會跌。</div></div>'
+    +'<div class="mkt-v '+cls+'">'+big+'<div class="sub">'+sub+'</div></div>'
+    +'<table class="mkt-t">'+list+'</table>'
+    +'<div class="mkt-f">⚠ 門檻是經驗值，<b>還沒用你的名單回測過</b>。「你的名單」讀的是「我的持倉」四個盒子（共 '+n+' 檔有資料）；盒子是空的就不算這幾顆燈。像 CPI 這種突發數字，事前本來就看不到，這裡能做的是讓你比較早發現「溫度已經在升」。</div></div>';
+}
+
 /* ═══ 異動雷達（往前看）═══ */
 var RD_BUSY=false;
 function recShare(r){ var tot=r.strongBuy+r.buy+r.hold+r.sell+r.strongSell; return tot?{tot:tot,buy:(r.strongBuy+r.buy)/tot*100,sell:(r.sell+r.strongSell)/tot*100,r:r}:null; }
@@ -3715,6 +3816,7 @@ secInit();
    —— 這就是「大盤判斷沒出現」的真正原因，程式碼一直都在。 */
 loadMkt();
 loadMarket();
+loadPressure();
 </script>
 
 </body>
