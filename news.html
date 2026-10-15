@@ -321,7 +321,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.3</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.4</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1469,7 +1469,7 @@ function intelHistPaint(){
   el.innerHTML=a.length?('<span style="font-size:11.5px;color:#718096">最近查過：</span>'+a.map(function(t){
     return '<button type="button" onclick="intelRun(\''+t+'\')" style="margin:2px 4px 2px 0;background:#eef2f7;border:1px solid #c8d0dc;border-radius:14px;padding:4px 11px;font-size:12.5px;font-weight:700;color:#12385e;cursor:pointer">'+t+'</button>'; }).join('')):'';
 }
-function intelSum(sym,st,news,R,sup){
+function intelSum(sym,st,news,R,sup,est,m){
   var L=[];
   /* 1 今天 */
   if(st&&!st.err){
@@ -1497,6 +1497,9 @@ function intelSum(sym,st,news,R,sup){
           :(b/c>=0.5)?'一半一半，不算穩定。':'常讓分析師失望，財報日風險比較高。';
     L.push(['近 '+c+' 季成績','<b>'+b+'／'+c+'</b> 季達到或超過預期。'+rs]);
   }
+  /* 獲利方向（跟異動雷達同一套算法） */
+  var et=earnTrend(est,sup,m);
+  if(et) L.push(['獲利方向','<b style="color:'+et.col+'">'+et.word+'</b>。'+et.say+'<br><span style="color:#4a5568">'+et.parts.join('<br>')+'</span>']);
   /* 4 新聞 */
   if(news==null) L.push(['新聞','這次沒抓到（可能是額度，過一會兒再按 ↻）。']);
   else if(!news.length) L.push(['新聞','近 7 日<b>沒有新聞</b>。今天的漲跌多半不是消息驅動。']);
@@ -1541,7 +1544,8 @@ async function intelRun(sym){
     try{ q=await apiR('/quote?symbol='+sym); }catch(e){ bad.push('報價（'+e.message+'）'); }
     var R=fundCard(sym,m,cal,rec,sup,q), fh=R.html;
     if(bad.length) fh=fh.replace(/<\/div>$/,'<div class="fnote fwarn">⚠ 這幾項沒抓到：'+bad.join('、')+'</div></div>');
-    document.getElementById('isum').innerHTML=intelSum(sym,st,news,R,sup);
+    var _est=null; try{ var _c=cal&&cal.earningsCalendar&&cal.earningsCalendar[0]; if(_c&&_c.epsEstimate!=null) _est=Number(_c.epsEstimate); }catch(e){}
+    document.getElementById('isum').innerHTML=intelSum(sym,st,news,R,sup,_est,m);
     out.innerHTML=wgStock(sym,st,news)
       +'<div style="margin:14px 16px 6px;font-size:12.5px;font-weight:800;color:#12385e;letter-spacing:.5px">📊 財報與公司體質（同「財報體檢」那張卡）</div>'+fh
       +'<div style="height:12px"></div>';
@@ -1665,6 +1669,55 @@ function pressGauge(el,S,st,all){
 /* ═══ 異動雷達（往前看）═══ */
 var RD_BUSY=false;
 function recShare(r){ var tot=r.strongBuy+r.buy+r.hold+r.sell+r.strongSell; return tot?{tot:tot,buy:(r.strongBuy+r.buy)/tot*100,sell:(r.sell+r.strongSell)/tot*100,r:r}:null; }
+/* ═══ v6.4 財報趨勢：預估不能單獨看，要跟「上一季、去年同季、近四季」放在一起才知道是在成長還是持平
+   Jasmine 10/15：只看到「分析師預估 0.80」不知道這是往上、持平、還是往下。
+   資料全部來自免費層已驗證可用的 /stock/earnings（近 4 季實際值與預期）與 /stock/metric（上一季年增）。
+   ⚠ 免費層只給 EPS 的歷史，沒有「去年同季營收」，所以營收只能顯示「上一季年增」，不能算出「這季預估營收比去年高多少」。 */
+function earnTrend(est,sup,m){
+  if(!Array.isArray(sup)||!sup.length) return null;
+  var A=sup.slice(0,4).map(function(x){ return {a:num(x.actual),e:num(x.estimate)}; });
+  var seq=A.slice().reverse().filter(function(x){return x.a!==null;});
+  var last=A[0], yago=A.length>=4?A[3]:null, P=[];
+  if(last&&last.a!==null){
+    var sp='';
+    if(last.e!==null&&last.e!==0){
+      if(last.e>0&&last.a>=0){ var pc=(last.a-last.e)/last.e*100; sp='（分析師預期 '+last.e.toFixed(2)+'，'+(pc>=0?'超過 ':'低於 ')+Math.abs(pc).toFixed(0)+'%）'; }
+      else sp='（分析師預期 '+last.e.toFixed(2)+'，'+(last.a>=last.e?'比預期好':'比預期差')+'）';
+    }
+    P.push('上一季實際每股盈餘 <b>'+last.a.toFixed(2)+'</b>'+sp);
+  }
+  var impl=null;
+  if(est!=null && yago && yago.a!==null){
+    if(yago.a>0&&est>0){ impl=(est/yago.a-1)*100; P.push('去年同一季 '+yago.a.toFixed(2)+' → 這季預估 <b>'+est.toFixed(2)+'</b>，預估比去年同季 <b>'+(impl>=0?'+':'')+impl.toFixed(0)+'%</b>'); }
+    else P.push('去年同一季 '+yago.a.toFixed(2)+' → 這季預估 '+est.toFixed(2)+'（去年同季是負數或零，算不出百分比，直接看數字）');
+  }
+  if(seq.length>=3) P.push('近 '+seq.length+' 季實際每股盈餘（舊→新）：'+seq.map(function(x){return x.a.toFixed(2);}).join(' → '));
+  var g=m?num(m.epsGrowthQuarterlyYoy):null, rg=m?num(m.revenueGrowthQuarterlyYoy):null;
+  if(g!==null||rg!==null) P.push('上一季跟去年同季比：'+(g!==null?'每股盈餘 <b>'+(g>=0?'+':'')+g.toFixed(0)+'%</b>':'')+(g!==null&&rg!==null?'、':'')+(rg!==null?'營收 <b>'+(rg>=0?'+':'')+rg.toFixed(0)+'%</b>':''));
+  var up=0,dn=0;
+  if(impl!==null){ if(impl>=10) up++; else if(impl<=-10) dn++; }
+  if(seq.length>=3){ var f=seq[0].a, l=seq[seq.length-1].a; if(f>0&&l>0){ if(l>=f*1.1) up++; else if(l<=f*0.9) dn++; } else if(l>f) up++; else if(l<f) dn++; }
+  if(g!==null){ if(g>=10) up++; else if(g<=-10) dn++; }
+  var word,say,col;
+  var lossy=(last&&last.a!==null&&last.a<0)||(yago&&yago.a!==null&&yago.a<0)||(est!=null&&est<0);
+  if(lossy && up+dn>0 && !(up&&dn)){
+    if(up){ word='虧損縮小中'; say='這家公司目前還在虧錢，但虧損比之前小，方向是好轉。'; col='#0d8a3f'; }
+    else { word='虧損擴大中'; say='這家公司目前還在虧錢，而且虧損比之前大。'; col='#c62828'; }
+  }
+  else if(up+dn===0){ word='大致持平'; say='獲利沒有明顯變多或變少。'; col='#5a6b7d'; }
+  else if(up&&dn){ word='方向不一致'; say='有的指標往上、有的往下，要看上面的細節。'; col='#a06a08'; }
+  else if(up>=2){ word='成長中'; say='獲利在擴大，預估也比去年高，預期有往上的底。'; col='#0d8a3f'; }
+  else if(up===1){ word='偏向成長'; say='有往上的跡象，但還不夠一致。'; col='#0d8a3f'; }
+  else if(dn>=2){ word='下滑中'; say='獲利在縮小，預估也比去年低。財報前後要特別小心。'; col='#c62828'; }
+  else { word='偏向下滑'; say='有往下的跡象，但還不夠一致。'; col='#c62828'; }
+  return {word:word,say:say,col:col,parts:P};
+}
+function earnTrendHtml(t){
+  if(!t) return '';
+  return '<div style="margin-top:3px;font-size:12.5px;line-height:1.7;color:#4a5568"><b style="color:'+t.col+'">獲利方向：'+t.word+'</b>　'+t.say
+    +'<br>'+t.parts.join('<br>')+'<br><span style="color:#8a94a6">預估是分析師的預期，不是保證；公司常會略高於預期，所以「預估 vs 實際」的落差比預估本身更重要。</span></div>';
+}
+var RDF={}, RDF_ST='';
 async function wgRadar(){
   if(RD_BUSY) return;
   var sel=[];   /* 每一組：{n:名稱, list:代號[]}；組別來源＝盒子／我的持股／整個板塊 */
@@ -1676,7 +1729,7 @@ async function wgRadar(){
   var box=document.getElementById('radc'), msg=document.getElementById('rm2');
   if(!all.length){ box.innerHTML='<div class="empty">還沒有選到任何要掃的股票：勾選盒子、填「我的持股」、或選一個板塊</div>'; return; }
   var CAP=70, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
-  RD_BUSY=true; spn('rr',true);
+  RD_BUSY=true; spn('rr',true); RDF={}; RDF_ST='pend';
   var rec={}, cal=null, calErr=null;
   try{
     msg.textContent='1/3 查價量 0/'+all.length;
@@ -1687,6 +1740,20 @@ async function wgRadar(){
       var c=await apiR('/calendar/earnings?from='+f+'&to='+t2);
       cal=(c&&c.earningsCalendar)||[];
     }catch(e){ calErr=e.message; }
+    wgRadarRender(sel,all,stats,cal,calErr,rec,false);
+    /* 財報趨勢：只查「14 天內有財報」的那幾檔，每檔 2 次呼叫（EPS 歷史＋上一季年增） */
+    var ct=[]; if(cal){ var sx={}; all.forEach(function(t){sx[t]=1;}); cal.forEach(function(e){ if(sx[e.symbol]&&ct.indexOf(e.symbol)<0) ct.push(e.symbol); }); }
+    ct=ct.slice(0,30);
+    for(var ci=0;ci<ct.length;ci++){
+      msg.textContent='2.5/3 財報趨勢 '+(ci+1)+'/'+ct.length+'（'+ct[ci]+'）…上面其他幾塊已經可以先看';
+      var fsup=null, fm=null;
+      try{ fsup=await apiR('/stock/earnings?symbol='+ct[ci]); }catch(e){}
+      await sleep2(450);
+      try{ var fd=await apiR('/stock/metric?symbol='+ct[ci]+'&metric=all'); fm=fd&&fd.metric?fd.metric:null; }catch(e){}
+      await sleep2(450);
+      RDF[ct[ci]]={sup:fsup,m:fm};
+    }
+    RDF_ST='done';
     wgRadarRender(sel,all,stats,cal,calErr,rec,false);
     /* 分析師評等：每檔一次呼叫，間隔 1.1 秒（免費額度每分鐘約 60 次） */
     for(var i=0;i<all.length;i++){
@@ -1717,7 +1784,9 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
       var when=e.hour==='bmo'?'盤前':e.hour==='amc'?'盤後':'';
       er.push('<span class="sy">$'+e.symbol+'</span>'+(dd===0?'<b style="color:#c62828">今天</b>':dd===1?'<b style="color:#c62828">明天</b>':'<b>'+dd+' 天後</b>')+'（'+e.date.slice(5)+when+'）'
         +(e.epsEstimate!=null?'　分析師預估每股盈餘 '+Number(e.epsEstimate).toFixed(2):'')
-        +(e.revenueEstimate!=null?'、營收 '+(e.revenueEstimate>=1e9?(e.revenueEstimate/1e9).toFixed(2)+'B':(e.revenueEstimate/1e6).toFixed(0)+'M'):''));
+        +(e.revenueEstimate!=null?'、營收 '+(e.revenueEstimate>=1e9?(e.revenueEstimate/1e9).toFixed(2)+'B':(e.revenueEstimate/1e6).toFixed(0)+'M'):'')
+        +(RDF[e.symbol]?earnTrendHtml(earnTrend(e.epsEstimate!=null?Number(e.epsEstimate):null,RDF[e.symbol].sup,RDF[e.symbol].m))||'<div style="font-size:12px;color:#8a94a6;margin-top:2px">這檔查不到歷史 EPS，沒有趨勢可看。</div>'
+           :(RDF_ST==='pend'?'<div style="font-size:12px;color:#8a94a6;margin-top:2px">⏳ 財報趨勢查詢中…</div>':'')));
     });
   }
   H+=sec('📅 財報倒數（14 天內）','財報公布日常出現比平常大很多的跳空。這是「該提早想好」的提醒，不是買賣訊號。',er,
