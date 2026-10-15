@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>1:3 回測 rr-test v1</title>
+<style>
+:root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:14px 16px 60px;max-width:980px;margin:auto}
+h1{font-size:20px;margin:6px 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card h2{font-size:16px;margin:0 0 8px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0}
+label{font-size:12.5px;color:var(--mut);display:block;margin-bottom:3px}
+textarea,input,select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink)}
+textarea{width:100%;min-height:64px}input[type=number]{width:90px}
+button{font:inherit;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:700}
+button.sec{background:#e7edf5;color:var(--blue)}button:disabled{opacity:.5}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}th,td{padding:7px 8px;border-bottom:1px solid #e6ebf2;text-align:right}th:first-child,td:first-child{text-align:left}th{font-size:12px;color:var(--mut);font-weight:600}
+.scroll{overflow-x:auto}.ok{color:var(--g);font-weight:700}.no{color:var(--r);font-weight:700}.mut{color:var(--mut)}
+.verdict{border-radius:12px;padding:14px 16px;font-size:17px;font-weight:800;line-height:1.6}
+.verdict.g{background:#ecfdf3;color:var(--g)}.verdict.y{background:#fff7e0;color:var(--y)}.verdict.r{background:#fdeeee;color:var(--r)}
+.verdict .s{font-size:13.5px;font-weight:400;color:var(--ink);margin-top:6px}
+.note{font-size:12.5px;color:var(--mut);line-height:1.8}#log{font-size:12px;color:var(--mut);white-space:pre-wrap;max-height:160px;overflow:auto}
+.hl{background:#eef5ff}
+</style></head><body>
+<h1>1:3 賺賠比回測 <span class="mut" style="font-size:12px">v1</span></h1>
+<div class="sub">問的是一句話：<b>「停損 10%、停利 30%，長期維持 1:3」</b>到底賺不賺錢？同一批進場，換不同出場法對照。</div>
+
+<div class="card">
+<h2>① 設定</h2>
+<label>股票清單（逗號或空白分開）</label>
+<textarea id="tk">COHR LITE AAOI AXTI GLW ARM CIEN TSEM AEHR MU STX BE NBIS</textarea>
+<div class="row">
+<div><label>回測年數</label><select id="yrs"><option value="3">3 年</option><option value="5" selected>5 年</option></select></div>
+<div><label>進場方式</label><select id="mode">
+<option value="st2new">剛進入週線 Stage 2 的那一天買（最接近你說的做法）</option>
+<option value="any">Stage 2 期間隨時進場（出場後馬上再進；亂買基準）</option>
+<option value="brk">趨勢中突破 50 日高（量≥1.4 倍）</option>
+<option value="ma20">回檔後站回 20 日線（趨勢中）</option></select></div>
+<div><label>停損 %</label><input id="S" type="number" value="10"></div>
+<div><label>停利 %</label><input id="T" type="number" value="30"></div>
+</div>
+<div class="row"><label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="st2" checked style="width:auto"> 只在「週線 Stage 2」時才進場（你的選股前提）</label></div>
+<div class="row"><button class="sec" onclick="fillAll()">帶入全部板塊（約 150 檔）</button></div>
+<div class="row"><button id="go" onclick="runAll()">開始回測</button><button class="sec" id="cp" style="display:none" onclick="copyRep()">複製結果文字</button></div>
+<div class="note">通過標準（跑之前寫死，沿用你 cheat-test 的）：樣本 ≥30、每筆期望值 &gt; +0.3R（R＝停損幅度）、中位數報酬為正、最大連虧 ≤6。<br>
+假設：進場＝訊號隔天開盤；盤中同一天停損和停利都碰到→算停損先（保守）；開盤直接跳空穿過停損→照開盤價賠（不是剛好賠 10%）；每邊成本 0.1%；每檔同一時間只持一筆。</div>
+<div id="log"></div>
+</div>
+<div id="out"></div>
+<script>
+/* ── 引擎（純函數，Node 與瀏覽器共用）── */
+var COST = 0.001;   /* 每邊 0.1% */
+function smaArr(a,n){ var o=new Array(a.length).fill(null), s=0; for(var i=0;i<a.length;i++){ s+=a[i]; if(i>=n) s-=a[i-n]; if(i>=n-1) o[i]=s/n; } return o; }
+function median(a){ if(!a.length) return null; var b=a.slice().sort(function(x,y){return x-y;}), m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+/* 週線 Stage 2（Weinstein）：上一個【已收完】的週，週收盤 > 30 週均線，且 30 週均線比 4 週前高。
+   用「上一個收完的週」而不是本週 → 不偷看未來。*/
+function weekKey(d){ var t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()-((t.getUTCDay()+6)%7)); return t.toISOString().slice(0,10); }
+function stage2Arr(bars){
+  var wk=[], idxOf=[], last=null;
+  for(var i=0;i<bars.length;i++){
+    var k=weekKey(bars[i].d);
+    if(k!==last){ wk.push({c:bars[i].c}); last=k; } else wk[wk.length-1].c=bars[i].c;
+    idxOf.push(wk.length-1);
+  }
+  var wc=wk.map(function(x){return x.c;}), s30=smaArr(wc,30), out=new Array(bars.length).fill(false);
+  for(var j=0;j<bars.length;j++){
+    var w=idxOf[j]-1; if(w<34) continue;
+    out[j]= wc[w]>s30[w] && s30[w]>s30[w-4];
+  }
+  return out;
+}
+function prep(bars){
+  var c=bars.map(function(b){return b.c;}), v=bars.map(function(b){return b.v;});
+  return {bars:bars,c:c,v:v,s20:smaArr(c,20),s50:smaArr(c,50),s150:smaArr(c,150),st2:stage2Arr(bars)};
+}
+/* 進場訊號：回傳「訊號日」索引陣列判斷函數；實際進場在訊號日的下一個交易日開盤 */
+function signalAt(P,i,mode,opt){
+  if(i<160) return false;
+  if(opt&&opt.st2&&!P.st2[i]) return false;
+  var c=P.c, b=P.bars;
+  if(mode==='any') return true;
+  if(mode==='st2new') return P.st2[i] && !P.st2[i-1];   /* 剛進入 Stage 2 的那一天 */
+  var up150 = P.s150[i]!=null && P.s150[i-20]!=null && P.s150[i]>P.s150[i-20];
+  if(mode==='brk'){
+    var hi=-1e18; for(var k=i-50;k<i;k++) if(c[k]>hi) hi=c[k];
+    var vs=[]; for(var k2=i-60;k2<i;k2++) vs.push(P.v[k2]);
+    var med=median(vs);
+    return c[i]>hi && c[i]<=hi*1.05 && P.v[i]>=1.4*med && c[i]>P.s50[i] && up150;
+  }
+  if(mode==='ma20'){
+    return c[i-1]<P.s20[i-1] && c[i]>P.s20[i] && c[i]>P.s150[i] && up150;
+  }
+  return false;
+}
+/* 出場規則：rule={s:停損比例, t:停利比例|null, ma:true|false}
+   回傳 {ret:(扣成本後報酬比例), days, why:'stop'|'target'|'ma'|'timeout', exitIdx} */
+function simTrade(P,ei,rule){
+  var b=P.bars, entry=b[ei].o; if(!(entry>0)) return null;
+  var stopP=entry*(1-rule.s), tgtP=rule.t!=null?entry*(1+rule.t):null, below=0;
+  var last=Math.min(b.length-1, ei+400);
+  for(var d=ei; d<=last; d++){
+    var o=b[d].o,h=b[d].h,l=b[d].l,cl=b[d].c, px=null, why=null;
+    if(o<=stopP){ px=o; why='stop'; }
+    else if(tgtP!=null && o>=tgtP){ px=o; why='target'; }
+    else if(tgtP!=null && l<=stopP && h>=tgtP){ px=stopP; why='stop'; }   /* 同一天兩邊都碰到：保守算停損先 */
+    else if(l<=stopP){ px=stopP; why='stop'; }
+    else if(tgtP!=null && h>=tgtP){ px=tgtP; why='target'; }
+    if(px!=null) return {ret:px/entry-1-2*COST, days:d-ei+1, why:why, exitIdx:d};
+    if(rule.ma){
+      if(P.s20[d]!=null && cl<P.s20[d]) below++; else below=0;
+      if(below>=3 && d+1<b.length) return {ret:b[d+1].o/entry-1-2*COST, days:d+1-ei+1, why:'ma', exitIdx:d+1};
+    }
+  }
+  var ex=b[last].c; return {ret:ex/entry-1-2*COST, days:last-ei+1, why:'timeout', exitIdx:last};
+}
+/* 單檔：同一時間只持一筆（持倉鎖） */
+function runTicker(P,mode,rule,fromIdx,opt){
+  var out=[], i=Math.max(160,fromIdx||0);
+  while(i<P.bars.length-2){
+    if(signalAt(P,i,mode,opt)){
+      var ei=i+1, r=simTrade(P,ei,rule);
+      if(r){ r.date=P.bars[ei].d; r.year=P.bars[ei].d.slice(0,4); out.push(r); i=r.exitIdx+0; }
+    }
+    i++;
+  }
+  return out;
+}
+function stats(trs,s){
+  var n=trs.length; if(!n) return {n:0};
+  var rets=trs.map(function(x){return x.ret;});
+  var w=rets.filter(function(x){return x>0;}), l=rets.filter(function(x){return x<=0;});
+  var sum=rets.reduce(function(a,b){return a+b;},0);
+  var streak=0,mx=0; trs.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(x){ if(x.ret<=0){streak++; if(streak>mx)mx=streak;} else streak=0; });
+  var why={stop:0,target:0,ma:0,timeout:0}; trs.forEach(function(x){why[x.why]++;});
+  return {n:n,win:w.length/n,avg:sum/n,med:median(rets),ev:s?sum/n/s:null,
+          avgW:w.length?w.reduce(function(a,b){return a+b;},0)/w.length:0,
+          avgL:l.length?l.reduce(function(a,b){return a+b;},0)/l.length:0,
+          streak:mx,hold:trs.reduce(function(a,x){return a+x.days;},0)/n,why:why,total:sum};
+}
+var ALL_SECT='CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR COHR LITE AAOI CIEN FN AXTI MRVL GLW ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH MU SNDK WDC STX NTAP P SMCI DELL HPE AMKR RMBS PENG SIMO VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY NOC GD LHX LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC IONQ RGTI QBTS QUBT LAES ARQQ NBIS';
+function fillAll(){ $('tk').value=ALL_SECT; log('已帶入 '+ALL_SECT.split(' ').length+' 檔（news.html 的 11 個板塊）；檔數多，回測要幾分鐘'); }
+var PROXY=function(u){return 'https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent(u);};
+function $(i){return document.getElementById(i);}
+function log(s){ $('log').textContent=s; }
+function pct(x,d){ return (x*100).toFixed(d==null?1:d)+'%'; }
+function sg(x,d){ return (x>=0?'+':'')+(x*100).toFixed(d==null?1:d)+'%'; }
+async function fetchBars(sym,range){
+  var u='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range='+range;
+  var r=await fetch(PROXY(u),{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  var j=await r.json(), x=j.chart&&j.chart.result&&j.chart.result[0]; if(!x) throw new Error('沒有資料');
+  var q=x.indicators.quote[0], ts=x.timestamp||[], by={}, days=[];
+  for(var i=0;i<ts.length;i++){
+    if(q.close[i]==null||q.open[i]==null||q.high[i]==null||q.low[i]==null) continue;
+    var d=new Date(ts[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+    if(!(d in by)) days.push(d);
+    by[d]={d:d,o:q.open[i],h:q.high[i],l:q.low[i],c:q.close[i],v:q.volume[i]||0};
+  }
+  return days.map(function(d){return by[d];});
+}
+var REP='';
+async function runAll(){
+  var syms=[],seen={}; $('tk').value.toUpperCase().split(/[,\s]+/).forEach(function(x){ x=x.replace(/^\$/,''); if(x&&!seen[x]){seen[x]=1;syms.push(x);} });
+  var st2=$('st2').checked, yrs=+$('yrs').value, mode=$('mode').value, S=(+$('S').value)/100, T=(+$('T').value)/100;
+  if(!syms.length||!(S>0)||!(T>0)){ log('請填股票、停損、停利'); return; }
+  $('go').disabled=true; $('out').innerHTML=''; $('cp').style.display='none';
+  var range=(yrs+1)+'y', P={}, bad=[], done=0;
+  for(var j=0;j<syms.length;j+=4){
+    await Promise.all(syms.slice(j,j+4).map(async function(t){
+      try{ var b=await fetchBars(t,range); if(b.length<400) throw new Error('資料太短'); P[t]=prep(b); }catch(e){ bad.push(t+'('+e.message+')'); }
+      done++; log('抓資料 '+done+'/'+syms.length);
+    }));
+  }
+  var cut=new Date(Date.now()-yrs*365.25*86400000).toISOString().slice(0,10);
+  function run(rule,f2){
+    var useSt2=(f2==null)?st2:f2;
+    var all=[], per={};
+    Object.keys(P).forEach(function(t){
+      var from=0; for(var k=0;k<P[t].bars.length;k++){ if(P[t].bars[k].d>=cut){from=k;break;} }
+      var tr=runTicker(P[t],mode,rule,from,{st2:useSt2}); tr.forEach(function(x){x.t=t;}); per[t]=tr; all=all.concat(tr);
+    });
+    return {all:all,per:per};
+  }
+  var S100=Math.round(S*1000)/10, T100=Math.round(T*1000)/10;
+  var rules=[
+    {name:'固定 −'+S100+'% / +'+T100+'%（你問的）',s:S,t:T,main:1},
+    {name:'−'+S100+'% / +'+(2*S100)+'%（1:2）',s:S,t:2*S},
+    {name:'−'+S100+'% / +'+S100+'%（1:1）',s:S,t:S},
+    {name:'只設停損 −'+S100+'%，3 天收盤跌破 20 日線才賣（你的風險儀表板規則）',s:S,t:null,ma:true}
+  ];
+  var R=rules.map(function(r){ var x=run(r); return {r:r,res:x,st:stats(x.all,r.s)}; });
+  var main=R[0], mn=main.st;
+  var h='';
+  if(!mn.n){ $('out').innerHTML='<div class="card">沒有任何訊號/交易。換一種進場方式或加股票。</div>'; $('go').disabled=false; return; }
+  /* 集中度 */
+  var tot={}; main.res.all.forEach(function(x){ tot[x.t]=(tot[x.t]||0)+x.ret; });
+  var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];})[0];
+  var rest=main.res.all.filter(function(x){return x.t!==top;}), st2=stats(rest,S);
+  var be=S/(S+T);
+  var pass = mn.n>=30 && mn.ev>0.3 && mn.med>0 && mn.streak<=6;
+  var cls = pass?'g':(mn.ev>0?'y':'r');
+  var head = pass?'✅ 通過：這組 1:3 在你的標準下站得住':(mn.ev>0?'🟡 小賺，但沒通過你的標準':'🔴 不通過：平均每筆是賠的');
+  var bestI=0; R.forEach(function(x,i){ if(x.st.n&&x.st.avg>R[bestI].st.avg) bestI=i; });
+  var lines=[];
+  lines.push('共 <b>'+mn.n+'</b> 筆；勝率 <b>'+pct(mn.win)+'</b>。損益兩平勝率是 <b>'+pct(be)+'</b>（停損 '+S100+'%、停利 '+T100+'%，不含成本）→ 實際勝率'+(mn.win>be?'<b>高於</b>':'<b>低於</b>')+'兩平點 '+Math.abs((mn.win-be)*100).toFixed(1)+' 個百分點。');
+  lines.push('平均每筆 <b>'+sg(mn.avg,2)+'</b>（賺的平均 '+sg(mn.avgW)+'、賠的平均 '+sg(mn.avgL)+'），期望值 <b>'+(mn.ev>=0?'+':'')+mn.ev.toFixed(2)+'R</b>；中位數 '+sg(mn.med)+'；最大連虧 '+mn.streak+'；平均持有 '+mn.hold.toFixed(0)+' 天。');
+  lines.push('怎麼出場的：被停損 <b>'+pct(mn.why.stop/mn.n,0)+'</b>、碰到停利 <b>'+pct(mn.why.target/mn.n,0)+'</b>、其他（到期未出）'+pct(mn.why.timeout/mn.n,0)+'。');
+  lines.push('四種出場法裡，平均每筆最好的是：<b>'+R[bestI].r.name+'</b>（'+sg(R[bestI].st.avg,2)+'）'+(bestI===0?'。':'；你問的 1:3 不是最好的。'));
+  if(R[3].st.n && R[3].st.avg>mn.avg) lines.push('你的 20 日線追蹤規則（不設停利）比固定停利好 '+((R[3].st.avg-mn.avg)*100).toFixed(2)+' 個百分點／筆 —— 代表<b>固定停利把大贏家提早截掉</b>了。');
+  else if(R[3].st.n) lines.push('固定停利比 20 日線追蹤好 '+((mn.avg-R[3].st.avg)*100).toFixed(2)+' 個百分點／筆。');
+  if(mode==='any') lines.push('⚠ 目前進場方式是「每天都進」＝亂買基準，這只能回答「1:3 這個出場法本身有沒有魔力」，不是進場有沒有邊。');
+  h+='<div class="card"><div class="verdict '+cls+'">'+head+'<div class="s">'+lines.join('<br>')+'</div></div></div>';
+  /* 判準表 */
+  h+='<div class="card"><h2>② 通過標準逐項</h2><table><tr><th>項目</th><th>門檻</th><th>這組</th><th></th></tr>'
+   +chk('樣本數','≥ 30',mn.n,mn.n>=30)+chk('期望值','> +0.3R',(mn.ev>=0?'+':'')+mn.ev.toFixed(2)+'R',mn.ev>0.3)
+   +chk('中位數報酬','> 0',sg(mn.med),mn.med>0)+chk('最大連虧','≤ 6',mn.streak,mn.streak<=6)+'</table>'
+   +'<div class="note">白話：勝率只有三成上下的策略，<b>多數單子是賠的</b>，所以「中位數 &gt; 0」幾乎不可能過 —— 這不代表它不能賺，代表你要吞得下大半時間在賠的心理。你之前測固定停利的出場（X1、X2）也是這個形狀。</div></div>';
+  /* Stage 2 有無對照 */
+  var oa=run(rules[0],true), ob=run(rules[0],false), sa=stats(oa.all,S), sb=stats(ob.all,S);
+  var inSt=0,totD=0; Object.keys(P).forEach(function(t){ for(var k=160;k<P[t].bars.length;k++){ if(P[t].bars[k].d>=cut){ totD++; if(P[t].st2[k]) inSt++; } } });
+  function rw(nm,s){ return '<tr><td style="text-align:left">'+nm+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win):'-')+'</td><td class="'+(s.n&&s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td><td>'+(s.n?(s.ev>=0?'+':'')+s.ev.toFixed(2)+'R':'-')+'</td><td>'+(s.n?s.streak:'-')+'</td></tr>'; }
+  h+='<div class="card"><h2>③ 有沒有「週線 Stage 2」差多少</h2><table><tr><th>進場條件</th><th>筆數</th><th>勝率</th><th>平均每筆</th><th>期望值</th><th>連虧</th></tr>'
+    +rw('只在週線 Stage 2 時進場',sa)+rw('不管 Stage 2（任何時候）',sb)+'</table>'
+    +'<div class="note">這些股票在回測期間，<b>'+pct(totD?inSt/totD:0,0)+'</b> 的交易日處在週線 Stage 2（週收盤在 30 週線上、30 週線比 4 週前高；用「上一個收完的週」判斷，不偷看本週）。<br>白話：左邊那一列才是你真正的做法 —— 先挑出週線 Stage 2 的股票，才考慮進場；右邊是對照，看這個篩選到底有沒有加分。</div></div>';
+  /* 對照 */
+  h+='<div class="card"><h2>④ 同一批進場，四種出場法</h2><div class="scroll"><table><tr><th>出場法</th><th>筆數</th><th>勝率</th><th>平均每筆</th><th>賺均</th><th>賠均</th><th>中位數</th><th>連虧</th><th>持有天</th></tr>'
+   +R.map(function(x,i){ var s=x.st; return '<tr'+(i===0?' class="hl"':'')+'><td style="text-align:left">'+x.r.name+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win):'-')+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td><td>'+(s.n?sg(s.avgW):'-')+'</td><td>'+(s.n?sg(s.avgL):'-')+'</td><td>'+(s.n?sg(s.med):'-')+'</td><td>'+(s.n?s.streak:'-')+'</td><td>'+(s.n?s.hold.toFixed(0):'-')+'</td></tr>'; }).join('')
+   +'</table></div><div class="note">「平均每筆」是扣掉成本後、每一筆交易平均賺賠多少 %，不同出場法可以直接比大小。</div></div>';
+  /* 網格 */
+  var stops=[0.07,0.10,0.15], tgts=[0.15,0.20,0.30,0.45];
+  h+='<div class="card"><h2>⑤ 停損 × 停利：敏感度</h2><div class="scroll"><table><tr><th>停損＼停利</th>'+tgts.map(function(t){return '<th>+'+Math.round(t*1000)/10+'%</th>';}).join('')+'</tr>';
+  stops.forEach(function(s){
+    h+='<tr><td>−'+Math.round(s*1000)/10+'%</td>'+tgts.map(function(t){ var x=run({s:s,t:t}), st=stats(x.all,s); return '<td class="'+(st.n&&st.avg>0?'ok':'no')+'">'+(st.n?sg(st.avg,2)+'<div class="mut" style="font-size:11px;font-weight:400">勝率'+pct(st.win,0)+'・'+st.n+'筆</div>':'-')+'</td>'; }).join('')+'</tr>';
+  });
+  h+='</table></div><div class="note">每格上面是平均每筆報酬，下面是勝率和筆數。看的是「<b>是不是整片都差不多</b>」：只有一格特別好，多半是巧合（調參數）；整片都是負的，代表這個出場結構本身沒有邊。</div></div>';
+  /* 出場原因＋年份 */
+  var yrsT={}; main.res.all.forEach(function(x){ (yrsT[x.year]=yrsT[x.year]||[]).push(x); });
+  h+='<div class="card"><h2>⑥ 依年份</h2><table><tr><th>年</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
+   +Object.keys(yrsT).sort().map(function(y){ var s=stats(yrsT[y],S); return '<tr><td>'+y+'</td><td>'+s.n+'</td><td>'+pct(s.win,0)+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+sg(s.avg,2)+'</td></tr>'; }).join('')+'</table></div>';
+  /* 集中度 */
+  var tk=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];});
+  h+='<div class="card"><h2>⑦ 靠誰賺的</h2><div class="scroll"><table><tr><th>股票</th><th>筆數</th><th>勝率</th><th>平均每筆</th></tr>'
+   +tk.map(function(t){ var s=stats(main.res.per[t],S); return '<tr><td>'+t+'</td><td>'+s.n+'</td><td>'+(s.n?pct(s.win,0):'-')+'</td><td class="'+(s.avg>0?'ok':'no')+'">'+(s.n?sg(s.avg,2):'-')+'</td></tr>'; }).join('')
+   +'</table></div><div class="note">抽掉最大貢獻者 '+top+' 之後：'+st2.n+' 筆、勝率 '+pct(st2.win,0)+'、平均每筆 '+sg(st2.avg,2)+'、期望值 '+(st2.ev>=0?'+':'')+st2.ev.toFixed(2)+'R。差多少量的是策略脆不脆弱，不是那檔股票好不好；而且是事後看，不能拿來挑未來要買誰。</div></div>';
+  h+='<div class="card note"><b>這份回測的限制（誠實講）</b><br>① 股票清單是你「今天」挑的，會偏好這幾年漲過的股票（倖存者偏誤）。② 進場是簡化版，不是 dna 的 pivot。③ 日線看不到盤中先後：同一天停損停利都碰到，我一律算停損先，這對 1:3 偏不利但較真實。④ 股價資料是 Yahoo 調整後的 OHLC，個別股票可能有缺漏。'+(bad.length?'<br>⚠ 沒抓到：'+bad.join('、'):'')+'</div>';
+  $('out').innerHTML=h; $('go').disabled=false; log('完成：'+Object.keys(P).length+' 檔');
+  REP='1:3 回測 '+(st2?'Stage2 ':'')+mode+' '+yrs+'年 停損'+S100+'% 停利'+T100+'%\n'+main.res.all.length+'筆 勝率'+pct(mn.win)+' 平均每筆'+sg(mn.avg,2)+' EV '+mn.ev.toFixed(2)+'R 中位'+sg(mn.med)+' 連虧'+mn.streak+' → '+(pass?'通過':'不通過')+'\n'+R.map(function(x){return x.r.name+': n='+x.st.n+' 勝率'+pct(x.st.win,0)+' 平均'+sg(x.st.avg,2);}).join('\n');
+  $('cp').style.display='inline-block';
+}
+function chk(a,b,c,ok){ return '<tr><td>'+a+'</td><td>'+b+'</td><td>'+c+'</td><td class="'+(ok?'ok':'no')+'">'+(ok?'✓':'✗')+'</td></tr>'; }
+function copyRep(){ try{ navigator.clipboard.writeText(REP); $('cp').textContent='已複製'; }catch(e){ prompt('複製：',REP); } }
+</script></body></html>
