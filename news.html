@@ -322,7 +322,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.6</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.7</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1824,8 +1824,8 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   var fm=function(x){return x>=1e6?(x/1e6).toFixed(1)+'M':(x/1e3).toFixed(0)+'K';};
   all.filter(ok).forEach(function(t){
     var s=stats[t]; if(s.vr==null||s.vr<1.8||s.date<dmax) return;
-    var tx = Math.abs(s.chg)<1.5 ? '量大但價格幾乎沒動 —— 有人在大量換手，常是方向出來前的跡象，但<b>還不能判斷往哪邊</b>' : s.chg>0 ? '量大且上漲 —— 資金在追' : '量大且下跌 —— 有人在大量出貨';
-    vr.push('<span class="sy">$'+t+'</span>量是平常的 <b>'+s.vr.toFixed(1)+' 倍</b>（'+fm(s.v)+' ÷ 20 日均 '+fm(s.avgv)+'），'+(s.chg>=0?'漲 ':'跌 ')+Math.abs(s.chg).toFixed(1)+'%。'+tx+'。');
+    var tx = Math.abs(s.chg)<1.5 ? '<span style="font-size:17px;font-weight:800;color:#e65100">⚖ 量大但價格沒動</span> —— 有人在大量換手，常是方向出來前的跡象，但<b>還不能判斷往哪邊</b>' : s.chg>0 ? '<span style="font-size:17px;font-weight:800;color:#1b8a3a">▲ 量大且上漲</span> —— <span style="font-size:17px;font-weight:800;color:#1b8a3a">資金在追</span>' : '<span style="font-size:17px;font-weight:800;color:#d32f2f">▼ 量大且下跌</span> —— <span style="font-size:17px;font-weight:800;color:#d32f2f">有人在大量出貨</span>';
+    vr.push('<div style="border-left:5px solid '+(Math.abs(s.chg)<1.5?'#e65100':s.chg>0?'#1b8a3a':'#d32f2f')+';padding-left:9px;background:'+(Math.abs(s.chg)<1.5?'#fff8f0':s.chg>0?'#f1fbf4':'#fff3f3')+'"><span class="sy">$'+t+'</span>量是平常的 <b style="font-size:16px">'+s.vr.toFixed(1)+' 倍</b>（'+fm(s.v)+' ÷ 20 日均 '+fm(s.avgv)+'），'+(s.chg>=0?'漲 ':'跌 ')+Math.abs(s.chg).toFixed(1)+'%。<br>'+tx+'。</div>');
     s._o=s.vr;
   });
   H+=sec('🔊 量價異常','只看「最新一個交易日（'+dmax.slice(5)+'）」的成交量 ÷ 前 20 個交易日平均（不含今天），≥ 1.8 倍才列出。'+(mOpen?'⚠ 現在盤中，今天的量還沒累積完，會偏低、漏掉。':'')+(stale.length?' 這幾檔最新資料不是同一天，已排除：'+stale.join('、')+'。':''),vr,'最新交易日沒有股票爆量。');
