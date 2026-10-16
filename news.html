@@ -322,7 +322,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.8</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.9</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1231,8 +1231,9 @@ function wgRenderUI(){
       +secOpts+'<div class="wg-hint" id="rds-info"></div>'
       +'<button class="fb" onclick="wgRadar()">開始掃描（掃上面勾選的）</button>'
       +'<button class="fb" style="margin-top:8px;background:#455a64" onclick="wgRadar(\'all\')">🌐 掃全部板塊（'+wgSecAllCount()+' 檔，約 '+Math.ceil(wgSecAllCount()*1.6/60)+' 分鐘）</button>'
-      +'<button class="fb" style="margin-top:8px;background:#90a4ae" onclick="rdClear()">🧹 清除勾選與結果</button>'
-      +'<div class="wg-hint" style="margin-top:6px">每次掃描都會<b>重新整頁取代</b>上次結果；但凡是上面<b>還勾著</b>的盒子都會一起掃，所以舊板塊的股票還在，就是因為它還勾著。想單獨看一個板塊，先按「清除勾選與結果」。結果每一塊的標題可以點一下收起來。</div>';
+      +'<button class="fb" style="margin-top:8px;background:#90a4ae" onclick="rdClear()">🧹 清除勾選（累積紀錄會保留）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#b0bec5" onclick="accClear()">🗑 清除累積紀錄（各組同步度／分析師評等）</button>'
+      +'<div class="wg-hint" style="margin-top:6px">「各組同步度」和「分析師評等變化」會<b>累積保留</b>你掃過的每一組、每一檔（存在這台 iPad，下次打開還在）；其他區塊（財報、量價、逼近高點）只顯示這次掃的。結果每一塊的標題可以點一下收起來。</div>';
   }
   try{ rdSecInfo(); }catch(e){}
 }
@@ -1261,6 +1262,9 @@ function rdClear(){
   var m=document.getElementById('rm2'); if(m) m.textContent='尚未掃描';
   wgRenderUI();
 }
+function accLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('rdacc_v1')||'null'); }catch(e){} if(!o||!o.g||!o.an) o={g:{},an:{}}; return o; }
+function accSave(o){ try{ localStorage.setItem('rdacc_v1',JSON.stringify(o)); }catch(e){} }
+function accClear(){ if(!confirm('清除所有累積的「各組同步度」和「分析師評等變化」紀錄？（不會動你的盒子和勾選）')) return; try{ localStorage.removeItem('rdacc_v1'); }catch(e){} var b=document.getElementById('radc'); if(b) b.innerHTML='<div class="empty">累積紀錄已清除。</div>'; }
 function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
 /* ═══ v6.3 雷達的另外兩個來源：「我的持股」框＋「整個板塊」（Jasmine 10/15）═══
    原本雷達只讀「我的持倉」四個盒子；盒子要先一個一個帶入板塊才有東西可掃。
@@ -1836,28 +1840,35 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   var nhMore=nh.length>8?nh.length-8:0; nh=nh.slice(0,8); if(nhMore) nh.push('另外還有 '+nhMore+' 檔也在 3% 內（只列最接近的 8 檔）。');
   H+=sec('📍 逼近一年高點（3% 內）','離 52 週最高價 3% 以內。接近前高 = 接下來要嘛突破、要嘛被賣壓擋下，值得盯。',nh,'沒有股票靠近一年高點。');
   /* 4 板塊同步 */
-  var gr=sel.map(function(g){
-    var L=g.list.filter(ok); if(!L.length) return null;
+  var ACC=accLoad();
+  sel.forEach(function(g){
+    var L=g.list.filter(ok); if(!L.length) return;
     var up=L.filter(function(t){return stats[t].chg>0;}).length, ab=L.filter(function(t){return stats[t].dMA>=0;}).length;
     var avg=L.reduce(function(a,t){return a+stats[t].chg;},0)/L.length;
     var srt=L.slice().sort(function(a,b){return stats[b].chg-stats[a].chg;});
-    var rd = up/L.length>=0.75?'整組一起走強':up/L.length<=0.25?'整組一起走弱':'各走各的，沒有一致方向';
-    return '<span class="sy">'+esc2(g.n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b>'+rd+'</b>。'
-      +'<br>領漲 $'+srt[0]+' '+(stats[srt[0]].chg>=0?'+':'')+stats[srt[0]].chg.toFixed(1)+'%；落後 $'+srt[srt.length-1]+' '+(stats[srt[srt.length-1]].chg>=0?'+':'')+stats[srt[srt.length-1]].chg.toFixed(1)+'%';
-  }).filter(Boolean);
-  H+=sec('🧭 各組同步度','同一組（盒子／持股／板塊）的股票是一起動還是各走各的。一起轉強通常是板塊資金在動；只有一檔強，多半是個股消息。',gr,'沒有資料。');
+    var r=up/L.length, st=r>=0.75?'s':r<=0.25?'w':'n';
+    var rd = st==='s'?'整組一起走強':st==='w'?'整組一起走弱':'各走各的，沒有一致方向';
+    var col = st==='s'?'#1b8a3a':st==='w'?'#d32f2f':'#5f6b7a';
+    ACC.g[g.n]={at:dmax,avg:avg,h:'<span class="sy">'+esc2(g.n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b style="color:'+col+'">'+rd+'</b>。'
+      +'<br>領漲 $'+srt[0]+' '+(stats[srt[0]].chg>=0?'+':'')+stats[srt[0]].chg.toFixed(1)+'%；落後 $'+srt[srt.length-1]+' '+(stats[srt[srt.length-1]].chg>=0?'+':'')+stats[srt[srt.length-1]].chg.toFixed(1)+'%'};
+  });
+  var gkeys=Object.keys(ACC.g).sort(function(a,b){return ACC.g[b].avg-ACC.g[a].avg;});
+  var gr=gkeys.map(function(k){ var x=ACC.g[k]; return x.h+(x.at!==dmax?' <span style="font-size:11px;color:#8a94a6">（'+x.at.slice(5)+' 的資料）</span>':''); });
+  H+=sec('🧭 各組同步度（累積，由強到弱）','會保留你掃過的每一組，依「平均漲跌」由強排到弱，方便對照 RRG／飆股雷達。每組只保留最近一次掃描結果，沒標日期的是這次最新，標了日期的是之前掃的。可以按最下面「清除累積紀錄」重來。',gr,'沒有資料。');
   /* 5 分析師評等變化 */
   var an=[], pend=0;
   all.forEach(function(t){
     var a=rec[t]; if(a===undefined){ pend++; return; } if(!a||a.length<2) return;
     a=a.slice().sort(function(x,y){return x.period<y.period?1:-1;});
     var n=recShare(a[0]), o=recShare(a[Math.min(3,a.length-1)]); if(!n||!o||n.tot<3) return;
-    var d=n.buy-o.buy; if(Math.abs(d)<8) return;
-    an.push({d:d,h:'<span class="sy">$'+t+'</span>建議買進的分析師比例 <b>'+o.buy.toFixed(0)+'% → '+n.buy.toFixed(0)+'%</b>（'+(d>0?'上升 ':'下降 ')+Math.abs(d).toFixed(0)+' 個百分點；共 '+n.tot+' 位，'+o.r.period.slice(0,7)+' → '+n.r.period.slice(0,7)+'）。'+(d>0?'愈來愈多分析師看好。':'有分析師轉謹慎。')});
+    var d=n.buy-o.buy; if(Math.abs(d)<8){ delete ACC.an[t]; return; }
+    ACC.an[t]={d:d,at:dmax,h:'<span class="sy">$'+t+'</span>建議買進的分析師比例 <b>'+o.buy.toFixed(0)+'% → '+n.buy.toFixed(0)+'%</b>（'+(d>0?'上升 ':'下降 ')+Math.abs(d).toFixed(0)+' 個百分點；共 '+n.tot+' 位，'+o.r.period.slice(0,7)+' → '+n.r.period.slice(0,7)+'）。'+(d>0?'愈來愈多分析師看好。':'有分析師轉謹慎。')};
   });
-  an.sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d);});
-  var anH=an.map(function(x){return x.h;}); if(anH.length>10){ var extra=anH.length-10; anH=anH.slice(0,10); anH.push('另外還有 '+extra+' 檔有變動（只列變動最大的 10 檔）。'); }
-  H+=sec('🧑‍💼 分析師評等變化','「買進／強力買進」占全部分析師的比例，比 3 個月前變動 8 個百分點以上才列出。⚠ 免費資料看不到「調高目標價」，這裡只有人數比例。',
+  accSave(ACC);
+  var ank=Object.keys(ACC.an).sort(function(a,b){return Math.abs(ACC.an[b].d)-Math.abs(ACC.an[a].d);});
+  var anH=ank.map(function(k){ var x=ACC.an[k]; return x.h+(x.at!==dmax?' <span style="font-size:11px;color:#8a94a6">（'+x.at.slice(5)+' 掃描）</span>':''); });
+  if(anH.length>40){ var extra=anH.length-40; anH=anH.slice(0,40); anH.push('另外還有 '+extra+' 檔有變動（只列變動最大的 40 檔）。'); }
+  H+=sec('🧑‍💼 分析師評等變化（累積）','會保留你掃過的所有股票：「買進／強力買進」占全部分析師的比例，比 3 個月前變動 8 個百分點以上才列出（再掃到同一檔會用最新結果取代）。⚠ 免費資料看不到「調高目標價」，這裡只有人數比例。',
     anH, recDone?'沒有明顯變化的股票。':'查詢中…');
   if(!recDone) H+='<div class="wg-hint" style="margin:6px 16px">分析師評等還在逐檔查（約每檔 1 秒），上面其他四塊已經是完整的。</div>';
   var bad=all.filter(function(t){return !ok(t);});
