@@ -54,6 +54,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .wi{width:100%;background:#ffffff;border:1px solid #c8d0dc;border-radius:8px;padding:9px 14px;color:#1a202c;font-size:11px;outline:none;margin-bottom:8px;box-sizing:border-box;}
 .wi:focus{border-color:#0066bb;}
 .fb{width:100%;background:#ffffff;border:1px solid #0066bb;border-radius:8px;color:#0066bb;padding:9px;font-size:12px;cursor:pointer;}
+.rd-sec>summary{list-style:none;cursor:pointer}.rd-sec>summary::-webkit-details-marker{display:none}
 .wres{display:none}.wres.on{display:block}
 .wg-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .wg-pill{flex:1 1 22%;min-width:70px;background:#fff;border:1px solid #c8d0dc;border-radius:10px;padding:7px 4px;font-size:12px;color:#4a5568;cursor:pointer;text-align:center;line-height:1.3}
@@ -321,7 +322,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.4</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.6</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1166,9 +1167,11 @@ function wgLoad(){
   if(o && o.boxes && o.boxes.length===4){ WG=o; if(!WG.rsel) WG.rsel=[1,1,1,1]; }
   else{
     var old=''; try{ old=localStorage.getItem('watch_syms')||''; }catch(e){}
-    WG={boxes:[{n:'持股',s:old||'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL'},{n:'板塊 A',s:''},{n:'板塊 B',s:''},{n:'觀察',s:''}],active:0,rsel:[1,1,1,1]};
+    WG={boxes:[{n:'持股',s:old||'AAOI, IONQ, LUNR, PL, TSLA, NVDA, PLTR, AAPL'},{n:'關注 A',s:''},{n:'關注 B',s:''},{n:'觀察',s:''}],active:0,rsel:[1,1,1,1]};
   }
   WG.active=WG.active||0;
+  /* v6.5：預設名稱「板塊 A／B」會讓人以為是在選板塊，其實是放自己關注的股票 → 改名（沒自己改過名的才改）*/
+  WG.boxes.forEach(function(b){ if(!b.nc){ if(b.n==='板塊 A') b.n='關注 A'; else if(b.n==='板塊 B') b.n='關注 B'; } });
   try{ rdLoad(); }catch(e){}
 }
 function wgSave(){ try{ localStorage.setItem(WG_KEY,JSON.stringify(WG)); }catch(e){} }
@@ -1199,13 +1202,13 @@ function wgRenderUI(){
   var b=WG.boxes[WG.active];
   var pills='<div class="wg-pills">'+WG.boxes.map(function(x,i){
     var n=wgAll(x.s).length;
-    return '<div class="wg-pill'+(i===WG.active?' on':'')+'" onclick="wgSwitch('+i+')">'+esc2(x.n||('盒'+(i+1)))+'<small>'+n+' 檔'+(WG['done'+i]?' ✓':'')+'</small></div>';
+    return '<div class="wg-pill'+(i===WG.active?' on':'')+'" onclick="wgSwitch('+i+')">'+esc2(x.n||('盒'+(i+1)))+'<small>'+n+'／15 檔'+(WG['done'+i]?' ✓':'')+'</small></div>';
   }).join('')+'</div>';
-  var opts='<option value="">⚡ 從板塊快速帶入（會取代這個盒子的名單）</option>'+wgSecChunks().map(function(c){return '<option value="'+c.v+'">'+c.l+'</option>';}).join('');
+  var opts='<option value="">⚡ 想省事？從板塊快速帶入（會取代這個盒子的名單；不用也可以，自己打就好）</option>'+wgSecChunks().map(function(c){return '<option value="'+c.v+'">'+c.l+'</option>';}).join('');
   var cnt=wgAll(b.s).length;
   ui.innerHTML=pills+'<div class="wg-ed">'
     +'<input class="wn" id="wg-name" value="'+esc2(b.n)+'" placeholder="盒子名稱" oninput="wgName(this.value)">'
-    +'<textarea id="wg-syms" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="股票代碼，逗號或空白分開（最多 15 檔）" oninput="wgSyms(this.value)">'+esc2(b.s)+'</textarea>'
+    +'<textarea id="wg-syms" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="打你關注的股票代碼（可以來自不同板塊），逗號或空白分開。每盒最多 15 檔，小寫會自動轉大寫" oninput="wgSyms(this.value)">'+esc2(b.s)+'</textarea>'
     +'<select onchange="wgSector(this.value);this.value=\'\'">'+opts+'</select>'
     +'<div class="wg-hint" id="wg-hint">'+wgHint(cnt)+'</div>'
     +'<button class="fb" onclick="wgQuery('+WG.active+')">查詢「'+esc2(b.n)+'」（只查這一盒，其他盒不受影響）</button>'
@@ -1214,7 +1217,7 @@ function wgRenderUI(){
   var rd=document.getElementById('rd-ui');
   if(rd){
     var nh=wgAll(RD.hold).length;
-    var secOpts='<option value="">（不加）</option>'+(typeof SECTORS!=='undefined'?SECTORS.map(function(c){ return '<option value="'+c.k+'"'+(RD.sec===c.k?' selected':'')+'>'+esc2(c.n)+'（'+wgAll(c.s).length+' 檔）</option>'; }).join(''):'');
+    var secOpts='<div class="rd-ck">'+(typeof SECTORS!=='undefined'?SECTORS.map(function(c){ return '<label><input type="checkbox" id="rds-'+c.k+'" '+(RD.secs.indexOf(c.k)>=0?'checked':'')+' onchange="rdSec(\''+c.k+'\',this.checked)"> '+esc2(c.n)+'（'+wgAll(c.s).length+'）</label>'; }).join(''):'')+'</div>';
     rd.innerHTML='<div class="wg-hint">雷達可以同時掃三種來源，勾選要掃的、按「開始掃描」：<br>① 「我的持倉」四個盒子　② 你的持股（下面自己打）　③ 整個板塊（下面下拉選）</div>'
       +'<div class="rd-ck">'+WG.boxes.map(function(x,i){
         var n=wgAll(x.s).length;
@@ -1224,13 +1227,17 @@ function wgRenderUI(){
       +'<div class="wg-hint" style="margin-top:10px"><b>📌 我的持股</b>：打你現在手上的股票，逗號或空白分開。這一格跟上面四個盒子分開，打完會自動記住。</div>'
       +'<textarea id="rd-hold" class="wi" style="min-height:54px;font-size:14px" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="例如：MU, SNDK, PENG, HPE" oninput="rdHold(this.value)">'+esc2(RD.hold)+'</textarea>'
       +'<div class="wg-hint" id="rd-hh">'+(nh>30?'<span style="color:#c62828">⚠ 你填了 '+nh+' 檔，只會掃前 30 檔。</span>':'目前 '+nh+' 檔（上限 30）。')+'</div>'
-      +'<div class="wg-hint" style="margin-top:6px"><b>📁 加掃一整個板塊</b>（不用先放進盒子；會跟上面勾的一起掃）：</div>'
-      +'<select class="wi" style="font-size:14px" onchange="rdSec(this.value)">'+secOpts+'</select>'
-      +'<button class="fb" onclick="wgRadar()">開始掃描</button>';
+      +'<div class="wg-hint" style="margin-top:6px"><b>📁 加掃整個板塊</b>（可複選，最多 4 個，像 RRG 那樣一次比較；不用先放進盒子，會跟上面勾的一起掃）：</div>'
+      +secOpts+'<div class="wg-hint" id="rds-info"></div>'
+      +'<button class="fb" onclick="wgRadar()">開始掃描（掃上面勾選的）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#455a64" onclick="wgRadar(\'all\')">🌐 掃全部板塊（'+wgSecAllCount()+' 檔，約 '+Math.ceil(wgSecAllCount()*1.6/60)+' 分鐘）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#90a4ae" onclick="rdClear()">🧹 清除勾選與結果</button>'
+      +'<div class="wg-hint" style="margin-top:6px">每次掃描都會<b>重新整頁取代</b>上次結果；但凡是上面<b>還勾著</b>的盒子都會一起掃，所以舊板塊的股票還在，就是因為它還勾著。想單獨看一個板塊，先按「清除勾選與結果」。結果每一塊的標題可以點一下收起來。</div>';
   }
+  try{ rdSecInfo(); }catch(e){}
 }
 function wgHint(cnt){
-  return cnt>15 ? '<span style="color:#c62828">⚠ 你填了 '+cnt+' 檔，只會查前 15 檔。多的請放到別的盒子。</span>' : ('目前 '+cnt+' 檔（上限 15）。');
+  return cnt>15 ? '<span style="color:#c62828">⚠ 你填了 '+cnt+' 檔，只會查前 15 檔。多的請放到別的盒子。</span>' : ('目前 <b>'+cnt+' ／ 15</b> 檔（每盒上限 15，輸入會自動轉大寫）。');
 }
 function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function wgSwitch(i){ WG.active=i; wgSave(); wgRenderUI(); }
@@ -1238,7 +1245,7 @@ function wgName(v){ WG.boxes[WG.active].n=v; WG.boxes[WG.active].nc=1; wgSave();
   var p=document.querySelectorAll('.wg-pill')[WG.active]; if(p){ p.firstChild.nodeValue=v||('盒'+(WG.active+1)); } }
 function wgSyms(v){ WG.boxes[WG.active].s=v; wgSave();
   var c=wgAll(v).length, h=document.getElementById('wg-hint'); if(h) h.innerHTML=wgHint(c);
-  var p=document.querySelectorAll('.wg-pill small')[WG.active]; if(p) p.textContent=c+' 檔'+(WG['done'+WG.active]?' ✓':''); }
+  var p=document.querySelectorAll('.wg-pill small')[WG.active]; if(p) p.textContent=c+'／15 檔'+(WG['done'+WG.active]?' ✓':''); }
 function wgSector(v){
   if(!v) return;
   var c=wgSecChunks().filter(function(x){return x.v===v;})[0]; if(!c) return;
@@ -1246,14 +1253,22 @@ function wgSector(v){
   if(!b.nc) b.n=c.n;  /* 你自己改過名字就不動它，否則每次帶入板塊都跟著換名 */
   wgSave(); wgRenderUI();
 }
+function wgSecAllList(){ var seen={},out=[]; (typeof SECTORS!=='undefined'?SECTORS:[]).forEach(function(c){ wgAll(c.s).forEach(function(t){ if(!seen[t]){seen[t]=1;out.push(t);} }); }); return out; }
+function wgSecAllCount(){ return wgSecAllList().length; }
+function rdClear(){
+  WG.rsel=[0,0,0,0]; RD.uh=0; RD.secs=[]; wgSave(); rdSave();
+  var b=document.getElementById('radc'); if(b) b.innerHTML='<div class="empty">已清除。勾選要掃的盒子、填「我的持股」、選一個板塊，或按「掃全部板塊」</div>';
+  var m=document.getElementById('rm2'); if(m) m.textContent='尚未掃描';
+  wgRenderUI();
+}
 function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
 /* ═══ v6.3 雷達的另外兩個來源：「我的持股」框＋「整個板塊」（Jasmine 10/15）═══
    原本雷達只讀「我的持倉」四個盒子；盒子要先一個一個帶入板塊才有東西可掃。
    現在多兩個來源，跟四個盒子分開存、可以一起勾：
    ① 📌 我的持股：自己打（最多 30 檔），自動記住
    ② 📁 整個板塊：下拉選一個，直接掃整份名單，不必先塞進盒子 */
-var RD={hold:'',sec:'',uh:1};
-function rdLoad(){ try{ var o=JSON.parse(localStorage.getItem('rd_v1')||'null'); if(o) RD={hold:o.hold||'',sec:o.sec||'',uh:o.uh==null?1:o.uh}; }catch(e){} }
+var RD={hold:'',sec:'',secs:[],uh:1}, SEC_MAX=4;
+function rdLoad(){ try{ var o=JSON.parse(localStorage.getItem('rd_v1')||'null'); if(o){ RD={hold:o.hold||'',sec:'',secs:Array.isArray(o.secs)?o.secs:(o.sec?[o.sec]:[]),uh:o.uh==null?1:o.uh}; } }catch(e){} }
 function rdSave(){ try{ localStorage.setItem('rd_v1',JSON.stringify(RD)); }catch(e){} }
 function rdHold(v){
   RD.hold=v; rdSave();
@@ -1263,7 +1278,15 @@ function rdHold(v){
   if(h) h.innerHTML= n>30 ? '<span style="color:#c62828">⚠ 你填了 '+n+' 檔，只會掃前 30 檔。</span>' : ('目前 '+n+' 檔（上限 30）。');
 }
 function rdUH(on){ RD.uh=on?1:0; rdSave(); }
-function rdSec(v){ RD.sec=v; rdSave(); }
+function rdSec(k,on){
+  var a=RD.secs.filter(function(x){return x!==k;});
+  if(on){ if(a.length>=SEC_MAX){ var cb=document.getElementById('rds-'+k); if(cb) cb.checked=false; alert('一次最多勾 '+SEC_MAX+' 個板塊（再多會掃太久、免費額度也會不夠）。'); return; } a.push(k); }
+  RD.secs=a; rdSave(); rdSecInfo();
+}
+function rdSecInfo(){
+  var n=0,seen={}; RD.secs.forEach(function(k){ var c=SECTORS.filter(function(x){return x.k===k;})[0]; if(c) wgAll(c.s).forEach(function(t){ if(!seen[t]){seen[t]=1;n++;} }); });
+  var e=document.getElementById('rds-info'); if(e) e.innerHTML='已勾 <b>'+RD.secs.length+' ／ '+SEC_MAX+'</b> 個板塊，共 '+n+' 檔'+(n?'，約 '+Math.ceil(n*1.6/60)+' 分鐘':'')+'。';
+}
 function sleep2(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
 async function apiR(ep){
   try{ return await api(ep); }
@@ -1718,17 +1741,19 @@ function earnTrendHtml(t){
     +'<br>'+t.parts.join('<br>')+'<br><span style="color:#8a94a6">預估是分析師的預期，不是保證；公司常會略高於預期，所以「預估 vs 實際」的落差比預估本身更重要。</span></div>';
 }
 var RDF={}, RDF_ST='';
-async function wgRadar(){
+async function wgRadar(mode){
   if(RD_BUSY) return;
+  var ALLM=(mode==='all');
   var sel=[];   /* 每一組：{n:名稱, list:代號[]}；組別來源＝盒子／我的持股／整個板塊 */
-  WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
-  if(RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
-  if(RD.sec && typeof SECTORS!=='undefined'){ var sc=SECTORS.filter(function(c){return c.k===RD.sec;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }
+  if(ALLM){ SECTORS.forEach(function(c){ var L=wgAll(c.s); if(L.length) sel.push({n:c.n,list:L}); }); }
+  if(!ALLM) WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
+  if(!ALLM && RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
+  if(!ALLM && typeof SECTORS!=='undefined'){ RD.secs.slice(0,SEC_MAX).forEach(function(k){ var sc=SECTORS.filter(function(c){return c.k===k;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }); }
   var set={}, all=[];
   sel.forEach(function(g){ g.list.forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
   var box=document.getElementById('radc'), msg=document.getElementById('rm2');
   if(!all.length){ box.innerHTML='<div class="empty">還沒有選到任何要掃的股票：勾選盒子、填「我的持股」、或選一個板塊</div>'; return; }
-  var CAP=70, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
+  var CAP=ALLM?300:100, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
   RD_BUSY=true; spn('rr',true); RDF={}; RDF_ST='pend';
   var rec={}, cal=null, calErr=null;
   try{
@@ -1763,16 +1788,16 @@ async function wgRadar(){
       await sleep2(1100);
     }
     wgRadarRender(sel,all,stats,cal,calErr,rec,true);
-    msg.textContent='掃描完成：'+all.length+' 檔（'+sel.map(function(g){return g.n;}).join('、')+'）'+(capped?'。⚠ 一次最多掃 '+CAP+' 檔，後面 '+capped+' 檔沒掃，請分次掃。':'');
+    msg.textContent='掃描完成：'+all.length+' 檔（'+(ALLM?'全部板塊 '+sel.length+' 個':sel.map(function(g){return g.n;}).join('、'))+'）'+(capped?'。⚠ 一次最多掃 '+CAP+' 檔，後面 '+capped+' 檔沒掃，請分次掃。':'');
   }catch(e){ box.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>'; msg.textContent='掃描失敗'; }
   RD_BUSY=false; spn('rr',false);
 }
 function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   var ok=function(t){return stats[t]&&!stats[t].err;};
-  var H='';
+  var H='<div class="wg-hint" style="margin:8px 16px">📋 <b>本次掃描範圍</b>：'+sel.map(function(g){return esc2(g.n)+'（'+g.list.length+'）';}).join('、')+'；共 '+all.length+' 檔（重複的只算一次）。</div>';
   function sec(title,sub,rows,none){
-    return '<div class="rd-sec"><div class="rd-h"><b>'+title+'</b><div>'+sub+'</div></div>'
-      +(rows.length?rows.map(function(r){return '<div class="rd-row">'+r+'</div>';}).join(''):'<div class="rd-none">'+none+'</div>')+'</div>';
+    return '<details class="rd-sec" open><summary class="rd-h"><b>'+title+'</b> <span style="font-size:11px;color:#8a94a6">'+(rows.length?'（'+rows.length+'）':'')+' ▾ 點一下收起／展開</span><div>'+sub+'</div></summary>'
+      +(rows.length?rows.map(function(r){return '<div class="rd-row">'+r+'</div>';}).join(''):'<div class="rd-none">'+none+'</div>')+'</details>';
   }
   /* 1 財報倒數 */
   var today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
@@ -1792,14 +1817,18 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   H+=sec('📅 財報倒數（14 天內）','財報公布日常出現比平常大很多的跳空。這是「該提早想好」的提醒，不是買賣訊號。',er,
     calErr?'⚠ 財報日程抓取失敗（'+esc2(calErr)+'）':'這幾盒在 14 天內都沒有財報。');
   /* 2 量價異常 */
-  var vr=[];
+  var vr=[], dmax=''; all.filter(ok).forEach(function(t){ if(stats[t].date>dmax) dmax=stats[t].date; });
+  var nowET=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'})), mins=nowET.getHours()*60+nowET.getMinutes(), wk=nowET.getDay();
+  var mOpen=wk>0&&wk<6&&mins>=570&&mins<960;
+  var stale=all.filter(ok).filter(function(t){return stats[t].date<dmax;});
+  var fm=function(x){return x>=1e6?(x/1e6).toFixed(1)+'M':(x/1e3).toFixed(0)+'K';};
   all.filter(ok).forEach(function(t){
-    var s=stats[t]; if(s.vr==null||s.vr<1.8) return;
+    var s=stats[t]; if(s.vr==null||s.vr<1.8||s.date<dmax) return;
     var tx = Math.abs(s.chg)<1.5 ? '量大但價格幾乎沒動 —— 有人在大量換手，常是方向出來前的跡象，但<b>還不能判斷往哪邊</b>' : s.chg>0 ? '量大且上漲 —— 資金在追' : '量大且下跌 —— 有人在大量出貨';
-    vr.push('<span class="sy">$'+t+'</span>量是平常的 <b>'+s.vr.toFixed(1)+' 倍</b>，'+(s.chg>=0?'漲 ':'跌 ')+Math.abs(s.chg).toFixed(1)+'%。'+tx+'。');
+    vr.push('<span class="sy">$'+t+'</span>量是平常的 <b>'+s.vr.toFixed(1)+' 倍</b>（'+fm(s.v)+' ÷ 20 日均 '+fm(s.avgv)+'），'+(s.chg>=0?'漲 ':'跌 ')+Math.abs(s.chg).toFixed(1)+'%。'+tx+'。');
     s._o=s.vr;
   });
-  H+=sec('🔊 量價異常','今天成交量 ≥ 近 20 天平均的 1.8 倍。盤中看到的量還沒累積完，會偏低。',vr,'今天沒有股票爆量。');
+  H+=sec('🔊 量價異常','只看「最新一個交易日（'+dmax.slice(5)+'）」的成交量 ÷ 前 20 個交易日平均（不含今天），≥ 1.8 倍才列出。'+(mOpen?'⚠ 現在盤中，今天的量還沒累積完，會偏低、漏掉。':'')+(stale.length?' 這幾檔最新資料不是同一天，已排除：'+stale.join('、')+'。':''),vr,'最新交易日沒有股票爆量。');
   /* 3 接近 52 週高 */
   var nh=all.filter(ok).filter(function(t){return stats[t].fromHi>=-3;}).sort(function(a,b){return stats[b].fromHi-stats[a].fromHi;}).map(function(t){
     var s=stats[t]; return '<span class="sy">$'+t+'</span>離一年最高價只差 <b>'+Math.abs(s.fromHi).toFixed(1)+'%</b>'+(s.fromHi>=-0.05?'（今天就在高點）':'')+'。';
