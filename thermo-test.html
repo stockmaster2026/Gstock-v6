@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THERMO TEST 溫度計測試</title>
+<style>
+:root{--bg:#fbf6e4;--card:#fffdf4;--ink:#2a2a22;--mut:#6d6a58;--line:#e2d9b4;--ok:#1f7a3d;--okbg:#e3f4e8;--bad:#b3261e;--badbg:#fbe7e5;--warn:#9a6700;--warnbg:#fdf0cf;--blue:#1d4f91}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:16px;max-width:860px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px}
+.sub{color:var(--mut);font-size:14px;margin-bottom:14px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+input{font-size:18px;padding:10px 12px;border:2px solid var(--line);border-radius:10px;width:130px;text-transform:uppercase;background:#fff}
+button{font-size:17px;padding:10px 16px;border-radius:10px;border:0;background:var(--blue);color:#fff;font-weight:600}
+button:disabled{opacity:.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.no{background:var(--blue);color:#fff;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.ttl{font-weight:700;font-size:18px}
+.chip{padding:3px 12px;border-radius:99px;font-weight:700;font-size:15px}
+.c-ok{background:var(--okbg);color:var(--ok)}
+.c-bad{background:var(--badbg);color:var(--bad)}
+.c-wait{background:#eee;color:#555}
+.c-warn{background:var(--warnbg);color:var(--warn)}
+.what{color:var(--mut);font-size:14px;margin:6px 0}
+.diag{margin:8px 0;padding:8px 10px;border-radius:8px;font-size:15px}
+.diag.bad{background:var(--badbg);color:#7a1c16}
+.diag.ok{background:var(--okbg);color:#14532d}
+.read{margin:8px 0;padding:10px 12px;border-left:5px solid var(--blue);background:#f1f5fb;border-radius:6px;font-size:16px}
+.big{font-size:26px;font-weight:800}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:6px 0}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+details{margin-top:8px;font-size:13px;color:var(--mut)}
+pre{white-space:pre-wrap;word-break:break-all;background:#f4f1e2;padding:8px;border-radius:8px;max-height:220px;overflow:auto;font-size:12px}
+.note{font-size:13.5px;color:var(--mut)}
+.sumbox{background:#fff;border:2px solid var(--blue);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<h1>THERMO TEST　溫度計測試</h1>
+<div class="sub">目的：確認「空頭」和「選擇權」這兩種溫度計資料，在你的 iPad 上到底拿不拿得到。這頁只測資料來源，還沒有接進 news 或 dna。</div>
+
+<div class="bar">
+  <input id="tk" value="NVDA" autocapitalize="characters" autocomplete="off" spellcheck="false">
+  <button id="go">全部測試</button>
+  <span class="note" id="stat"></span>
+</div>
+
+<div class="sumbox" id="sum" style="display:none"></div>
+
+<div id="out"></div>
+
+<div class="note" style="margin-top:18px">
+每個來源會先試「瀏覽器直接連」，失敗再試「你的 Worker 代理」。兩條都失敗時，上面會寫是哪一種原因，這樣才知道要改 Worker 還是放棄這個來源。<br>
+所有「白話解讀」裡的門檻都是我暫訂的參考線，沒有經過驗證，只是幫你先看懂數字的方向。
+</div>
+
+<script>
+var PROXY = 'https://gstock-proxy.cykjas.workers.dev/?url=';
+var TESTS = [
+  {id:'t1', n:1, name:'個股選擇權（Cboe 延遲報價）', what:'這檔股票所有選擇權合約的成交量與未平倉量，可算 put/call 比、隱含波動率、異常大單。這是最像「溫度計」的一個。', run:tCboe},
+  {id:'t2', n:2, name:'每日賣空成交量（FINRA）', what:'每天有多少成交量是賣空單。每個交易日收盤後就出，比空頭餘額新很多。', run:tShortVol},
+  {id:'t3', n:3, name:'空頭餘額 Short Interest（FINRA API）', what:'一共有多少股被借出去放空。官方每月兩次，落後約兩週。', run:tFinraSI},
+  {id:'t4', n:4, name:'Yahoo 關鍵統計（備用）', what:'Yahoo 有現成的空頭比例欄位，但需要登入憑證，通常拿不到。', run:tYahooKS},
+  {id:'t5', n:5, name:'Finnhub 空頭／選擇權（你現有的 key）', what:'看看你現在用的 Finnhub 免費 key 能不能拿這兩種資料。', run:tFinnhub}
+];
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+
+function tmo(url, opt, ms){
+  var ac = new AbortController();
+  var t = setTimeout(function(){ac.abort()}, ms||15000);
+  opt = opt || {}; opt.signal = ac.signal;
+  return fetch(url, opt).then(function(r){clearTimeout(t);return r}, function(e){clearTimeout(t);throw e});
+}
+
+// 先直接連，再走 Worker。回傳 {ok, via, status, text, tries:[...]}
+function getBoth(url, wantText){
+  var tries = [];
+  function viaWorker(){
+    return tmo(PROXY + encodeURIComponent(url)).then(function(r){
+      return r.text().then(function(tx){
+        tries.push({via:'Worker', status:r.status, len:tx.length, head:tx.slice(0,160)});
+        if(r.ok && tx.length>0) return {ok:true, via:'Worker', status:r.status, text:tx, tries:tries};
+        return {ok:false, tries:tries};
+      });
+    }, function(e){
+      tries.push({via:'Worker', status:0, err:String(e&&e.name||e)});
+      return {ok:false, tries:tries};
+    });
+  }
+  return tmo(url).then(function(r){
+    return r.text().then(function(tx){
+      tries.push({via:'直接', status:r.status, len:tx.length, head:tx.slice(0,160)});
+      if(r.ok && tx.length>0) return {ok:true, via:'直接', status:r.status, text:tx, tries:tries};
+      return viaWorker();
+    });
+  }, function(e){
+    tries.push({via:'直接', status:0, err:String(e&&e.name||e)});
+    return viaWorker();
+  });
+}
+
+function diagnose(res){
+  var d = res.tries, a = d[0], b = d[1];
+  var parts = [];
+  if(a){ parts.push('直接連：' + (a.status? ('HTTP '+a.status) : '被瀏覽器擋住（多半是 CORS，網站沒開放給別的網頁讀）')); }
+  if(b){
+    var w = b.status? ('HTTP '+b.status) : ('連不上（'+(b.err||'')+'）');
+    var why = '';
+    if(b.status===403) why = '　→ Worker 的白名單不允許這個網站（目前只開放 Yahoo），要改 worker.js 才能用。';
+    else if(b.status===404) why = '　→ 網站回找不到，可能是網址或代號不對。';
+    else if(b.status===401) why = '　→ 網站要求登入憑證。';
+    else if(b.status>=500) why = '　→ 對方伺服器出錯。';
+    parts.push('Worker：' + w + why);
+  }
+  return parts.join('<br>');
+}
+
+function card(t){
+  return '<div class="card" id="'+t.id+'"><div class="hd"><span class="no">'+t.n+'</span><span class="ttl">'+t.name+'</span><span class="chip c-wait" id="'+t.id+'c">等待</span></div><div class="what">'+t.what+'</div><div id="'+t.id+'b"></div></div>';
+}
+function setChip(id, cls, txt){var e=$(id+'c'); e.className='chip '+cls; e.textContent=txt}
+function setBody(id, html){$(id+'b').innerHTML = html}
+function rawBlock(res){
+  var s = res.tries.map(function(x){return x.via+' | '+(x.status||'ERR')+' | '+(x.len!=null?x.len+' 字元':'')+(x.err?' '+x.err:'')+'\n'+(x.head||'')}).join('\n---\n');
+  return '<details><summary>原始回應（除錯用）</summary><pre>'+esc(s)+'</pre></details>';
+}
+function fail(t, res){
+  setChip(t.id,'c-bad','拿不到');
+  setBody(t.id, '<div class="diag bad">'+diagnose(res)+'</div>'+rawBlock(res));
+  return {ok:false};
+}
+
+// ---------- 1. Cboe 選擇權 ----------
+function parseOcc(s){
+  var m = /^(.*?)(\d{6})([CP])(\d{8})$/.exec(s||'');
+  if(!m) return null;
+  var y=2000+parseInt(m[2].slice(0,2),10), mo=parseInt(m[2].slice(2,4),10)-1, d=parseInt(m[2].slice(4,6),10);
+  return {root:m[1], exp:new Date(Date.UTC(y,mo,d)), type:m[3], strike:parseInt(m[4],10)/1000};
+}
+function tCboe(t, tk){
+  return getBoth('https://cdn.cboe.com/api/global/delayed_quotes/options/'+tk+'.json').then(function(res){
+    if(!res.ok) return fail(t,res);
+    var j; try{ j = JSON.parse(res.text); }catch(e){ res.tries.push({via:'解析',status:0,err:'不是 JSON',head:res.text.slice(0,120)}); return fail(t,res); }
+    var data = j && j.data, opts = data && data.options;
+    if(!opts || !opts.length){ res.tries.push({via:'解析',status:0,err:'沒有 options 欄位',head:res.text.slice(0,160)}); return fail(t,res); }
+    var px = data.current_price || data.close || data.last_trade_price || 0;
+    var today = new Date(); today = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    var cV=0,pV=0,cO=0,pO=0,cVn=0,pVn=0, list=[];
+    opts.forEach(function(o){
+      var p = parseOcc(o.option); if(!p) return;
+      var v = +o.volume||0, oi = +o.open_interest||0, dte = Math.round((p.exp.getTime()-today)/86400000);
+      if(dte < 0) return;
+      var row = {p:p, v:v, oi:oi, dte:dte, iv:+o.iv||0, delta:+o.delta||0};
+      list.push(row);
+      if(p.type==='C'){cV+=v;cO+=oi; if(dte<=30)cVn+=v;} else {pV+=v;pO+=oi; if(dte<=30)pVn+=v;}
+    });
+    if(!list.length){ res.tries.push({via:'解析',status:0,err:'合約代碼格式讀不懂',head:String(opts[0]&&opts[0].option)}); return fail(t,res); }
+    var pcV = cV? pV/cV : null, pcO = cO? pO/cO : null, pcN = cVn? pVn/cVn : null;
+    // ATM IV：最近且 >=7 天的到期日，履約價最接近現價
+    var exps = {}; list.forEach(function(r){ if(r.dte>=7) exps[r.dte]=1; });
+    var ed = Object.keys(exps).map(Number).sort(function(a,b){return a-b})[0];
+    var atmIv = null, atmDte = ed;
+    if(ed!=null && px){
+      var near = list.filter(function(r){return r.dte===ed && r.iv>0}).sort(function(a,b){return Math.abs(a.p.strike-px)-Math.abs(b.p.strike-px)}).slice(0,2);
+      if(near.length){ atmIv = near.reduce(function(s,r){return s+r.iv},0)/near.length; if(atmIv<5) atmIv*=100; }
+    }
+    var unusual = list.filter(function(r){return r.v>=500 && r.v>r.oi}).sort(function(a,b){return b.v-a.v}).slice(0,6);
+
+    var reading;
+    if(pcV==null) reading='沒有 call 成交量，無法算比值。';
+    else if(pcV<0.5) reading='今天 call 成交比 put 多一倍以上，市場偏樂觀、偏追價。';
+    else if(pcV<0.9) reading='put 和 call 的比例在一般範圍，沒有特別偏向。';
+    else if(pcV<1.3) reading='put 比 call 多，避險或看空的人變多了。';
+    else reading='put 明顯多過 call，避險或看空的力道很強。';
+
+    var html = '<div class="diag ok">✅ 資料來源：'+res.via+'連線成功；共 '+list.length+' 張合約，現價約 '+(px? px.toFixed(2):'?')+'</div>';
+    html += '<div class="read"><span class="big">'+(pcV!=null? pcV.toFixed(2):'-')+'</span>　今天成交量 put/call 比<br>'+reading+'</div>';
+    html += '<table><tr><th>項目</th><th>call</th><th>put</th><th>put/call</th></tr>'+
+      '<tr><td>今天成交量（全部到期日）</td><td>'+cV.toLocaleString()+'</td><td>'+pV.toLocaleString()+'</td><td>'+(pcV!=null?pcV.toFixed(2):'-')+'</td></tr>'+
+      '<tr><td>今天成交量（30 天內到期）</td><td>'+cVn.toLocaleString()+'</td><td>'+pVn.toLocaleString()+'</td><td>'+(pcN!=null?pcN.toFixed(2):'-')+'</td></tr>'+
+      '<tr><td>未平倉量（累積持有）</td><td>'+cO.toLocaleString()+'</td><td>'+pO.toLocaleString()+'</td><td>'+(pcO!=null?pcO.toFixed(2):'-')+'</td></tr></table>';
+    html += '<div class="note">白話：成交量看「今天」的人在做什麼；未平倉量看「累積下來」大家押哪邊。兩個方向一致才比較有意義。</div>';
+    if(atmIv!=null){
+      html += '<div class="read"><span class="big">'+atmIv.toFixed(0)+'%</span>　接近現價的隱含波動率（'+atmDte+' 天後到期）<br>意思：市場預期這檔股票一年內會上下波動大約這麼多。數字高＝市場預期會大動（常見於財報前）；但單看一個數字看不出高或低，要跟這檔自己平常的水準比，這頁還沒有歷史可比。</div>';
+    }
+    if(unusual.length){
+      html += '<div class="note" style="margin-top:8px">異常大單（今天成交量 &gt; 未平倉量，代表很多是新開的部位）：</div><table><tr><th>合約</th><th>到期(天)</th><th>成交量</th><th>未平倉</th></tr>'+
+      unusual.map(function(r){return '<tr><td>'+(r.p.type==='C'?'call ':'put ')+r.p.strike+'</td><td>'+r.dte+'</td><td>'+r.v.toLocaleString()+'</td><td>'+r.oi.toLocaleString()+'</td></tr>'}).join('')+'</table>';
+    } else html += '<div class="note" style="margin-top:8px">今天沒有「成交量&gt;500 且大於未平倉」的合約。</div>';
+    html += '<div class="note" style="margin-top:6px">⚠ 這是「延遲」報價，不是即時。個股的 put/call 常被避險單與做市商干擾，不能單獨當買賣訊號。門檻（0.5／0.9／1.3）是我暫訂的參考線，沒有驗證過。</div>';
+    html += rawBlock(res);
+    setBody(t.id, html); setChip(t.id,'c-ok','拿得到');
+    return {ok:true, via:res.via, pc:pcV};
+  });
+}
+
+// ---------- 2. FINRA 每日賣空成交量 ----------
+function ymd(d){var m=d.getMonth()+1, dd=d.getDate();return ''+d.getFullYear()+(m<10?'0':'')+m+(dd<10?'0':'')+dd}
+function tShortVol(t, tk){
+  var got = [], tried = 0, firstFail = null, d = new Date(), via = null;
+  function step(){
+    if(got.length>=5 || tried>=12) return finish();
+    d = new Date(d.getTime()-86400000);
+    var dow = d.getDay(); if(dow===0||dow===6) return step();
+    tried++;
+    var ds = ymd(d);
+    return getBoth('https://cdn.finra.org/equity/regsho/daily/CNMSshvol'+ds+'.txt').then(function(res){
+      if(!res.ok){ if(!firstFail) firstFail = res; if(got.length===0 && tried>=3) return finish(); return step(); }
+      via = res.via;
+      var re = new RegExp('(?:^|\\n)'+ds+'\\|'+tk+'\\|(\\d+)\\|(\\d+)\\|(\\d+)\\|', 'i');
+      var m = re.exec(res.text);
+      if(m){ got.push({ds:ds, sv:+m[1], tv:+m[3]}); }
+      return step();
+    });
+  }
+  function finish(){
+    if(!got.length){
+      if(firstFail) return fail(t, firstFail);
+      setChip(t.id,'c-warn','連得到，但沒找到這檔');
+      setBody(t.id,'<div class="diag bad">檔案抓到了，但裡面沒有 '+tk+' 的資料列。</div>');
+      return {ok:false};
+    }
+    var avg = got.reduce(function(s,x){return s+x.sv/x.tv},0)/got.length;
+    var last = got[0].sv/got[0].tv;
+    var cmp = last>avg+0.05? '比這幾天平均高，賣空力道在增加。' : (last<avg-0.05? '比這幾天平均低，賣空力道在減少。' : '和這幾天平均差不多。');
+    var html = '<div class="diag ok">✅ 資料來源：'+via+'連線成功，找到 '+got.length+' 個交易日</div>'+
+      '<div class="read"><span class="big">'+(last*100).toFixed(0)+'%</span>　最近一天（'+got[0].ds+'）賣空成交量佔總成交量<br>'+cmp+'<br><span class="note">一般股票大約 40~50% 是常態，因為做市商避險也會算進賣空；所以「絕對值高」不代表有人在看空，要看「比自己平常高多少」。</span></div>'+
+      '<table><tr><th>日期</th><th>賣空量</th><th>總成交量</th><th>比例</th></tr>'+
+      got.map(function(x){return '<tr><td>'+x.ds+'</td><td>'+x.sv.toLocaleString()+'</td><td>'+x.tv.toLocaleString()+'</td><td>'+(x.sv/x.tv*100).toFixed(0)+'%</td></tr>'}).join('')+'</table>'+
+      '<div class="note">⚠ 這份只含 FINRA 回報的場外與暗池成交，不是全市場。賣空成交量不等於「被放空的股數」（那是空頭餘額）。</div>';
+    setBody(t.id, html); setChip(t.id,'c-ok','拿得到');
+    return {ok:true, via:via, ratio:last};
+  }
+  return Promise.resolve(step());
+}
+
+// ---------- 3. FINRA Short Interest API ----------
+function tFinraSI(t, tk){
+  var url = 'https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest?limit=5&symbolCode='+encodeURIComponent(tk);
+  return getBoth(url).then(function(res){
+    if(!res.ok) return fail(t,res);
+    var j; try{ j = JSON.parse(res.text); }catch(e){ res.tries.push({via:'解析',status:0,err:'不是 JSON',head:res.text.slice(0,160)}); return fail(t,res); }
+    if(!Array.isArray(j) || !j.length){ res.tries.push({via:'解析',status:0,err:'空的結果',head:res.text.slice(0,160)}); return fail(t,res); }
+    var keys = Object.keys(j[0]).join(', ');
+    setChip(t.id,'c-ok','拿得到');
+    setBody(t.id,'<div class="diag ok">✅ 資料來源：'+res.via+'連線成功，拿到 '+j.length+' 筆</div><div class="read">已拿到官方空頭餘額資料。欄位：'+esc(keys)+'<br>下一步才會整理成「放空佔流通股比例」與「還要幾天才能回補」。</div>'+rawBlock(res));
+    return {ok:true, via:res.via};
+  });
+}
+
+// ---------- 4. Yahoo quoteSummary ----------
+function tYahooKS(t, tk){
+  var url = 'https://query2.finance.yahoo.com/v10/finance/quoteSummary/'+tk+'?modules=defaultKeyStatistics';
+  var tries = [];
+  return tmo(PROXY+encodeURIComponent(url)).then(function(r){
+    return r.text().then(function(tx){
+      tries.push({via:'Worker', status:r.status, len:tx.length, head:tx.slice(0,200)});
+      var res = {tries:tries};
+      if(!r.ok) return fail(t,res);
+      var j; try{ j=JSON.parse(tx);}catch(e){ return fail(t,res); }
+      var ks = j && j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0] && j.quoteSummary.result[0].defaultKeyStatistics;
+      if(!ks){ return fail(t,res); }
+      function rv(o){return o&&o.raw!=null? o.raw : null}
+      var sp = rv(ks.shortPercentOfFloat), sr = rv(ks.shortRatio), ss = rv(ks.sharesShort);
+      setChip(t.id,'c-ok','拿得到');
+      setBody(t.id,'<div class="diag ok">✅ Worker 連線成功</div><div class="read">放空佔流通股：'+(sp!=null?(sp*100).toFixed(1)+'%':'無')+'；回補天數：'+(sr!=null?sr.toFixed(1):'無')+'；放空股數：'+(ss!=null?ss.toLocaleString():'無')+'<br><span class="note">放空比例越高，代表越擠；但擠不等於會漲，也可能是市場真的看壞。</span></div>'+rawBlock(res));
+      return {ok:true, via:'Worker'};
+    });
+  }, function(e){
+    tries.push({via:'Worker', status:0, err:String(e&&e.name||e)});
+    return fail(t,{tries:tries});
+  });
+}
+
+// ---------- 5. Finnhub ----------
+function tFinnhub(t, tk){
+  var key = ''; try{ key = localStorage.getItem('finprobe_key') || ''; }catch(e){}
+  if(!key){
+    setChip(t.id,'c-warn','沒有 key');
+    setBody(t.id,'<div class="diag bad">這個瀏覽器裡找不到 Finnhub key（news.html 存的那個）。如果你平常用 news 時有貼過 key，要用同一個瀏覽器打開這頁。</div>');
+    return Promise.resolve({ok:false});
+  }
+  var base = 'https://finnhub.io/api/v1/';
+  var eps = [
+    ['選擇權鏈 stock/option-chain', base+'stock/option-chain?symbol='+tk+'&token='+key],
+    ['空頭餘額 stock/short-interest', base+'stock/short-interest?symbol='+tk+'&from=2026-01-01&to=2026-12-31&token='+key]
+  ];
+  return Promise.all(eps.map(function(e){
+    return tmo(e[1]).then(function(r){return r.text().then(function(tx){return {name:e[0], status:r.status, head:tx.slice(0,140).replace(key,'***')}})}, function(er){return {name:e[0], status:0, head:String(er&&er.name||er)}});
+  })).then(function(rs){
+    var any = rs.some(function(x){return x.status===200 && x.head.length>10 && !/error|access/i.test(x.head)});
+    var html = '<table><tr><th>項目</th><th>結果</th></tr>'+rs.map(function(x){
+      var plain = x.status===200? '有回應' : x.status===403? '免費方案沒有這項（要付費）' : x.status===401? 'key 無效' : x.status===429? '次數用完' : (x.status? 'HTTP '+x.status : '連不上');
+      return '<tr><td>'+x.name+'</td><td>'+x.status+'　'+plain+'</td></tr>';
+    }).join('')+'</table><details><summary>原始回應</summary><pre>'+esc(rs.map(function(x){return x.name+' | '+x.status+'\n'+x.head}).join('\n---\n'))+'</pre></details>';
+    setBody(t.id, html); setChip(t.id, any?'c-ok':'c-bad', any?'有一項拿得到':'免費方案沒有');
+    return {ok:any, via:'直接'};
+  });
+}
+
+// ---------- 主流程 ----------
+function runAll(){
+  var tk = ($('tk').value||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,'');
+  if(!tk){ $('stat').textContent='請輸入代號'; return; }
+  $('tk').value = tk;
+  $('go').disabled = true; $('stat').textContent = '測試中，FINRA 的檔案比較大，可能要等 20~40 秒…';
+  $('out').innerHTML = TESTS.map(card).join('');
+  $('sum').style.display='none';
+  Promise.all(TESTS.map(function(t){
+    setChip(t.id,'c-wait','測試中…');
+    return Promise.resolve().then(function(){return t.run(t, tk)}).catch(function(e){
+      setChip(t.id,'c-bad','程式錯誤'); setBody(t.id,'<div class="diag bad">'+esc(String(e&&e.message||e))+'</div>'); return {ok:false};
+    });
+  })).then(function(rs){
+    var okN = rs.filter(function(r){return r&&r.ok}).length;
+    var lines = TESTS.map(function(t,i){return (rs[i]&&rs[i].ok? '✅ ':'❌ ')+t.n+'. '+t.name}).join('<br>');
+    $('sum').innerHTML = '<b style="font-size:18px">'+tk+'：5 個來源裡 '+okN+' 個拿得到</b><br>'+lines+'<div class="note" style="margin-top:6px">把這個結果（或各卡片的紅字）告訴我，我就知道下一步是改 Worker、換來源，還是放棄。</div>';
+    $('sum').style.display='block';
+    $('stat').textContent = '完成';
+    $('go').disabled = false;
+  });
+}
+$('go').addEventListener('click', runAll);
+$('tk').addEventListener('keydown', function(e){ if(e.key==='Enter') runAll(); });
+</script>
+</body>
+</html>
