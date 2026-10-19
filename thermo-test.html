@@ -107,6 +107,7 @@ function getBoth(url, wantText){
 function diagnose(res){
   var d = res.tries, a = d[0], b = d[1];
   var parts = [];
+  if(a && a.via==='Worker'){ b = a; a = null; }
   if(a){ parts.push('直接連：' + (a.status? ('HTTP '+a.status) : '被瀏覽器擋住（多半是 CORS，網站沒開放給別的網頁讀）')); }
   if(b){
     var w = b.status? ('HTTP '+b.status) : ('連不上（'+(b.err||'')+'）');
@@ -202,7 +203,7 @@ function tCboe(t, tk){
 // ---------- 2. FINRA 每日賣空成交量 ----------
 function ymd(d){var m=d.getMonth()+1, dd=d.getDate();return ''+d.getFullYear()+(m<10?'0':'')+m+(dd<10?'0':'')+dd}
 function tShortVol(t, tk){
-  var got = [], tried = 0, firstFail = null, d = new Date(), via = null;
+  var got = [], tried = 0, firstFail = null, d = new Date(), via = null, sample = null;
   function step(){
     if(got.length>=5 || tried>=12) return finish();
     d = new Date(d.getTime()-86400000);
@@ -212,9 +213,10 @@ function tShortVol(t, tk){
     return getBoth('https://cdn.finra.org/equity/regsho/daily/CNMSshvol'+ds+'.txt').then(function(res){
       if(!res.ok){ if(!firstFail) firstFail = res; if(got.length===0 && tried>=3) return finish(); return step(); }
       via = res.via;
-      var re = new RegExp('(?:^|\\n)'+ds+'\\|'+tk+'\\|(\\d+)\\|(\\d+)\\|(\\d+)\\|', 'i');
-      var m = re.exec(res.text);
-      if(m){ got.push({ds:ds, sv:+m[1], tv:+m[3]}); }
+      var line = null, lines = res.text.split(/\r?\n/);
+      for(var i=0;i<lines.length;i++){ var pp = lines[i].split('|'); if(pp.length>=5 && pp[1].trim().toUpperCase()===tk){ line = pp; break; } }
+      if(line){ got.push({ds:ds, sv:+line[2], tv:+line[4]}); }
+      else if(!sample){ sample = {via:res.via, ds:ds, len:res.text.length, head:res.text.slice(0,400)}; }
       return step();
     });
   }
@@ -222,7 +224,7 @@ function tShortVol(t, tk){
     if(!got.length){
       if(firstFail) return fail(t, firstFail);
       setChip(t.id,'c-warn','連得到，但沒找到這檔');
-      setBody(t.id,'<div class="diag bad">檔案抓到了，但裡面沒有 '+tk+' 的資料列。</div>');
+      setBody(t.id,'<div class="diag bad">檔案抓到了（'+(sample?sample.via:'?')+'，'+(sample?sample.len:0)+' 字元），但裡面沒有 '+tk+' 的資料列。下面是檔案開頭，請截圖給我。</div><pre>'+esc(sample?('日期 '+sample.ds+'\n'+sample.head):'(沒有內容)')+'</pre>');
       return {ok:false};
     }
     var avg = got.reduce(function(s,x){return s+x.sv/x.tv},0)/got.length;
