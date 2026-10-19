@@ -322,7 +322,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v6.9</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.0</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -405,6 +405,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
   <div id="rd-ui" style="padding:12px 16px 0;"></div>
   <div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#edf2f7;border-top:1px solid #c8d0dc;border-bottom:1px solid #c8d0dc;"><strong id="rm2">尚未掃描</strong></div>
   <div id="radc"><div class="empty">勾選要掃的盒子、填「我的持股」、或選一個板塊，按「開始掃描」</div></div>
+  <div id="thc"></div>
 </div>
 
 <div class="panel" id="panel-fund">
@@ -1231,6 +1232,9 @@ function wgRenderUI(){
       +secOpts+'<div class="wg-hint" id="rds-info"></div>'
       +'<button class="fb" onclick="wgRadar()">開始掃描（掃上面勾選的）</button>'
       +'<button class="fb" style="margin-top:8px;background:#455a64" onclick="wgRadar(\'all\')">🌐 掃全部板塊（'+wgSecAllCount()+' 檔，約 '+Math.ceil(wgSecAllCount()*1.6/60)+' 分鐘）</button>'
+      +'<button class="fb" style="margin-top:14px;background:#c2410c;color:#fff" onclick="thRun()">🌡️ 掃溫度計（選擇權＋空頭，掃上面勾選的，最多 30 檔）</button>'
+      +'<div class="wg-hint" style="margin-top:4px">溫度計看的是市場情緒（選擇權的買賣偏向、預期波動、放空的人多不多），結果出現在最下面。<b>建議每天收盤後掃一次</b>，累積 5 天後才會出現「跟這檔自己平常比」。</div>'
+      +'<button class="fb" style="margin-top:8px;background:#a1887f;color:#fff" onclick="thClear()">🗑 清除溫度計每日快照</button>'
       +'<button class="fb" style="margin-top:8px;background:#90a4ae" onclick="rdClear()">🧹 清除勾選（累積紀錄會保留）</button>'
       +'<button class="fb" style="margin-top:8px;background:#b0bec5" onclick="accClear()">🗑 清除累積紀錄（各組同步度／分析師評等）</button>'
       +'<div class="wg-hint" style="margin-top:6px">「各組同步度」和「分析師評等變化」會<b>累積保留</b>你掃過的每一組、每一檔（存在這台 iPad，下次打開還在）；其他區塊（財報、量價、逼近高點）只顯示這次掃的。結果每一塊的標題可以點一下收起來。</div>';
@@ -1876,6 +1880,316 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   document.getElementById('radc').innerHTML=H+'<div style="height:12px"></div>';
 }
 
+
+/* ═══ v7.0 溫度計（Jasmine 10/18）═══════════════════════════════
+   她的想法：股價漲跌之前，選擇權和空頭常常會先有動靜，像溫度計。
+   三個來源（10/18 在她 iPad 上實測過）：
+     ① Cboe 延遲報價：個股選擇權（put/call、隱含波動率、異常大單）── 走自建 Worker（白名單已加 cdn.cboe.com）
+     ② FINRA 每日賣空成交量：每個交易日收盤後一個檔，一次可往回抓十幾天 ── 瀏覽器可直接連
+     ③ FINRA 空頭餘額：每月兩次、落後約兩週（回補天數、放空增減）── 走 Worker，回傳是 CSV 不是 JSON
+   ⚠ 單看一天的數字沒意義：要跟「這檔自己平常」比。賣空量有歷史可以立刻比；
+     選擇權沒有歷史，所以每次掃描都把當天數字存一份快照（thermo_v1），累積 5 天以後才會出現「比自己平常」。
+   ⚠ 所有門檻都是暫訂的參考線、沒有驗證過；這一區是「溫度」，不是買賣訊號。 */
+var TH_BUSY=false;
+function thLoad(){ try{ var o=JSON.parse(localStorage.getItem('thermo_v1')||'null'); if(o&&o.t) return o; }catch(e){} return {t:{}}; }
+function thSave(o){ try{ localStorage.setItem('thermo_v1',JSON.stringify(o)); }catch(e){} }
+function thClear(){
+  if(!confirm('清除所有溫度計的每日快照？（「這檔自己平常的水準」會歸零、要重新累積。不會動你的盒子和勾選）')) return;
+  try{ localStorage.removeItem('thermo_v1'); }catch(e){}
+  var b=document.getElementById('thc'); if(b) b.innerHTML='<div class="empty">溫度計紀錄已清除。</div>';
+}
+function thTargets(){
+  var sel=[];
+  if(RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
+  WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
+  if(typeof SECTORS!=='undefined'){ RD.secs.slice(0,SEC_MAX).forEach(function(k){ var sc=SECTORS.filter(function(c){return c.k===k;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }); }
+  var set={}, all=[];
+  sel.forEach(function(g){ g.list.forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
+  return {sel:sel, all:all};
+}
+function thTmo(u,ms){
+  var ac=new AbortController(), tm=setTimeout(function(){ ac.abort(); }, ms||30000);
+  return fetch(u,{signal:ac.signal,cache:'no-store'}).then(function(r){ clearTimeout(tm); return r; }, function(e){ clearTimeout(tm); throw e; });
+}
+/* direct=true：先試瀏覽器直連（FINRA 檔案可以），失敗再走 Worker */
+async function thGet(url,direct){
+  if(direct){ try{ var r=await thTmo(url); if(r.ok){ var tx=await r.text(); if(tx.length>0) return {ok:true,text:tx,status:r.status}; } }catch(e){} }
+  try{ var r2=await thTmo(MKT_PROXY+encodeURIComponent(url)); var t2=await r2.text(); return {ok:r2.ok&&t2.length>0,text:t2,status:r2.status}; }
+  catch(e){ return {ok:false,text:'',status:0,err:String(e&&e.name||e)}; }
+}
+function thET(){ return new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'})); }
+function thYmd(d){ var m=d.getMonth()+1, dd=d.getDate(); return ''+d.getFullYear()+(m<10?'0':'')+m+(dd<10?'0':'')+dd; }
+function thDash(s){ return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8); }
+function thLastTD(){
+  var n=thET(), mins=n.getHours()*60+n.getMinutes(), d=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  if(d.getDay()===6) d.setDate(d.getDate()-1);
+  else if(d.getDay()===0) d.setDate(d.getDate()-2);
+  else if(mins<17*60){ d.setDate(d.getDate()-1); if(d.getDay()===0) d.setDate(d.getDate()-2); else if(d.getDay()===6) d.setDate(d.getDate()-1); }
+  return d;
+}
+function thMedian(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){return x-y;}), m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function thN(x){ return Number(x).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function thCsv(text){
+  var rows=[], row=[], f='', q=false, i=0, n=text.length;
+  while(i<n){
+    var c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ f+='"'; i++; } else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=''; }
+    else if(c==='\n'){ row.push(f); f=''; rows.push(row); row=[]; }
+    else if(c!=='\r') f+=c;
+    i++;
+  }
+  if(f!==''||row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+/* ② 每日賣空成交量：一個檔含全市場，只留我們要的代號 */
+async function thShortVol(set,prog){
+  var by={}, d=thLastTD(), got=0, tried=0;
+  while(got<10 && tried<20){
+    var ds=thYmd(d); tried++;
+    var r=await thGet('https://cdn.finra.org/equity/regsho/daily/CNMSshvol'+ds+'.txt',true);
+    if(r.ok){
+      got++;
+      var lines=r.text.split(/\r?\n/);
+      for(var i=0;i<lines.length;i++){
+        var L=lines[i]; if(!L) continue;
+        var p=L.split('|'); if(p.length<5) continue;
+        var s=p[1]; if(!set[s]) continue;
+        var sv=+p[2], tv=+p[4];
+        if(tv>0) (by[s]=by[s]||[]).push({d:ds,r:sv/tv,sv:sv,tv:tv});
+      }
+    }
+    prog(got,tried);
+    d.setDate(d.getDate()-1); while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()-1);
+  }
+  return {by:by,days:got};
+}
+/* ① Cboe 選擇權 */
+function thOcc(s){
+  var m=/^(.*?)(\d{6})([CP])(\d{8})$/.exec(s||''); if(!m) return null;
+  return {exp:Date.UTC(2000+parseInt(m[2].slice(0,2),10),parseInt(m[2].slice(2,4),10)-1,parseInt(m[2].slice(4,6),10)), type:m[3], strike:parseInt(m[4],10)/1000};
+}
+async function thOptions(tk){
+  var r=await thGet('https://cdn.cboe.com/api/global/delayed_quotes/options/'+encodeURIComponent(tk)+'.json',false);
+  if(!r.ok) return {err: r.status===403||r.status===404 ? 'Cboe 沒有這檔的選擇權資料（可能這檔沒有掛牌選擇權）' : ('連線失敗'+(r.status?'（HTTP '+r.status+'）':''))};
+  var j; try{ j=JSON.parse(r.text); }catch(e){ return {err:'Cboe 回傳的內容讀不懂'}; }
+  var data=j&&j.data, opts=data&&data.options;
+  if(!opts||!opts.length) return {err:'Cboe 沒有這檔的合約資料'};
+  var px=+(data.current_price||data.close||data.last_trade_price||0);
+  var sd=String(data.last_trade_time||j.timestamp||''), mm=/(\d{4})-(\d{2})-(\d{2})/.exec(sd);
+  var dd=mm? (mm[1]+'-'+mm[2]+'-'+mm[3]) : thDash(thYmd(thLastTD()));
+  var base=Date.UTC(+dd.slice(0,4),+dd.slice(5,7)-1,+dd.slice(8,10));
+  var cV=0,pV=0,cO=0,pO=0,cVn=0,pVn=0,list=[];
+  opts.forEach(function(o){
+    var p=thOcc(o.option); if(!p) return;
+    var v=+o.volume||0, oi=+o.open_interest||0, dte=Math.round((p.exp-base)/86400000);
+    if(dte<0) return;
+    list.push({p:p,v:v,oi:oi,dte:dte,iv:+o.iv||0});
+    if(p.type==='C'){ cV+=v; cO+=oi; if(dte<=30) cVn+=v; } else { pV+=v; pO+=oi; if(dte<=30) pVn+=v; }
+  });
+  if(!list.length) return {err:'合約代碼格式讀不懂'};
+  var iv=null, ivSrc='';
+  if(data.iv30!=null && +data.iv30>0){ iv=+data.iv30; if(iv<3) iv*=100; ivSrc='30 天'; }
+  if(iv==null && px){
+    var ex={}; list.forEach(function(x){ if(x.dte>=7) ex[x.dte]=1; });
+    var ed=Object.keys(ex).map(Number).sort(function(a,b){return a-b;})[0];
+    if(ed!=null){
+      var near=list.filter(function(x){return x.dte===ed&&x.iv>0;}).sort(function(a,b){return Math.abs(a.p.strike-px)-Math.abs(b.p.strike-px);}).slice(0,2);
+      if(near.length){ iv=near.reduce(function(s,x){return s+x.iv;},0)/near.length; if(iv<3) iv*=100; ivSrc=ed+' 天後到期'; }
+    }
+  }
+  var unusual=list.filter(function(x){return x.dte>=7&&x.v>=1000&&x.v>x.oi;}).sort(function(a,b){return b.v-a.v;}).slice(0,3);
+  return {px:px,dd:dd,pcV:cV?pV/cV:null,pcO:cO?pO/cO:null,pcN:cVn?pVn/cVn:null,cV:cV,pV:pV,iv:iv,ivSrc:ivSrc,unusual:unusual,base:base};
+}
+/* ③ FINRA 空頭餘額（CSV） */
+async function thShortInt(tk){
+  var r=await thGet('https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest?limit=200&symbolCode='+encodeURIComponent(tk),false);
+  if(!r.ok) return {err:'連線失敗'+(r.status?'（HTTP '+r.status+'）':'')};
+  var rows=thCsv(r.text); if(rows.length<2) return {err:'官方沒有這檔的資料'};
+  var hd=rows[0].map(function(h){return h.trim().toLowerCase();});
+  var ix=function(n){ return hd.indexOf(n.toLowerCase()); };
+  var iS=ix('symbolCode'), iC=ix('currentShortPositionQuantity'), iP=ix('previousShortPositionQuantity'), iD=ix('settlementDate'), iA=ix('accountingYearMonthNumber'), iV=ix('averageDailyVolumeQuantity'), iT=ix('daysToCoverQuantity');
+  if(iS<0||iC<0) return {err:'官方回傳的欄位跟預期不同'};
+  var out=[];
+  rows.slice(1).forEach(function(c){
+    if((c[iS]||'').trim().toUpperCase()!==tk) return;
+    var date=((iD>=0?c[iD]:'')||(iA>=0?c[iA]:'')||'').trim();
+    out.push({date:date,cur:+c[iC],prev:iP>=0?+c[iP]:NaN,adv:iV>=0?+c[iV]:NaN,dtc:iT>=0?+c[iT]:NaN});
+  });
+  if(!out.length) return {err:'官方沒有這檔的資料'};
+  out.sort(function(a,b){ return a.date<b.date?1:-1; });
+  var x=out[0];
+  if((isNaN(x.dtc)||x.dtc<=0) && x.adv>0) x.dtc=x.cur/x.adv;
+  x.chg=(x.prev>0)? (x.cur/x.prev-1)*100 : null;
+  return {last:x,n:out.length};
+}
+/* 自己的歷史基準：只用「比這次資料日更早」的快照，至少 5 天才算 */
+function thBase(DB,tk,key,dd){
+  var h=DB.t[tk]||{}, v=[];
+  Object.keys(h).sort().forEach(function(k){ if(k<dd && h[k][key]!=null) v.push(h[k][key]); });
+  v=v.slice(-20);
+  return v.length>=5 ? {med:thMedian(v),n:v.length} : {med:null,n:v.length};
+}
+function thChip(txt,col){ return '<span style="display:inline-block;background:'+(col||'#fff3cd')+';color:#6b4a00;border:1px solid #f0d58a;border-radius:10px;padding:1px 9px;font-size:12.5px;font-weight:700;margin:2px 4px 2px 0">'+txt+'</span>'; }
+function thLine(icon,title,num,say,src){
+  return '<div style="margin:8px 0;padding:8px 10px;background:#f7fafc;border-left:4px solid #90a4ae;border-radius:6px">'
+    +'<div style="font-size:12.5px;color:#4a5568">'+icon+' '+title+'</div>'
+    +'<div style="font-size:20px;font-weight:800;color:#1a202c;line-height:1.35">'+num+'</div>'
+    +'<div style="font-size:13px;color:#2d3748;line-height:1.7;margin-top:2px">'+say+'</div>'
+    +(src?'<div style="font-size:11px;color:#8a94a6;margin-top:2px">'+src+'</div>':'')
+    +'</div>';
+}
+/* 一檔的全部分析：回傳 {flags:[], body:html} */
+function thAnalyze(tk,row,DB,earn){
+  var flags=[], B='';
+  var o=row.o, sv=row.sv, si=row.si;
+  var edays=earn&&earn[tk]!=null?earn[tk]:null;
+  /* ── 選擇權 ── */
+  if(o&&!o.err){
+    var pc=o.pcV, say, pb=thBase(DB,tk,'pc',o.dd);
+    if(pc==null) say='今天沒有 call 成交，算不出比值。';
+    else if(pc<0.5){ say='今天買 call（賭漲）的比買 put（賭跌／保險）的多出一倍以上，偏樂觀、偏追價。'; flags.push('call 偏多'); }
+    else if(pc<0.9) say='put 和 call 的比例在一般範圍，沒有特別偏向。';
+    else if(pc<1.3){ say='買 put 的比 call 多，避險或看空的人變多了。'; flags.push('put 偏多'); }
+    else { say='買 put 的明顯比 call 多，避險或看空的力道很強。'; flags.push('put 偏多'); }
+    if(pb.med!=null&&pc!=null) say+='<br>跟這檔自己平常比：平常中位數約 '+pb.med.toFixed(2)+'（過去 '+pb.n+' 天），今天 '+(pc>pb.med*1.25?'偏高':(pc<pb.med*0.8?'偏低':'差不多'))+'。';
+    else say+='<br><span style="color:#8a94a6">「跟自己平常比」還要累積：目前存了 '+pb.n+' 天，滿 5 天才會出現。</span>';
+    B+=thLine('🎯','選擇權：put/call 比（今天的成交量）', pc!=null?pc.toFixed(2):'—', say,
+      '意思：put 成交量 ÷ call 成交量。call 成交 '+thN(o.cV)+' 張、put '+thN(o.pV)+' 張；累積未平倉的比值 '+(o.pcO!=null?o.pcO.toFixed(2):'—')+'。個股的比值常被避險單干擾，只能當參考。');
+    /* IV */
+    if(o.iv!=null){
+      var ib=thBase(DB,tk,'iv',o.dd), isay='市場預期這檔股票未來一個月大約會上下動 <b>±'+(o.iv/3.46).toFixed(0)+'%</b>（統計上的「一般範圍」，不是上限）。';
+      if(ib.med!=null){
+        var ratio=o.iv/ib.med;
+        if(ratio>=1.25){ isay+='<br><b>比這檔自己平常高 '+((ratio-1)*100).toFixed(0)+'%</b>（平常約 '+ib.med.toFixed(0)+'%）：市場預期近期會有比較大的波動。'; if(edays==null||edays>14) flags.push('波動預期升高'); else flags.push('波動預期升高（財報前）'); }
+        else if(ratio<=0.8) isay+='<br>比這檔自己平常低 '+((1-ratio)*100).toFixed(0)+'%（平常約 '+ib.med.toFixed(0)+'%）：市場預期近期比較平靜。';
+        else isay+='<br>跟這檔自己平常差不多（平常約 '+ib.med.toFixed(0)+'%）。';
+      } else isay+='<br><span style="color:#8a94a6">單看這個數字看不出高或低，要跟這檔自己平常比。目前存了 '+ib.n+' 天，滿 5 天才會出現比較。</span>';
+      if(edays!=null&&edays>=0&&edays<=14) isay+='<br>⚠ 這檔 <b>'+edays+' 天後有財報</b>，財報前這個數字本來就會升高，不代表有什麼特別消息。';
+      B+=thLine('🌡️','隱含波動率 IV（'+(o.ivSrc||'')+'）', o.iv.toFixed(0)+'%', isay,
+        '意思：從選擇權價格反推，市場預期股價「一年」會動多大。像天氣預報的風暴機率：數字越高，預期越大浪。');
+    }
+    /* 異常大單 */
+    if(o.unusual.length){
+      var cu=0,pu=0;
+      var us=o.unusual.map(function(x){
+        if(x.p.type==='C') cu+=x.v; else pu+=x.v;
+        var dt=new Date(x.p.exp), lab=(dt.getUTCMonth()+1)+'/'+dt.getUTCDate();
+        return (x.p.type==='C'?'call ':'put ')+x.p.strike+'（'+lab+' 到期）成交 <b>'+thN(x.v)+'</b> 張，原本只有 '+thN(x.oi)+' 張';
+      });
+      flags.push('有異常大單');
+      B+=thLine('🐋','異常大單（到期 7 天以上）', o.unusual.length+' 筆', us.join('<br>')+'<br>白話：今天有人新開了很大的部位，比之前累積的還多。這幾筆'+(cu>pu*1.5?'大多是 call（賭漲）':(pu>cu*1.5?'大多是 put（賭跌或買保險）':'call 和 put 都有'))+'。<br><span style="color:#8a94a6">⚠ 機構也常用大單做避險或組合單，不能只憑這個判斷方向。</span>',
+        '只列到期日 7 天以上的；太短天期的大量成交很常見，雜訊多。');
+    }
+    B+='<div style="font-size:11px;color:#8a94a6;margin:2px 0 6px">選擇權資料日：'+o.dd+'（Cboe 延遲報價，不是即時；現價約 '+(o.px?o.px.toFixed(2):'—')+'）</div>';
+  } else {
+    B+=thLine('🎯','選擇權','—','<span style="color:#c62828">'+esc2(o&&o.err||'沒有資料')+'</span>','');
+  }
+  /* ── 每日賣空量 ── */
+  if(sv&&sv.length){
+    var last=sv[0].r, prev=sv.slice(1), pa=prev.length?prev.reduce(function(a,x){return a+x.r;},0)/prev.length:null;
+    var ssay;
+    if(pa==null) ssay='歷史天數不夠，還比不出高低。';
+    else {
+      var df=(last-pa)*100;
+      if(df>=8){ ssay='<b>比前 '+prev.length+' 天平均（'+(pa*100).toFixed(0)+'%）高 '+df.toFixed(0)+' 個百分點</b>：賣空的力道在增加，可能有人在放空，也可能是避險。'; flags.push('賣空量升高'); }
+      else if(df<=-8) ssay='比前 '+prev.length+' 天平均（'+(pa*100).toFixed(0)+'%）低 '+Math.abs(df).toFixed(0)+' 個百分點：賣空的力道在減弱。';
+      else ssay='跟前 '+prev.length+' 天平均（'+(pa*100).toFixed(0)+'%）差不多，沒有明顯變化。';
+    }
+    var hist=sv.slice(0,5).map(function(x){return (x.r*100).toFixed(0)+'%';}).join(' ← ');
+    B+=thLine('🩳','每日賣空成交量占比（'+thDash(sv[0].d).slice(5)+'）',(last*100).toFixed(0)+'%',ssay+'<br>最近 '+Math.min(5,sv.length)+' 天（新→舊）：'+hist,
+      '意思：當天成交的股票裡，有多少是「借股票來賣」。一般股票 40~50% 是常態（做市商避險也算進去），所以不要看高低，要看「比自己平常高多少」。單日會跳 ±8 點，只看一天不準。只含 FINRA 回報的成交，不是全市場。');
+  } else {
+    B+=thLine('🩳','每日賣空成交量占比','—','<span style="color:#8a94a6">這檔在 FINRA 檔案裡找不到（可能是 ETF、新掛牌，或檔案還沒更新）。</span>','');
+  }
+  /* ── 空頭餘額 ── */
+  if(si&&!si.err){
+    var x=si.last, dtc=x.dtc, say3;
+    if(isNaN(dtc)||dtc<=0) say3='官方沒給回補天數，只看放空股數。';
+    else if(dtc<2) say3='放空的人不多，真要回補，不到兩天就能買完。';
+    else if(dtc<5) say3='放空程度一般。';
+    else { say3='<b>放空的人偏多</b>：如果大家都要回補，照平常成交量要買 '+dtc.toFixed(1)+' 天。股價上漲時，放空的人可能被逼著追買（叫軋空），會推得更高；但這也代表很多人看壞這檔。'; flags.push('空頭偏擠'); }
+    if(x.chg!=null){
+      if(x.chg>=10){ say3+='<br>比上一期<b>增加 '+x.chg.toFixed(0)+'%</b>：放空的人變多了。'; flags.push('放空增加'); }
+      else if(x.chg<=-10) say3+='<br>比上一期減少 '+Math.abs(x.chg).toFixed(0)+'%：放空的人在回補。';
+      else say3+='<br>比上一期變動 '+(x.chg>=0?'+':'')+x.chg.toFixed(0)+'%，變化不大。';
+    }
+    var dstr=/^\d{8}$/.test(x.date||'')?(x.date.slice(0,4)+'-'+x.date.slice(4,6)+'-'+x.date.slice(6,8)):(x.date||'日期不明');
+    B+=thLine('📚','空頭餘額：回補天數（官方，'+dstr+' 結算）', (isNaN(dtc)||dtc<=0)?(thN(x.cur)+' 股'):(dtc.toFixed(1)+' 天'), say3+'<br><span style="color:#4a5568">放空股數 '+thN(x.cur)+' 股'+(x.prev>0?'（上期 '+thN(x.prev)+'）':'')+'</span>',
+      '意思：所有被放空、還沒買回的股票總數。官方每月公布兩次、結算後約一週才公開，所以資料至少落後約兩週，只適合看「擠不擠」，不適合抓時機。');
+  } else {
+    B+=thLine('📚','空頭餘額','—','<span style="color:#8a94a6">'+esc2(si&&si.err||'沒有資料')+'</span>','');
+  }
+  return {flags:flags,body:B,nodata:!((o&&!o.err)||(sv&&sv.length)||(si&&!si.err))};
+}
+var TH_PRIMER='<details class="rd-sec" style="margin-top:10px"><summary class="rd-h" style="cursor:pointer"><b>📖 先看這個：每個名詞是什麼意思（點開）</b><div>第一次接觸選擇權和空頭的話，先看這裡。</div></summary>'
+ +'<div style="padding:10px 14px;font-size:13px;line-height:1.8;color:#2d3748">'
+ +'<b>選擇權</b>：一種「賭股價會漲或會跌」的合約。<b>call</b> ＝ 賭會漲；<b>put</b> ＝ 賭會跌（很多人也拿來當保險，防止手上的股票跌）。<br>'
+ +'<b>put/call 比</b>：今天買 put 的張數 ÷ 買 call 的張數。小於 0.5 ＝ 買 call 的人特別多（偏樂觀）；0.5~0.9 ＝ 一般；超過 0.9 ＝ 買 put 的變多（避險或看空）。<br>'
+ +'<b>成交量 vs 未平倉量</b>：成交量是今天買賣了幾張；未平倉量是目前還握在大家手上沒結清的總張數。<br>'
+ +'<b>隱含波動率（IV）</b>：從選擇權的價格反推，市場預期這檔股票「會動多大」。數字越高，預期越大浪；財報前會自然升高。<b>單看一個數字沒意義，要跟這檔自己平常比。</b><br>'
+ +'<b>異常大單</b>：今天某一份合約的成交量，比原本累積的總張數還多，代表有人新開了大部位。<br>'
+ +'<b>放空（賣空）</b>：先借股票來賣，等跌了再買回還給人家賺差價。放空的人越多 ＝ 越多人看壞。<br>'
+ +'<b>每日賣空成交量占比</b>：當天成交裡有多少是借來賣的單。40~50% 是常態，要看「比自己平常高多少」。<br>'
+ +'<b>空頭餘額</b>：目前被放空、還沒買回的股票總數（官方每月兩次，落後約兩週）。<br>'
+ +'<b>回補天數</b>：如果所有放空的人都要買回，照平常成交量要買幾天。越高 ＝ 越擠；上漲時可能被逼著追買（叫<b>軋空</b>）。<br>'
+ +'<div style="margin-top:6px;color:#8a5a00">⚠ 這一區是「溫度計」：它告訴你市場上的人現在偏樂觀、偏緊張還是很擠，<b>不是買賣訊號</b>。所有門檻都是我暫訂的參考線、沒有驗證過；選擇權資料是延遲報價。要看出變熱，需要每天掃、累積幾週，才有「跟自己平常比」的基準。</div>'
+ +'</div></details>';
+function thRender(all,rows,DB,earn,SV,capped,done){
+  var H=TH_PRIMER, items=[];
+  all.forEach(function(tk){
+    if(!rows[tk]) return;
+    var a=thAnalyze(tk,rows[tk],DB,earn); items.push({tk:tk,a:a});
+  });
+  items.sort(function(x,y){ return y.a.flags.length-x.a.flags.length || (x.tk<y.tk?-1:1); });
+  var rowsH=items.map(function(it){
+    var f=it.a.nodata?'<span style="font-size:12.5px;color:#c62828">三個來源都查不到這檔的資料</span>':(it.a.flags.length?it.a.flags.map(function(t){return thChip(esc2(t));}).join(''):'<span style="font-size:12.5px;color:#718096">沒有特別異常</span>');
+    var px=rows[it.tk].o&&!rows[it.tk].o.err&&rows[it.tk].o.px?'　<span style="font-size:12px;color:#718096;font-weight:400">'+rows[it.tk].o.px.toFixed(2)+'</span>':'';
+    return '<div class="rd-row"><details><summary style="cursor:pointer;list-style:none"><span class="sy" style="font-size:15px">$'+it.tk+'</span>'+px+'<br>'+f+'<span style="font-size:11px;color:#8a94a6">　▾ 點開看每一項的白話解讀</span></summary>'+it.a.body+'</details></div>';
+  }).join('');
+  H+='<details class="rd-sec" open><summary class="rd-h"><b>🌡️ 溫度計</b> <span style="font-size:11px;color:#8a94a6">（'+items.length+' 檔）▾ 點一下收起／展開</span><div>由「看點」多的排到前面。看點只是「今天哪一項比較不尋常」，不是買賣建議。'+(SV&&SV.days?'每日賣空量用了最近 '+SV.days+' 個交易日。':'')+'</div></summary>'+(rowsH||'<div class="rd-none">查詢中…</div>')+'</details>';
+  if(capped) H+='<div class="wg-hint" style="margin:8px 16px;color:#c62828">⚠ 溫度計一次最多查 30 檔（每檔要下載好幾份資料），後面 '+capped+' 檔沒查，請分次。</div>';
+  var r=document.getElementById('thr'); if(r) r.innerHTML=H+'<div style="height:12px"></div>';
+}
+async function thRun(){
+  if(TH_BUSY) return;
+  var T=thTargets(), all=T.all, box=document.getElementById('thc');
+  if(!box) return;
+  if(!all.length){ box.innerHTML='<div class="empty">還沒有選到要查的股票：勾選盒子、填「我的持股」、或選一個板塊</div>'; return; }
+  var CAP=30, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
+  TH_BUSY=true;
+  box.innerHTML='<div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#fff4e5;border-top:1px solid #f0d58a;border-bottom:1px solid #f0d58a;"><strong id="thm">準備中…</strong></div><div id="thr"></div>';
+  var thm=function(s){ var e=document.getElementById('thm'); if(e) e.textContent=s; };
+  var DB=thLoad(), rows={}, earn={}, SV=null;
+  try{
+    try{
+      var f=new Date().toISOString().split('T')[0], t2=new Date(Date.now()+14*86400000).toISOString().split('T')[0];
+      var c=await apiR('/calendar/earnings?from='+f+'&to='+t2), today=thET(), tstr=thYmd(today);
+      ((c&&c.earningsCalendar)||[]).forEach(function(e){ earn[e.symbol]=Math.round((new Date(e.date)-new Date(thDash(tstr)))/86400000); });
+    }catch(e){}
+    var set={}; all.forEach(function(t){ set[t]=1; });
+    thm('1/2 下載每日賣空量…');
+    SV=await thShortVol(set,function(g,t){ thm('1/2 下載每日賣空量：已取得 '+g+' 個交易日'); });
+    for(var i=0;i<all.length;i++){
+      var tk=all[i];
+      thm('2/2 選擇權＋空頭餘額 '+(i+1)+'/'+all.length+'（'+tk+'）…前面的結果已經可以先看');
+      var o=await thOptions(tk), si=await thShortInt(tk);
+      rows[tk]={o:o,si:si,sv:(SV.by[tk]||[])};
+      if(o&&!o.err){
+        var h=DB.t[tk]=DB.t[tk]||{};
+        h[o.dd]={pc:o.pcV,po:o.pcO,iv:o.iv};
+        var ks=Object.keys(h).sort(); while(ks.length>60){ delete h[ks.shift()]; }
+      }
+      if((i+1)%3===0||i===all.length-1) thRender(all,rows,DB,earn,SV,capped,false);
+      await sleep2(150);
+    }
+    thSave(DB);
+    thRender(all,rows,DB,earn,SV,capped,true);
+    thm('掃描完成：'+all.length+' 檔。每次掃描都會存一份今天的快照，累積 5 天後會出現「跟自己平常比」。');
+  }catch(e){ box.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>'; }
+  TH_BUSY=false;
+}
 
 /* ═══ 公司速寫 ═══════════════════════════════════════════════
    Jasmine 9/11:「財報前面先放一段簡介 —— 他是做什麼的、主要客戶是誰」。
