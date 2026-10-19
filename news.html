@@ -1231,12 +1231,13 @@ function wgRenderUI(){
       +'<div class="wg-hint" style="margin-top:6px"><b>📁 加掃整個板塊</b>（可複選，最多 4 個，像 RRG 那樣一次比較；不用先放進盒子，會跟上面勾的一起掃）：</div>'
       +secOpts+'<div class="wg-hint" id="rds-info"></div>'
       +'<button class="fb" onclick="wgRadar()">開始掃描（掃上面勾選的）</button>'
-      +'<button class="fb" style="margin-top:8px;background:#455a64" onclick="wgRadar(\'all\')">🌐 掃全部板塊（'+wgSecAllCount()+' 檔，約 '+Math.ceil(wgSecAllCount()*1.6/60)+' 分鐘）</button>'
-      +'<button class="fb" style="margin-top:14px;background:#c2410c;color:#fff" onclick="thRun()">🌡️ 掃溫度計（選擇權＋空頭，掃上面勾選的，最多 30 檔）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#455a64;color:#fff" onclick="wgRadar(\'all\')">🌐 掃全部板塊（'+wgSecAllCount()+' 檔，約 '+Math.ceil(wgSecAllCount()*1.6/60)+' 分鐘）</button>'
+      +'<button class="fb" style="margin-top:14px;background:#9a3412;color:#fff;font-size:14px;font-weight:700" onclick="thRun(\'hold\')">🌡️ 只掃「我的持股」溫度計（'+Math.min(nh,30)+' 檔）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#c2410c;color:#fff" onclick="thRun()">🌡️ 掃溫度計（選擇權＋空頭，掃上面勾選的，最多 30 檔）</button>'
       +'<div class="wg-hint" style="margin-top:4px">溫度計看的是市場情緒（選擇權的買賣偏向、預期波動、放空的人多不多），結果出現在最下面。<b>建議每天收盤後掃一次</b>，累積 5 天後才會出現「跟這檔自己平常比」。</div>'
-      +'<button class="fb" style="margin-top:8px;background:#a1887f;color:#fff" onclick="thClear()">🗑 清除溫度計每日快照</button>'
-      +'<button class="fb" style="margin-top:8px;background:#90a4ae" onclick="rdClear()">🧹 清除勾選（累積紀錄會保留）</button>'
-      +'<button class="fb" style="margin-top:8px;background:#b0bec5" onclick="accClear()">🗑 清除累積紀錄（各組同步度／分析師評等）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#8d6e63;color:#fff" onclick="thClear()">🗑 清除溫度計每日快照</button>'
+      +'<button class="fb" style="margin-top:8px;background:#90a4ae;color:#1a202c" onclick="rdClear()">🧹 清除勾選（累積紀錄會保留）</button>'
+      +'<button class="fb" style="margin-top:8px;background:#b0bec5;color:#1a202c" onclick="accClear()">🗑 清除累積紀錄（各組同步度／分析師評等）</button>'
       +'<div class="wg-hint" style="margin-top:6px">「各組同步度」和「分析師評等變化」會<b>累積保留</b>你掃過的每一組、每一檔（存在這台 iPad，下次打開還在）；其他區塊（財報、量價、逼近高點）只顯示這次掃的。結果每一塊的標題可以點一下收起來。</div>';
   }
   try{ rdSecInfo(); }catch(e){}
@@ -1898,11 +1899,12 @@ function thClear(){
   try{ localStorage.removeItem('thermo_v1'); }catch(e){}
   var b=document.getElementById('thc'); if(b) b.innerHTML='<div class="empty">溫度計紀錄已清除。</div>';
 }
-function thTargets(){
+function thTargets(mode){
   var sel=[];
-  if(RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
-  WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
-  if(typeof SECTORS!=='undefined'){ RD.secs.slice(0,SEC_MAX).forEach(function(k){ var sc=SECTORS.filter(function(c){return c.k===k;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }); }
+  if(mode==='hold'){ var H0=wgAll(RD.hold).slice(0,30); if(H0.length) sel.push({n:'我的持股',list:H0}); }
+  else if(RD.uh){ var HL=wgAll(RD.hold).slice(0,30); if(HL.length) sel.push({n:'我的持股',list:HL}); }
+  if(mode!=='hold') WG.boxes.forEach(function(b,i){ if(WG.rsel[i]){ var L=wgParse(b.s); if(L.length) sel.push({n:b.n,list:L}); } });
+  if(mode!=='hold' && typeof SECTORS!=='undefined'){ RD.secs.slice(0,SEC_MAX).forEach(function(k){ var sc=SECTORS.filter(function(c){return c.k===k;})[0]; if(sc){ var SL=wgAll(sc.s); if(SL.length) sel.push({n:sc.n+'（整個板塊）',list:SL}); } }); }
   var set={}, all=[];
   sel.forEach(function(g){ g.list.forEach(function(t){ if(!set[t]){ set[t]=1; all.push(t); } }); });
   return {sel:sel, all:all};
@@ -2152,11 +2154,11 @@ function thRender(all,rows,DB,earn,SV,capped,done){
   if(capped) H+='<div class="wg-hint" style="margin:8px 16px;color:#c62828">⚠ 溫度計一次最多查 30 檔（每檔要下載好幾份資料），後面 '+capped+' 檔沒查，請分次。</div>';
   var r=document.getElementById('thr'); if(r) r.innerHTML=H+'<div style="height:12px"></div>';
 }
-async function thRun(){
+async function thRun(mode){
   if(TH_BUSY) return;
-  var T=thTargets(), all=T.all, box=document.getElementById('thc');
+  var T=thTargets(mode==='hold'?'hold':''), all=T.all, box=document.getElementById('thc');
   if(!box) return;
-  if(!all.length){ box.innerHTML='<div class="empty">還沒有選到要查的股票：勾選盒子、填「我的持股」、或選一個板塊</div>'; return; }
+  if(!all.length){ box.innerHTML='<div class="empty">還沒有選到要查的股票：'+(mode==='hold'?'上面「我的持股」那一格是空的，請先填股票代號':'勾選盒子、勾「📌 我的持股」、或選一個板塊')+'</div>'; return; }
   var CAP=30, capped=0; if(all.length>CAP){ capped=all.length-CAP; all=all.slice(0,CAP); }
   TH_BUSY=true;
   box.innerHTML='<div style="padding:10px 16px;margin-top:10px;font-size:12px;color:#4a5568;background:#fff4e5;border-top:1px solid #f0d58a;border-bottom:1px solid #f0d58a;"><strong id="thm">準備中…</strong></div><div id="thr"></div>';
