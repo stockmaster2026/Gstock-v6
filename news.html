@@ -2001,8 +2001,10 @@ async function thOptions(tk){
       if(near.length){ iv=near.reduce(function(s,x){return s+x.iv;},0)/near.length; if(iv<3) iv*=100; ivSrc=ed+' 天後到期'; }
     }
   }
-  var unusual=list.filter(function(x){return x.dte>=7&&x.v>=1000&&x.v>x.oi;}).sort(function(a,b){return b.v-a.v;}).slice(0,3);
-  return {px:px,dd:dd,pcV:cV?pV/cV:null,pcO:cO?pO/cO:null,pcN:cVn?pVn/cVn:null,cV:cV,pV:pV,iv:iv,ivSrc:ivSrc,unusual:unusual,base:base};
+  var allU=list.filter(function(x){return x.dte>=7&&x.v>=1000&&x.v>x.oi;}).sort(function(a,b){return b.v-a.v;});
+  var nearU=allU.filter(function(x){ return !px || Math.abs(x.p.strike/px-1)<=0.25; });
+  var unusual=nearU.slice(0,3), farN=allU.length-nearU.length;
+  return {farN:farN,px:px,dd:dd,pcV:cV?pV/cV:null,pcO:cO?pO/cO:null,pcN:cVn?pVn/cVn:null,cV:cV,pV:pV,iv:iv,ivSrc:ivSrc,unusual:unusual,base:base};
 }
 /* ③ FINRA 空頭餘額（CSV） */
 async function thShortInt(tk){
@@ -2078,11 +2080,14 @@ function thAnalyze(tk,row,DB,earn){
       var us=o.unusual.map(function(x){
         if(x.p.type==='C') cu+=x.v; else pu+=x.v;
         var dt=new Date(x.p.exp), lab=(dt.getUTCMonth()+1)+'/'+dt.getUTCDate();
-        return (x.p.type==='C'?'call ':'put ')+x.p.strike+'（'+lab+' 到期）成交 <b>'+thN(x.v)+'</b> 張，原本只有 '+thN(x.oi)+' 張';
+        var dist=o.px?((x.p.strike/o.px-1)*100):null;
+        return (x.p.type==='C'?'call ':'put ')+x.p.strike+'（'+lab+' 到期'+(dist!=null?'，履約價'+(dist>=0?'比現價高 ':'比現價低 ')+Math.abs(dist).toFixed(0)+'%':'')+'）成交 <b>'+thN(x.v)+'</b> 張，原本只有 '+thN(x.oi)+' 張';
       });
       flags.push('有異常大單');
       B+=thLine('🐋','異常大單（到期 7 天以上）', o.unusual.length+' 筆', us.join('<br>')+'<br>白話：今天有人新開了很大的部位，比之前累積的還多。這幾筆'+(cu>pu*1.5?'大多是 call（賭漲）':(pu>cu*1.5?'大多是 put（賭跌或買保險）':'call 和 put 都有'))+'。<br><span style="color:#8a94a6">⚠ 機構也常用大單做避險或組合單，不能只憑這個判斷方向。</span>',
-        '只列到期日 7 天以上的；太短天期的大量成交很常見，雜訊多。');
+        '只列「到期 7 天以上、履約價離現價 25% 以內」的；太短天期或離現價太遠的大量成交雜訊多，已排除'+(o.farN?'（另有 '+o.farN+' 筆太遠的被排除）':'')+'。');
+    } else if(o.farN>0){
+      B+=thLine('🐋','異常大單（到期 7 天以上）','0 筆','今天有 '+o.farN+' 筆大量成交，但履約價離現價<b>超過 25%</b>，已排除。<br>白話：履約價離現價很遠的合約，通常很便宜，像買樂透彩券或極端的保險，不代表有人真的在押近期的方向，參考價值低。','只列「到期 7 天以上、履約價離現價 25% 以內」的。');
     }
     B+='<div style="font-size:11px;color:#8a94a6;margin:2px 0 6px">選擇權資料日：'+o.dd+'（Cboe 延遲報價，不是即時；現價約 '+(o.px?o.px.toFixed(2):'—')+'）</div>';
   } else {
