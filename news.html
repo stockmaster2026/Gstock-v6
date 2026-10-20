@@ -322,7 +322,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.0</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.1</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1267,7 +1267,21 @@ function rdClear(){
   var m=document.getElementById('rm2'); if(m) m.textContent='尚未掃描';
   wgRenderUI();
 }
-function accLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('rdacc_v1')||'null'); }catch(e){} if(!o||!o.g||!o.an) o={g:{},an:{}}; return o; }
+function accLoad(){
+  var o=null; try{ o=JSON.parse(localStorage.getItem('rdacc_v1')||'null'); }catch(e){} if(!o||!o.g||!o.an) o={g:{},an:{}};
+  /* v7.1：同一個板塊用「勾板塊」掃會叫「XXX（整個板塊）」、用「掃全部板塊」或盒子掃會叫「XXX」，
+     以前被當成兩組分開存，舊資料就一直留著跟新資料打架。現在統一成同一個名字，留日期比較新的那筆。 */
+  var suf='（整個板塊）';
+  Object.keys(o.g).forEach(function(k){
+    if(k.length>suf.length && k.slice(-suf.length)===suf){
+      var b=k.slice(0,-suf.length), x=o.g[k];
+      if(x&&x.h) x.h=x.h.split(suf+'：').join('：');
+      if(!o.g[b] || (o.g[b].at||'')<(x.at||'')) o.g[b]=x;
+      delete o.g[k];
+    }
+  });
+  return o;
+}
 function accSave(o){ try{ localStorage.setItem('rdacc_v1',JSON.stringify(o)); }catch(e){} }
 function accClear(){ if(!confirm('清除所有累積的「各組同步度」和「分析師評等變化」紀錄？（不會動你的盒子和勾選）')) return; try{ localStorage.removeItem('rdacc_v1'); }catch(e){} var b=document.getElementById('radc'); if(b) b.innerHTML='<div class="empty">累積紀錄已清除。</div>'; }
 function wgRsel(i,on){ WG.rsel[i]=on?1:0; wgSave(); }
@@ -1847,6 +1861,7 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
   /* 4 板塊同步 */
   var ACC=accLoad();
   sel.forEach(function(g){
+    var gname=g.n.replace(/（整個板塊）$/,'');
     var L=g.list.filter(ok); if(!L.length) return;
     var up=L.filter(function(t){return stats[t].chg>0;}).length, ab=L.filter(function(t){return stats[t].dMA>=0;}).length;
     var avg=L.reduce(function(a,t){return a+stats[t].chg;},0)/L.length;
@@ -1854,12 +1869,12 @@ function wgRadarRender(sel,all,stats,cal,calErr,rec,recDone){
     var r=up/L.length, st=r>=0.75?'s':r<=0.25?'w':'n';
     var rd = st==='s'?'整組一起走強':st==='w'?'整組一起走弱':'各走各的，沒有一致方向';
     var col = st==='s'?'#1b8a3a':st==='w'?'#d32f2f':'#5f6b7a';
-    ACC.g[g.n]={at:dmax,avg:avg,h:'<span class="sy">'+esc2(g.n)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b style="color:'+col+'">'+rd+'</b>。'
+    ACC.g[gname]={at:dmax,avg:avg,h:'<span class="sy">'+esc2(gname)+'：</span>'+L.length+' 檔中 <b>'+up+'</b> 檔上漲（平均 '+(avg>=0?'+':'')+avg.toFixed(1)+'%），<b>'+ab+'</b> 檔站在 20 日均線上。→ <b style="color:'+col+'">'+rd+'</b>。'
       +'<br>領漲 $'+srt[0]+' '+(stats[srt[0]].chg>=0?'+':'')+stats[srt[0]].chg.toFixed(1)+'%；落後 $'+srt[srt.length-1]+' '+(stats[srt[srt.length-1]].chg>=0?'+':'')+stats[srt[srt.length-1]].chg.toFixed(1)+'%'};
   });
-  var gkeys=Object.keys(ACC.g).sort(function(a,b){return ACC.g[b].avg-ACC.g[a].avg;});
-  var gr=gkeys.map(function(k){ var x=ACC.g[k]; return x.h+(x.at!==dmax?' <span style="font-size:11px;color:#8a94a6">（'+x.at.slice(5)+' 的資料）</span>':''); });
-  H+=sec('🧭 各組同步度（累積，由強到弱）','會保留你掃過的每一組，依「平均漲跌」由強排到弱，方便對照 RRG／飆股雷達。每組只保留最近一次掃描結果，沒標日期的是這次最新，標了日期的是之前掃的。可以按最下面「清除累積紀錄」重來。',gr,'沒有資料。');
+  var gkeys=Object.keys(ACC.g).sort(function(a,b){ var fa=ACC.g[a].at===dmax?0:1, fb=ACC.g[b].at===dmax?0:1; return (fa-fb)||(ACC.g[b].avg-ACC.g[a].avg); });
+  var gr=gkeys.map(function(k){ var x=ACC.g[k]; return x.at!==dmax ? '<div style="opacity:.55">'+x.h+' <span style="font-size:12px;color:#c62828;font-weight:700">⚠ 舊資料（'+x.at.slice(5)+'），不是這次掃的</span></div>' : x.h; });
+  H+=sec('🧭 各組同步度（累積）','會保留你掃過的每一組。<b>這次掃到的排在最前面（由強到弱）；顏色變淡、標「舊資料」的，是之前掃的、這次沒掃到的組，日期跟這次不同，不能直接比。</b>同一個板塊不論從哪個按鈕掃，都只留最新一筆。可以按最下面「清除累積紀錄」重來。',gr,'沒有資料。');
   /* 5 分析師評等變化 */
   var an=[], pend=0;
   all.forEach(function(t){
