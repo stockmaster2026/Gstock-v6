@@ -9917,6 +9917,7 @@ async function go(){
         +'</div></div>';
     }
   }catch(err){
+    try{ FETCH_WHY[tk]='程式錯誤：'+(err&&err.message?err.message:err); }catch(_e){}   // V100.11: 批次結尾要顯示真正原因
     st.innerHTML='<span class="err">✗ '+err.message+'</span>\n若 CORS/proxy 問題,改 script 最上面 PROXY。';
   }finally{ btn.disabled=false; }
 }
@@ -12032,8 +12033,8 @@ async function runBatch(list, label){
   const secs=Math.round((Date.now()-t0)/1000);
   st.innerHTML = '<b style="color:#3fb950">✓ 跑完 '+list.length+' 檔</b>（'+secs+' 秒）'
     + (bad.length
-       ? '<br><span style="color:#f85149">✗ '+bad.length+' 檔補跑後仍沒成功：'+bad.map(function(t){return t+'（'+(FETCH_WHY[t]||'非抓取問題，見該檔錯誤')+'）';}).join('、')+'</span>'
-         + '<br><span style="color:#6e7681">括號是真正原因：HTTP 429＝被限流；404＝代號不存在；連線失敗＝網路/Worker。</span>'
+       ? '<br><span style="color:#f85149">✗ '+bad.length+' 檔補跑後仍沒成功：'+bad.map(function(t){return t+'（'+(FETCH_WHY[t]||'資料抓到了，但沒進總表（沒出錯誤訊息）')+'）';}).join('、')+'</span>'
+         + '<br><span style="color:#6e7681">括號是真正原因：HTTP 429＝被限流；404＝代號不存在；連線失敗＝網路/Worker；程式錯誤＝我要修。</span>'
        : '')
     + '<br><span style="color:#8b949e">往下捲看「還在 Stage 2」與「啟動清單」—— 現在那兩張表才是完整的。</span>';
   WL_BUSY=false; WL_PAUSE=false;
