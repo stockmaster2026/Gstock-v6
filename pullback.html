@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.0</title>
+<title>回檔盤點 pullback v1.1</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -42,7 +42,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .err{color:var(--r)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.0</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.1</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。不下買賣判決，不分數。</div>
 
 <div class="card">
@@ -50,6 +50,9 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
   <div class="chips" id="chips"></div>
   <div class="row">
     <div><label>每檔間隔（秒）</label><input type="number" id="gap" value="2.5" step="0.5" min="1" max="30"></div>
+    <div><label>總資金（美元，算股數用）</label><input type="number" id="cap" placeholder="例 30000" style="width:130px"></div>
+    <div><label>每筆最多賠（%）</label><input type="number" id="rk" value="1" step="0.25" min="0.25" max="3"></div>
+    <div><label>停損上限（%）</label><input type="number" id="smax" value="8" step="1" min="3" max="15"></div>
     <button id="runAll" class="sec">全部板塊一次跑（約 10 分鐘）</button>
     <button id="clearToday" class="sec">清掉今天的結果</button>
   </div>
@@ -77,6 +80,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
     <b>🟣 打底·接近區間高點</b>：30 週線走平或剛翻揚；股價在 30 週線附近（上下 8% 內）；離 52 週高點至少 20%（真的是跌下來打底）；近 60 天高低差 ≤ 35%；離近 60 天高點 ≤ 8%。這一類不是回檔，是 Weinstein 的 Stage 1 快轉 Stage 2。<br>
     <b>其他</b>：下降趨勢，或不屬於上面任何一類。<br><br>
     <b>Q 條件（Qullamaggie 的選股條件）</b>：ADR（20 天平均日波動）大於 5%，而且 一個月漲 25% 以上、或三個月漲 50% 以上、或六個月漲 150% 以上。「差一點」＝ADR 4% 以上，且任一漲幅達到門檻的 8 成。<b>Q 條件跟上面的分類是兩件事</b>，所以分開顯示。<br><br>
+    <b>停損與股數（只是參考，不是下單指示）：</b>停損＝收復那天（或近 3 天）的最低點再往下 0.5%；貼近支撐的那類用近 5 天最低點。如果這個停損比 1×ATR 或 3% 還緊，就放寬到那個值（避免被日內雜訊掃掉，這是 dna 之前回測學到的）。進場價用今天收盤價估，實際隔天開盤會不一樣。停損在你設的上限（預設 8%）以內＝OK；超過 2 個百分點內＝邊緣；更多＝跳過。股數＝總資金×每筆最多賠%÷（進場價−停損價）。「警戒價」是進場價 −5%：你說局勢差時，沒到 8% 也會出場。<br><br>
     <b>資料說明：</b>每檔抓 2 年日線（Yahoo，經你自己的 Worker），失敗會自動重試，仍失敗會寫真正原因。計算在你的 iPad 上做，結果存在本機，隔天會顯示「舊資料」。
   </div></details>
 </div>
@@ -132,13 +136,16 @@ function analyze(bars){
   // 收復
   let closedBelow=false;for(let k=i-5;k<=i-1;k++){if(e21[k]!=null&&C[k]<e21[k])closedBelow=true;}
   const reclaim=closedBelow && px>e21[i] && px>H[i-1];
+  // 停損參考：收復日／近幾天的最低點往下留 0.5%；不能比 1×ATR 或 3% 更緊（避免被日內雜訊掃掉）
+  let atr=0;for(let k=i-13;k<=i;k++){atr+=Math.max(H[k]-L[k],Math.abs(H[k]-C[k-1]),Math.abs(L[k]-C[k-1]));}atr=atr/14;
+  const atrPct=atr/px;
   const stage2=px>ma150[i] && dir!=='down';
   let cat='other',why='';
   const pct=x=>(x*100).toFixed(1)+'%';
   if(stage2){
     if(reclaim && depth<=-0.03){
       cat='reclaim';
-      why='趨勢還在，回檔後已經收回 21 日線，今天收盤還高過昨天的高點 —— 這就是「收復」。從 20 天高點回檔了 '+pct(-depth)+'。';
+      why='趨勢還在，回檔後已經收回 21 日線，今天收盤還高過昨天的高點 —— 這就是「收復」。從 20 天高點回檔了 '+pct(-depth)+(depth>-0.05?'（回檔很淺，比較像小震盪）':'')+'。';
     }else if(depth<=-0.05 && depth>=-0.25 && nearSup){
       cat='touch';
       why='趨勢還在，從近期高點回檔 '+pct(-depth)+'，現在貼在 '+supName+'附近（離它 '+pct(Math.abs(supName==='21 日線'?dE21:dM50))+'）。還沒出現「收復」，要等。';
@@ -163,7 +170,12 @@ function analyze(bars){
       why='在 30 週線'+(px<ma150[i]?'下方':'上方')+'，30 週線'+(dir==='down'?'還在下降':'方向'+(dir==='flat'?'走平':'上升'))+'，不屬於回檔或打底。';
     }
   }
-  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName};
+  const lowN=cat==='reclaim'?minOf(L,i-2,i):minOf(L,i-4,i);
+  let stopPx=lowN*0.995,widened=false;
+  const floorD=Math.max(atrPct,0.03);
+  if((px-stopPx)/px<floorD){stopPx=px*(1-floorD);widened=true;}
+  const stopPct=(px-stopPx)/px;
+  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName,stopPx,stopPct,widened,atrPct};
 }
 //==/PURE==
 
@@ -260,6 +272,7 @@ function render(){
   $('resCard').style.display='block';
   const cnt={};ORDER.forEach(k=>cnt[k]=fresh.filter(a=>a.cat===k).length);
   const qn=fresh.filter(a=>a.q==='pass').length;
+  const stopOk=fresh.filter(a=>(a.cat==='reclaim'||a.cat==='touch')&&a.stopPx!=null&&stopVerdict(a)[0]==='ok').length;
   const dataDate=fresh.length?fresh.map(a=>a.lastDate).sort().slice(-1)[0]:'—';
   $('resMeta').textContent='（今天跑了 '+fresh.length+' 檔，資料到 '+dataDate+(old.length?'；另有 '+old.length+' 檔是舊資料，排在最下面':'')+'）';
   // 判決
@@ -268,14 +281,14 @@ function render(){
   if(!fresh.length){big='今天還沒跑任何板塊';rd='先在上面點一個板塊。';}
   else if(a1===0&&cnt.base===0){big='今天這批沒有符合「回檔」或「打底」的股票';rd='共 '+fresh.length+' 檔，沒有一檔貼在支撐、也沒有一檔已收復或打底接近突破。這個工具現在沒有東西可以看。';}
   else{big='回檔類 '+a1+' 檔（其中 '+cnt.reclaim+' 檔已收復）　打底類 '+cnt.base+' 檔';
-    rd='共 '+fresh.length+' 檔。「已收復」代表回檔後已經站回 21 日線，是最接近 Luk 說的進場訊號的一類；「貼近支撐」是還在等；「打底」要看 pivot，不是回檔。其中符合 Qullamaggie 選股條件的有 '+qn+' 檔。';}
+    rd='共 '+fresh.length+' 檔。「已收復」代表回檔後已經站回 21 日線，是最接近 Luk 說的進場訊號的一類；「貼近支撐」是還在等；「打底」要看 pivot，不是回檔。其中符合 Qullamaggie 選股條件的有 '+qn+' 檔；回檔類裡停損放得進你上限的有 '+stopOk+' 檔。';}
   $('verdict').innerHTML='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'<br><span class="small">這只是「現在有幾檔」，不是買賣建議，也還沒驗證這些型態後來好不好賺。</span></div></div>';
   // 表
   const rows=[];
   ORDER.forEach(k=>fresh.filter(a=>a.cat===k).sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a)));
   old.sort((x,y)=>x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
   const hide=[];
-  let h='<table><thead><tr><th>代號</th><th>分類</th><th>白話</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>代號</th><th>分類</th><th>白話</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th><th>停損與可買股數</th></tr></thead><tbody>';
   rows.forEach(a=>{
     const L=LABEL[a.cat],stale=a.day!==t;
     const dirTxt={up:'線上升',flat:'線走平',down:'線下降'}[a.dir];
@@ -287,11 +300,34 @@ function render(){
       +'<td class="n">'+pc(a.dMA150)+'<div class="small">'+dirTxt+'</div></td>'
       +'<td class="n">'+a.adr.toFixed(1)+'%<div class="small">'+(a.adr>5?'波動大':'波動小')+'</div></td>'
       +'<td class="n">'+pc(a.r1,0)+' / '+pc(a.r3,0)+' / '+pc(a.r6,0)+'</td>'
-      +'<td class="n '+qq[1]+'"><b>'+qq[0]+'</b></td></tr>';
+      +'<td class="n '+qq[1]+'"><b>'+qq[0]+'</b></td>'
+      +'<td style="min-width:190px">'+stopCell(a)+'</td></tr>';
   });
   h+='</tbody></table><div class="small" style="margin-top:6px">ADR＝近 20 天平均每天高低差；「離 30 週線」是跟 150 日線比。Q 條件：ADR 大於 5%，且 1 個月 +25%／3 個月 +50%／6 個月 +150% 任一達標（二手整理的門檻）。</div>';
   $('tbl').innerHTML=h;
 }
+function cfgGet(){return {cap:+$('cap').value||0,rk:(+$('rk').value||1)/100,smax:(+$('smax').value||8)/100};}
+function stopVerdict(a){
+  const c=cfgGet();
+  if(a.stopPct<=c.smax)return ['ok','✓ 在你的 '+(c.smax*100).toFixed(0)+'% 以內'];
+  if(a.stopPct<=c.smax+0.02)return ['edge','⚠ 稍微超過 '+(c.smax*100).toFixed(0)+'%（邊緣）'];
+  return ['skip','✗ 停損放不出來（超過 '+(c.smax*100).toFixed(0)+'%）'];
+}
+function stopCell(a){
+  if(a.cat!=='reclaim'&&a.cat!=='touch')return '<span class="small">—</span>';
+  if(a.stopPx==null)return '<span class="small">這筆是舊版算的，重跑一次才有停損</span>';
+  const c=cfgGet(),v=stopVerdict(a);
+  const col={ok:'ok',edge:'warnc',skip:'bad'}[v[0]];
+  let h='<div>停損 <b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）</div><div class="'+col+'"><b>'+v[1]+'</b></div>';
+  if(a.widened)h+='<div class="small">最近低點太近，已放寬到 1×ATR 或 3%，避免被雜訊掃掉</div>';
+  h+='<div class="small">警戒價（−5%）$'+(a.px*0.95).toFixed(2)+'：局面差時你說會提早出場</div>';
+  if(c.cap>0&&v[0]!=='skip'){
+    const risk=c.cap*c.rk,sh=Math.floor(risk/(a.px-a.stopPx)),cost=sh*a.px;
+    h+='<div class="small">每筆最多賠 $'+risk.toFixed(0)+' → 最多買 <b>'+sh+'</b> 股（約 $'+cost.toFixed(0)+'，佔資金 '+(cost/c.cap*100).toFixed(0)+'%）</div>';
+  }else if(v[0]==='skip'){h+='<div class="small">超過上限，這一檔先跳過，不算股數</div>';}
+  return h;
+}
+['cap','rk','smax'].forEach(id=>{const el=$(id);el.value=(localStorage.getItem('pb_'+id)||el.value);el.addEventListener('input',()=>{try{localStorage.setItem('pb_'+id,el.value);}catch(e){}render();});});
 function renderChips(){
   const done=load(LSD),t=today();
   $('chips').innerHTML=SECTORS.map((x,i)=>{
