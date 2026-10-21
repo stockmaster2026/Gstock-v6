@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>回檔盤點 pullback v1.0</title>
+<style>
+:root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:14px 16px 70px;max-width:1000px}
+h1{font-size:21px;margin:6px 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card h2{font-size:16px;margin:0 0 8px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0}
+label{font-size:12.5px;color:var(--mut);display:block;margin-bottom:3px}
+textarea,input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink)}
+textarea{width:100%;min-height:58px;font-family:ui-monospace,monospace;font-size:13px}
+input[type=number]{width:84px}
+button{font:inherit;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:700}
+button.sec{background:#e7edf5;color:var(--blue)}
+button:disabled{opacity:.5}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 10px}
+.chip{background:#fff;color:var(--blue);border:1px solid var(--line);border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.chip.done{background:#e8f6ec;color:var(--g);border-color:#8bcf9f}
+.chip.warn{background:#fff3e0;color:#b45309;border-color:#f0b060}
+.verdict{border-left:6px solid var(--blue);background:#f4f8fd;border-radius:8px;padding:12px 14px;margin:8px 0}
+.verdict .big{font-size:18px;font-weight:800}
+.verdict .rd{font-size:13.5px;color:#374151;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+th,td{padding:8px 7px;border-bottom:1px solid #e6ebf2;text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--mut);font-weight:600;background:#f6f8fb}
+td.n{text-align:right;white-space:nowrap}
+.tk{font-weight:800;font-size:15px}
+.badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.b-touch{background:#dcfce7;color:#166534}
+.b-reclaim{background:#dbeafe;color:#1e40af}
+.b-high{background:#f1f5f9;color:#475569}
+.b-deep{background:#fef3c7;color:#92400e}
+.b-base{background:#ede9fe;color:#5b21b6}
+.b-other{background:#f3f4f6;color:#6b7280}
+.small{font-size:12.5px;color:var(--mut)}
+.ok{color:var(--g)}.bad{color:var(--r)}.warnc{color:var(--y)}
+details summary{cursor:pointer;font-weight:700;margin:4px 0}
+.err{color:var(--r)}
+@media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
+</style></head><body>
+<h1>回檔盤點 <span class="small">pullback v1.0</span></h1>
+<div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。不下買賣判決，不分數。</div>
+
+<div class="card">
+  <h2>① 選板塊跑（點一個板塊就直接跑）</h2>
+  <div class="chips" id="chips"></div>
+  <div class="row">
+    <div><label>每檔間隔（秒）</label><input type="number" id="gap" value="2.5" step="0.5" min="1" max="30"></div>
+    <button id="runAll" class="sec">全部板塊一次跑（約 10 分鐘）</button>
+    <button id="clearToday" class="sec">清掉今天的結果</button>
+  </div>
+  <label>或貼自己的清單（空白、逗號都可以）</label>
+  <textarea id="own" spellcheck="false" placeholder="例：MU LITE COHR"></textarea>
+  <div class="row"><button id="runOwn">跑這份清單</button></div>
+  <div id="stat" class="small" style="margin-top:6px"></div>
+</div>
+
+<div class="card" id="resCard" style="display:none">
+  <h2>② 今天盤點的結果 <span class="small" id="resMeta"></span></h2>
+  <div id="verdict"></div>
+  <div id="tbl"></div>
+</div>
+
+<div class="card">
+  <details><summary>這份盤點是怎麼分類的（先看這個，才知道數字的意思）</summary>
+  <div class="small" style="margin-top:6px;line-height:1.8">
+    <b>誠實聲明：</b>下面的分類條件是我（Claude）為了「盤點」先訂的，<b>不是冠軍原文</b>，也沒有驗證過。Qullamaggie 的選股門檻來自第二手整理（沒讀到他的原文）；Luk 的「收復」來自第二手整理。這個工具現在只回答「現在有幾檔」，不回答「好不好賺」。<br><br>
+    <b>30 週線</b>＝用 150 日均線代替。<b>方向</b>＝跟 20 個交易日前比，升 1% 以上算「上升」，±1% 內算「走平」，跌 1% 以上算「下降」。<br><br>
+    <b>🟢 強勢回檔·貼近支撐</b>：股價在 30 週線上方、30 週線沒有下降；從最近 20 天高點回檔 5%～25%；現在離 21 日線或 50 日線不到 4%（貼著支撐）。<br>
+    <b>🔵 回檔後已收復</b>：同上趨勢，近 5 天有收盤跌到 21 日線下方，今天收盤站回 21 日線上、而且高過昨天的高點。（這是 Luk 說的「收復」的簡化版。）<br>
+    <b>⚪ 強勢但沒回檔</b>：趨勢同上，但離 20 天高點不到 5%，沒有回檔可以等。<br>
+    <b>🟡 回檔偏深</b>：趨勢還在，但從 20 天高點回檔超過 25%，先看它守不守得住 30 週線。<br>
+    <b>🟣 打底·接近區間高點</b>：30 週線走平或剛翻揚；股價在 30 週線附近（上下 8% 內）；離 52 週高點至少 20%（真的是跌下來打底）；近 60 天高低差 ≤ 35%；離近 60 天高點 ≤ 8%。這一類不是回檔，是 Weinstein 的 Stage 1 快轉 Stage 2。<br>
+    <b>其他</b>：下降趨勢，或不屬於上面任何一類。<br><br>
+    <b>Q 條件（Qullamaggie 的選股條件）</b>：ADR（20 天平均日波動）大於 5%，而且 一個月漲 25% 以上、或三個月漲 50% 以上、或六個月漲 150% 以上。「差一點」＝ADR 4% 以上，且任一漲幅達到門檻的 8 成。<b>Q 條件跟上面的分類是兩件事</b>，所以分開顯示。<br><br>
+    <b>資料說明：</b>每檔抓 2 年日線（Yahoo，經你自己的 Worker），失敗會自動重試，仍失敗會寫真正原因。計算在你的 iPad 上做，結果存在本機，隔天會顯示「舊資料」。
+  </div></details>
+</div>
+
+<script>
+const PROXY = "https://gstock-proxy.cykjas.workers.dev/?url=";
+const SECTORS=[
+  {n:'資安', s:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'},
+  {n:'軟體 SaaS', s:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS'},
+  {n:'AI 晶片', s:'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX'},
+  {n:'半導體設備', s:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'},
+  {n:'光通訊', s:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'},
+  {n:'記憶體與儲存', s:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'},
+  {n:'AI 電力與散熱', s:'VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW FLEX GNRC JCI'},
+  {n:'太空與國防', s:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'},
+  {n:'生技與醫材', s:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'},
+  {n:'金融', s:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'},
+  {n:'量子運算', s:'IONQ RGTI QBTS QUBT LAES ARQQ'},
+  {n:'七巨頭', s:'AAPL MSFT GOOGL AMZN NVDA META TSLA'}
+];
+
+//==PURE==
+function sma(a,n){const o=new Array(a.length).fill(null);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)o[i]=s/n;}return o;}
+function ema(a,n){const o=new Array(a.length).fill(null);const k=2/(n+1);let p=null;for(let i=0;i<a.length;i++){if(i===n-1){let s=0;for(let j=0;j<n;j++)s+=a[j];p=s/n;o[i]=p;}else if(i>=n){p=a[i]*k+p*(1-k);o[i]=p;}}return o;}
+function maxOf(a,from,to){let m=-Infinity;for(let i=Math.max(0,from);i<=to;i++)if(a[i]>m)m=a[i];return m;}
+function minOf(a,from,to){let m=Infinity;for(let i=Math.max(0,from);i<=to;i++)if(a[i]<m)m=a[i];return m;}
+// bars: [{t,date,o,h,l,c,v}] 由舊到新
+function analyze(bars){
+  const n=bars.length;
+  if(n<200) return {err:'資料不足（'+n+' 根，至少要 200 根才算得出 30 週線方向）'};
+  const C=bars.map(b=>b.c),H=bars.map(b=>b.h),L=bars.map(b=>b.l);
+  const i=n-1;
+  const ma150=sma(C,150),ma50=sma(C,50),e21=ema(C,21);
+  const px=C[i];
+  const slope=ma150[i]/ma150[i-20]-1;
+  const dir=slope>=0.01?'up':(slope<=-0.01?'down':'flat');
+  const hi52=maxOf(H,i-251,i);
+  const offHi=px/hi52-1;
+  const hi20=maxOf(H,i-19,i);
+  const depth=px/hi20-1;
+  const dMA150=px/ma150[i]-1;
+  let adr=0;for(let k=i-19;k<=i;k++)adr+=(H[k]/L[k]-1);adr=adr/20*100;
+  const r1=px/C[i-22]-1,r3=px/C[i-67]-1,r6=px/C[i-126]-1;
+  // Q 條件
+  const thr=[[r1,0.25],[r3,0.50],[r6,1.50]];
+  const qPass=adr>5 && thr.some(x=>x[0]>=x[1]);
+  const qNear=!qPass && adr>=4 && thr.some(x=>x[0]>=x[1]*0.8);
+  const q=qPass?'pass':(qNear?'near':'no');
+  // 支撐距離
+  const dE21=px/e21[i]-1,dM50=px/ma50[i]-1;
+  const nearSup=Math.min(Math.abs(dE21),Math.abs(dM50))<=0.04;
+  const supName=Math.abs(dE21)<=Math.abs(dM50)?'21 日線':'50 日線';
+  // 收復
+  let closedBelow=false;for(let k=i-5;k<=i-1;k++){if(e21[k]!=null&&C[k]<e21[k])closedBelow=true;}
+  const reclaim=closedBelow && px>e21[i] && px>H[i-1];
+  const stage2=px>ma150[i] && dir!=='down';
+  let cat='other',why='';
+  const pct=x=>(x*100).toFixed(1)+'%';
+  if(stage2){
+    if(reclaim && depth<=-0.03){
+      cat='reclaim';
+      why='趨勢還在，回檔後已經收回 21 日線，今天收盤還高過昨天的高點 —— 這就是「收復」。從 20 天高點回檔了 '+pct(-depth)+'。';
+    }else if(depth<=-0.05 && depth>=-0.25 && nearSup){
+      cat='touch';
+      why='趨勢還在，從近期高點回檔 '+pct(-depth)+'，現在貼在 '+supName+'附近（離它 '+pct(Math.abs(supName==='21 日線'?dE21:dM50))+'）。還沒出現「收復」，要等。';
+    }else if(depth<-0.25){
+      cat='deep';
+      why='30 週線還撐著，但從近期高點回檔 '+pct(-depth)+'，比一般整理深。先看它守不守得住 30 週線。';
+    }else if(depth>-0.05){
+      cat='high';
+      why='還在高點附近（只離 20 天高點 '+pct(-depth)+'），沒有回檔可以等。';
+    }else{
+      cat='other';
+      why='趨勢還在，回檔 '+pct(-depth)+'，但離 21 日線、50 日線都還有一段距離，不算貼著支撐。';
+    }
+  }
+  if(cat==='other' && !stage2){
+    const hi60=maxOf(H,i-59,i),lo60=minOf(L,i-59,i);
+    const range60=hi60/lo60-1, offHi60=px/hi60-1;
+    if(dir!=='down' && Math.abs(dMA150)<=0.08 && offHi<=-0.20 && range60<=0.35 && offHi60>=-0.08){
+      cat='base';
+      why='30 週線'+(dir==='flat'?'走平':'剛翻揚')+'，股價在 30 週線附近整理，離近 60 天高點只有 '+pct(-offHi60)+'。這是打底快要突破的樣子（要看 pivot 和突破量，這裡不判）。';
+    }else if(dir==='down'||px<ma150[i]){
+      why='在 30 週線'+(px<ma150[i]?'下方':'上方')+'，30 週線'+(dir==='down'?'還在下降':'方向'+(dir==='flat'?'走平':'上升'))+'，不屬於回檔或打底。';
+    }
+  }
+  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName};
+}
+//==/PURE==
+
+const LS='pb_v1', LSD='pb_done_v1';
+const $=id=>document.getElementById(id);
+function fmtDate(ts){const d=new Date(ts*1000);return (d.getUTCFullYear()+'').slice(2)+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0');}
+function today(){return new Date().toDateString();}
+function load(k){try{return JSON.parse(localStorage.getItem(k))||{};}catch(e){return {};}}
+function save(k,o){try{localStorage.setItem(k,JSON.stringify(o));}catch(e){}}
+
+let WHY={};
+async function fetchOnce(tk){
+  const now=Math.floor(Date.now()/1000);
+  const u="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(tk)+"?range=2y&interval=1d&includePrePost=false&_cb="+Date.now()+Math.floor(Math.random()*100000);
+  let res;
+  try{res=await fetch(PROXY+encodeURIComponent(u),{cache:'no-store'});}catch(e){WHY[tk]='連線失敗';throw new Error('conn');}
+  if(!res.ok){WHY[tk]='HTTP '+res.status;throw new Error('http');}
+  const jj=await res.json();
+  const r=jj&&jj.chart&&jj.chart.result&&jj.chart.result[0];
+  if(!r||!r.timestamp||!r.timestamp.length){WHY[tk]='Yahoo 沒回 K 線（代號可能不存在）';throw new Error('empty');}
+  const q=r.indicators.quote[0],bars=[];
+  for(let i=0;i<r.timestamp.length;i++){
+    const c=q.close[i],o=q.open[i],h=q.high[i],l=q.low[i];
+    if(c==null||o==null||h==null||l==null)continue;
+    bars.push({t:r.timestamp[i],date:fmtDate(r.timestamp[i]),o,h,l,c,v:q.volume[i]||0});
+  }
+  const M=r.meta||{};
+  if(M.regularMarketTime&&M.regularMarketPrice!=null&&bars.length){
+    const last=bars[bars.length-1],md=fmtDate(M.regularMarketTime);
+    if(md>last.date){const mc=M.regularMarketPrice;bars.push({t:M.regularMarketTime,date:md,o:last.c,h:Math.max(mc,last.c),l:Math.min(mc,last.c),c:mc,v:0});}
+  }
+  return bars;
+}
+async function fetchBars(tk){
+  const waits=[0,3000,8000,15000];let err=null;
+  for(let a=0;a<waits.length;a++){
+    if(waits[a])await new Promise(r=>setTimeout(r,waits[a]));
+    try{const b=await fetchOnce(tk);delete WHY[tk];return b;}
+    catch(e){err=e;if(WHY[tk]&&/404|不存在/.test(WHY[tk]))break;}
+  }
+  throw err;
+}
+
+let BUSY=false;
+async function runList(list,label){
+  if(BUSY)return;
+  list=Array.from(new Set(list.map(s=>s.toUpperCase()).filter(Boolean)));
+  if(!list.length){$('stat').innerHTML='<span class="warnc">清單是空的。</span>';return;}
+  BUSY=true;setBtns(true);
+  const gap=Math.max(1,+$('gap').value||2.5)*1000;
+  const store=load(LS);const bad=[];const t0=Date.now();
+  for(let i=0;i<list.length;i++){
+    const tk=list[i];
+    $('stat').innerHTML='跑第 <b>'+(i+1)+' / '+list.length+'</b> 檔：<b>'+tk+'</b>'+(bad.length?'　<span class="warnc">已失敗 '+bad.length+' 檔</span>':'');
+    try{
+      const bars=await fetchBars(tk);
+      const a=analyze(bars);
+      if(a.err){WHY[tk]=a.err;bad.push(tk);}
+      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);render();}
+    }catch(e){bad.push(tk);}
+    if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
+  }
+  // 失敗的補跑一輪
+  if(bad.length&&bad.length<list.length){
+    const again=bad.splice(0,bad.length);
+    $('stat').innerHTML='<span class="warnc">第一輪有 '+again.length+' 檔沒成功，等 8 秒自動補跑…</span>';
+    await new Promise(r=>setTimeout(r,8000));
+    for(const tk of again){
+      try{const bars=await fetchBars(tk);const a=analyze(bars);
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);render();}
+      }catch(e){bad.push(tk);}
+      await new Promise(r=>setTimeout(r,gap*2));
+    }
+  }
+  // 板塊完成記號
+  const done=load(LSD);const ok=list.filter(t=>store[t]&&store[t].day===today()).length;
+  if(label&&label!=='自選清單'&&label!=='全部板塊'){done[label]={day:today(),total:list.length,ok:ok,real:bad.length};save(LSD,done);}
+  const secs=Math.round((Date.now()-t0)/1000);
+  let h='<b class="ok">✓ 跑完 '+list.length+' 檔</b>（'+secs+' 秒）';
+  if(bad.length)h+='<br><span class="bad">✗ '+bad.length+' 檔沒成功：'+bad.map(t=>t+'（'+(WHY[t]||'未知')+'）').join('、')+'</span><br><span class="small">HTTP 429＝Yahoo 暫時限流，過幾分鐘單獨再跑那幾檔；404＝代號不存在。</span>';
+  $('stat').innerHTML=h;
+  BUSY=false;setBtns(false);renderChips();render();
+}
+function setBtns(b){['runAll','runOwn','clearToday'].forEach(id=>$(id).disabled=b);document.querySelectorAll('.chip').forEach(c=>c.disabled=b);}
+
+const LABEL={touch:['🟢 強勢回檔·貼近支撐','b-touch'],reclaim:['🔵 回檔後已收復','b-reclaim'],high:['⚪ 強勢但沒回檔','b-high'],deep:['🟡 回檔偏深','b-deep'],base:['🟣 打底·接近區間高點','b-base'],other:['其他','b-other']};
+const ORDER=['reclaim','touch','base','deep','high','other'];
+const QTXT={pass:['✓ 符合','ok'],near:['差一點','warnc'],no:['不符合','small']};
+const pc=(x,d)=>(x>=0?'+':'')+(x*100).toFixed(d==null?1:d)+'%';
+function render(){
+  const store=load(LS);const all=Object.values(store);
+  const t=today();const fresh=all.filter(a=>a.day===t),old=all.filter(a=>a.day!==t);
+  if(!all.length){$('resCard').style.display='none';return;}
+  $('resCard').style.display='block';
+  const cnt={};ORDER.forEach(k=>cnt[k]=fresh.filter(a=>a.cat===k).length);
+  const qn=fresh.filter(a=>a.q==='pass').length;
+  const dataDate=fresh.length?fresh.map(a=>a.lastDate).sort().slice(-1)[0]:'—';
+  $('resMeta').textContent='（今天跑了 '+fresh.length+' 檔，資料到 '+dataDate+(old.length?'；另有 '+old.length+' 檔是舊資料，排在最下面':'')+'）';
+  // 判決
+  let big,rd;
+  const a1=cnt.touch+cnt.reclaim;
+  if(!fresh.length){big='今天還沒跑任何板塊';rd='先在上面點一個板塊。';}
+  else if(a1===0&&cnt.base===0){big='今天這批沒有符合「回檔」或「打底」的股票';rd='共 '+fresh.length+' 檔，沒有一檔貼在支撐、也沒有一檔已收復或打底接近突破。這個工具現在沒有東西可以看。';}
+  else{big='回檔類 '+a1+' 檔（其中 '+cnt.reclaim+' 檔已收復）　打底類 '+cnt.base+' 檔';
+    rd='共 '+fresh.length+' 檔。「已收復」代表回檔後已經站回 21 日線，是最接近 Luk 說的進場訊號的一類；「貼近支撐」是還在等；「打底」要看 pivot，不是回檔。其中符合 Qullamaggie 選股條件的有 '+qn+' 檔。';}
+  $('verdict').innerHTML='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'<br><span class="small">這只是「現在有幾檔」，不是買賣建議，也還沒驗證這些型態後來好不好賺。</span></div></div>';
+  // 表
+  const rows=[];
+  ORDER.forEach(k=>fresh.filter(a=>a.cat===k).sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a)));
+  old.sort((x,y)=>x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
+  const hide=[];
+  let h='<table><thead><tr><th>代號</th><th>分類</th><th>白話</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th></tr></thead><tbody>';
+  rows.forEach(a=>{
+    const L=LABEL[a.cat],stale=a.day!==t;
+    const dirTxt={up:'線上升',flat:'線走平',down:'線下降'}[a.dir];
+    const qq=QTXT[a.q];
+    h+='<tr'+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div></td>'
+      +'<td><span class="badge '+L[1]+'">'+L[0]+'</span></td>'
+      +'<td style="min-width:220px">'+a.why+'</td>'
+      +'<td class="n">'+pc(a.offHi)+'<div class="small">離最高 '+(-a.offHi*100).toFixed(0)+'%</div></td>'
+      +'<td class="n">'+pc(a.dMA150)+'<div class="small">'+dirTxt+'</div></td>'
+      +'<td class="n">'+a.adr.toFixed(1)+'%<div class="small">'+(a.adr>5?'波動大':'波動小')+'</div></td>'
+      +'<td class="n">'+pc(a.r1,0)+' / '+pc(a.r3,0)+' / '+pc(a.r6,0)+'</td>'
+      +'<td class="n '+qq[1]+'"><b>'+qq[0]+'</b></td></tr>';
+  });
+  h+='</tbody></table><div class="small" style="margin-top:6px">ADR＝近 20 天平均每天高低差；「離 30 週線」是跟 150 日線比。Q 條件：ADR 大於 5%，且 1 個月 +25%／3 個月 +50%／6 個月 +150% 任一達標（二手整理的門檻）。</div>';
+  $('tbl').innerHTML=h;
+}
+function renderChips(){
+  const done=load(LSD),t=today();
+  $('chips').innerHTML=SECTORS.map((x,i)=>{
+    const d=done[x.n]&&done[x.n].day===t?done[x.n]:null;
+    const cls='chip'+(d?(d.real>0?' warn':' done'):'');
+    return '<button class="'+cls+'" data-i="'+i+'">'+(d?(d.real>0?'⚠ ':'✓ '):'')+x.n+(d?' '+d.ok+'/'+d.total:'')+'</button>';
+  }).join('');
+}
+$('chips').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b||BUSY)return;const x=SECTORS[+b.dataset.i];runList(x.s.split(/\s+/),x.n);});
+$('runAll').addEventListener('click',()=>{if(BUSY)return;const l=[];SECTORS.forEach(x=>x.s.split(/\s+/).forEach(t=>l.push(t)));runList(l,'全部板塊');});
+$('runOwn').addEventListener('click',()=>{if(BUSY)return;runList($('own').value.split(/[\s,，、]+/),'自選清單');});
+$('clearToday').addEventListener('click',()=>{if(BUSY)return;if(!confirm('清掉今天的盤點結果？'))return;save(LS,{});save(LSD,{});renderChips();render();$('stat').innerHTML='已清掉。';});
+renderChips();render();
+</script>
+</body></html>
