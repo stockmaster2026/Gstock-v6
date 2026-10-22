@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.1</title>
+<title>回檔盤點 pullback v1.2</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -40,10 +40,12 @@ td.n{text-align:right;white-space:nowrap}
 .ok{color:var(--g)}.bad{color:var(--r)}.warnc{color:var(--y)}
 details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .err{color:var(--r)}
+.pick{border-left:6px solid var(--g);background:#f1faf4}.wait{border-left:6px solid #d99a1b;background:#fff9ec}
+.mini{font-size:12.5px;color:var(--mut)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.1</span></h1>
-<div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。不下買賣判決，不分數。</div>
+<h1>回檔盤點 <span class="small">pullback v1.2（新：今日可考慮價位＋觀察本）</span></h1>
+<div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
   <h2>① 選板塊跑（點一個板塊就直接跑）</h2>
@@ -53,6 +55,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
     <div><label>總資金（美元，算股數用）</label><input type="number" id="cap" placeholder="例 30000" style="width:130px"></div>
     <div><label>每筆最多賠（%）</label><input type="number" id="rk" value="1" step="0.25" min="0.25" max="3"></div>
     <div><label>停損上限（%）</label><input type="number" id="smax" value="8" step="1" min="3" max="15"></div>
+    <div><label>預計同時持有幾檔（平均分配）</label><input type="number" id="nn" value="5" step="1" min="1" max="20"></div>
     <button id="runAll" class="sec">全部板塊一次跑（約 10 分鐘）</button>
     <button id="clearToday" class="sec">清掉今天的結果</button>
   </div>
@@ -62,10 +65,34 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
   <div id="stat" class="small" style="margin-top:6px"></div>
 </div>
 
+<div class="card" id="picksCard" style="display:none">
+  <h2>③ 現在有沒有可以考慮的價位？ <span class="small">（只看 Q 條件符合／差一點的強勢股）</span></h2>
+  <div id="picks"></div>
+</div>
+
+<div class="card">
+  <details open><summary>回測學到的（10/21，191 檔、5 年，已把這些放進下面的判斷）</summary>
+  <div class="small" style="margin-top:6px;line-height:1.8">
+    ① <b>贏在選對強勢股，「收復」只多一點</b>：Q 條件強勢股版，收復 EV 約 +0.2～+0.5R，比沒收復的同組多 +0.05～+0.24R，方向 10 個比較全部同向，但幾乎都「統計上看不出差別」。<br>
+    ② <b>最好的出場是你的式</b>（賺 3 倍風險賣 1/3，剩下連 3 天破 20 日線出）：收復 +0.54R vs 沒收復 +0.30R（n=239）。<br>
+    ③ <b>停損別太緊</b>：5% 以內那組是負的，5～8% 才賺。<b>回檔別太深</b>：10% 以上賺很薄。<br>
+    ④ <b>勝率只有 33～40%，報酬中位數是負的，靠少數大賺</b>：跟 Martin Luk 的「形狀」一致，但我們的幅度小很多，沒有重現他的成績。Q 條件版最大連虧 9～15 次，所以每筆風險先抓小一點、分散在約 5 檔。<br>
+    ⑤ <b>限制</b>：股票池是今天還在的 191 檔（偏向贏家，EV 偏樂觀）；弱大盤樣本只有 27 筆。所以這裡只說「可以開始考慮」，真正有沒有用，要靠下面的「觀察本」往前記。
+  </div></details>
+</div>
+
 <div class="card" id="resCard" style="display:none">
   <h2>② 今天盤點的結果 <span class="small" id="resMeta"></span></h2>
   <div id="verdict"></div>
   <div id="tbl"></div>
+</div>
+
+<div class="card" id="obsCard">
+  <h2>④ 觀察本 <span class="small">（往前記錄，不偷看未來）</span></h2>
+  <div class="small">每次跑完板塊，只要出現「Q 符合／差一點 ＋ 已收復 ＋ 停損在上限內」的訊號，就自動記一筆（同一檔還沒結束時不重複記）。之後隔天開盤價當進場價，追蹤有沒有打到停損、第 10／20／40 天賺賠幾 R。<b>要收盤後再跑</b>，盤中的 K 棒還沒收盤，不算數。</div>
+  <div class="row"><button id="obsRefresh" class="sec">更新觀察本（重抓還在追蹤的股票）</button><button id="obsCopy" class="sec">複製備份</button><button id="obsImp" class="sec">匯入備份</button></div>
+  <textarea id="obsBox" style="display:none;min-height:80px" placeholder="把備份文字貼在這裡，再按一次「匯入備份」"></textarea>
+  <div id="obsSum"></div><div id="obsTbl"></div>
 </div>
 
 <div class="card">
@@ -140,6 +167,7 @@ function analyze(bars){
   let atr=0;for(let k=i-13;k<=i;k++){atr+=Math.max(H[k]-L[k],Math.abs(H[k]-C[k-1]),Math.abs(L[k]-C[k-1]));}atr=atr/14;
   const atrPct=atr/px;
   const stage2=px>ma150[i] && dir!=='down';
+  let closedBelowNow=false;for(let k=i-4;k<=i;k++){if(e21[k]!=null&&C[k]<e21[k])closedBelowNow=true;}
   let cat='other',why='';
   const pct=x=>(x*100).toFixed(1)+'%';
   if(stage2){
@@ -175,7 +203,10 @@ function analyze(bars){
   const floorD=Math.max(atrPct,0.03);
   if((px-stopPx)/px<floorD){stopPx=px*(1-floorD);widened=true;}
   const stopPct=(px-stopPx)/px;
-  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName,stopPx,stopPct,widened,atrPct};
+  // 確認價：明天（或之後）收盤要站上「今天高點」和「21 日線」較高者，才算收復（只有趨勢還在、近 5 天有收盤跌到 21 日線下才可能）
+  let trigPx=null,trigDist=null;
+  if(stage2 && cat!=='reclaim' && closedBelowNow){trigPx=Math.max(e21[i],H[i]);trigDist=trigPx/px-1;}
+  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName,stopPx,stopPct,widened,atrPct,trigPx,trigDist,e21v:e21[i],ma50v:ma50[i],stage2};
 }
 //==/PURE==
 
@@ -234,7 +265,7 @@ async function runList(list,label){
       const bars=await fetchBars(tk);
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
-      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);render();}
+      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);obsRecord(a);obsUpdate(tk,bars);render();}
     }catch(e){bad.push(tk);}
     if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
   }
@@ -245,7 +276,7 @@ async function runList(list,label){
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
       try{const bars=await fetchBars(tk);const a=analyze(bars);
-        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);render();}
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);obsRecord(a);obsUpdate(tk,bars);render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
     }
@@ -266,6 +297,7 @@ const ORDER=['reclaim','touch','base','deep','high','other'];
 const QTXT={pass:['✓ 符合','ok'],near:['差一點','warnc'],no:['不符合','small']};
 const pc=(x,d)=>(x>=0?'+':'')+(x*100).toFixed(d==null?1:d)+'%';
 function render(){
+  renderPicksAndObs();
   const store=load(LS);const all=Object.values(store);
   const t=today();const fresh=all.filter(a=>a.day===t),old=all.filter(a=>a.day!==t);
   if(!all.length){$('resCard').style.display='none';return;}
@@ -306,7 +338,7 @@ function render(){
   h+='</tbody></table><div class="small" style="margin-top:6px">ADR＝近 20 天平均每天高低差；「離 30 週線」是跟 150 日線比。Q 條件：ADR 大於 5%，且 1 個月 +25%／3 個月 +50%／6 個月 +150% 任一達標（二手整理的門檻）。</div>';
   $('tbl').innerHTML=h;
 }
-function cfgGet(){return {cap:+$('cap').value||0,rk:(+$('rk').value||1)/100,smax:(+$('smax').value||8)/100};}
+function cfgGet(){return {cap:+$('cap').value||0,rk:(+$('rk').value||1)/100,smax:(+$('smax').value||8)/100,nn:Math.max(1,+$('nn').value||5)};}
 function stopVerdict(a){
   const c=cfgGet();
   if(a.stopPct<=c.smax)return ['ok','✓ 在你的 '+(c.smax*100).toFixed(0)+'% 以內'];
@@ -327,7 +359,7 @@ function stopCell(a){
   }else if(v[0]==='skip'){h+='<div class="small">超過上限，這一檔先跳過，不算股數</div>';}
   return h;
 }
-['cap','rk','smax'].forEach(id=>{const el=$(id);el.value=(localStorage.getItem('pb_'+id)||el.value);el.addEventListener('input',()=>{try{localStorage.setItem('pb_'+id,el.value);}catch(e){}render();});});
+['cap','rk','smax','nn'].forEach(id=>{const el=$(id);el.value=(localStorage.getItem('pb_'+id)||el.value);el.addEventListener('input',()=>{try{localStorage.setItem('pb_'+id,el.value);}catch(e){}render();});});
 function renderChips(){
   const done=load(LSD),t=today();
   $('chips').innerHTML=SECTORS.map((x,i)=>{
@@ -340,6 +372,131 @@ $('chips').addEventListener('click',e=>{const b=e.target.closest('button[data-i]
 $('runAll').addEventListener('click',()=>{if(BUSY)return;const l=[];SECTORS.forEach(x=>x.s.split(/\s+/).forEach(t=>l.push(t)));runList(l,'全部板塊');});
 $('runOwn').addEventListener('click',()=>{if(BUSY)return;runList($('own').value.split(/[\s,，、]+/),'自選清單');});
 $('clearToday').addEventListener('click',()=>{if(BUSY)return;if(!confirm('清掉今天的盤點結果？'))return;save(LS,{});save(LSD,{});renderChips();render();$('stat').innerHTML='已清掉。';});
+
+// ===== v1.2：今日可考慮價位 =====
+function sizeTxt(entry,stop){
+  const c=cfgGet();
+  if(!(c.cap>0))return '<div class="mini">上面填「總資金」才會算股數</div>';
+  const risk=c.cap*c.rk,rs=Math.floor(risk/(entry-stop)),cs=Math.floor(c.cap/c.nn/entry),sh=Math.max(0,Math.min(rs,cs));
+  return '<div class="mini">最多買 <b>'+sh+'</b> 股（約 $'+(sh*entry).toFixed(0)+'，占資金 '+(sh*entry/c.cap*100).toFixed(0)+'%）；'+(rs<=cs?'由「每筆最多賠 '+(c.rk*100).toFixed(2).replace(/\.?0+$/,'')+'%」決定':'由「平均分給 '+c.nn+' 檔，每檔最多 1/'+c.nn+' 資金」決定')+'</div>';
+}
+function renderPicksAndObs(){
+  const store=load(LS),t=today(),fresh=Object.values(store).filter(a=>a.day===t);
+  const c=cfgGet(),good=a=>a.q==='pass'||a.q==='near';
+  const card=$('picksCard');
+  if(!fresh.length){card.style.display='none';renderObs();return;}
+  card.style.display='block';
+  const now=fresh.filter(a=>a.cat==='reclaim'&&good(a)&&a.stopPx!=null&&stopVerdict(a)[0]!=='skip').sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.stopPct-y.stopPct);
+  const wait=fresh.filter(a=>a.cat!=='reclaim'&&a.trigPx!=null&&good(a)&&a.trigDist<=0.10&&a.stopPx!=null).sort((x,y)=>x.trigDist-y.trigDist);
+  const noQ=fresh.filter(a=>a.cat==='reclaim'&&!good(a)).length;
+  let big,rd;
+  if(now.length){big='有 '+now.length+' 檔出現「可以開始考慮」的價位';rd='都是強勢股、回檔後已收復 21 日線。這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
+  else if(wait.length){big='還沒有已收復的；有 '+wait.length+' 檔接近確認價（要等）';rd='回測顯示「等收復再買」比「跌到支撐就先買」有證據；這一批股票都還沒收復，今天先不用動，把確認價記起來。';}
+  else{big='現在沒有符合「強勢股＋收復」的價位，今天不用做';rd='沒有一檔同時是 Q 條件強勢股、又出現收復或接近確認價。'+(noQ?'（另有 '+noQ+' 檔已收復但不屬於強勢股，回測沒顯示它們有優勢，這裡不列。）':'');}
+  let h='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'</div></div>';
+  if(now.length){
+    h+='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
+    now.forEach(a=>{const v=stopVerdict(a);
+      h+='<tr class="pick"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q '+(a.q==='pass'?'<b class="ok">符合</b>':'<b class="warnc">差一點</b>')+'</div></td>'
+       +'<td>收盤價 <b>$'+a.px.toFixed(2)+'</b> 左右<div class="mini">實際以隔天開盤為準。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
+       +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
+       +'<td>'+sizeTxt(a.px,a.stopPx)+'</td>'
+       +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='near'?' 強勢條件只是「差一點」，回測裡這組比「符合」那組弱（+0.14～+0.32R vs +0.8R）。':'')+'</td></tr>';});
+    h+='</tbody></table>';
+  }
+  if(wait.length){
+    h+='<h2 style="margin-top:14px;font-size:15px">接近確認價的（要等）</h2><table><thead><tr><th>代號</th><th>現價 → 確認價</th><th>到時候停損</th><th>白話</th></tr></thead><tbody>';
+    wait.forEach(a=>{const sp=(a.trigPx-a.stopPx)/a.trigPx,ok=sp<=c.smax;
+      h+='<tr class="wait"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q '+(a.q==='pass'?'<b class="ok">符合</b>':'<b class="warnc">差一點</b>')+'</div></td>'
+       +'<td>$'+a.px.toFixed(2)+' → <b>$'+a.trigPx.toFixed(2)+'</b>（還差 '+(a.trigDist*100).toFixed(1)+'%）</td>'
+       +'<td>約 <b>$'+a.stopPx.toFixed(2)+'</b>（−'+(sp*100).toFixed(1)+'%）<div class="'+(ok?'ok':'bad')+'">'+(ok?'✓ 在上限內':'✗ 超過上限，先不看')+'</div></td>'
+       +'<td class="mini" style="min-width:220px">要「收盤」站上 $'+a.trigPx.toFixed(2)+'（今天高點與 21 日線較高者）才算收復，盤中碰到不算。收復之前先不買。</td></tr>';});
+    h+='</tbody></table>';
+  }
+  h+='<div class="mini" style="margin-top:8px">價位是用今天收盤算的，只是參考，不是下單指示。強勢股回檔連跌一週時，停損價會一直往下調，容易放不進上限，這是正常的。</div>';
+  $('picks').innerHTML=h;
+  renderObs();
+}
+
+// ===== v1.2：觀察本 =====
+const OBS='pb_obs_v1';
+function obsRecord(a){
+  if(a.cat!=='reclaim'||!(a.q==='pass'||a.q==='near')||a.stopPx==null||a.stopPct>cfgGet().smax)return;
+  const o=load(OBS);
+  const open=Object.values(o).some(x=>x.tk===a.tk&&(x.status==='pending'||x.status==='open'));
+  const key=a.tk+'|'+a.lastDate;
+  if(open||o[key])return;
+  o[key]={tk:a.tk,sigDate:a.lastDate,sector:a.sector||'',q:a.q,sigPx:a.px,stop:a.stopPx,stopPct:a.stopPct,status:'pending',entry:null,days:0,curR:null,maxR:null,r10:null,r20:null,r40:null,exitR:null,rec:today()};
+  save(OBS,o);
+}
+function obsUpdate(tk,bars){
+  const o=load(OBS);let ch=false;
+  Object.keys(o).forEach(key=>{
+    const x=o[key];if(x.tk!==tk||!(x.status==='pending'||x.status==='open'))return;
+    const idx=bars.findIndex(b=>b.date===x.sigDate);
+    if(idx<0||idx+1>=bars.length)return;
+    const entry=bars[idx+1].o;x.entry=entry;const risk=entry-x.stop;
+    let stopped=false,maxR=-Infinity,cur=null,days=0;
+    x.r10=x.r20=x.r40=null;x.exitR=null;
+    if(risk<=0){stopped=true;x.exitR=-1;}
+    else for(let k=idx+1;k<bars.length;k++){
+      const b=bars[k];days=k-idx;
+      if(b.l<=x.stop){const ex=b.o<x.stop?b.o:x.stop;x.exitR=(ex-entry)/risk;stopped=true;break;}
+      maxR=Math.max(maxR,(b.h-entry)/risk);cur=(b.c-entry)/risk;
+      if(days===10)x.r10=cur;if(days===20)x.r20=cur;if(days===40)x.r40=cur;
+    }
+    if(stopped){x.status='stopped';x.curR=x.exitR;['r10','r20','r40'].forEach(f=>{if(x[f]==null)x[f]=x.exitR;});}
+    else{x.status=days>=40?'done':'open';x.curR=cur;}
+    x.days=days;x.maxR=maxR===-Infinity?null:maxR;ch=true;
+  });
+  if(ch)save(OBS,o);
+}
+const fR=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(2)+'R';
+function renderObs(){
+  const o=Object.values(load(OBS));
+  if(!o.length){$('obsSum').innerHTML='<div class="small" style="margin-top:8px">還沒有記錄。下次盤後跑板塊，出現符合條件的訊號就會自動記進來。</div>';$('obsTbl').innerHTML='';return;}
+  const stopped=o.filter(x=>x.status==='stopped'),open=o.filter(x=>x.status==='open'),pend=o.filter(x=>x.status==='pending'),done=o.filter(x=>x.status==='done');
+  const fin=o.filter(x=>x.r20!=null),avg=fin.length?fin.reduce((s,x)=>s+x.r20,0)/fin.length:null,win=fin.length?fin.filter(x=>x.r20>0).length/fin.length:null;
+  let h='<div class="verdict"><div class="big">已記 '+o.length+' 筆：打到停損 '+stopped.length+'、追蹤中 '+(open.length+pend.length)+'、滿 40 天 '+done.length+'</div><div class="rd">';
+  h+=fin.length?'有 '+fin.length+' 筆走到第 20 天（或先停損）：平均 '+fR(avg)+'，賺錢的占 '+(win*100).toFixed(0)+'%。':'還沒有任何一筆走到第 20 天。';
+  h+=(o.length<30?'<br><b>樣本還不到 30 筆，只能看趨勢，不能下結論。</b>':'<br>樣本 30 筆以上了，可以跟回測的 +0.2～+0.5R 對照：如果往前記的結果明顯比回測差，就是回測太樂觀（股票池偏向贏家）。')+'</div></div>';
+  $('obsSum').innerHTML=h;
+  const rows=o.slice().sort((a,b)=>b.sigDate.localeCompare(a.sigDate));
+  let t='<table><thead><tr><th>代號</th><th>訊號日</th><th>進場／停損</th><th>狀態</th><th>目前</th><th>第10／20／40天</th></tr></thead><tbody>';
+  rows.forEach(x=>{
+    const st={pending:'等隔天開盤（重跑才更新）',open:'追蹤中（第 '+x.days+' 天）',stopped:'<span class="bad">已打到停損</span>',done:'滿 40 天'}[x.status];
+    t+='<tr><td><span class="tk">'+x.tk+'</span><div class="mini">'+(x.q==='pass'?'Q 符合':'Q 差一點')+'</div></td><td>'+x.sigDate+'</td><td>'+(x.entry?'$'+x.entry.toFixed(2):'—')+' ／ $'+x.stop.toFixed(2)+'</td><td>'+st+'</td><td class="n '+((x.curR||0)>=0?'ok':'bad')+'">'+fR(x.curR)+(x.maxR!=null&&x.status!=='stopped'?'<div class="mini">最高到 '+fR(x.maxR)+'</div>':'')+'</td><td class="mini">'+fR(x.r10)+' ／ '+fR(x.r20)+' ／ '+fR(x.r40)+'</td></tr>';
+  });
+  t+='</tbody></table><div class="mini" style="margin-top:6px">R＝以「進場價到停損價」的距離當 1。+1R＝賺了 1 倍風險，−1R＝剛好打到停損。「更新觀察本」會重抓還在追蹤的股票，重算進度。</div>';
+  $('obsTbl').innerHTML=t;
+}
+$('obsRefresh').addEventListener('click',async()=>{
+  if(BUSY)return;
+  const tks=Array.from(new Set(Object.values(load(OBS)).filter(x=>x.status==='pending'||x.status==='open').map(x=>x.tk)));
+  if(!tks.length){$('stat').innerHTML='<span class="warnc">觀察本裡沒有還在追蹤的股票。</span>';return;}
+  BUSY=true;setBtns(true);$('obsRefresh').disabled=true;const gap=Math.max(1,+$('gap').value||2.5)*1000;const bad=[];
+  for(let i=0;i<tks.length;i++){
+    $('stat').innerHTML='更新觀察本 <b>'+(i+1)+' / '+tks.length+'</b>：<b>'+tks[i]+'</b>';
+    try{const bars=await fetchBars(tks[i]);obsUpdate(tks[i],bars);renderObs();}catch(e){bad.push(tks[i]+'（'+(WHY[tks[i]]||'失敗')+'）');}
+    if(i<tks.length-1)await new Promise(r=>setTimeout(r,gap));
+  }
+  $('stat').innerHTML='<b class="ok">✓ 觀察本更新完</b>'+(bad.length?'<br><span class="bad">✗ '+bad.join('、')+'</span>':'');
+  BUSY=false;setBtns(false);$('obsRefresh').disabled=false;
+});
+$('obsCopy').addEventListener('click',()=>{
+  const txt=JSON.stringify(load(OBS));
+  const box=$('obsBox');box.style.display='block';box.value=txt;box.focus();box.select();
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+  try{if(!ok&&navigator.clipboard){navigator.clipboard.writeText(txt);ok=true;}}catch(e){}
+  $('stat').innerHTML=ok?'<b class="ok">✓ 備份已複製。</b>貼到備忘錄收好；換版本前一定要先做這一步。':'備份文字已顯示在下方，請長按全選、拷貝。';
+});
+$('obsImp').addEventListener('click',()=>{
+  const box=$('obsBox');
+  if(box.style.display==='none'||!box.value.trim()){box.style.display='block';box.value='';box.focus();$('stat').innerHTML='把備份文字貼進下面的框，再按一次「匯入備份」。';return;}
+  try{const j=JSON.parse(box.value);if(!j||typeof j!=='object')throw 0;const cur=load(OBS);Object.keys(j).forEach(k=>{if(!cur[k])cur[k]=j[k];});save(OBS,cur);box.value='';box.style.display='none';renderObs();$('stat').innerHTML='<b class="ok">✓ 已匯入（同一筆不會重複）。</b>';}
+  catch(e){$('stat').innerHTML='<span class="bad">備份文字格式不對，沒有匯入。</span>';}
+});
+
 renderChips();render();
 </script>
 </body></html>
