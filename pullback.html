@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.2</title>
+<title>回檔盤點 pullback v1.2.1</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -44,7 +44,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .mini{font-size:12.5px;color:var(--mut)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.2（新：今日可考慮價位＋觀察本）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.2.1（修好「全部失敗」）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -265,7 +265,7 @@ async function runList(list,label){
       const bars=await fetchBars(tk);
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
-      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);obsRecord(a);obsUpdate(tk,bars);render();}
+      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsRecord(a);obsUpdate(tk,bars);}catch(e2){}render();}
     }catch(e){bad.push(tk);}
     if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
   }
@@ -276,7 +276,7 @@ async function runList(list,label){
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
       try{const bars=await fetchBars(tk);const a=analyze(bars);
-        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);obsRecord(a);obsUpdate(tk,bars);render();}
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsRecord(a);obsUpdate(tk,bars);}catch(e2){}render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
     }
@@ -297,7 +297,7 @@ const ORDER=['reclaim','touch','base','deep','high','other'];
 const QTXT={pass:['✓ 符合','ok'],near:['差一點','warnc'],no:['不符合','small']};
 const pc=(x,d)=>(x>=0?'+':'')+(x*100).toFixed(d==null?1:d)+'%';
 function render(){
-  renderPicksAndObs();
+  try{renderPicksAndObs();}catch(e){const el=$('picks');if(el){el.innerHTML='<div class="small bad">這一塊顯示出錯（不影響抓資料）：'+e.message+'</div>';}}
   const store=load(LS);const all=Object.values(store);
   const t=today();const fresh=all.filter(a=>a.day===t),old=all.filter(a=>a.day!==t);
   if(!all.length){$('resCard').style.display='none';return;}
@@ -381,10 +381,11 @@ function sizeTxt(entry,stop){
   return '<div class="mini">最多買 <b>'+sh+'</b> 股（約 $'+(sh*entry).toFixed(0)+'，占資金 '+(sh*entry/c.cap*100).toFixed(0)+'%）；'+(rs<=cs?'由「每筆最多賠 '+(c.rk*100).toFixed(2).replace(/\.?0+$/,'')+'%」決定':'由「平均分給 '+c.nn+' 檔，每檔最多 1/'+c.nn+' 資金」決定')+'</div>';
 }
 function renderPicksAndObs(){
-  const store=load(LS),t=today(),fresh=Object.values(store).filter(a=>a.day===t);
+  const store=load(LS),t=today(),all0=Object.values(store).filter(a=>a.day===t),fresh=all0.filter(a=>a.e21v!=null&&a.ma50v!=null),oldFmt=all0.length-fresh.length;
   const c=cfgGet(),good=a=>a.q==='pass'||a.q==='near';
   const card=$('picksCard');
-  if(!fresh.length){card.style.display='none';renderObs();return;}
+  if(!all0.length){card.style.display='none';renderObs();return;}
+  if(!fresh.length){card.style.display='block';$('picks').innerHTML='<div class="mini warnc">今天已有的結果是舊版（v1.1）算的，沒有價位資料。重跑板塊或清單就會出現。</div>';renderObs();return;}
   card.style.display='block';
   const now=fresh.filter(a=>a.cat==='reclaim'&&good(a)&&a.stopPx!=null&&stopVerdict(a)[0]!=='skip').sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.stopPct-y.stopPct);
   const wait=fresh.filter(a=>a.cat!=='reclaim'&&a.trigPx!=null&&good(a)&&a.trigDist<=0.10&&a.stopPx!=null).sort((x,y)=>x.trigDist-y.trigDist);
@@ -413,6 +414,7 @@ function renderPicksAndObs(){
        +'<td class="mini" style="min-width:220px">要「收盤」站上 $'+a.trigPx.toFixed(2)+'（今天高點與 21 日線較高者）才算收復，盤中碰到不算。收復之前先不買。</td></tr>';});
     h+='</tbody></table>';
   }
+  if(oldFmt)h+='<div class="mini warnc" style="margin-top:8px">另有 '+oldFmt+' 檔是舊版（v1.1）今天算的，沒有價位資料，沒列在上面；重跑那幾檔就會補上。</div>';
   h+='<div class="mini" style="margin-top:8px">價位是用今天收盤算的，只是參考，不是下單指示。強勢股回檔連跌一週時，停損價會一直往下調，容易放不進上限，這是正常的。</div>';
   $('picks').innerHTML=h;
   renderObs();
