@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.1</title>
+<title>回檔法回測 pb-test v1.2</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.1</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.2</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -36,7 +36,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
   <div class="row">
     <div><label>歷史長度</label><select id="yrs"><option value="3">3 年</option><option value="5" selected>5 年</option></select></div>
     <div><label>停損上限（%）</label><input type="number" id="smax" value="8" step="1" min="3" max="15"></div>
-    <div><label>只測哪些股票（每天重新判斷）</label><select id="strong"><option value="all">全部（不篩選）</option><option value="q">只測強勢股：Q 條件符合或差一點</option><option value="rs">只測強勢股：6 個月漲幅排前 30%</option></select></div>
+    <div><label>只測哪些股票（每天重新判斷）</label><select id="strong"><option value="all">全部（不篩選）</option><option value="q">只測強勢股：Q 條件符合或差一點</option><option value="rs">只測強勢股：6 個月漲幅排前 30%</option><option value="qtt">只測強勢股：Q 條件 ＋ 長期趨勢（Minervini 模板 1～6 項）</option><option value="tt">只測強勢股：長期趨勢（Minervini 模板）＋ 6 個月漲幅前 30%</option></select></div>
     <div><label>每檔間隔（秒）</label><input type="number" id="gap" value="2.5" step="0.5" min="1" max="30"></div>
   </div>
   <div class="row">
@@ -91,10 +91,21 @@ function prep(b){
   const tr=new Array(n).fill(0);for(let i=1;i<n;i++)tr[i]=Math.max(H[i]-L[i],Math.abs(H[i]-C[i-1]),Math.abs(L[i]-C[i-1]));
   const atr=new Array(n).fill(null);for(let i=14;i<n;i++){let s=0;for(let k=i-13;k<=i;k++)s+=tr[k];atr[i]=s/14;}
   const rg=H.map((h,i)=>h/L[i]-1);const adr=new Array(n).fill(null);{let s=0;for(let i=0;i<n;i++){s+=rg[i];if(i>=20)s-=rg[i-20];if(i>=19)adr[i]=s/20*100;}}
-  return {n,O,H,L,C,ma150:sma(C,150),ma50:sma(C,50),e21:ema(C,21),ma10:sma(C,10),ma20:sma(C,20),atr,adr,date:b.map(x=>x.date),year:b.map(x=>x.year)};
+  return {n,O,H,L,C,ma150:sma(C,150),ma200:sma(C,200),ma50:sma(C,50),e21:ema(C,21),ma10:sma(C,10),ma20:sma(C,20),atr,adr,date:b.map(x=>x.date),year:b.map(x=>x.year)};
 }
 function maxH(P,from,to){let m=-Infinity;for(let i=Math.max(0,from);i<=to;i++)if(P.H[i]>m)m=P.H[i];return m;}
 function minL(P,from,to){let m=Infinity;for(let i=Math.max(0,from);i<=to;i++)if(P.L[i]<m)m=P.L[i];return m;}
+// Minervini 趨勢模板第 1～6 項（第 7 項相對強度另外用「6 個月漲幅排名」）；只用 i 以前的資料
+function trendTemplate(P,i){
+  const c=P.C[i],m50=P.ma50[i],m150=P.ma150[i],m200=P.ma200[i],m200b=P.ma200[i-22];
+  if(m50==null||m150==null||m200==null||m200b==null||i<252)return false;
+  if(!(c>m50&&c>m150&&c>m200))return false;
+  if(!(m150>m200))return false;
+  if(!(m200>m200b))return false;
+  if(!(m50>m150&&m50>m200))return false;
+  const lo=minL(P,i-251,i),hi=maxH(P,i-251,i);
+  return c>=lo*1.30&&c>=hi*0.75;
+}
 // 只用 i 以前（含 i）的資料
 function signalAt(P,i,cfg){
   if(i<200||i+1>=P.n)return null;
@@ -120,8 +131,9 @@ function signalAt(P,i,cfg){
   const r1=c/P.C[i-22]-1,r3=c/P.C[i-67]-1,r6=c/P.C[i-126]-1,adr=P.adr[i];
   const th=[[r1,.25],[r3,.5],[r6,1.5]];
   const q=(adr>5&&th.some(x=>x[0]>=x[1]))?'pass':((adr>=4&&th.some(x=>x[0]>=x[1]*0.8))?'near':'no');
-  if(cfg&&cfg.strong==='q'&&q==='no')return null;
-  if(cfg&&cfg.strong==='rs'){const th=cfg.rsThr&&cfg.rsThr[P.date[i]];if(th==null||r6<th)return null;}
+  if(cfg&&(cfg.strong==='q'||cfg.strong==='qtt')&&q==='no')return null;
+  if(cfg&&(cfg.strong==='qtt'||cfg.strong==='tt')&&!trendTemplate(P,i))return null;
+  if(cfg&&(cfg.strong==='rs'||cfg.strong==='tt')){const th=cfg.rsThr&&cfg.rsThr[P.date[i]];if(th==null||r6<th)return null;}
   return {grp,stop,depth,q,i};
 }
 const RULES=['Q10','Q20','R3','H10','H20'];
@@ -268,7 +280,7 @@ async function doRun(){
   const tks=Object.keys(all).filter(t=>t!=='SPY');
   if(!tks.length){$('stat').innerHTML='<span class="bad">還沒有資料，先按「① 抓歷史資料」。</span>';BUSY=false;setB(false);return;}
   const spy=spyRegime(all['SPY']);
-  if(cfg.strong==='rs'){
+  if(cfg.strong==='rs'||cfg.strong==='tt'){
     const byD={};
     tks.forEach(tk=>{const b=all[tk];for(let i=126;i<b.length;i++){(byD[b[i].date]=byD[b[i].date]||[]).push(b[i].c/b[i-126].c-1);}});
     cfg.rsThr={};Object.keys(byD).forEach(d=>{const a=byD[d].sort((x,y)=>x-y);cfg.rsThr[d]=a.length>=30?a[Math.floor(a.length*0.7)]:null;});
@@ -300,7 +312,7 @@ function render(trades,nT,yrs,cfg){
   else if(nb>=3){big='「收復」這個動作，在 5 種出場裡有 '+nb+' 種都比對照組好';cls='g';det='這是比較好的跡象，但要接著看下面的限制和切片，不能直接當成可以買。';}
   else if(nw>=3){big='「收復」這個動作，在 5 種出場裡有 '+nw+' 種比對照組差';cls='r';det='這套規則目前沒有顯示出優勢。';}
   else{big='「收復」沒有一致地比對照組好';cls='n';det='5 種出場的結論互相不一致，或看不出差別，沒有證據顯示這個進場條件有加分。';}
-  h+='<div class="card"><h2>結論（先看這個）</h2><div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>篩選：'+({all:'全部股票',q:'只測 Q 條件符合／差一點的強勢股',rs:'只測 6 個月漲幅前 30% 的強勢股'})[cfg.strong]+'。共 '+nT+' 檔股票、'+yrs+' 年資料，回檔收復訊號最多 '+Math.max.apply(null,rows.map(x=>x.sS.n||0))+' 筆（依出場規則不同略有差異）。<br><span class="small">單看「有沒有賺」不夠：這批股票是今天挑的，本來就偏向後來漲的，要看「比對照組好多少」。</span></div></div></div>';
+  h+='<div class="card"><h2>結論（先看這個）</h2><div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>篩選：'+({all:'全部股票',q:'只測 Q 條件符合／差一點的強勢股',rs:'只測 6 個月漲幅前 30% 的強勢股',qtt:'只測 Q 條件符合／差一點、而且長期趨勢也過關的股票',tt:'只測長期趨勢（Minervini 模板）過關、而且 6 個月漲幅前 30% 的股票'})[cfg.strong]+'。共 '+nT+' 檔股票、'+yrs+' 年資料，回檔收復訊號最多 '+Math.max.apply(null,rows.map(x=>x.sS.n||0))+' 筆（依出場規則不同略有差異）。<br><span class="small">單看「有沒有賺」不夠：這批股票是今天挑的，本來就偏向後來漲的，要看「比對照組好多少」。</span></div></div></div>';
   // 主表
   h+='<div class="card"><h2>每一種出場的結果</h2><div class="small">R＝以「進場價到停損價的距離」當 1 單位。EV＝平均每筆賺賠幾 R（例：+0.3R＝平均每筆賺 0.3 倍風險）。</div>';
   rows.forEach(x=>{
