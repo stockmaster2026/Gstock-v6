@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>回檔法回測 pb-test v1.0</title>
+<style>
+:root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:14px 16px 70px;max-width:1000px}
+h1{font-size:21px;margin:6px 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card h2{font-size:16px;margin:0 0 8px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0}
+label{font-size:12.5px;color:var(--mut);display:block;margin-bottom:3px}
+input,select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink)}
+input[type=number]{width:84px}
+button{font:inherit;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:700}
+button.sec{background:#e7edf5;color:var(--blue)}button:disabled{opacity:.5}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+th,td{padding:7px 8px;border-bottom:1px solid #e6ebf2;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--mut);font-weight:600;background:#f6f8fb}
+.small{font-size:12.5px;color:var(--mut)}
+.ok{color:var(--g)}.bad{color:var(--r)}.warnc{color:var(--y)}
+.verd{border-left:6px solid var(--blue);background:#f4f8fd;border-radius:8px;padding:12px 14px;margin:10px 0}
+.verd.g{border-color:#16a34a;background:#f0fdf4}.verd.r{border-color:#dc2626;background:#fef2f2}.verd.y{border-color:#d97706;background:#fffbeb}.verd.n{border-color:#94a3b8;background:#f8fafc}
+.verd .t{font-size:16.5px;font-weight:800}.verd .d{font-size:13.5px;color:#374151;margin-top:4px}
+details summary{cursor:pointer;font-weight:700;margin:4px 0}
+.bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
+@media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
+</style></head><body>
+<h1>回檔法回測 <span class="small">pb-test v1.0</span></h1>
+<div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
+
+<div class="card">
+  <h2>① 先抓資料，再跑回測</h2>
+  <div class="row">
+    <div><label>歷史長度</label><select id="yrs"><option value="3">3 年</option><option value="5" selected>5 年</option></select></div>
+    <div><label>停損上限（%）</label><input type="number" id="smax" value="8" step="1" min="3" max="15"></div>
+    <div><label>每檔間隔（秒）</label><input type="number" id="gap" value="2.5" step="0.5" min="1" max="30"></div>
+  </div>
+  <div class="row">
+    <button id="fetch">① 抓歷史資料（約 8 分鐘，存在這台 iPad）</button>
+    <button id="run" class="sec">② 跑回測</button>
+    <button id="wipe" class="sec">清掉已存的資料</button>
+  </div>
+  <div id="stat" class="small"></div>
+</div>
+
+<div id="out"></div>
+
+<div class="card">
+  <details><summary>回測的規則（跑之前寫死的）與它的限制</summary>
+  <div class="small" style="line-height:1.85;margin-top:6px">
+  <b>誠實聲明：</b>進場條件是我為了盤點訂的，不是冠軍原文，也沒調過。出場規則取自 Qullamaggie（第二手整理）與你自己的做法。結果只代表「這套規則在這批股票、這幾年」的樣子。<br><br>
+  <b>訊號（每天收盤後判斷）：</b>股價在 30 週線（150 日線）上方、30 週線沒有下降。<br>
+  ・<b>回檔後已收復（要測的）</b>：從 20 天高點回檔至少 3%，近 5 天有收盤跌到 21 日線下，今天收盤站回 21 日線上、且高過昨天高點。<br>
+  ・<b>對照組 A：貼近支撐但沒收復</b>：同樣的趨勢，回檔 5～25%，貼在 21 或 50 日線附近（4% 內），但沒有收復。用來看「收復」這個動作有沒有加分。<br>
+  ・<b>對照組 B：任何強勢日</b>：趨勢同上，每 7 個交易日取一天，沒有回檔也算。看整體「強勢股隨便買」的水準。<br>
+  <b>進場：</b>訊號隔天開盤價。停損＝近 3 天（對照組近 5 天）最低點再往下 0.5%，但不能比 1×ATR 或 3% 更近；實際進場後停損距離超過上限就不進。同一檔同一種出場，前一筆沒出場就不會再進。<br>
+  <b>五種出場：</b><br>
+  ・<b>Q10／Q20（Qullamaggie 式）</b>：第 5 天若有賺，賣 1/3、停損拉到成本；之後收盤跌破 10 日（Q10）或 20 日（Q20）均線，隔天開盤賣出剩下的。<br>
+  ・<b>你的式（賺 3 倍風險先賣 1/3）</b>：漲到「進場價＋3×風險」賣 1/3，停損拉到成本；剩下的連續 3 天收盤在 20 日線下，隔天開盤賣。<br>
+  ・<b>固定抱 10 天／20 天</b>：只靠初始停損，到期收盤賣。這是最單純的對照，看「進場本身」有沒有優勢。<br>
+  停損成交價：盤中碰到停損就以停損價成交，若開盤直接跳空低於停損，以開盤價成交。同一天先檢查停損（偏保守）。成本：來回共 0.2%。最長持有 120 天。<br><br>
+  <b>最大的限制（請一定要記得）：</b>股票池是<b>今天</b>挑的（已經是主流板塊的股票），已下市或沒落的不在裡面，這會讓結果<b>看起來比實際好</b>（倖存者偏差）。所以：<b>單看「收復」有沒有賺不夠，要看它比對照組好多少。</b>另外，大盤強弱用 SPY 在 30 週線上下切，只是粗略的分法。
+  </div></details>
+</div>
+
+<script>
+const PROXY="https://gstock-proxy.cykjas.workers.dev/?url=";
+const SECTORS=['CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN',
+'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS',
+'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX',
+'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR',
+'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH',
+'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO',
+'VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW FLEX GNRC JCI',
+'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX',
+'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV',
+'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC',
+'IONQ RGTI QBTS QUBT LAES ARQQ',
+'AAPL MSFT GOOGL AMZN NVDA META TSLA'];
+const UNIVERSE=Array.from(new Set(SECTORS.join(' ').split(/\s+/)));
+
+//==SIM==
+function sma(a,n){const o=new Array(a.length).fill(null);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)o[i]=s/n;}return o;}
+function ema(a,n){const o=new Array(a.length).fill(null);const k=2/(n+1);let p=null;for(let i=0;i<a.length;i++){if(i===n-1){let s=0;for(let j=0;j<n;j++)s+=a[j];p=s/n;o[i]=p;}else if(i>=n){p=a[i]*k+p*(1-k);o[i]=p;}}return o;}
+function prep(b){
+  const n=b.length,O=b.map(x=>x.o),H=b.map(x=>x.h),L=b.map(x=>x.l),C=b.map(x=>x.c);
+  const tr=new Array(n).fill(0);for(let i=1;i<n;i++)tr[i]=Math.max(H[i]-L[i],Math.abs(H[i]-C[i-1]),Math.abs(L[i]-C[i-1]));
+  const atr=new Array(n).fill(null);for(let i=14;i<n;i++){let s=0;for(let k=i-13;k<=i;k++)s+=tr[k];atr[i]=s/14;}
+  const rg=H.map((h,i)=>h/L[i]-1);const adr=new Array(n).fill(null);{let s=0;for(let i=0;i<n;i++){s+=rg[i];if(i>=20)s-=rg[i-20];if(i>=19)adr[i]=s/20*100;}}
+  return {n,O,H,L,C,ma150:sma(C,150),ma50:sma(C,50),e21:ema(C,21),ma10:sma(C,10),ma20:sma(C,20),atr,adr,date:b.map(x=>x.date),year:b.map(x=>x.year)};
+}
+function maxH(P,from,to){let m=-Infinity;for(let i=Math.max(0,from);i<=to;i++)if(P.H[i]>m)m=P.H[i];return m;}
+function minL(P,from,to){let m=Infinity;for(let i=Math.max(0,from);i<=to;i++)if(P.L[i]<m)m=P.L[i];return m;}
+// 只用 i 以前（含 i）的資料
+function signalAt(P,i,cfg){
+  if(i<200||i+1>=P.n)return null;
+  const c=P.C[i];
+  if(P.ma150[i]==null||P.ma150[i-20]==null||P.e21[i]==null||P.ma50[i]==null||P.atr[i]==null)return null;
+  const slope=P.ma150[i]/P.ma150[i-20]-1;
+  const stage2=c>P.ma150[i]&&slope>-0.01;
+  if(!stage2)return null;
+  const hi20=maxH(P,i-19,i),depth=c/hi20-1;
+  const dE=c/P.e21[i]-1,dM=c/P.ma50[i]-1;
+  const nearSup=Math.min(Math.abs(dE),Math.abs(dM))<=0.04;
+  let cb=false;for(let k=i-5;k<=i-1;k++){if(P.e21[k]!=null&&P.C[k]<P.e21[k])cb=true;}
+  const reclaim=cb&&c>P.e21[i]&&c>P.H[i-1];
+  let grp=null;
+  if(reclaim&&depth<=-0.03)grp='S';
+  else if(!reclaim&&depth<=-0.05&&depth>=-0.25&&nearSup)grp='C2';
+  else if(i%7===0)grp='C1';
+  if(!grp)return null;
+  const lowN=grp==='S'?minL(P,i-2,i):minL(P,i-4,i);
+  let stop=lowN*0.995;
+  const floorD=Math.max(P.atr[i]/c,0.03);
+  if((c-stop)/c<floorD)stop=c*(1-floorD);
+  const r1=c/P.C[i-22]-1,r3=c/P.C[i-67]-1,r6=c/P.C[i-126]-1,adr=P.adr[i];
+  const th=[[r1,.25],[r3,.5],[r6,1.5]];
+  const q=(adr>5&&th.some(x=>x[0]>=x[1]))?'pass':((adr>=4&&th.some(x=>x[0]>=x[1]*0.8))?'near':'no');
+  return {grp,stop,depth,q,i};
+}
+const RULES=['Q10','Q20','R3','H10','H20'];
+// 回傳 {exit,ret,R,hold,reason,open}
+function runExit(P,e,E,S,rule){
+  const n=P.n,Rd=E-S;let pos=1,real=0,stop=S,partial=false,below=0,exit=-1,reason='',open=false;
+  const fill1=(price,w)=>{real+=w*(price-E);pos-=w;};
+  for(let j=e;j<n;j++){
+    if(P.L[j]<=stop){const f=(j>e&&P.O[j]<stop)?P.O[j]:stop;fill1(f,pos);exit=j;reason=stop>=E?'保本停損':'初始停損';break;}
+    const day=j-e+1;
+    if(rule==='Q10'||rule==='Q20'){
+      if(day===5&&!partial){if(P.C[j]>E){fill1(P.C[j],1/3);stop=Math.max(stop,E);}partial=true;}
+      const ma=rule==='Q10'?P.ma10[j]:P.ma20[j];
+      if(day>=5&&ma!=null&&P.C[j]<ma&&j+1<n){fill1(P.O[j+1],pos);exit=j+1;reason='跌破均線';break;}
+    }else if(rule==='R3'){
+      const tg=E+3*Rd;
+      if(!partial&&P.H[j]>=tg){fill1(Math.max(tg,P.O[j]),1/3);partial=true;stop=Math.max(stop,E);}
+      if(P.ma20[j]!=null&&P.C[j]<P.ma20[j])below++;else below=0;
+      if(below>=3&&j+1<n){fill1(P.O[j+1],pos);exit=j+1;reason='連3天跌破20日線';break;}
+    }else if(rule==='H10'){if(day===10){fill1(P.C[j],pos);exit=j;reason='抱滿10天';break;}}
+    else if(rule==='H20'){if(day===20){fill1(P.C[j],pos);exit=j;reason='抱滿20天';break;}}
+    if(day>=120){fill1(P.C[j],pos);exit=j;reason='滿120天';break;}
+  }
+  if(exit<0){fill1(P.C[n-1],pos);exit=n-1;open=true;reason='未平倉';}
+  real-=0.002*E;
+  return {exit,ret:real/E,R:real/Rd,hold:exit-e+1,reason,open};
+}
+function simTicker(tk,b,spyOk,cfg){
+  const P=prep(b),out=[];const free={};
+  for(let i=200;i<P.n-1;i++){
+    const sg=signalAt(P,i,cfg);if(!sg)continue;
+    const e=i+1,E=P.O[e];
+    if(!(E>sg.stop))continue;
+    const risk=(E-sg.stop)/E;
+    if(risk>cfg.smax)continue;
+    for(const rule of RULES){
+      const key=sg.grp+'|'+rule;
+      if(free[key]!=null&&e<=free[key])continue;
+      const r=runExit(P,e,E,sg.stop,rule);
+      free[key]=r.exit;
+      out.push({tk,grp:sg.grp,rule,date:P.date[i],year:P.year[i],entry:E,stop:sg.stop,risk,depth:sg.depth,q:sg.q,spy:spyOk?(spyOk[P.date[i]]===true?'強':(spyOk[P.date[i]]===false?'弱':'?')):'?',ret:r.ret,R:r.R,hold:r.hold,reason:r.reason,open:r.open});
+    }
+  }
+  return out;
+}
+function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0;}
+function sd(a){if(a.length<2)return 0;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length-1));}
+function median(a){if(!a.length)return 0;const s=a.slice().sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function stats(tr){
+  const n=tr.length;if(!n)return {n:0};
+  const R=tr.map(t=>t.R),w=tr.filter(t=>t.R>0),l=tr.filter(t=>t.R<=0);
+  const ord=tr.slice().sort((a,b)=>a.date<b.date?-1:1);let ms=0,cs=0;ord.forEach(t=>{if(t.R<=0){cs++;if(cs>ms)ms=cs;}else cs=0;});
+  const sortedR=R.slice().sort((a,b)=>b-a);const k=Math.max(1,Math.ceil(n*0.1));
+  const posSum=R.filter(x=>x>0).reduce((s,x)=>s+x,0);
+  const topShare=posSum>0?sortedR.slice(0,k).filter(x=>x>0).reduce((s,x)=>s+x,0)/posSum:0;
+  return {n,win:w.length/n,avgW:mean(w.map(t=>t.R)),avgL:mean(l.map(t=>t.R)),ev:mean(R),medRet:median(tr.map(t=>t.ret)),maxLose:ms,topShare,sd:sd(R)};
+}
+// 比較兩組：回傳 verdict
+function compare(A,B){
+  if(A.length<20||B.length<20)return {v:'few'};
+  const d=mean(A.map(t=>t.R))-mean(B.map(t=>t.R));
+  const se=Math.sqrt(Math.pow(sd(A.map(t=>t.R)),2)/A.length+Math.pow(sd(B.map(t=>t.R)),2)/B.length);
+  const half=(arr)=>{const dates=arr.map(t=>t.date).sort();return dates[dates.length>>1];};
+  const hm=half(A.concat(B));
+  const f=(arr,first)=>arr.filter(t=>first?t.date<hm:t.date>=hm).map(t=>t.R);
+  const d1=mean(f(A,true))-mean(f(B,true)),d2=mean(f(A,false))-mean(f(B,false));
+  const stable=(f(A,true).length>=5&&f(A,false).length>=5&&f(B,true).length>=5&&f(B,false).length>=5)&&((d1>0&&d2>0)||(d1<0&&d2<0))&&((d1>0)===(d>0));
+  const sig=Math.abs(d)>2*se;
+  let v;
+  if(sig&&stable)v=d>0?'better':'worse';
+  else if(sig)v=d>0?'better_unstable':'worse_unstable';
+  else v='same';
+  return {v,d,se};
+}
+//==/SIM==
+
+const $=id=>document.getElementById(id);
+function fmtD(ts){const d=new Date(ts*1000);return (d.getUTCFullYear()+'').slice(2)+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0');}
+// IndexedDB
+let DB=null;
+function dbOpen(){return new Promise(res=>{try{const r=indexedDB.open('pbtest_v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('bars');r.onsuccess=()=>{DB=r.result;res(true);};r.onerror=()=>res(false);}catch(e){res(false);}});}
+function dbGet(k){return new Promise(res=>{if(!DB)return res(null);try{const q=DB.transaction('bars').objectStore('bars').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});}
+function dbPut(k,v){return new Promise(res=>{if(!DB)return res(false);try{const t=DB.transaction('bars','readwrite');t.objectStore('bars').put(v,k);t.oncomplete=()=>res(true);t.onerror=()=>res(false);}catch(e){res(false);}});}
+function dbClear(){return new Promise(res=>{if(!DB)return res();try{const t=DB.transaction('bars','readwrite');t.objectStore('bars').clear();t.oncomplete=()=>res();}catch(e){res();}});}
+const MEM={};
+let WHY={};
+async function fetchOnce(tk,yrs){
+  const u="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(tk)+"?range="+yrs+"y&interval=1d&includePrePost=false&_cb="+Date.now()+Math.floor(Math.random()*100000);
+  let res;try{res=await fetch(PROXY+encodeURIComponent(u),{cache:'no-store'});}catch(e){WHY[tk]='連線失敗';throw e;}
+  if(!res.ok){WHY[tk]='HTTP '+res.status;throw new Error('http');}
+  const jj=await res.json();const r=jj&&jj.chart&&jj.chart.result&&jj.chart.result[0];
+  if(!r||!r.timestamp||!r.timestamp.length){WHY[tk]='沒有K線（代號可能不存在）';throw new Error('empty');}
+  const q=r.indicators.quote[0],bars=[];
+  for(let i=0;i<r.timestamp.length;i++){const c=q.close[i],o=q.open[i],h=q.high[i],l=q.low[i];if(c==null||o==null||h==null||l==null)continue;
+    bars.push({t:r.timestamp[i],date:fmtD(r.timestamp[i]),year:new Date(r.timestamp[i]*1000).getUTCFullYear(),o,h,l,c});}
+  return bars;
+}
+async function fetchBars(tk,yrs){
+  const waits=[0,3000,8000,15000];let err=null;
+  for(const w of waits){if(w)await new Promise(r=>setTimeout(r,w));
+    try{const b=await fetchOnce(tk,yrs);delete WHY[tk];return b;}catch(e){err=e;if(WHY[tk]&&/不存在/.test(WHY[tk]))break;}}
+  throw err;
+}
+let BUSY=false;
+async function doFetch(){
+  if(BUSY)return;BUSY=true;setB(true);
+  const yrs=+$('yrs').value,gap=Math.max(1,+$('gap').value||2.5)*1000;
+  const list=['SPY'].concat(UNIVERSE);const bad=[];let got=0,cached=0;
+  for(let i=0;i<list.length;i++){
+    const tk=list[i],key=tk+'|'+yrs;
+    $('stat').innerHTML='抓第 <b>'+(i+1)+' / '+list.length+'</b> 檔：<b>'+tk+'</b>　已存 '+cached+'　已抓 '+got+(bad.length?'　<span class="warnc">失敗 '+bad.length+'</span>':'');
+    let have=await dbGet(key);
+    if(have&&have.day===new Date().toDateString()){MEM[key]=have.bars;cached++;continue;}
+    try{const b=await fetchBars(tk,yrs);MEM[key]=b;await dbPut(key,{day:new Date().toDateString(),bars:b});got++;}catch(e){bad.push(tk);}
+    await new Promise(r=>setTimeout(r,gap));
+  }
+  if(bad.length&&bad.length<list.length){
+    const again=bad.splice(0,bad.length);$('stat').innerHTML='<span class="warnc">有 '+again.length+' 檔沒成功，等 8 秒自動補抓…</span>';
+    await new Promise(r=>setTimeout(r,8000));
+    for(const tk of again){try{const b=await fetchBars(tk,yrs);MEM[tk+'|'+yrs]=b;await dbPut(tk+'|'+yrs,{day:new Date().toDateString(),bars:b});got++;}catch(e){bad.push(tk);}await new Promise(r=>setTimeout(r,gap*2));}
+  }
+  let h='<b class="ok">✓ 資料準備好了</b>（新抓 '+got+'、用已存 '+cached+'）。';
+  if(bad.length)h+='<br><span class="bad">✗ '+bad.length+' 檔沒抓到：'+bad.map(t=>t+'（'+(WHY[t]||'未知')+'）').join('、')+'</span>';
+  h+='<br>接著按「② 跑回測」。';
+  $('stat').innerHTML=h;BUSY=false;setB(false);
+}
+function setB(b){['fetch','run','wipe'].forEach(id=>$(id).disabled=b);}
+async function loadAll(yrs){
+  const out={};
+  for(const tk of ['SPY'].concat(UNIVERSE)){const key=tk+'|'+yrs;let b=MEM[key];if(!b){const h=await dbGet(key);if(h)b=h.bars;}if(b)out[tk]=b;}
+  return out;
+}
+function spyRegime(bars){
+  if(!bars)return null;const C=bars.map(b=>b.c),m=sma(C,150),o={};
+  for(let i=170;i<bars.length;i++){o[bars[i].date]=(C[i]>m[i]&&m[i]/m[i-20]-1>=-0.01);}return o;
+}
+async function doRun(){
+  if(BUSY)return;BUSY=true;setB(true);
+  const yrs=+$('yrs').value,cfg={smax:(+$('smax').value||8)/100};
+  const all=await loadAll(yrs);
+  const tks=Object.keys(all).filter(t=>t!=='SPY');
+  if(!tks.length){$('stat').innerHTML='<span class="bad">還沒有資料，先按「① 抓歷史資料」。</span>';BUSY=false;setB(false);return;}
+  const spy=spyRegime(all['SPY']);
+  let trades=[];
+  for(let i=0;i<tks.length;i++){
+    $('stat').innerHTML='計算中 '+(i+1)+' / '+tks.length+'：'+tks[i];
+    trades=trades.concat(simTicker(tks[i],all[tks[i]],spy,cfg));
+    if(i%5===0)await new Promise(r=>setTimeout(r,0));
+  }
+  $('stat').innerHTML='<b class="ok">✓ 算完了</b>：'+tks.length+' 檔股票'+(spy?'':'（SPY 沒抓到，大盤強弱切片無法使用）')+'，共 '+trades.length+' 筆模擬交易。';
+  window.TR=trades;window.CFG=cfg;render(trades,tks.length,yrs,cfg);
+  BUSY=false;setB(false);
+}
+const RN={Q10:'Q10：第5天賣1/3，之後破10日線出',Q20:'Q20：第5天賣1/3，之後破20日線出',R3:'你的式：賺3倍風險賣1/3，剩下連3天破20日線出',H10:'固定抱10天',H20:'固定抱20天'};
+const P1=x=>(x*100).toFixed(1)+'%',P0=x=>(x*100).toFixed(0)+'%',F2=x=>(x>=0?'+':'')+x.toFixed(2);
+function render(trades,nT,yrs,cfg){
+  const by=(grp,rule)=>trades.filter(t=>t.grp===grp&&t.rule===rule);
+  let h='';
+  // 結論卡
+  const rows=RULES.map(r=>{const S=by('S',r),C2=by('C2',r),C1=by('C1',r);return {r,S,C2,C1,sS:stats(S),sC2:stats(C2),sC1:stats(C1),cmp:compare(S,C2),cmp1:compare(S,C1)};});
+  const main=rows.filter(x=>x.sS.n>=20);
+  const VT={better:['g','🟢 「收復」比沒收復的對照組好，而且前後半段都一致'],better_unstable:['y','🟡 「收復」看起來比較好，但前後半段不一致，不太穩'],worse:['r','🔴 「收復」反而比對照組差，而且前後半段都一致'],worse_unstable:['y','🟡 「收復」看起來比較差，但前後半段不一致'],same:['n','⚪ 「收復」跟沒收復的對照組看不出差別'],few:['n','⏳ 樣本太少（少於 20 筆），不能下結論']};
+  const cnt={};rows.forEach(x=>{cnt[x.cmp.v]=(cnt[x.cmp.v]||0)+1;});
+  let big,cls,det;
+  const nb=(cnt.better||0),nw=(cnt.worse||0);
+  const bestEV=rows.slice().sort((a,b)=>(b.sS.ev||-9)-(a.sS.ev||-9))[0];
+  if(!main.length){big='樣本不夠，這批資料跑不出足夠的「收復」訊號';cls='n';det='回檔收復的訊號少於 20 筆，先不要下任何結論。';}
+  else if(nb>=3){big='「收復」這個動作，在 5 種出場裡有 '+nb+' 種都比對照組好';cls='g';det='這是比較好的跡象，但要接著看下面的限制和切片，不能直接當成可以買。';}
+  else if(nw>=3){big='「收復」這個動作，在 5 種出場裡有 '+nw+' 種比對照組差';cls='r';det='這套規則目前沒有顯示出優勢。';}
+  else{big='「收復」沒有一致地比對照組好';cls='n';det='5 種出場的結論互相不一致，或看不出差別，沒有證據顯示這個進場條件有加分。';}
+  h+='<div class="card"><h2>結論（先看這個）</h2><div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>共 '+nT+' 檔股票、'+yrs+' 年資料，回檔收復訊號最多 '+Math.max.apply(null,rows.map(x=>x.sS.n||0))+' 筆（依出場規則不同略有差異）。<br><span class="small">單看「有沒有賺」不夠：這批股票是今天挑的，本來就偏向後來漲的，要看「比對照組好多少」。</span></div></div></div>';
+  // 主表
+  h+='<div class="card"><h2>每一種出場的結果</h2><div class="small">R＝以「進場價到停損價的距離」當 1 單位。EV＝平均每筆賺賠幾 R（例：+0.3R＝平均每筆賺 0.3 倍風險）。</div>';
+  rows.forEach(x=>{
+    const s=x.sS;h+='<div style="margin:12px 0 4px"><b>'+RN[x.r]+'</b></div>';
+    if(!s.n){h+='<div class="small">沒有訊號。</div>';return;}
+    const vt=VT[x.cmp.v];
+    h+='<div class="verd '+vt[0]+'" style="padding:8px 12px"><div class="d" style="margin:0"><b>'+vt[1]+'</b>'+(x.cmp.d!=null?'（跟「沒收復」比，平均每筆差 '+F2(x.cmp.d)+'R）':'')+'</div></div>';
+    h+='<table><thead><tr><th>組別</th><th>筆數</th><th>勝率</th><th>平均賺</th><th>平均賠</th><th>EV（R）</th><th>報酬中位數</th><th>最大連虧</th><th>最賺10%占獲利</th></tr></thead><tbody>';
+    [['回檔後已收復',x.sS],['對照A 沒收復',x.sC2],['對照B 任何強勢日',x.sC1]].forEach(p=>{const q=p[1];
+      h+='<tr><td>'+p[0]+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td>'+F2(q.avgW)+'R</td><td>'+F2(q.avgL)+'R</td><td><b class="'+(q.ev>0.3?'ok':(q.ev<=0?'bad':'warnc'))+'">'+F2(q.ev)+'</b></td><td>'+P1(q.medRet)+'</td><td>'+q.maxLose+'</td><td>'+P0(q.topShare)+'</td>':'<td colspan="8" class="small">沒有訊號</td>')+'</tr>';});
+    h+='</tbody></table>';
+    const ok=[s.n>=30,s.ev>0.3,s.medRet>0,s.maxLose<=6];
+    h+='<div class="small">你之前的過關標準（樣本≥30、EV＞+0.3R、報酬中位數為正、最大連虧≤6）：'+['樣本','EV','中位數','連虧'].map((n,i)=>'<span class="'+(ok[i]?'ok':'bad')+'">'+(ok[i]?'✓':'✗')+n+'</span>').join(' ')+'。<br>⚠ 這種「小賠、偶爾大賺」的做法，勝率本來就低，報酬中位數通常是負的，所以「中位數」這一格容易不過；主要看跟對照組比、以及 EV。</div>';
+  });
+  h+='</div>';
+  // 切片：用 EV 最高的規則
+  const pick=bestEV&&bestEV.sS.n>=20?bestEV.r:'Q20';
+  const S=by('S',pick);
+  const slice=(title,fn,keys)=>{
+    let t='<h3 style="font-size:14.5px;margin:12px 0 2px">'+title+'</h3><table><thead><tr><th>分組</th><th>筆數</th><th>勝率</th><th>EV（R）</th><th>報酬中位數</th><th>白話</th></tr></thead><tbody>';
+    keys.forEach(k=>{const g=S.filter(x=>fn(x)===k),q=stats(g);
+      let say=q.n<20?'樣本太少，只能參考':(q.ev>0.3?'這組平均有賺':(q.ev>0?'賺很薄':'平均是虧的'));
+      t+='<tr><td>'+k+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td>'+F2(q.ev)+'</td><td>'+P1(q.medRet)+'</td>':'<td>0</td><td>—</td><td>—</td><td>—</td>')+'<td style="text-align:left" class="small">'+say+'</td></tr>';});
+    return t+'</tbody></table>';
+  };
+  h+='<div class="card"><h2>「收復」訊號拆開看（用 EV 最高的出場：'+RN[pick]+'）</h2><div class="small">每一組筆數都不多，只能當線索，不能當結論。</div>';
+  const yrsK=Array.from(new Set(S.map(x=>x.year))).sort();
+  h+=slice('依進場年份',x=>String(x.year),yrsK);
+  h+=slice('依大盤強弱（SPY 在 30 週線上且沒下降＝強）',x=>x.spy,['強','弱']);
+  h+=slice('依 Qullamaggie 選股條件',x=>({pass:'符合',near:'差一點',no:'不符合'})[x.q],['符合','差一點','不符合']);
+  h+=slice('依回檔深度',x=>(-x.depth<0.05?'淺（3～5%）':(-x.depth<0.10?'中（5～10%）':'深（10%以上）')),['淺（3～5%）','中（5～10%）','深（10%以上）']);
+  h+=slice('依停損距離',x=>(x.risk<0.05?'5% 以內':'5～8%'),['5% 以內','5～8%']);
+  h+=slice('依持有天數',x=>(x.hold<=2?'0～2 天':(x.hold<=10?'3～10 天':'11 天以上')),['0～2 天','3～10 天','11 天以上']);
+  h+='</div>';
+  // 集中度
+  const byT={};S.forEach(x=>{byT[x.tk]=(byT[x.tk]||0)+x.R;});const tot=Object.values(byT).reduce((a,b)=>a+b,0);
+  const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  h+='<div class="card"><h2>賺的錢集中在哪幾檔？</h2><div class="small">'+(tot>0?'總共 '+F2(tot)+'R，最賺的 5 檔：'+top.map(t=>t[0]+' '+F2(t[1])+'R（占 '+P0(t[1]/tot)+'）').join('、')+'。如果少數幾檔就占了大半，這個結果就不穩。':'總和不是正的，沒有集中度問題。')+'</div></div>';
+  const op=trades.filter(t=>t.open).length;
+  h+='<div class="card"><h2>資料說明</h2><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。</div></div>';
+  $('out').innerHTML=h;
+}
+$('fetch').addEventListener('click',doFetch);$('run').addEventListener('click',doRun);
+$('wipe').addEventListener('click',async()=>{if(BUSY)return;if(!confirm('清掉已存的歷史資料？下次要重抓。'))return;await dbClear();for(const k in MEM)delete MEM[k];$('stat').innerHTML='已清掉。';});
+dbOpen().then(ok=>{if(!ok)$('stat').innerHTML='<span class="warnc">這個瀏覽器不能存資料，抓完要馬上按「跑回測」，離開頁面就要重抓。</span>';});
+</script>
+</body></html>
