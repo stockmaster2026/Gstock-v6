@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.5</title>
+<title>回檔盤點 pullback v1.5.1</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.5（新：每檔都用白話寫「該怎麼做」）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.5.1（每檔白話「該怎麼做」＋隔天開盤可買的價格範圍）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -369,6 +369,21 @@ function render(){
 }
 function cfgGet(){return {cap:+$('cap').value||0,rk:(+$('rk').value||1)/100,smax:(+$('smax').value||8)/100,nn:Math.max(1,+$('nn').value||5)};}
 // v1.5：每檔一句白話的「該怎麼做」。k：go 可以開始考慮／edge 勉強／wait 等／watch 觀察／no 先不買／old 舊資料
+// v1.5.1：隔天開盤「可以考慮的價格範圍」。
+//   下限＝21 日線（開盤就跌破它＝收復失敗，不買）；
+//   上限＝兩個裡較低的：①買在這個價，停損距離剛好等於你的上限（預設 8%）；②訊號收盤價 +5%（O'Neil 的「不追過 5%」，跟 dna 買進區同一個精神）。
+//   ⚠ 這個範圍是用你的風險規則推出來的，沒有另外回測過。
+function buyRange(a){
+  const c=cfgGet();
+  const hiRisk=a.stopPx/(1-c.smax),hiChase=a.px*1.05;
+  const hi=Math.min(hiRisk,hiChase),lo=a.e21v;
+  return {lo:lo,hi:hi,ok:hi>lo,by:(hiRisk<=hiChase?'risk':'chase'),above:hi<a.px};
+}
+function rangeTxt(a){
+  const r=buyRange(a);
+  if(!r.ok)return '現在沒有合適的買進範圍（上限 $'+r.hi.toFixed(2)+' 比 21 日線 $'+r.lo.toFixed(2)+' 還低）。';
+  return '隔天開盤在 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 之間才考慮；高過 $'+r.hi.toFixed(2)+' 不要追（'+(r.by==='risk'?'再高停損就超過你的 '+(cfgGet().smax*100).toFixed(0)+'%':'已比訊號價高過 5%')+'）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）表示收復失敗，也不買。'+(r.above?'現價已經高於上限，要等價格回到範圍內。':'');
+}
 function actionOf(a,top,rankOk,stale){
   const mk=(k,t,why)=>({k,t,why});
   const c=cfgGet();
@@ -390,9 +405,9 @@ function actionOf(a,top,rankOk,stale){
   const v=stopVerdict(a),sp=(a.stopPct*100).toFixed(1),lim=(c.smax*100).toFixed(0);
   if(v[0]==='ok'){
     const deep=Math.abs(a.depth||0)>0.10;
-    return mk('go','✅ 可以開始考慮買','強勢股回檔後已站回 21 日線。參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''));
+    return mk('go','✅ 可以開始考慮買','強勢股回檔後已站回 21 日線。參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''));
   }
-  if(v[0]==='edge')return mk('edge','⚠ 勉強，不建議','強勢股已站回 21 日線，但停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買，或等更好的價位。');
+  if(v[0]==='edge')return mk('edge','⚠ 勉強，不建議','強勢股已站回 21 日線，但停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買。'+rangeTxt(a));
   return mk('no','🚫 先不買','強勢股已站回 21 日線，但停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。等回檔再整理一次。');
 }
 function stopVerdict(a){
@@ -468,9 +483,9 @@ function renderPicksAndObs(){
     const nowTable=list=>{let t='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const v=stopVerdict(a);
       t+='<tr class="pick"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div></td>'
-       +'<td>收盤價 <b>$'+a.px.toFixed(2)+'</b> 左右<div class="mini">實際以隔天開盤為準。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
+       +'<td>'+(()=>{const r=buyRange(a);return r.ok?'<div style="font-size:15px;font-weight:800;color:#15803d">隔天開盤 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮</div><div class="mini"><b>高過 $'+r.hi.toFixed(2)+' 不要追</b>；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）不買。'+(r.above?'<b class="warnc">現價已高於上限，要等回到範圍內。</b>':'')+'</div>':'<div class="mini warnc">現在沒有合適的買進範圍</div>';})()+'<div class="mini" style="margin-top:4px">收盤（'+a.lastDate+'）$'+a.px.toFixed(2)+'。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
        +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
-       +'<td>'+sizeTxt(a.px,a.stopPx)+'</td>'
+       +'<td>'+sizeTxt(buyRange(a).hi,a.stopPx)+'<div class="mini">（以可買範圍的上限價估算，買在低一點股數會多一點）</div></td>'
        +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='pass'?' Q 條件也符合，回測裡這組略好（+0.70R，n=75）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
     return t+'</tbody></table>';};
   const waitTable=list=>{let t='<table><thead><tr><th>代號</th><th>現價 → 確認價</th><th>到時候停損</th><th>白話</th></tr></thead><tbody>';
