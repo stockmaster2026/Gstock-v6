@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.6</title>
+<title>回檔盤點 pullback v1.7</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.6（買進價範圍＋買進後的賣出價位＋持股出場提示）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.7（每檔改成：現況＋現在在等什麼＋事實；不再下「強弱」評語）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -392,15 +392,14 @@ function render(){
   const PR={go:0,edge:1,wait:2,watch:3,no:4,old:5};
   fresh.slice().sort((x,y)=>PR[ACT[x.tk].k]-PR[ACT[y.tk].k]||ORDER.indexOf(x.cat)-ORDER.indexOf(y.cat)||(y.q==='pass')-(x.q==='pass')||x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
   old.sort((x,y)=>x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
-  let h='<table><thead><tr><th>代號</th><th>該怎麼做</th><th>白話（工具看到什麼）</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th><th>停損與可買股數</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>代號</th><th>該怎麼做</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th><th>停損與可買股數</th></tr></thead><tbody>';
   rows.forEach(a=>{
     const L=LABEL[a.cat],stale=dayOf(a)!==t;
     const dirTxt={up:'線上升',flat:'線走平',down:'線下降'}[a.dir];
     const qq=QTXT[a.q];
     const AC=ACT[a.tk];
     h+='<tr'+(AC.k==='go'?' class="row-go"':'')+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div></td>'
-      +'<td style="min-width:230px"><div class="act act-'+AC.k+'">'+AC.t+'</div><div class="mini" style="color:inherit">'+AC.why+'</div><div style="margin-top:4px"><span class="badge '+L[1]+'">'+L[0]+'</span></div></td>'
-      +'<td style="min-width:220px" class="mini">'+a.why+'</td>'
+      +'<td style="min-width:230px"><div class="act act-'+AC.k+'">'+AC.t+'</div><div class="mini" style="color:inherit">'+AC.why+'</div><details style="margin-top:4px"><summary class="mini">工具看到什麼（細節）</summary><div class="mini">'+a.why+'</div></details></td>'
       +'<td class="n">'+pc(a.offHi)+'<div class="small">離最高 '+(-a.offHi*100).toFixed(0)+'%</div></td>'
       +'<td class="n">'+pc(a.dMA150)+'<div class="small">'+dirTxt+'</div></td>'
       +'<td class="n">'+a.adr.toFixed(1)+'%<div class="small">'+(a.adr>5?'波動大':'波動小')+'</div></td>'
@@ -428,31 +427,47 @@ function rangeTxt(a){
   if(!r.ok)return '現在沒有合適的買進範圍（上限 $'+r.hi.toFixed(2)+' 比 21 日線 $'+r.lo.toFixed(2)+' 還低）。';
   return '隔天開盤在 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 之間才考慮；高過 $'+r.hi.toFixed(2)+' 不要追（'+(r.by==='risk'?'再高停損就超過你的 '+(cfgGet().smax*100).toFixed(0)+'%':'已比訊號價高過 5%')+'）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）表示收復失敗，也不買。'+(r.above?'現價已經高於上限，要等價格回到範圍內。':'');
 }
+// v1.7：只寫工具確實算得出的事實，不下「體質好壞」的評語。每檔固定三段：
+//   ① 大標題＝現況＋該做什麼（先不要買／可以考慮）　② 現在在等什麼　③ 幾行事實
 function actionOf(a,top,rankOk,stale){
-  const mk=(k,t,why)=>({k,t,why});
   const c=cfgGet();
-  if(stale)return mk('old','⚠ 舊資料','這是以前跑的，價格已經變了。重跑今天的板塊再看。');
-  if(a.cat==='other')return mk('no','🚫 不要買','股價在 30 週線下方（長期趨勢沒有向上），這套「強勢股回檔」的方法不適用。');
-  if(a.cat==='high')return mk('watch','😴 先不用管','還在高點附近、沒有回檔。強勢股不要追高，等它回檔再看。');
-  if(a.cat==='base')return mk('watch','👀 只能觀察','還在整理打底，這不是回檔買點。要買要等 dna 給出 pivot 和突破。');
-  if(a.ttOk===false)return mk('no','🚫 先不買','長期趨勢有 '+a.ttFail.length+' 項沒過（'+a.ttFail.slice(0,2).join('；')+(a.ttFail.length>2?'…':'')+'），整體不夠強。');
-  if(a.ttOk===undefined||a.e21v==null)return mk('old','⚠ 舊版資料','這筆是舊版算的，重跑一次才有判斷。');
-  if(!(top<=30))return mk('no','🚫 先不買','它的半年漲幅只排在前 '+top+'%。回測裡有優勢的是前 30% 的強勢股，這檔不在裡面。');
-  if(!rankOk)return mk('wait','⏳ 先跑完全部板塊','今天只跑了一部分股票，「半年漲幅排名」會不準。等全部（約 191 檔）都跑完再判斷。');
-  if(a.cat==='deep')return mk('wait','⏳ 先不買','回檔太深（超過 25%）。先看它守不守得住 30 週線，守住了再說。');
-  if(a.cat==='touch'){
-    const tp=a.trigPx!=null?'等「收盤」站上 $'+a.trigPx.toFixed(2)+' 才算站回來（盤中碰到不算）。':'等它站回 21 日線。';
-    return mk('wait','⏳ 再等，現在還不能買','強勢股回檔中，還沒站回 21 日線。'+tp+'在那之前不要先買。');
+  const mk=(k,t,wait,facts,lab)=>({k,t,why:'<div><b>'+(lab||'現在在等')+'：</b>'+wait+'</div>'+(facts&&facts.length?'<div class="mini" style="margin-top:3px">'+facts.map(x=>'・'+x).join('<br>')+'</div>':'')});
+  if(stale)return mk('old','⚠ 舊資料','重跑今天的板塊再看。',['這是以前跑的，價格已經變了。'],'該做');
+  const facts=()=>{
+    const L=[];
+    if(typeof a.depth==='number')L.push('離近 20 天高點 '+(-a.depth*100).toFixed(1)+'%、離 52 週高點 '+(-a.offHi*100).toFixed(0)+'%');
+    if(a.ttOk!==undefined)L.push(a.ttOk?'長期均線結構：6 項檢查全過':'長期均線結構：有 '+a.ttFail.length+' 項沒過（'+a.ttFail.slice(0,2).join('；')+(a.ttFail.length>2?'…':'')+'），回測沒驗證這類有優勢');
+    if(top<=100)L.push('半年漲幅排前 '+top+'%'+(top<=30?'（在回測有優勢的前 30% 內）':'（回測有優勢的是前 30%，這檔不在裡面）'));
+    return L;
+  };
+  if(a.cat==='other')return mk('no','📉 長期趨勢向下，這套方法不適用','不用等。這套方法只看長期趨勢向上的股票。',[a.why||'股價在 30 週線下方，或 30 週線在下降。'],'說明');
+  if(a.cat==='high')return mk('watch','📈 還在往上走，沒有回檔','它先回檔。這套方法只買「跌下來又站回來」的，現在沒有跌，不適用；要看突破請看 dna。',facts());
+  if(a.cat==='base')return mk('watch','👀 還在整理打底，不是回檔買點','看 dna 的 pivot 和突破，這裡不判。',facts());
+  if(a.ttOk===undefined||a.e21v==null)return mk('old','⚠ 舊版資料','重跑一次才有判斷。',['這筆是舊版算的。'],'該做');
+  if(a.cat==='reclaim'&&a.stopPx==null)return mk('old','⚠ 舊版資料','重跑一次才有停損。',['這筆是舊版算的。'],'該做');
+  const reasons=[];
+  if(a.ttOk===false)reasons.push('長期均線有 '+a.ttFail.length+' 項沒過');
+  if(!(top<=30))reasons.push('半年漲幅只排前 '+top+'%（回測有優勢的是前 30%）');
+  const stopF=(a.stopPx!=null&&(a.cat==='reclaim'||a.cat==='touch'))?['停損要放 −'+(a.stopPct*100).toFixed(1)+'%（你的上限 '+(c.smax*100).toFixed(0)+'%）']:[];
+  if(reasons.length){
+    if(a.cat==='reclaim')return mk('no','🚫 已站回 21 日線，但條件沒過齊，先不要買','這檔不用等。'+reasons.join('；')+'，不在這套方法回測有優勢的名單裡。',facts().concat(stopF),'說明');
+    const nm=a.cat==='deep'?'⏳ 跌得比較深，觀察中，先不要買':'⏳ 跌到均線附近，觀察中，先不要買';
+    return mk('watch',nm,'就算它站回 21 日線，也因為「'+reasons.join('；')+'」不在這套方法的名單裡。先放著觀察。',facts().concat(stopF));
   }
-  // reclaim
-  if(a.stopPx==null)return mk('old','⚠ 舊版資料','這筆是舊版算的，重跑一次才有停損。');
+  if(!rankOk)return mk('wait','⏳ 先跑完全部板塊','把全部（約 191 檔）都跑完，「半年漲幅排名」才準。',['今天只跑了一部分股票，排名還不可靠。']);
+  if(a.cat==='deep')return mk('wait','⏳ 跌得比較深，觀察中，先不要買','先看它守不守得住 30 週線，再等收盤站回 21 日線。',facts());
+  if(a.cat==='touch'){
+    const tp=a.trigPx!=null?'收盤站上 $'+a.trigPx.toFixed(2)+'（盤中碰到不算）。站回後才會出現可買的價位。':'它站回 21 日線，才會出現可買的價位。';
+    return mk('wait','⏳ 跌到均線附近，觀察中，先不要買',tp,facts().concat(stopF));
+  }
+  // reclaim，條件都過
   const v=stopVerdict(a),sp=(a.stopPct*100).toFixed(1),lim=(c.smax*100).toFixed(0);
   if(v[0]==='ok'){
     const deep=Math.abs(a.depth||0)>0.10;
-    return mk('go','✅ 可以開始考慮買','強勢股回檔後已站回 21 日線。參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''));
+    return mk('go','✅ 可以開始考慮買','參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''),facts(),'下一步');
   }
-  if(v[0]==='edge')return mk('edge','⚠ 勉強，不建議','強勢股已站回 21 日線，但停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買。'+rangeTxt(a));
-  return mk('no','🚫 先不買','強勢股已站回 21 日線，但停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。等回檔再整理一次。');
+  if(v[0]==='edge')return mk('edge','⚠ 已站回，勉強，不建議','停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買。'+rangeTxt(a),facts(),'下一步');
+  return mk('no','🚫 已站回，但停損太遠，先不要買','下一次回檔，讓停損縮進你的 '+lim+'% 以內。',facts().concat(['停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。']),'現在在等');
 }
 
 // v1.6：買進後的賣出價位（用訊號收盤價當買價估；實際以你的買價為準）
