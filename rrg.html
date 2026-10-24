@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.9.5</title>
+<title>RRG 板塊輪動圖 v2.10.0</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.9.5 · 每個分數都附一份收合的解讀</div>
+<div class="sub">v2.10.0 · 每個分數都附一份收合的解讀</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.9.5 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.10.0 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -345,7 +345,7 @@ window.onerror = function(msg, src, line, col, err) {
   // 卻仍然標成「IBD 12 個月 RS」—— 數字對不上標籤。週線一季 = 13 根。
   function ibdQuarterLen(){ return rrgInterval==='1wk' ? 13 : 63; }
   var CACHE_TTL = 4 * 60 * 60 * 1000;
-  var STORAGE_KEY_RADAR = 'biaoguo_sectors_v5';
+  var STORAGE_KEY_RADAR = 'rrg_sectors_v2';   // v2.10.0：不再讀 radar 的 biaoguo_sectors_v5（舊名單）；板塊名單改跟 dna／news 同一份
   var SNAPSHOT_KEY = 'rrg_snapshots_v1';
   // v2.7.2：快照要記錄「是哪一代引擎算出來的」。
   //   舊快照存的是純數值，沒有版本標記，所以 v2.6.6 的快照（RS 擠在 100 附近）
@@ -362,30 +362,32 @@ window.onerror = function(msg, src, line, col, err) {
                  'https://corsproxy.io/?key=00bcaf2a&url=',
                  'https://api.allorigins.win/raw?url=',
                  'https://api.codetabs.com/v1/proxy/?quest='];
-  var SECTOR_COLORS = {'AI巨頭':'#76b900','AI基礎設施':'#ff6b35','光通信':'#00d4a8','封測設備':'#06d4f0','AI電力散熱':'#ffd166','儲存硬體':'#ef476f','太空衛星':'#4ea5ff','無人機國防':'#a78bfa','量子運算':'#22c55e','AI生技':'#f97316','貴金屬礦業':'#eab308','機器人製造':'#6366f1','感測視覺':'#06b6d4','AI雲端基建':'#8b5cf6','自訂':'#ec4899'};
+  var SECTOR_COLORS = {'資安':'#ef476f','軟體 SaaS':'#8b5cf6','AI 晶片':'#76b900','半導體設備':'#06d4f0','光通訊':'#00d4a8','記憶體與儲存':'#ff6b35','AI 電力與散熱':'#ffd166','太空與國防':'#4ea5ff','生技與醫材':'#f97316','金融':'#eab308','量子運算':'#22c55e','七巨頭':'#ec4899','必需消費(XLP)':'#94a3b8','公用事業(XLU)':'#a3a3a3','醫療保健(XLV)':'#fb923c','能源(XLE)':'#b45309','工業(XLI)':'#64748b','非必需消費(XLY)':'#e879f9','傳統類股 ETF':'#9ca3af'};
+  // v2.10.0：板塊名單與 dna.html 的 DNA_SECTORS、news.html 的 SECTORS 同一份（12 組）。要改名單，三邊要一起改。
   var BUILTIN_WATCHLIST = [
-    {name:'AI巨頭',stocks:['NVDA','META','GOOGL','MSFT','AMZN','AMD','TSM','CRWV','INTC','ORCL']},
-    {name:'AI基礎設施',stocks:['ANET','SMCI','DELL','ARM','LRCX','SNOW','TXN','NBIS','APP','NET']},
-    {name:'光通信',stocks:['AAOI','COHR','LITE','FN','CIEN','MTSI','VIAV','ALAB','CRDO','GLW','MRVL','AXTI']},
-    {name:'封測設備',stocks:['AMKR','TER','FORM','AEHR','ROG','VECO']},
-    {name:'AI電力散熱',stocks:['ETN','VRT','VST','CEG','GNRC','BE','OKLO']},
-    {name:'儲存硬體',stocks:['MU','WDC','STX','SNDK','PSTG']},
-    {name:'太空衛星',stocks:['RKLB','LUNR','RDW','FLY','BKSY','PL','ASTS','IRDM','GSAT']},
-    {name:'無人機國防',stocks:['AVAV','KTOS','PLTR','RCAT','ONDS']},
-    {name:'量子運算',stocks:['IONQ','RGTI','QBTS','QUBT']},
-    {name:'AI生技',stocks:['TEM','RXRX','SDGR','ABCL']},
-    {name:'貴金屬礦業',stocks:['MP','USAR','TMC','UUUU','NEM','AEM','WPM','AG','FCX']},
-    {name:'機器人製造',stocks:['TSLA','SYM','SERV','ISRG']},
-    {name:'感測視覺',stocks:['CGNX','AMBA','OUST','TEL']},
-    {name:'AI雲端基建',stocks:['NBIS','CRWV','IREN']},
-    {name:'自訂',stocks:['HOOD','ACHR']}
+    {name:'資安',stocks:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'.split(' ')},
+    {name:'軟體 SaaS',stocks:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS'.split(' ')},
+    {name:'AI 晶片',stocks:'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX'.split(' ')},
+    {name:'半導體設備',stocks:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'.split(' ')},
+    {name:'光通訊',stocks:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'.split(' ')},
+    {name:'記憶體與儲存',stocks:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'.split(' ')},
+    {name:'AI 電力與散熱',stocks:'VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW FLEX GNRC JCI'.split(' ')},
+    {name:'太空與國防',stocks:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'.split(' ')},
+    {name:'生技與醫材',stocks:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'.split(' ')},
+    {name:'金融',stocks:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'.split(' ')},
+    {name:'量子運算',stocks:'IONQ RGTI QBTS QUBT LAES ARQQ'.split(' ')},
+    {name:'七巨頭',stocks:'AAPL MSFT GOOGL AMZN NVDA META TSLA'.split(' ')},
+    // v2.10.0 新增：傳統大類股 ETF（SPDR 11 大類）。只用來看「資金有沒有從成長股轉去防禦／傳統類股」，
+    //   etf:true ＝ 不進「個股排名」（排名是個股對個股，混進 ETF 會失真）。
+    {name:'傳統類股 ETF',etf:true,stocks:'XLP XLU XLV XLE XLI XLY XLF XLB XLRE XLC XLK'.split(' ')}
   ];
   var OVERVIEW_REPRESENTATIVES = [
-    {name:'AI巨頭',ticker:'NVDA'},{name:'AI基礎設施',ticker:'VRT'},{name:'光通信',ticker:'AAOI'},
-    {name:'封測設備',ticker:'AMKR'},{name:'AI電力散熱',ticker:'ETN'},{name:'儲存硬體',ticker:'MU'},
-    {name:'太空衛星',ticker:'RKLB'},{name:'無人機國防',ticker:'AVAV'},{name:'量子運算',ticker:'IONQ'},
-    {name:'AI生技',ticker:'TEM'},{name:'貴金屬礦業',ticker:'MP'},{name:'機器人製造',ticker:'SYM'},
-    {name:'感測視覺',ticker:'CGNX'},{name:'AI雲端基建',ticker:'NBIS'},{name:'自訂',ticker:'HOOD'}
+    {name:'資安',ticker:'CRWD'},{name:'軟體 SaaS',ticker:'NOW'},{name:'AI 晶片',ticker:'NVDA'},
+    {name:'半導體設備',ticker:'AMAT'},{name:'光通訊',ticker:'COHR'},{name:'記憶體與儲存',ticker:'MU'},
+    {name:'AI 電力與散熱',ticker:'VRT'},{name:'太空與國防',ticker:'RKLB'},{name:'生技與醫材',ticker:'LLY'},
+    {name:'金融',ticker:'JPM'},{name:'量子運算',ticker:'IONQ'},{name:'七巨頭',ticker:'MSFT'},
+    {name:'必需消費(XLP)',ticker:'XLP'},{name:'公用事業(XLU)',ticker:'XLU'},{name:'醫療保健(XLV)',ticker:'XLV'},
+    {name:'能源(XLE)',ticker:'XLE'},{name:'工業(XLI)',ticker:'XLI'},{name:'非必需消費(XLY)',ticker:'XLY'}
   ];
   var currentMode = 'overview';
   var currentBenchmark = 'SPY';
@@ -402,7 +404,7 @@ window.onerror = function(msg, src, line, col, err) {
       if (!raw) return null;
       var parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.map(function(s){ if (s.tickers) return {name:s.name,stocks:s.tickers}; return s; }).filter(function(s){ return s && s.name && s.stocks && s.stocks.length>0; });
+        return parsed.map(function(s){ if (s.tickers) return {name:s.name,stocks:s.tickers,etf:!!s.etf}; return s; }).filter(function(s){ return s && s.name && s.stocks && s.stocks.length>0; });
       }
       return null;
     } catch(e) { return null; }
@@ -586,7 +588,7 @@ window.onerror = function(msg, src, line, col, err) {
     var base = 100*(0.6*a + 0.4*r);
     // 過了 dna 的末期門檻才降權，而且是連續的（不做硬切點）
     var extCut = (devPct>EXT_LATE) ? Math.min(0.35, (devPct-EXT_LATE)/100) : 0;
-    // v2.9.5：加一個「走平」帶，只用在文字標籤上，不碰分數。
+    // v2.10.0：加一個「走平」帶，只用在文字標籤上，不碰分數。
     //   分數這邊本來就是連續的（+0.17%/20根 → r=0.585，幾乎中性），
     //   binary 的只有畫面上那個「上揚／下彎」—— AMKR 的 +0.17%/20根
     //   被硬講成「均線上揚」，那其實是走平。門檻取飽和尺度（1%）的四分之一。
@@ -596,7 +598,7 @@ window.onerror = function(msg, src, line, col, err) {
              late:(devPct>EXT_LATE), warn:(devPct>EXT_WARN), extCut:+extCut.toFixed(2) };
   }
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.5：每個數字要能自己說話。
+  // v2.10.0：每個數字要能自己說話。
   //   她的原話：「你出現那些數字，如果沒有去解讀它，好像也沒有什麼意義」——
   //   對的。只給 86 / 70 / 50 等於把黑盒子換了個位置而已。
   //   這一區對每一項講三件事：①量的是什麼 ②這一檔的實際數字算出什麼 ③為什麼要看它。
@@ -754,7 +756,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   靠「相對強度還行」爬回中段。所以它改當乘數。
   //   但依 Jasmine 一貫的偏好，不做硬切點：乘數是連續的 0.40~1.00，
   //   差一點的不會直接歸零，只是被明顯壓低。
-  // v2.9.5：缺項不得重新分配權重。
+  // v2.10.0：缺項不得重新分配權重。
   //   舊版把缺項的權重按比例攤回「有資料的那幾項」—— 結果是資料愈少分數愈高。
   //   實例（她 9/28 的真實掃描）：INFQ 形狀不足、絕對趨勢整段算不出來，
   //     舊算法 = (95×50 + 50×15) ÷ 65 = 84.6，乘數又預設給滿的 ×1 → 85 分，全池第 2 名。
@@ -865,7 +867,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.5 防守事件
+  // v2.10.0 防守事件
   //   她要的是「哪幾檔開始有急速下跌的迹象」。我原本打算用 RRG 的走弱象限做，
   //   查完發現那是反的 —— de Kempenaer 本人把 領先→走弱 稱為
   //   「digesting its recent rise」，把 領先→走弱→領先 稱為
@@ -1086,7 +1088,7 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // 踩在邊界上時要補的那一句白話（沒踩到就回空字串）
-  // v2.9.5：象限箭頭。
+  // v2.10.0：象限箭頭。
   //   ⚠ 箭頭指的是「象限在圖上的幾何方向」（x=RS 水位、y=動能，中心 100），
   //     不是「好↑／壞↓」。走弱區的 ↘ 不代表股價在跌 —— RRG 量的是相對大盤，
   //     de Kempenaer 本人把 領先→走弱 稱為「digesting its recent rise」，
@@ -1128,7 +1130,7 @@ window.onerror = function(msg, src, line, col, err) {
     document.getElementById('ranking-controls').style.display=mode==='ranking'?'block':'none';
     document.getElementById('history-panel').style.display=mode==='history'?'block':'none';
     if (mode==='deepscan') buildSectorChecks();
-    // v2.9.5：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
+    // v2.10.0：排名榜自己一條路 —— 不走 chart / narrative / sector-table / 快照，
     //   所以不用改那四條管線。90 檔畫在一張 RRG 上本來就讀不動。
     if (mode==='ranking') {
       document.getElementById('chart-wrap').style.display='none';
@@ -1187,14 +1189,14 @@ window.onerror = function(msg, src, line, col, err) {
   // === v2.6.6 QCOM 派發誤判修正 ===
   function saveCustomSectors(sectors) {
     try {
-      var toSave=sectors.map(function(s){ return {name:s.name, tickers:s.stocks.slice()}; });
+      var toSave=sectors.map(function(s){ return {name:s.name, tickers:s.stocks.slice(), etf:!!s.etf}; });
       localStorage.setItem(STORAGE_KEY_RADAR, JSON.stringify(toSave));
       return true;
     } catch(e){ alert('儲存失敗：'+e.message); return false; }
   }
   function renderSectorManagePanel() {
     var sectors=getSectorList();
-    var html='<div class="sm-tip">💡 在這裡增刪後會同步到 radar.html（兩邊用同一份板塊資料）。改完後關閉這面板，下方勾選列表會自動更新。</div>';
+    var html='<div class="sm-tip">💡 v2.10.0 起，RRG 的板塊名單跟 dna／news 同一份（12 組），不再跟 radar 共用。你在這裡增刪只存在 RRG 自己（這台裝置）。改完後關閉這面板，下方勾選列表會自動更新。</div>';
     for(var i=0;i<sectors.length;i++){
       var s=sectors[i];
       var color=SECTOR_COLORS[s.name]||'#e4e7f0';
@@ -1305,12 +1307,12 @@ window.onerror = function(msg, src, line, col, err) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v2.9.5 排名榜
+  // v2.10.0 排名榜
   //   問題：「不在我的自選股裡，但排名比我手上最好那檔更高的，是哪些？」
   //   做法：把所有板塊清單的股票攤平去重，每一檔都跑同一套 rankScore，然後排序。
   //
   //   ⚠ 三件必須先講清楚的事，寫在這裡也寫在畫面上：
-  //   1. 掃的是「妳自己的板塊清單」（radar 的 biaoguo_sectors_v5，沒有就用內建 15 組），
+  //   1. 掃的是「妳自己的板塊清單」（RRG 自己存的名單，沒有就用內建 12 組＋傳統類股 ETF），
   //      不是全美股。清單外的股票永遠不會出現 —— 這是一個受限宇宙的排序，
   //      所以它的正確說法是「我的池子裡誰最前面」，不是「全市場誰最強」。
   //   2. 這個分數是為了「同一組裡先看哪一檔」設計的，從來沒有被當成
@@ -1324,6 +1326,7 @@ window.onerror = function(msg, src, line, col, err) {
     var list=getSectorList(), seen={}, out=[];
     for(var i=0;i<list.length;i++){
       var sec=list[i];
+      if(sec.etf) continue;   // v2.10.0：ETF 組不進個股排名
       for(var j=0;j<sec.stocks.length;j++){
         var t=String(sec.stocks[j]||'').toUpperCase().trim();
         if(!t) continue;
@@ -1489,7 +1492,7 @@ window.onerror = function(msg, src, line, col, err) {
       if(above.length===0){
         html+='<div style="font-size:0.78rem;color:var(--dim);line-height:1.6">'
             + '妳清單裡最好的那一檔就是整個池子的第一名。這代表<b>在這個池子裡</b>沒有更前面的可以換，'
-            + '不代表全市場沒有 —— 要擴大就得先把新的板塊 / 個股加進 radar 清單。</div>';
+            + '不代表全市場沒有 —— 要擴大就得先把新的板塊 / 個股加進 RRG 的板塊管理（並同步改 dna／news）。</div>';
       } else {
         html+='<div style="font-size:0.72rem;color:var(--dim);margin-bottom:6px">'
             + '下面這幾檔分數比 '+myBest.ticker+' 高。分數高只表示「值得先看」，'
@@ -1501,7 +1504,7 @@ window.onerror = function(msg, src, line, col, err) {
       if(myCount<Object.keys(mine).length){
         html+='<div style="font-size:0.72rem;color:#f7c948;margin-top:8px">⚠ 妳清單裡有 '
             + myMissing.length+' 檔不在板塊清單中，這次沒掃到，沒有參與比較：'+myMissing.join(' ')
-            + '<br><span style="color:var(--dim)">要讓它們入榜，把它們加進 radar 的板塊清單。</span></div>';
+            + '<br><span style="color:var(--dim)">要讓它們入榜，把它們加進 RRG 的板塊管理（並同步改 dna／news）。</span></div>';
       }
       html+='</div>';
     } else {
@@ -1737,7 +1740,7 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<line x1="'+cx+'" y1="'+P+'" x2="'+cx+'" y2="'+(H-P)+'" stroke="#5a6680" stroke-dasharray="5,4" stroke-width="1.2" opacity="0.7"/>';
     html+='<rect x="'+P+'" y="'+P+'" width="'+(W-2*P)+'" height="'+(H-2*P)+'" fill="none" stroke="#2a3554" stroke-width="1.5"/>';
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.5：圖上的象限標籤有兩個問題，兩個都是「補丁只補一半」的第 8 次發作。
+    // v2.10.0：圖上的象限標籤有兩個問題，兩個都是「補丁只補一半」的第 8 次發作。
     //   ① 副標是動作指示：「續抱黃金區」「避開禁區」—— 直接牴觸這張圖正上方
     //      自己寫的「這一區是排序，不是買賣指示」，而且 RRG 看不到價格與停損，
     //      沒有資格講續抱或避開。v2.7.3 把判詞清乾淨了，圖上的字沒跟著清。
@@ -1746,7 +1749,7 @@ window.onerror = function(msg, src, line, col, err) {
     //   副標改成純描述，而且一律點明是「比大盤」，因為那是最常被誤讀的一點：
     //   走弱不是股價在跌，是相對大盤的動能在減。
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.5：標籤要待在自己的象限裡。
+    // v2.10.0：標籤要待在自己的象限裡。
     //   舊版四個標籤釘在「畫框的四個角」，但象限的分界線 cx/cy 會跟著資料跑 ——
     //   當 15 檔動能全部 >100（就是她 9/28 的情況），cy 被推到最底下，
     //   「走弱」「落後」兩個標籤就坐進了領先／改善的底色裡。
@@ -2652,7 +2655,7 @@ window.onerror = function(msg, src, line, col, err) {
       function cell(name, val, note, weight){
         var txt = (val==null) ? '<span style="color:#6e7681">資料不足</span>'
                 : '<b style="color:'+(val>=60?'#00d4a8':(val>=40?'#9ca3af':'#f7c948'))+'">'+val.toFixed(0)+'</b>';
-        // v2.9.5：舊寫法「RS水位(50) 86」會被讀成「50 分之 86」——
+        // v2.10.0：舊寫法「RS水位(50) 86」會被讀成「50 分之 86」——
         //   括號裡是權重、後面才是得分，兩個數字黏在一起完全看不出誰是誰。
         //   改成「得分 分 · 佔 權重」，順序跟意思一致。
         return '<span style="margin-right:14px;white-space:nowrap">'+name+' '+txt
@@ -2751,7 +2754,7 @@ window.onerror = function(msg, src, line, col, err) {
         var s=arr[i];
         h+='<div class="hold-row"><div class="hold-row-main">';
         h+='<span class="hold-ticker">'+s.ticker+'</span>'+rankHTML(s);
-        // v2.9.5：象限字放大加粗 + 幾何箭頭（她的建議）。
+        // v2.10.0：象限字放大加粗 + 幾何箭頭（她的建議）。
         //   箭頭是象限在圖上的方向（x=RS、y=動能），不是好壞 ——
         //   走弱的 ↘ 不代表股價在跌，只代表相對大盤的動能掉到 100 以下。
         h+='<span class="hold-position" style="font-size:0.92rem;font-weight:700;color:'
@@ -2780,7 +2783,7 @@ window.onerror = function(msg, src, line, col, err) {
            + '↳ 離 150 日均線 +'+s.absPart.devPct+'%，離 dna 的末期門檻 '+EXT_LATE+'% 還有一段，'
            + '<span style="color:#8b949e">但已經不是貼著均線的位置了。</span></div>';
         }
-        // v2.9.5：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
+        // v2.10.0：這一句以前不管哪個 Stage 都寫「絕對走勢還在下降」——
         //   但 AMKR / GLW / AAOI 都是「跌破均線、但均線上揚」，那是打底不是下降，
         //   而且句子旁邊就印著「均線上揚」，自己打自己。判詞必須跟著 Stage 走。
         if(s.rank && s.rank.gate!=null && s.rank.gate<0.70 && s.absPart){
@@ -2795,7 +2798,7 @@ window.onerror = function(msg, src, line, col, err) {
            + '「跌得比較少」也會被畫進去。</span></div>';
         }
         h+=rankBreakdownHTML(s);
-        h+=metricNotes(s, unitLabel());   // v2.9.5：數字後面接一份收合的解讀
+        h+=metricNotes(s, unitLabel());   // v2.10.0：數字後面接一份收合的解讀
         if (s.verbose) h+='<div class="hold-verbose">'+s.verbose+'</div>';
         h+='</div>';
       }
@@ -2868,7 +2871,7 @@ window.onerror = function(msg, src, line, col, err) {
       focusItems.push('🟢 排名前段：<strong>'+groups.strong[0].ticker+'</strong>');
     }
     // ════════════════════════════════════════════════════════════════════════
-    // v2.9.5：防守事件區（總表最後面）。
+    // v2.10.0：防守事件區（總表最後面）。
     //   這一區刻意「不是」RRG 判斷 —— 它完全不看象限、不看軌跡、不看排名，
     //   只照 IBD 官方 Selling Checklist 裡那兩條「只需要價格＋量能」的規則。
     //   理由寫在 defenseEvents 上面：走弱象限在官方定義裡是消化不是預警，
@@ -2941,7 +2944,7 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<div class="narr-section narr-leading"><span class="label">★ '+(mode==='deepscan'?'主流個股（強勢加速）':'主流板塊（強勢加速）')+'</span>';
     if (groups.leading.length>0){
       html+=fmtList(groups.leading, 6);
-      // v2.9.5：同一批動作字眼的最後一處。「等回測 5-10% 再進場」「續抱」「不追進」
+      // v2.10.0：同一批動作字眼的最後一處。「等回測 5-10% 再進場」「續抱」「不追進」
       //   全部需要價格與停損才成立，RRG 兩個都沒有。改成只講位置。
       html+='<span class="narr-tip">→ '+(mode==='deepscan'?'板塊內相對最強的位置':'相對大盤最強的一群')+'</span>';
     } else html+='<span class="narr-empty">目前沒有跑贏大盤的</span>';
@@ -3114,7 +3117,7 @@ window.onerror = function(msg, src, line, col, err) {
   window.__rrgCompareLatest=compareLatestTwo;
 
   // === INIT ===
-  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.9.5 (數字有解讀)';
+  document.getElementById('js-check').textContent='✅ JavaScript 已就緒 v2.10.0 (數字有解讀)';
   document.getElementById('js-check').style.color='#00d4a8';
   var tabs=document.querySelectorAll('.mode-tab');
   for(var t=0;t<tabs.length;t++) tabs[t].addEventListener('click', function(){ switchMode(this.getAttribute('data-mode')); });
@@ -3196,8 +3199,8 @@ window.onerror = function(msg, src, line, col, err) {
     try { localStorage.removeItem('rrg_qq_input'); } catch(e){}
   });
   document.getElementById('btn-qq-load-holding').addEventListener('click', function(){
-    var sectors=readRadarSectors();
-    if (!sectors||sectors.length===0){ alert('找不到 radar 板塊資料，請先在 radar.html 設定板塊'); return; }
+    var sectors=getSectorList().filter(function(x){return !x.etf;});
+    if (!sectors||sectors.length===0){ alert('找不到板塊資料'); return; }
     var allStocks=[],seen={};
     for(var i=0;i<sectors.length&&allStocks.length<15;i++){
       var sec=sectors[i];
@@ -3207,7 +3210,7 @@ window.onerror = function(msg, src, line, col, err) {
         if (t&&!seen[t]){ seen[t]=1; allStocks.push(t); }
       }
     }
-    if (allStocks.length===0){ alert('找不到 radar 板塊資料，請先在 radar.html 設定板塊'); return; }
+    if (allStocks.length===0){ alert('找不到板塊資料'); return; }
     var loaded=allStocks.slice(0,15).join(' ');
     document.getElementById('qq-input').value=loaded;
     document.getElementById('qq-count').textContent=allStocks.length+' 檔（已載入前 15 檔）';
