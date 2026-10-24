@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.5.1</title>
+<title>回檔盤點 pullback v1.6</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.5.1（每檔白話「該怎麼做」＋隔天開盤可買的價格範圍）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.6（買進價範圍＋買進後的賣出價位＋持股出場提示）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -72,6 +72,23 @@ tr.row-go td{background:#f0fdf4}
 <div class="card" id="picksCard" style="display:none">
   <h2>③ 現在有沒有可以考慮的價位？ <span class="small">（只看「長期趨勢過關＋半年漲幅前 30%」的強勢股；Q 條件只當標記）</span></h2>
   <div id="picks"></div>
+</div>
+
+<div class="card" id="holdCard">
+  <h2>⑤ 持股出場提示 <span class="small">（買進後每天看這裡：續抱、小心、還是該賣）</span></h2>
+  <div class="small" style="line-height:1.7">規則＝回測裡最好的那套：<b>① 碰到停損價就賣</b>　<b>② 賺到 3 倍風險就先賣 1/3，停損拉到成本</b>　<b>③ 連續 3 天收盤在 20 日線下面，隔天開盤賣</b>。這跟 dna 方向相反：dna 買突破，停損在平台下面；這裡買回檔站回，停損近、20 日線就在腳下，所以<b>每天都要看一次</b>。<b>收盤後再按「更新持股」</b>，盤中的價格不算數。</div>
+  <div class="row" style="margin-top:8px">
+    <div><label>代號</label><input id="hTk" style="width:90px" placeholder="例 QLYS" autocapitalize="characters"></div>
+    <div><label>買進價</label><input type="number" id="hPx" step="0.01" style="width:100px"></div>
+    <div><label>買進日期</label><input type="date" id="hDt" style="width:150px"></div>
+    <div><label>停損價（空白＝用工具算的）</label><input type="number" id="hSt" step="0.01" style="width:120px"></div>
+    <div><label>股數（選填）</label><input type="number" id="hSh" step="1" style="width:90px"></div>
+    <button id="hAdd">加入持股</button>
+    <button id="hRef" class="sec">更新持股（收盤後按）</button>
+  </div>
+  <div class="row"><button id="hCopy" class="sec">複製持股備份</button><button id="hImp" class="sec">匯入持股備份</button></div>
+  <textarea id="hBox" style="display:none;min-height:70px" placeholder="把備份文字貼在這裡，再按一次「匯入持股備份」"></textarea>
+  <div id="holdOut"></div>
 </div>
 
 <div class="card">
@@ -146,7 +163,7 @@ function analyze(bars){
   if(n<200) return {err:'資料不足（'+n+' 根，至少要 200 根才算得出 30 週線方向）'};
   const C=bars.map(b=>b.c),H=bars.map(b=>b.h),L=bars.map(b=>b.l);
   const i=n-1;
-  const ma150=sma(C,150),ma50=sma(C,50),e21=ema(C,21),ma200=sma(C,200);
+  const ma150=sma(C,150),ma50=sma(C,50),e21=ema(C,21),ma200=sma(C,200),ma20=sma(C,20);
   const px=C[i];
   const slope=ma150[i]/ma150[i-20]-1;
   const dir=slope>=0.01?'up':(slope<=-0.01?'down':'flat');
@@ -224,7 +241,34 @@ function analyze(bars){
   // 確認價：明天（或之後）收盤要站上「今天高點」和「21 日線」較高者，才算收復（只有趨勢還在、近 5 天有收盤跌到 21 日線下才可能）
   let trigPx=null,trigDist=null;
   if(stage2 && cat!=='reclaim' && closedBelowNow){trigPx=Math.max(e21[i],H[i]);trigDist=trigPx/px-1;}
-  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName,stopPx,stopPct,widened,atrPct,trigPx,trigDist,e21v:e21[i],ma50v:ma50[i],stage2,ttOk,ttFail,r12};
+  return {cat,why,px,offHi,depth,dMA150,dir,slope,adr,r1,r3,r6,q,lastDate:bars[i].date,nearSup,supName,stopPx,stopPct,widened,atrPct,trigPx,trigDist,e21v:e21[i],ma50v:ma50[i],ma20v:ma20[i],stage2,ttOk,ttFail,r12};
+}
+// v1.6：持股出場判斷（純函式）。規則＝pb-test 的「你的式」：
+//   ① 停損價碰到就出（跳空開在停損下方就用開盤價算）
+//   ② 賺到 3 倍風險（買價＋3×(買價−停損)）→ 賣 1/3，停損拉到成本
+//   ③ 連續 3 天收盤在 20 日線下 → 隔天開盤賣（從買進後第一天就開始數，跟回測一樣）
+//   同一天又碰停損又碰 3 倍風險時，一律先算停損（保守）。買進當天那根 K 棒不算（不知道盤中先後）。
+// h: {entry,stop,buyDate('yy/mm/dd')}  bars 由舊到新
+function evalHold(h,bars){
+  const n=bars.length;if(n<25)return {err:'資料不足'};
+  const C=bars.map(b=>b.c),m20=sma(C,20),last=bars[n-1];
+  const E=h.entry,S0=h.stop,R=E-S0;
+  if(!(R>0))return {err:'停損價要低於買進價'};
+  const tgt=E+3*R;
+  let stop=S0,partial=null,below=0,res=null;
+  for(let k=0;k<n&&!res;k++){
+    const b=bars[k];if(b.date<=h.buyDate)continue;
+    if(b.l<=stop){const ex=b.o<stop?b.o:stop;res={st:'stopped',date:b.date,px:ex,r:(ex-E)/R,gap:b.o<stop,atCost:!!partial&&stop>=E};break;}
+    if(!partial&&b.h>=tgt){partial={date:b.date};stop=Math.max(stop,E);}
+    if(m20[k]!=null&&b.c<m20[k])below++;else below=0;
+    if(below>=3){
+      if(k===n-1){res={st:'sellnow',date:b.date,px:b.c};}
+      else{res={st:'ended',date:bars[k+1].date,px:bars[k+1].o,r:(bars[k+1].o-E)/R};}
+      break;
+    }
+  }
+  const o={res,partial,stopNow:stop,tgt,R,E,m20v:m20[n-1],px:last.c,lastDate:last.date,below,curR:(last.c-E)/R,warnPx:E*0.95,stopDist:(last.c-stop)/last.c,belowNow:m20[n-1]!=null&&last.c<m20[n-1]};
+  return o;
 }
 //==/PURE==
 
@@ -286,7 +330,7 @@ async function runList(list,label){
       const bars=await fetchBars(tk);
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
-      else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
+      else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}try{holdUpdate(tk,bars);}catch(e2){}render();}
     }catch(e){bad.push(tk);}
     if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
   }
@@ -297,7 +341,7 @@ async function runList(list,label){
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
       try{const bars=await fetchBars(tk);const a=analyze(bars);
-        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}try{holdUpdate(tk,bars);}catch(e2){}render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
     }
@@ -309,7 +353,7 @@ async function runList(list,label){
   let h='<b class="ok">✓ 跑完 '+list.length+' 檔</b>（'+secs+' 秒）';
   if(bad.length)h+='<br><span class="bad">✗ '+bad.length+' 檔沒成功：'+bad.map(t=>t+'（'+(WHY[t]||'未知')+'）').join('、')+'</span><br><span class="small">HTTP 429＝Yahoo 暫時限流，過幾分鐘單獨再跑那幾檔；404＝代號不存在。</span>';
   $('stat').innerHTML=h;
-  BUSY=false;setBtns(false);renderChips();render();
+  BUSY=false;setBtns(false);renderChips();render();try{renderHold();}catch(e){}
 }
 function setBtns(b){['runAll','runOwn','clearToday'].forEach(id=>$(id).disabled=b);document.querySelectorAll('.chip').forEach(c=>c.disabled=b);}
 
@@ -410,6 +454,17 @@ function actionOf(a,top,rankOk,stale){
   if(v[0]==='edge')return mk('edge','⚠ 勉強，不建議','強勢股已站回 21 日線，但停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買。'+rangeTxt(a));
   return mk('no','🚫 先不買','強勢股已站回 21 日線，但停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。等回檔再整理一次。');
 }
+
+// v1.6：買進後的賣出價位（用訊號收盤價當買價估；實際以你的買價為準）
+function rulesBox(a){
+  const E=a.px,S=a.stopPx,R=E-S,tgt=E+3*R,warn=E*0.95;
+  let h='<div style="background:#fff;border:1px dashed #9ca3af;border-radius:8px;padding:8px 10px"><b>如果買了，之後這樣賣（以 $'+E.toFixed(2)+' 買進估算，你的實際買價不同就用「⑤ 持股出場提示」自動重算）</b><div class="mini" style="line-height:1.8;margin-top:3px">';
+  h+='① <b>停損 $'+S.toFixed(2)+'</b>：股價碰到就賣，不拖、不攤平。<br>';
+  h+='② <b>漲到 $'+tgt.toFixed(2)+'</b>（賺 3 倍風險＝'+(R*3).toFixed(2)+' 元）：先賣 1/3，剩下的停損拉到成本 $'+E.toFixed(2)+'（之後最差不賠）。<br>';
+  h+='③ <b>20 日線'+(a.ma20v!=null?'現在 $'+a.ma20v.toFixed(2)+'（會天天往上或往下動）':'')+'</b>：<b>連續 3 天「收盤」都在它下面</b>，隔天開盤賣。跌破 1～2 天又站回去，就歸零重算。<br>';
+  h+='④ 局面不好時：跌到 <b>$'+warn.toFixed(2)+'</b>（−5%）就可以提早走，不用等到停損。';
+  return h+'</div></div>';
+}
 function stopVerdict(a){
   const c=cfgGet();
   if(a.stopPct<=c.smax)return ['ok','✓ 在你的 '+(c.smax*100).toFixed(0)+'% 以內'];
@@ -486,7 +541,8 @@ function renderPicksAndObs(){
        +'<td>'+(()=>{const r=buyRange(a);return r.ok?'<div style="font-size:15px;font-weight:800;color:#15803d">隔天開盤 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮</div><div class="mini"><b>高過 $'+r.hi.toFixed(2)+' 不要追</b>；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）不買。'+(r.above?'<b class="warnc">現價已高於上限，要等回到範圍內。</b>':'')+'</div>':'<div class="mini warnc">現在沒有合適的買進範圍</div>';})()+'<div class="mini" style="margin-top:4px">收盤（'+a.lastDate+'）$'+a.px.toFixed(2)+'。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
        +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
        +'<td>'+sizeTxt(buyRange(a).hi,a.stopPx)+'<div class="mini">（以可買範圍的上限價估算，買在低一點股數會多一點）</div></td>'
-       +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='pass'?' Q 條件也符合，回測裡這組略好（+0.70R，n=75）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
+       +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='pass'?' Q 條件也符合，回測裡這組略好（+0.70R，n=75）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>'
+       +'<tr class="pick"><td colspan="5">'+rulesBox(a)+'</td></tr>';});
     return t+'</tbody></table>';};
   const waitTable=list=>{let t='<table><thead><tr><th>代號</th><th>現價 → 確認價</th><th>到時候停損</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const sp=(a.trigPx-a.stopPx)/a.trigPx,ok=sp<=c.smax;
@@ -585,6 +641,84 @@ $('obsImp').addEventListener('click',()=>{
   catch(e){$('stat').innerHTML='<span class="bad">備份文字格式不對，沒有匯入。</span>';}
 });
 
-renderChips();render();
+// ===== v1.6：持股出場提示 =====
+const HOLD='pb_hold_v1';
+function ymd2s(v){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?m[1].slice(2)+'/'+m[2]+'/'+m[3]:'';}
+function holdUpdate(tk,bars){
+  const o=load(HOLD);let ch=false;
+  Object.keys(o).forEach(k=>{const h=o[k];if(h.tk!==tk)return;h.ev=evalHold(h,bars);h.evAt=h.ev.lastDate||'';ch=true;});
+  if(ch){save(HOLD,o);}
+}
+function holdCard(h){
+  const e=h.ev,fm=v=>'$'+v.toFixed(2);
+  if(!e)return '<div class="mini warnc">還沒有更新過。收盤後按上面的「更新持股」。</div>';
+  if(e.err)return '<div class="mini bad">'+e.err+'</div>';
+  const t=today(),old=t&&e.lastDate<t;
+  let kind,title,body='';
+  const sh=h.shares>0?h.shares:0;
+  if(e.res&&e.res.st==='stopped'){kind='no';title='🛑 已碰到停損（'+e.res.date+'）';body='停損 '+fm(e.stopNow)+(e.res.atCost?'（已拉到成本）':'')+'，估計在 '+fm(e.res.px)+(e.res.gap?'（開盤就跳空在停損下面）':'')+' 賣出，約 '+(e.res.r>=0?'+':'')+e.res.r.toFixed(2)+'R。如果你還沒賣，現在就該賣；已賣就從下面刪掉這筆。';}
+  else if(e.res&&e.res.st==='ended'){kind='no';title='🔴 連 3 天收在 20 日線下，應已賣出（'+e.res.date+' 開盤）';body='估計約 '+fm(e.res.px)+'，約 '+(e.res.r>=0?'+':'')+e.res.r.toFixed(2)+'R。還沒賣就賣掉；已賣就刪掉這筆。';}
+  else if(e.res&&e.res.st==='sellnow'){kind='no';title='🔴 明天開盤賣出';body='已經連續 3 天收盤在 20 日線（'+fm(e.m20v)+'）下面。照規則，明天開盤就賣，不等反彈。'+(sh?'':'');}
+  else{
+    const nearStop=e.stopDist<=0.02;
+    if(e.warnPx&&e.px<=e.warnPx){kind='edge';title='⚠ 已跌到警戒價（買價 −5%）';body='現價 '+fm(e.px)+' ≤ '+fm(e.warnPx)+'。如果大盤／板塊也不好，你說過可以提早走；局面還行就繼續守停損 '+fm(e.stopNow)+'。';}
+    else if(e.below>=1){kind='edge';title='🟡 小心：已連續 '+e.below+' 天收盤在 20 日線下';body='20 日線現在 '+fm(e.m20v)+'，現價 '+fm(e.px)+'。再 '+(3-e.below)+' 天收盤都在它下面就賣；<b>明天收盤站回 '+fm(e.m20v)+' 以上就歸零，繼續抱。</b>停損 '+fm(e.stopNow)+' 隨時有效。';}
+    else if(nearStop){kind='edge';title='⚠ 離停損很近（只剩 '+(e.stopDist*100).toFixed(1)+'%）';body='停損 '+fm(e.stopNow)+'，現價 '+fm(e.px)+'。碰到就賣，不要自己改價。';}
+    else{kind='go';title='✅ 續抱';body='現價 '+fm(e.px)+'，在 20 日線 '+fm(e.m20v)+' 上面，離停損 '+fm(e.stopNow)+' 還有 '+(e.stopDist*100).toFixed(1)+'%。今天什麼都不用做。';}
+    if(e.partial){body+='<br>✓ 買進後已碰到 3 倍風險價（'+e.partial.date+'）：規則是當時就賣 1/3，停損拉到成本 '+fm(h.entry)+'（工具已照這樣算）。'+(sh?'你有 '+sh+' 股，賣 1/3 約 '+Math.floor(sh/3)+' 股。':'');}
+    else{body+='<br>下一個動作：漲到 <b>'+fm(e.tgt)+'</b> 先賣 1/3'+(sh?'（約 '+Math.floor(sh/3)+' 股）':'')+'，停損拉到成本 '+fm(h.entry)+'。';}
+  }
+  const col={go:'#15803d',edge:'#b45309',no:'#b91c1c'}[kind];
+  return '<div style="font-size:17px;font-weight:800;color:'+col+'">'+title+'</div><div class="mini" style="line-height:1.7">'+body+'</div>'
+   +'<div class="mini" style="margin-top:3px">目前 '+(e.curR>=0?'+':'')+e.curR.toFixed(2)+'R（$'+e.px.toFixed(2)+'，'+e.lastDate+'）。'+(old?'<b class="warnc"> ⚠ 這不是最新的資料（最新是 '+t+'），收盤後按「更新持股」。</b>':'')+'</div>';
+}
+function renderHold(){
+  const o=load(HOLD),ks=Object.keys(o);
+  const out=$('holdOut');if(!out)return;
+  if(!ks.length){out.innerHTML='<div class="small" style="margin-top:8px">還沒有持股。買了之後在上面填：代號、買進價、買進日期（停損價空白＝用工具算的）→「加入持股」→「更新持股」。</div>';return;}
+  let h='<table style="margin-top:8px"><thead><tr><th>代號</th><th>買進</th><th>今天該怎麼做</th><th></th></tr></thead><tbody>';
+  ks.sort().forEach(k=>{const x=o[k];
+    h+='<tr><td><span class="tk">'+x.tk+'</span></td><td class="mini">$'+x.entry.toFixed(2)+'<br>'+x.buyDate+'<br>停損 $'+x.stop.toFixed(2)+(x.shares?'<br>'+x.shares+' 股':'')+'</td><td>'+holdCard(x)+'</td><td><button class="sec" data-del="'+k+'">刪除</button></td></tr>';});
+  out.innerHTML=h+'</tbody></table><div class="mini" style="margin-top:6px">這套賣出規則是我（Claude）在 pb-test 裡設計並回測的，不是哪位冠軍的原文；只在歷史資料上測過，還沒有往前驗證。同一天又碰停損又碰 3 倍風險價時，一律先算停損。買進當天那根 K 棒不算。工具假設你「照規則做了」（例如到 3 倍風險價就賣了 1/3）；如果你沒有賣，停損請自己維持原價。</div>';
+}
+$('holdOut').addEventListener('click',e=>{const b=e.target.closest('button[data-del]');if(!b)return;if(!confirm('刪掉這筆持股？'))return;const o=load(HOLD);delete o[b.dataset.del];save(HOLD,o);renderHold();});
+$('hDt').value=new Date(Date.now()-7*3600*1000).toISOString().slice(0,10);
+$('hAdd').addEventListener('click',()=>{
+  const tk=($('hTk').value||'').trim().toUpperCase(),px=+$('hPx').value,bd=ymd2s($('hDt').value),sh=+$('hSh').value||0;
+  let st=+$('hSt').value,src='自己填的';
+  if(!tk||!(px>0)||!bd){$('stat').innerHTML='<span class="bad">代號、買進價、買進日期都要填。</span>';return;}
+  if(!(st>0)){const a=load(LS)[tk];if(a&&a.stopPx>0&&a.stopPx<px){st=a.stopPx;src='工具算的（'+a.lastDate+' 的訊號停損）';}else{$('stat').innerHTML='<span class="bad">這檔沒有現成的停損，請自己填停損價。</span>';return;}}
+  if(!(st<px)){$('stat').innerHTML='<span class="bad">停損價要低於買進價。</span>';return;}
+  const o=load(HOLD);o[tk+'|'+bd]={tk,entry:px,buyDate:bd,stop:Math.round(st*100)/100,shares:sh,ev:null};save(HOLD,o);
+  ['hTk','hPx','hSt','hSh'].forEach(i=>$(i).value='');
+  $('stat').innerHTML='<b class="ok">✓ 已加入 '+tk+'</b>，停損 $'+st.toFixed(2)+'（'+src+'）。按「更新持股」取得今天的判斷。';renderHold();
+});
+$('hRef').addEventListener('click',async()=>{
+  if(BUSY)return;
+  const tks=Array.from(new Set(Object.values(load(HOLD)).map(x=>x.tk)));
+  if(!tks.length){$('stat').innerHTML='<span class="warnc">還沒有持股。</span>';return;}
+  BUSY=true;setBtns(true);const gap=Math.max(1,+$('gap').value||2.5)*1000;const bad=[];
+  for(let i=0;i<tks.length;i++){
+    $('stat').innerHTML='更新持股 <b>'+(i+1)+' / '+tks.length+'</b>：<b>'+tks[i]+'</b>';
+    try{const bars=await fetchBars(tks[i]);holdUpdate(tks[i],bars);renderHold();}catch(e){bad.push(tks[i]+'（'+(WHY[tks[i]]||'失敗')+'）');}
+    if(i<tks.length-1)await new Promise(r=>setTimeout(r,gap));
+  }
+  $('stat').innerHTML='<b class="ok">✓ 持股更新完</b>'+(bad.length?'<br><span class="bad">✗ '+bad.join('、')+'</span>':'');
+  BUSY=false;setBtns(false);renderHold();
+});
+$('hCopy').addEventListener('click',()=>{
+  const txt=JSON.stringify(load(HOLD));const box=$('hBox');box.style.display='block';box.value=txt;box.focus();box.select();
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+  try{if(!ok&&navigator.clipboard){navigator.clipboard.writeText(txt);ok=true;}}catch(e){}
+  $('stat').innerHTML=ok?'<b class="ok">✓ 持股備份已複製。</b>貼到備忘錄收好；換版本前先做這一步。':'備份文字已顯示在下方，請長按全選、拷貝。';
+});
+$('hImp').addEventListener('click',()=>{
+  const box=$('hBox');
+  if(box.style.display==='none'||!box.value.trim()){box.style.display='block';box.value='';box.focus();$('stat').innerHTML='把持股備份貼進下面的框，再按一次「匯入持股備份」。';return;}
+  try{const j=JSON.parse(box.value);if(!j||typeof j!=='object')throw 0;const cur=load(HOLD);Object.keys(j).forEach(k=>{if(!cur[k])cur[k]=j[k];});save(HOLD,cur);box.value='';box.style.display='none';renderHold();$('stat').innerHTML='<b class="ok">✓ 持股已匯入。</b>';}
+  catch(e){$('stat').innerHTML='<span class="bad">備份文字格式不對，沒有匯入。</span>';}
+});
+
+renderChips();render();renderHold();
 </script>
 </body></html>
