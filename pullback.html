@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.3</title>
+<title>回檔盤點 pullback v1.4</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -44,7 +44,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .mini{font-size:12.5px;color:var(--mut)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.3（新：強勢股漏斗＋長期趨勢檢查）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.4（新：主名單改用「長期趨勢＋半年漲幅前 30%」）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -66,7 +66,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 </div>
 
 <div class="card" id="picksCard" style="display:none">
-  <h2>③ 現在有沒有可以考慮的價位？ <span class="small">（只看 Q 條件符合／差一點的強勢股）</span></h2>
+  <h2>③ 現在有沒有可以考慮的價位？ <span class="small">（只看「長期趨勢過關＋半年漲幅前 30%」的強勢股；Q 條件只當標記）</span></h2>
   <div id="picks"></div>
 </div>
 
@@ -76,8 +76,9 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
     ① <b>贏在選對強勢股，「收復」只多一點</b>：Q 條件強勢股版，收復 EV 約 +0.2～+0.5R，比沒收復的同組多 +0.05～+0.24R，方向 10 個比較全部同向，但幾乎都「統計上看不出差別」。<br>
     ② <b>最好的出場是你的式</b>（賺 3 倍風險賣 1/3，剩下連 3 天破 20 日線出）：收復 +0.54R vs 沒收復 +0.30R（n=239）。<br>
     ③ <b>停損別太緊</b>：5% 以內那組是負的，5～8% 才賺。<b>回檔別太深</b>：10% 以上賺很薄。<br>
-    ④ <b>勝率只有 33～40%，報酬中位數是負的，靠少數大賺</b>：跟 Martin Luk 的「形狀」一致，但我們的幅度小很多，沒有重現他的成績。Q 條件版最大連虧 9～15 次，所以每筆風險先抓小一點、分散在約 5 檔。<br>
-    ⑥ <b>新增（v1.3）</b>：發現 RBRK 這類「大跌後 V 型反彈」的股票會被短期 Q 條件放進來，所以加了長期趨勢檢查。它<b>有沒有加分還沒驗證</b>，請到 pb-test v1.2 的新選項跑，結果出來再決定要不要把它當硬條件。<br>
+    ④ <b>勝率只有 33～40%，報酬中位數是負的，靠少數大賺</b>：跟 Martin Luk 的「形狀」一致，但我們的幅度小很多，沒有重現他的成績。最大連虧 15～23 次，所以每筆風險先抓小一點、分散在約 5 檔。<br>
+    ⑦ <b>v1.4 的判斷依據（10/22 三個版本比較）</b>：「Q 條件」「Q＋長期趨勢」「長期趨勢＋半年漲幅前 30%」三版比，第三版筆數最多（收復約 780 筆）、賺錢最分散（前 5 檔只占約 25%，另兩版是 56%、85%）、2023～2026 每年都是正的，所以主名單改用它。收復比沒收復只多 +0.04～+0.15R，5 種出場全是「統計上看不出差別」；Q 條件不符合的也有 +0.41R，所以 Q 只當加分標記。<br>
+    ⑥ <b>（v1.3）</b>：發現 RBRK 這類「大跌後 V 型反彈」的股票會被短期 Q 條件放進來，所以加了長期趨勢檢查。它<b>有沒有加分還沒驗證</b>，pb-test v1.2 已跑：單獨加長期趨勢沒有額外加分，但半年漲幅前 30% 有，所以 v1.4 把「長期趨勢＋半年漲幅前 30%」一起當條件。<br>
     ⑤ <b>限制</b>：股票池是今天還在的 191 檔（偏向贏家，EV 偏樂觀）；弱大盤樣本只有 27 筆。所以這裡只說「可以開始考慮」，真正有沒有用，要靠下面的「觀察本」往前記。
   </div></details>
 </div>
@@ -278,7 +279,7 @@ async function runList(list,label){
       const bars=await fetchBars(tk);
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
-      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsRecord(a);obsUpdate(tk,bars);}catch(e2){}render();}
+      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
     }catch(e){bad.push(tk);}
     if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
   }
@@ -289,7 +290,7 @@ async function runList(list,label){
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
       try{const bars=await fetchBars(tk);const a=analyze(bars);
-        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsRecord(a);obsUpdate(tk,bars);}catch(e2){}render();}
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
     }
@@ -396,7 +397,11 @@ function sizeTxt(entry,stop){
 }
 function renderPicksAndObs(){
   const store=load(LS),t=today(),all0=Object.values(store).filter(a=>a.day===t),fresh=all0.filter(a=>a.e21v!=null&&a.ma50v!=null&&a.ttOk!==undefined),oldFmt=all0.length-fresh.length;
-  const c=cfgGet(),good=a=>a.q==='pass'||a.q==='near';
+  const c=cfgGet();
+  const r6all=fresh.map(x=>x.r6).sort((x,y)=>x-y);
+  const topP=a=>Math.max(1,Math.round(r6all.filter(v=>v>a.r6).length/Math.max(1,r6all.length)*100));
+  const good=a=>topP(a)<=30;
+  const rankOk=fresh.length>=100;
   const card=$('picksCard');
   if(!all0.length){card.style.display='none';renderObs();return;}
   card.style.display='block';
@@ -410,26 +415,26 @@ function renderPicksAndObs(){
   const waitAll=fresh.filter(a=>a.cat!=='reclaim'&&a.trigPx!=null&&good(a)&&a.trigDist<=0.10&&a.stopPx!=null).sort((x,y)=>x.trigDist-y.trigDist);
   const nowA=nowAll.filter(a=>a.ttOk),nowB=nowAll.filter(a=>!a.ttOk),waitA=waitAll.filter(a=>a.ttOk),waitB=waitAll.filter(a=>!a.ttOk);
   // 漏斗
-  const fun=[['全部',fresh.length],['強勢股（Q 符合／差一點）',strong.length],['＋長期趨勢也過關',strongTT.length],['其中回檔類（已收復＋貼近支撐）',pb.length],['其中已收復',recl.length],['停損放得進上限',reclOk.length]];
+  const fun=[['全部',fresh.length],['半年漲幅前 30%',strong.length],['＋長期趨勢也過關',strongTT.length],['其中回檔類（已收復＋貼近支撐）',pb.length],['其中已收復',recl.length],['停損放得進上限',reclOk.length]];
   let h='<div class="mini" style="margin-bottom:4px">漏斗（一層一層篩）：</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">'+fun.map((x,k)=>'<span style="background:'+(k===fun.length-1?'#dcfce7':'#eef2f7')+';border-radius:8px;padding:4px 9px;font-size:13px">'+x[0]+' <b>'+x[1]+'</b></span>').join('<span class="mini">→</span>')+'</div>';
   const noQ=fresh.filter(a=>a.cat==='reclaim'&&!good(a)).length;
+  try{if(rankOk)fresh.forEach(a=>{if(good(a))obsRecord(a,topP(a));});}catch(e3){}
   let big,rd;
-  if(nowA.length){big='有 '+nowA.length+' 檔出現「可以開始考慮」的價位';rd='都是強勢股（Q 條件）、長期趨勢也過關、回檔後已收復 21 日線。這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
+  if(nowA.length){big='有 '+nowA.length+' 檔出現「可以開始考慮」的價位';rd='都是半年漲幅排前 30% 的強勢股、長期趨勢也過關、回檔後已收復 21 日線（Q 條件只當加分標記）。這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
   else if(waitA.length){big='還沒有已收復的；有 '+waitA.length+' 檔接近確認價（要等）';rd='回測顯示「等收復再買」比「跌到支撐就先買」有證據；這一批都還沒收復，今天先不用動，把確認價記起來。';}
-  else{big='現在沒有「強勢股＋長期趨勢＋收復」的價位，今天不用做';rd='沒有一檔同時過 Q 條件、長期趨勢、又出現收復或接近確認價。'+(nowB.length||waitB.length?'下面「長期趨勢有問題」那區有幾檔 Q 條件過關但長期趨勢沒過，先不列入。':'')+(noQ?'（另有 '+noQ+' 檔已收復但不屬於強勢股，不列。）':'');}
+  else{big='現在沒有「長期趨勢＋半年漲幅前 30%＋收復」的價位，今天不用做';rd='沒有一檔同時過半年漲幅前 30%、長期趨勢、又出現收復或接近確認價。'+(nowB.length||waitB.length?'下面「長期趨勢有問題」那區有幾檔 Q 條件過關但長期趨勢沒過，先不列入。':'')+(noQ?'（另有 '+noQ+' 檔已收復但半年漲幅不在前 30%，不列。）':'');}
   h+='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'</div></div>';
-  const topP=a=>{const arr=fresh.map(x=>x.r6).sort((x,y)=>x-y);return Math.max(1,Math.round(arr.filter(v=>v>a.r6).length/Math.max(1,arr.length)*100));};
-  const nowTable=list=>{let t='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
+    const nowTable=list=>{let t='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const v=stopVerdict(a);
-      t+='<tr class="pick"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q '+(a.q==='pass'?'<b class="ok">符合</b>':'<b class="warnc">差一點</b>')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div></td>'
+      t+='<tr class="pick"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div></td>'
        +'<td>收盤價 <b>$'+a.px.toFixed(2)+'</b> 左右<div class="mini">實際以隔天開盤為準。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
        +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
        +'<td>'+sizeTxt(a.px,a.stopPx)+'</td>'
-       +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='near'?' 強勢條件只是「差一點」，回測裡這組比「符合」那組弱（+0.14～+0.32R vs +0.8R）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
+       +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='pass'?' Q 條件也符合，回測裡這組略好（+0.70R，n=75）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
     return t+'</tbody></table>';};
   const waitTable=list=>{let t='<table><thead><tr><th>代號</th><th>現價 → 確認價</th><th>到時候停損</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const sp=(a.trigPx-a.stopPx)/a.trigPx,ok=sp<=c.smax;
-      t+='<tr class="wait"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q '+(a.q==='pass'?'<b class="ok">符合</b>':'<b class="warnc">差一點</b>')+'<br>半年漲幅排前 '+topP(a)+'%</div></td>'
+      t+='<tr class="wait"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%</div></td>'
        +'<td>$'+a.px.toFixed(2)+' → <b>$'+a.trigPx.toFixed(2)+'</b>（還差 '+(a.trigDist*100).toFixed(1)+'%）</td>'
        +'<td>約 <b>$'+a.stopPx.toFixed(2)+'</b>（−'+(sp*100).toFixed(1)+'%）<div class="'+(ok?'ok':'bad')+'">'+(ok?'✓ 在上限內':'✗ 超過上限，先不看')+'</div></td>'
        +'<td class="mini" style="min-width:220px">要「收盤」站上 $'+a.trigPx.toFixed(2)+'（今天高點與 21 日線較高者）才算收復，盤中碰到不算。收復之前先不買。'+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
@@ -437,7 +442,7 @@ function renderPicksAndObs(){
   if(nowA.length)h+=nowTable(nowA);
   if(waitA.length)h+='<h2 style="margin-top:14px;font-size:15px">接近確認價的（要等）</h2>'+waitTable(waitA);
   if(nowB.length||waitB.length){
-    h+='<details style="margin-top:12px"><summary class="warnc">⚠ Q 條件過關，但「長期趨勢」有問題的（'+(nowB.length+waitB.length)+' 檔）—— 先不列入，點開看原因</summary><div class="mini" style="margin:6px 0">短期漲得多，但長期均線結構沒過 Minervini 趨勢模板（例如 200 日線還沒上升、離 52 週低點不夠遠）。常見於「大跌後的 V 型反彈」。這類回測還沒驗證有沒有優勢。</div>'+(nowB.length?nowTable(nowB):'')+(waitB.length?waitTable(waitB):'')+'</details>';
+    h+='<details style="margin-top:12px"><summary class="warnc">⚠ 半年漲幅前 30%，但「長期趨勢」有問題的（'+(nowB.length+waitB.length)+' 檔）—— 先不列入，點開看原因</summary><div class="mini" style="margin:6px 0">短期漲得多，但長期均線結構沒過 Minervini 趨勢模板（例如 200 日線還沒上升、離 52 週低點不夠遠）。常見於「大跌後的 V 型反彈」。這類回測還沒驗證有沒有優勢。</div>'+(nowB.length?nowTable(nowB):'')+(waitB.length?waitTable(waitB):'')+'</details>';
   }
   if(oldFmt)h+='<div class="mini warnc" style="margin-top:8px">另有 '+oldFmt+' 檔是舊版算的，沒有價位或長期趨勢資料，沒列在上面；重跑那幾檔就會補上。</div>';
   h+='<div class="mini" style="margin-top:8px">價位是用今天收盤算的，只是參考，不是下單指示。強勢股回檔連跌一週時，停損價會一直往下調，容易放不進上限，這是正常的。「長期趨勢」是照 Minervini 趨勢模板第 1～6 項算的（二手整理來源，不是他的原文）。</div>';
@@ -447,13 +452,13 @@ function renderPicksAndObs(){
 
 // ===== v1.2：觀察本 =====
 const OBS='pb_obs_v1';
-function obsRecord(a){
-  if(a.cat!=='reclaim'||!(a.q==='pass'||a.q==='near')||a.stopPx==null||a.stopPct>cfgGet().smax)return;
+function obsRecord(a,rs){
+  if(a.cat!=='reclaim'||a.ttOk!==true||!(rs<=30)||a.stopPx==null||a.stopPct>cfgGet().smax)return;
   const o=load(OBS);
   const open=Object.values(o).some(x=>x.tk===a.tk&&(x.status==='pending'||x.status==='open'));
   const key=a.tk+'|'+a.lastDate;
   if(open||o[key])return;
-  o[key]={tk:a.tk,sigDate:a.lastDate,sector:a.sector||'',q:a.q,tt:a.ttOk===undefined?null:a.ttOk,sigPx:a.px,stop:a.stopPx,stopPct:a.stopPct,status:'pending',entry:null,days:0,curR:null,maxR:null,r10:null,r20:null,r40:null,exitR:null,rec:today()};
+  o[key]={tk:a.tk,sigDate:a.lastDate,sector:a.sector||'',q:a.q,rs:rs,tt:a.ttOk===undefined?null:a.ttOk,sigPx:a.px,stop:a.stopPx,stopPct:a.stopPct,status:'pending',entry:null,days:0,curR:null,maxR:null,r10:null,r20:null,r40:null,exitR:null,rec:today()};
   save(OBS,o);
 }
 function obsUpdate(tk,bars){
