@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.2</title>
+<title>回檔法回測 pb-test v1.3</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.2</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.3</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -134,7 +134,7 @@ function signalAt(P,i,cfg){
   if(cfg&&(cfg.strong==='q'||cfg.strong==='qtt')&&q==='no')return null;
   if(cfg&&(cfg.strong==='qtt'||cfg.strong==='tt')&&!trendTemplate(P,i))return null;
   if(cfg&&(cfg.strong==='rs'||cfg.strong==='tt')){const th=cfg.rsThr&&cfg.rsThr[P.date[i]];if(th==null||r6<th)return null;}
-  return {grp,stop,depth,q,i};
+  return {grp,stop,depth,q,i,adr};
 }
 const RULES=['Q10','Q20','R3','H10','H20'];
 // 回傳 {exit,ret,R,hold,reason,open}
@@ -174,7 +174,7 @@ function simTicker(tk,b,spyOk,cfg){
       if(free[key]!=null&&e<=free[key])continue;
       const r=runExit(P,e,E,sg.stop,rule);
       free[key]=r.exit;
-      out.push({tk,grp:sg.grp,rule,date:P.date[i],year:P.year[i],entry:E,stop:sg.stop,risk,depth:sg.depth,q:sg.q,spy:spyOk?(spyOk[P.date[i]]===true?'強':(spyOk[P.date[i]]===false?'弱':'?')):'?',ret:r.ret,R:r.R,hold:r.hold,reason:r.reason,open:r.open});
+      out.push({tk,grp:sg.grp,rule,date:P.date[i],year:P.year[i],entry:E,stop:sg.stop,risk,depth:sg.depth,q:sg.q,adr:sg.adr,spy:spyOk?(spyOk[P.date[i]]===true?'強':(spyOk[P.date[i]]===false?'弱':'?')):'?',ret:r.ret,R:r.R,hold:r.hold,reason:r.reason,open:r.open});
     }
   }
   return out;
@@ -347,6 +347,23 @@ function render(trades,nT,yrs,cfg){
   h+=slice('依停損距離',x=>(x.risk<0.05?'5% 以內':'5～8%'),['5% 以內','5～8%']);
   h+=slice('依持有天數',x=>(x.hold<=2?'0～2 天':(x.hold<=10?'3～10 天':'11 天以上')),['0～2 天','3～10 天','11 天以上']);
   h+='</div>';
+  // ADR 分組（v1.3，分組界線事先固定：<4%、4～5%、>5%，不看結果調整）
+  const AB=x=>(x.adr<4?'低（<4%）':(x.adr<=5?'中（4～5%）':'高（>5%）'));
+  const ABK=['低（<4%）','中（4～5%）','高（>5%）'];
+  h+='<div class="card"><h2>依「平常一天波動幅度（ADR）」分組（只看「回檔後已收復」）</h2><div class="small">ADR＝最近 20 天每天（最高÷最低−1）的平均，越大代表這檔股票平常一天晃得越兇。分三組：低＜4%、中 4～5%、高＞5%，界線在跑之前就定好，沒有看結果調整。<b>每一種出場各看一次</b>，如果三組的排序都一樣，才比較可信；只有一種出場這樣，多半是巧合。</div>';
+  let consist=0,tested=0;
+  RULES.forEach(r=>{
+    const Sx=by('S',r);const g={};ABK.forEach(k=>g[k]=Sx.filter(x=>AB(x)===k));const st={};ABK.forEach(k=>st[k]=stats(g[k]));
+    h+='<div style="margin:12px 0 2px"><b>'+RN[r]+'</b></div><table><thead><tr><th>ADR 組</th><th>筆數</th><th>勝率</th><th>平均賺</th><th>平均賠</th><th>EV（R）</th><th>報酬中位數</th><th>白話</th></tr></thead><tbody>';
+    ABK.forEach(k=>{const q=st[k];const say=!q.n?'沒有訊號':(q.n<20?'樣本太少，只能參考':(q.ev>0.3?'這組平均有賺':(q.ev>0?'賺很薄':'平均是虧的')));
+      h+='<tr><td>'+k+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td>'+F2(q.avgW)+'R</td><td>'+F2(q.avgL)+'R</td><td><b class="'+(q.ev>0.3?'ok':(q.ev<=0?'bad':'warnc'))+'">'+F2(q.ev)+'</b></td><td>'+P1(q.medRet)+'</td>':'<td>0</td><td colspan="5">—</td>')+'<td style="text-align:left" class="small">'+say+'</td></tr>';});
+    h+='</tbody></table>';
+    const lo=g[ABK[0]],hi=g[ABK[2]];const c=compare(hi,lo);
+    if(c.v!=='few'){tested++;if(c.d>0)consist++;}
+    const T={better:'高 ADR 比低 ADR 好，統計上看得出來',better_unstable:'高 ADR 看起來較好，但前後半段不一致',worse:'高 ADR 比低 ADR 差，統計上看得出來',worse_unstable:'高 ADR 看起來較差，但前後半段不一致',same:'高、低 ADR 統計上看不出差別',few:'低或高組少於 20 筆，不能比'}[c.v];
+    h+='<div class="small">高 vs 低：'+T+(c.d!=null?'（平均每筆差 '+F2(c.d)+'R）':'')+'。</div>';
+  });
+  h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(tested?('5 種出場裡，有 '+tested+' 種能比較高、低組；其中高 ADR 平均較好的有 '+consist+' 種。'):'樣本不夠，五種出場都不能比較高、低組。')+'<br>・若低 ADR 一致比較差、且「統計上看得出來」→ 值得在 pullback.html 加一句白話提醒（例如「這檔平常波動小，反彈空間可能有限」）。<br>・若多半「看不出差別」→ 不加任何東西，ADR 不是關鍵。<br>・若高 ADR 反而較差 → 先不動，另外查原因。<br>⚠ 三組、五種出場，總共 15 格，隨機也可能出現幾格看起來有差；每組筆數不多；這批股票是今天挑的（倖存者偏差）。所以只看「五種出場方向一致」且「統計上看得出來」。</div></div></div>';
   // 集中度
   const byT={};S.forEach(x=>{byT[x.tk]=(byT[x.tk]||0)+x.R;});const tot=Object.values(byT).reduce((a,b)=>a+b,0);
   const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);
