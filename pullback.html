@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.4</title>
+<title>回檔盤點 pullback v1.5</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -43,8 +43,12 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .pick{border-left:6px solid var(--g);background:#f1faf4}.wait{border-left:6px solid #d99a1b;background:#fff9ec}
 .mini{font-size:12.5px;color:var(--mut)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:6px 4px}}
+
+.act{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:3px}
+.act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
+tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.4（新：主名單改用「長期趨勢＋半年漲幅前 30%」）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.5（新：每檔都用白話寫「該怎麼做」）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -227,7 +231,10 @@ function analyze(bars){
 const LS='pb_v1', LSD='pb_done_v1';
 const $=id=>document.getElementById(id);
 function fmtDate(ts){const d=new Date(ts*1000);return (d.getUTCFullYear()+'').slice(2)+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0');}
-function today(){return new Date().toDateString();}
+// v1.4.1：「今天」＝存檔裡最新的資料日，不是日曆日。
+//   舊寫法用日曆日，跑到一半跨過午夜，前面的股票就變成「舊資料」。
+function dayOf(a){return (a&&(a.lastDate||a.day))||'';}
+function today(){let m='';try{const s=JSON.parse(localStorage.getItem(LS))||{};for(const k in s){const d=s[k]&&s[k].lastDate;if(d&&d>m)m=d;}}catch(e){}return m||new Date().toDateString();}
 function load(k){try{return JSON.parse(localStorage.getItem(k))||{};}catch(e){return {};}}
 function save(k,o){try{localStorage.setItem(k,JSON.stringify(o));}catch(e){}}
 
@@ -279,7 +286,7 @@ async function runList(list,label){
       const bars=await fetchBars(tk);
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
-      else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
+      else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
     }catch(e){bad.push(tk);}
     if(i<list.length-1)await new Promise(r=>setTimeout(r,gap));
   }
@@ -290,13 +297,13 @@ async function runList(list,label){
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
       try{const bars=await fetchBars(tk);const a=analyze(bars);
-        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=today();a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
+        if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
     }
   }
   // 板塊完成記號
-  const done=load(LSD);const ok=list.filter(t=>store[t]&&store[t].day===today()).length;
+  const done=load(LSD);const ok=list.filter(t=>store[t]&&dayOf(store[t])===today()).length;
   if(label&&label!=='自選清單'&&label!=='全部板塊'){done[label]={day:today(),total:list.length,ok:ok,real:bad.length};save(LSD,done);}
   const secs=Math.round((Date.now()-t0)/1000);
   let h='<b class="ok">✓ 跑完 '+list.length+' 檔</b>（'+secs+' 秒）';
@@ -313,7 +320,7 @@ const pc=(x,d)=>(x>=0?'+':'')+(x*100).toFixed(d==null?1:d)+'%';
 function render(){
   try{renderPicksAndObs();}catch(e){const el=$('picks');if(el){el.innerHTML='<div class="small bad">這一塊顯示出錯（不影響抓資料）：'+e.message+'</div>';}}
   const store=load(LS);const all=Object.values(store);
-  const t=today();const fresh=all.filter(a=>a.day===t),old=all.filter(a=>a.day!==t);
+  const t=today();const fresh=all.filter(a=>dayOf(a)===t),old=all.filter(a=>dayOf(a)!==t);
   if(!all.length){$('resCard').style.display='none';return;}
   $('resCard').style.display='block';
   const cnt={};ORDER.forEach(k=>cnt[k]=fresh.filter(a=>a.cat===k).length);
@@ -321,6 +328,11 @@ function render(){
   const stopOk=fresh.filter(a=>(a.cat==='reclaim'||a.cat==='touch')&&a.stopPx!=null&&stopVerdict(a)[0]==='ok').length;
   const dataDate=fresh.length?fresh.map(a=>a.lastDate).sort().slice(-1)[0]:'—';
   $('resMeta').textContent='（今天跑了 '+fresh.length+' 檔，資料到 '+dataDate+(old.length?'；另有 '+old.length+' 檔是舊資料，排在最下面':'')+'）';
+  const r6s=fresh.map(a=>a.r6).sort((x,y)=>x-y);
+  const topPct=a=>Math.max(1,Math.round(r6s.filter(v=>v>a.r6).length/Math.max(1,r6s.length)*100));
+  const rankOk=fresh.length>=100;
+  const ACT={};all.forEach(a=>{ACT[a.tk]=actionOf(a,dayOf(a)===t?topPct(a):999,rankOk,dayOf(a)!==t);});
+  const goList=fresh.filter(a=>ACT[a.tk].k==='go').map(a=>a.tk),edgeList=fresh.filter(a=>ACT[a.tk].k==='edge').map(a=>a.tk),waitList=fresh.filter(a=>ACT[a.tk].k==='wait').map(a=>a.tk);
   // 判決
   let big,rd;
   const a1=cnt.touch+cnt.reclaim;
@@ -328,21 +340,23 @@ function render(){
   else if(a1===0&&cnt.base===0){big='今天這批沒有符合「回檔」或「打底」的股票';rd='共 '+fresh.length+' 檔，沒有一檔貼在支撐、也沒有一檔已收復或打底接近突破。這個工具現在沒有東西可以看。';}
   else{big='回檔類 '+a1+' 檔（其中 '+cnt.reclaim+' 檔已收復）　打底類 '+cnt.base+' 檔';
     rd='共 '+fresh.length+' 檔。「已收復」代表回檔後已經站回 21 日線，是最接近 Luk 說的進場訊號的一類；「貼近支撐」是還在等；「打底」要看 pivot，不是回檔。其中符合 Qullamaggie 選股條件的有 '+qn+' 檔；回檔類裡停損放得進你上限的有 '+stopOk+' 檔。';}
+  if(fresh.length){const w=!rankOk?'⚠ 今天只跑了 '+fresh.length+' 檔，不到 100 檔，半年漲幅排名不準，先把全部板塊跑完。':null;
+    big=w?w:(goList.length?'✅ 可以開始考慮：'+goList.join('、')+'（'+goList.length+' 檔）':'今天沒有可以開始買的股票')+(edgeList.length?'　⚠ 勉強：'+edgeList.join('、'):'')+(waitList.length?'　⏳ 等待中 '+waitList.length+' 檔':'');}
   $('verdict').innerHTML='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'<br><span class="small">這只是「現在有幾檔」，不是買賣建議，也還沒驗證這些型態後來好不好賺。</span></div></div>';
   // 表
   const rows=[];
-  ORDER.forEach(k=>fresh.filter(a=>a.cat===k).sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a)));
+  const PR={go:0,edge:1,wait:2,watch:3,no:4,old:5};
+  fresh.slice().sort((x,y)=>PR[ACT[x.tk].k]-PR[ACT[y.tk].k]||ORDER.indexOf(x.cat)-ORDER.indexOf(y.cat)||(y.q==='pass')-(x.q==='pass')||x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
   old.sort((x,y)=>x.tk.localeCompare(y.tk)).forEach(a=>rows.push(a));
-  const r6s=fresh.map(a=>a.r6).sort((x,y)=>x-y);
-  const topPct=a=>Math.max(1,Math.round(r6s.filter(v=>v>a.r6).length/Math.max(1,r6s.length)*100));
-  let h='<table><thead><tr><th>代號</th><th>分類</th><th>白話</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th><th>停損與可買股數</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>代號</th><th>該怎麼做</th><th>白話（工具看到什麼）</th><th>離 52 週高點</th><th>離 30 週線</th><th>ADR</th><th>1 / 3 / 6 個月</th><th>Q 條件</th><th>停損與可買股數</th></tr></thead><tbody>';
   rows.forEach(a=>{
-    const L=LABEL[a.cat],stale=a.day!==t;
+    const L=LABEL[a.cat],stale=dayOf(a)!==t;
     const dirTxt={up:'線上升',flat:'線走平',down:'線下降'}[a.dir];
     const qq=QTXT[a.q];
-    h+='<tr'+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div></td>'
-      +'<td><span class="badge '+L[1]+'">'+L[0]+'</span></td>'
-      +'<td style="min-width:220px">'+a.why+'</td>'
+    const AC=ACT[a.tk];
+    h+='<tr'+(AC.k==='go'?' class="row-go"':'')+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div></td>'
+      +'<td style="min-width:230px"><div class="act act-'+AC.k+'">'+AC.t+'</div><div class="mini" style="color:inherit">'+AC.why+'</div><div style="margin-top:4px"><span class="badge '+L[1]+'">'+L[0]+'</span></div></td>'
+      +'<td style="min-width:220px" class="mini">'+a.why+'</td>'
       +'<td class="n">'+pc(a.offHi)+'<div class="small">離最高 '+(-a.offHi*100).toFixed(0)+'%</div></td>'
       +'<td class="n">'+pc(a.dMA150)+'<div class="small">'+dirTxt+'</div></td>'
       +'<td class="n">'+a.adr.toFixed(1)+'%<div class="small">'+(a.adr>5?'波動大':'波動小')+'</div></td>'
@@ -354,6 +368,33 @@ function render(){
   $('tbl').innerHTML=h;
 }
 function cfgGet(){return {cap:+$('cap').value||0,rk:(+$('rk').value||1)/100,smax:(+$('smax').value||8)/100,nn:Math.max(1,+$('nn').value||5)};}
+// v1.5：每檔一句白話的「該怎麼做」。k：go 可以開始考慮／edge 勉強／wait 等／watch 觀察／no 先不買／old 舊資料
+function actionOf(a,top,rankOk,stale){
+  const mk=(k,t,why)=>({k,t,why});
+  const c=cfgGet();
+  if(stale)return mk('old','⚠ 舊資料','這是以前跑的，價格已經變了。重跑今天的板塊再看。');
+  if(a.cat==='other')return mk('no','🚫 不要買','股價在 30 週線下方（長期趨勢沒有向上），這套「強勢股回檔」的方法不適用。');
+  if(a.cat==='high')return mk('watch','😴 先不用管','還在高點附近、沒有回檔。強勢股不要追高，等它回檔再看。');
+  if(a.cat==='base')return mk('watch','👀 只能觀察','還在整理打底，這不是回檔買點。要買要等 dna 給出 pivot 和突破。');
+  if(a.ttOk===false)return mk('no','🚫 先不買','長期趨勢有 '+a.ttFail.length+' 項沒過（'+a.ttFail.slice(0,2).join('；')+(a.ttFail.length>2?'…':'')+'），整體不夠強。');
+  if(a.ttOk===undefined||a.e21v==null)return mk('old','⚠ 舊版資料','這筆是舊版算的，重跑一次才有判斷。');
+  if(!(top<=30))return mk('no','🚫 先不買','它的半年漲幅只排在前 '+top+'%。回測裡有優勢的是前 30% 的強勢股，這檔不在裡面。');
+  if(!rankOk)return mk('wait','⏳ 先跑完全部板塊','今天只跑了一部分股票，「半年漲幅排名」會不準。等全部（約 191 檔）都跑完再判斷。');
+  if(a.cat==='deep')return mk('wait','⏳ 先不買','回檔太深（超過 25%）。先看它守不守得住 30 週線，守住了再說。');
+  if(a.cat==='touch'){
+    const tp=a.trigPx!=null?'等「收盤」站上 $'+a.trigPx.toFixed(2)+' 才算站回來（盤中碰到不算）。':'等它站回 21 日線。';
+    return mk('wait','⏳ 再等，現在還不能買','強勢股回檔中，還沒站回 21 日線。'+tp+'在那之前不要先買。');
+  }
+  // reclaim
+  if(a.stopPx==null)return mk('old','⚠ 舊版資料','這筆是舊版算的，重跑一次才有停損。');
+  const v=stopVerdict(a),sp=(a.stopPct*100).toFixed(1),lim=(c.smax*100).toFixed(0);
+  if(v[0]==='ok'){
+    const deep=Math.abs(a.depth||0)>0.10;
+    return mk('go','✅ 可以開始考慮買','強勢股回檔後已站回 21 日線。參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''));
+  }
+  if(v[0]==='edge')return mk('edge','⚠ 勉強，不建議','強勢股已站回 21 日線，但停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買，或等更好的價位。');
+  return mk('no','🚫 先不買','強勢股已站回 21 日線，但停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。等回檔再整理一次。');
+}
 function stopVerdict(a){
   const c=cfgGet();
   if(a.stopPct<=c.smax)return ['ok','✓ 在你的 '+(c.smax*100).toFixed(0)+'% 以內'];
@@ -396,7 +437,7 @@ function sizeTxt(entry,stop){
   return '<div class="mini">最多買 <b>'+sh+'</b> 股（約 $'+(sh*entry).toFixed(0)+'，占資金 '+(sh*entry/c.cap*100).toFixed(0)+'%）；'+(rs<=cs?'由「每筆最多賠 '+(c.rk*100).toFixed(2).replace(/\.?0+$/,'')+'%」決定':'由「平均分給 '+c.nn+' 檔，每檔最多 1/'+c.nn+' 資金」決定')+'</div>';
 }
 function renderPicksAndObs(){
-  const store=load(LS),t=today(),all0=Object.values(store).filter(a=>a.day===t),fresh=all0.filter(a=>a.e21v!=null&&a.ma50v!=null&&a.ttOk!==undefined),oldFmt=all0.length-fresh.length;
+  const store=load(LS),t=today(),all0=Object.values(store).filter(a=>dayOf(a)===t),fresh=all0.filter(a=>a.e21v!=null&&a.ma50v!=null&&a.ttOk!==undefined),oldFmt=all0.length-fresh.length;
   const c=cfgGet();
   const r6all=fresh.map(x=>x.r6).sort((x,y)=>x-y);
   const topP=a=>Math.max(1,Math.round(r6all.filter(v=>v>a.r6).length/Math.max(1,r6all.length)*100));
