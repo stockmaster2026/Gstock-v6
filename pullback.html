@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.7</title>
+<title>回檔盤點 pullback v1.7.1</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.7（每檔改成：現況＋現在在等什麼＋事實；不再下「強弱」評語）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.7.1（每檔改成：現況＋現在在等什麼＋事實；不再下「強弱」評語）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -462,6 +462,13 @@ function actionOf(a,top,rankOk,stale){
   }
   // reclaim，條件都過
   const v=stopVerdict(a),sp=(a.stopPct*100).toFixed(1),lim=(c.smax*100).toFixed(0);
+  const br=buyRange(a);
+  if(v[0]!=='skip'&&(!br.ok||br.above)){
+    const close='$'+a.px.toFixed(2);
+    return mk('wait',br.ok?'⏳ 已站回，但現價已超過買進範圍，先不要追':'⏳ 已站回，但目前沒有合適的買進範圍，先不要買',
+      br.ok?'價格回到 $'+br.lo.toFixed(2)+' ~ $'+br.hi.toFixed(2)+' 之間才考慮（隔天開盤在範圍內才算）。現在收盤 '+close+'，已高過上限 $'+br.hi.toFixed(2)+'。':'等下一次回檔，重新算停損與範圍。',
+      facts().concat(['買進範圍上限 $'+(br.hi).toFixed(2)+'（停損距離不超過你的 '+lim+'%，且不高過訊號價 +5%）']),'現在在等');
+  }
   if(v[0]==='ok'){
     const deep=Math.abs(a.depth||0)>0.10;
     return mk('go','✅ 可以開始考慮買','參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''),facts(),'下一步');
@@ -539,14 +546,17 @@ function renderPicksAndObs(){
   // 候選：已收復 / 接近確認價
   const nowAll=fresh.filter(a=>a.cat==='reclaim'&&good(a)&&a.stopPx!=null&&stopVerdict(a)[0]!=='skip').sort((x,y)=>(y.q==='pass')-(x.q==='pass')||x.stopPct-y.stopPct);
   const waitAll=fresh.filter(a=>a.cat!=='reclaim'&&a.trigPx!=null&&good(a)&&a.trigDist<=0.10&&a.stopPx!=null).sort((x,y)=>x.trigDist-y.trigDist);
-  const nowA=nowAll.filter(a=>a.ttOk),nowB=nowAll.filter(a=>!a.ttOk),waitA=waitAll.filter(a=>a.ttOk),waitB=waitAll.filter(a=>!a.ttOk);
+  const inR=a=>{const r=buyRange(a);return r.ok&&!r.above;};const nowA=nowAll.filter(a=>a.ttOk).sort((x,y)=>inR(y)-inR(x)),nowB=nowAll.filter(a=>!a.ttOk),waitA=waitAll.filter(a=>a.ttOk),waitB=waitAll.filter(a=>!a.ttOk);
   // 漏斗
   const fun=[['全部',fresh.length],['半年漲幅前 30%',strong.length],['＋長期趨勢也過關',strongTT.length],['其中回檔類（已收復＋貼近支撐）',pb.length],['其中已收復',recl.length],['停損放得進上限',reclOk.length]];
   let h='<div class="mini" style="margin-bottom:4px">漏斗（一層一層篩）：</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">'+fun.map((x,k)=>'<span style="background:'+(k===fun.length-1?'#dcfce7':'#eef2f7')+';border-radius:8px;padding:4px 9px;font-size:13px">'+x[0]+' <b>'+x[1]+'</b></span>').join('<span class="mini">→</span>')+'</div>';
   const noQ=fresh.filter(a=>a.cat==='reclaim'&&!good(a)).length;
   try{if(rankOk)fresh.forEach(a=>{if(good(a))obsRecord(a,topP(a));});}catch(e3){}
   let big,rd;
-  if(nowA.length){big='有 '+nowA.length+' 檔出現「可以開始考慮」的價位';rd='都是半年漲幅排前 30% 的強勢股、長期趨勢也過關、回檔後已收復 21 日線（Q 條件只當加分標記）。這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
+  const nIn=nowA.filter(inR).length,nAbove=nowA.length-nIn;
+  if(nowA.length){
+    big=nIn?('有 '+nIn+' 檔現價還在買進範圍內，可以開始考慮'+(nAbove?'；另有 '+nAbove+' 檔已超過範圍，不追':'')):('有 '+nAbove+' 檔已站回 21 日線，但現價都已超過買進範圍，今天先不要追');
+    rd='都是半年漲幅排前 30% 的強勢股、長期趨勢也過關、回檔後已收復 21 日線（Q 條件只當加分標記）。'+(nAbove?'「已超過範圍」＝今天收盤價已高過可買的上限（例如收復那天漲很多），等價格回到範圍內才考慮，不追高。':'')+'這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
   else if(waitA.length){big='還沒有已收復的；有 '+waitA.length+' 檔接近確認價（要等）';rd='回測顯示「等收復再買」比「跌到支撐就先買」有證據；這一批都還沒收復，今天先不用動，把確認價記起來。';}
   else{big='現在沒有「長期趨勢＋半年漲幅前 30%＋收復」的價位，今天不用做';rd='沒有一檔同時過半年漲幅前 30%、長期趨勢、又出現收復或接近確認價。'+(nowB.length||waitB.length?'下面「長期趨勢有問題」那區有幾檔 Q 條件過關但長期趨勢沒過，先不列入。':'')+(noQ?'（另有 '+noQ+' 檔已收復但半年漲幅不在前 30%，不列。）':'');}
   h+='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'</div></div>';
