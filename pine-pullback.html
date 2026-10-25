@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>回檔買點 Pine 指標 v1.1（複製頁）</title>
+<title>回檔買點 Pine 指標 v1.2（複製頁）</title>
 <style>
 :root{--bg:#f5f7fa;--card:#fff;--tx:#1f2937;--mut:#6b7280;--g:#15803d;--r:#b91c1c;--b:#1d4ed8;--bd:#e5e7eb}
 @media (prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--tx:#f3f4f6;--mut:#9ca3af;--bd:#374151}}
@@ -14,8 +14,8 @@ textarea{width:100%;height:260px;font:13px/1.45 ui-monospace,Menlo,monospace;bor
 .ok{color:var(--g);font-weight:700}.bad{color:var(--r);font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}
 </style></head><body>
-<h1>回檔買點 Pine 指標 v1.1</h1>
-<div class="mut">這是 v1 的改版（標籤改成深底白字的小標籤、方框只畫最近的訊號、小表文字改成白話）。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
+<h1>回檔買點 Pine 指標 v1.2</h1>
+<div class="mut">這是 v1.1 的改版（標籤改成「單一個字」，不會跨到旁邊的 K 棒；所有不能買的統一畫成灰色小叉叉）。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
 
 <div class="card">
 <h2>它在圖上畫什麼</h2>
@@ -23,11 +23,9 @@ table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid 
 <tr><th>圖上的東西</th><th>意思</th></tr>
 <tr><td>青色粗線</td><td>21 日線（這套方法的「站回」指的就是它）</td></tr>
 <tr><td>橘色細線</td><td>20 日線（連續 3 天收盤在它下面就賣）</td></tr>
-<tr><td>深綠底白字「買點」</td><td>收盤站回 21 日線、停損放得進你的上限、現價在買進範圍內、長線 6 關全過</td></tr>
-<tr><td>灰底白字「差N關」</td><td>站回的型態符合，但長線（長期均線那 6 項）差 N 關沒過，先不要買。差哪幾關寫在小表裡</td></tr>
-<tr><td>深橘底白字「勉強」</td><td>停損稍微超過你的上限</td></tr>
-<tr><td>灰底白字「別追」</td><td>站回了，但收盤價已高過可買的上限，不追</td></tr>
-<tr><td>紅底白字「停損大」</td><td>停損要放太遠，超過你的上限，不做</td></tr>
+<tr><td>深綠底白字「買」</td><td>這一天可以考慮：收盤站回 21 日線、停損放得進你的上限、現價在買進範圍內、長線 6 關全過</td></tr>
+<tr><td>深橘底白字「勉」</td><td>勉強：停損稍微超過你的上限，要買只能少買</td></tr>
+<tr><td>灰色小叉叉</td><td><b>這一天有站回，但不能買。</b>可能是：現價已高過買進範圍（別追）、停損要放太大、或長線 6 關沒過齊。是哪一種，看右下小表（最新一天）</td></tr>
 <tr><td>綠色方框、紅色虛線</td><td>隔天開盤可以考慮的價格範圍、停損價（<b>只畫最近 10 根 K 棒內的訊號</b>，設定裡可改）</td></tr>
 <tr><td>小表（預設右下）</td><td>這一檔「現在的狀況」、「該怎麼做」、「長線差哪幾關」。設定裡可以改位置或關掉</td></tr>
 </table>
@@ -35,19 +33,18 @@ table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid 
 </div>
 
 <div class="card">
-<h2>怎麼裝（約 3 分鐘，跟上次一樣的做法）</h2>
+<h2>怎麼裝（跟上次一樣的做法）</h2>
 <ol>
-<li>在 iPad Safari 打開 TradingView 的圖表頁，先切到<b>日線</b>，下方打開「Pine 編輯器」。</li>
-<li>點編輯器左上角腳本名稱旁的箭頭，選「Create new」→「Indicator」（新的空白指標，<b>不要覆蓋舊的 v1</b>）。</li>
-<li>把編輯器裡原本的範例程式碼<b>全部刪掉</b>（點進去，全選，刪除）。</li>
-<li>回到這個頁面按下面的「複製程式碼」，再回到編輯器貼上。</li>
-<li>按 Save，名稱用預設的「回檔買點 pullback v1.1」，再按「Add to chart」。</li>
-<li>圖上會同時有 v1 和 v1.1。<b>先把舊的 v1 用「眼睛」圖示隱藏</b>，只看 v1.1。看了沒問題，再把 v1 刪掉（指標名稱右邊的「⋯」或「X」）。兩個同時開著，線和標籤會重複。</li>
+<li>先把這個頁面的新版放上 GitHub（取代舊檔，檔名不變），再用 Safari 打開，確認標題寫「v1.2」。</li>
+<li>在 TradingView 切到<b>日線</b>，打開 Pine 編輯器，左上角腳本名稱旁的箭頭選「Create new」→「Indicator」。</li>
+<li>把範例程式碼<b>全部刪掉</b>，回到這個頁面按「複製程式碼」，再回編輯器貼上。</li>
+<li>按 Save，名稱用預設的「回檔買點 pullback v1.2」，再按「Add to chart」。</li>
+<li>打開右邊的「物件樹」（疊在一起的菱形圖示），把舊的兩個「回檔買點」（v1 和 v1.1）都<b>隱藏</b>（眼睛有斜線）或直接刪掉（垃圾桶），只留 v1.2。</li>
 <li>如果貼上後出現紅字錯誤：截圖整個畫面給我（要看到是第幾行），不要自己改。</li>
 </ol>
 <button id="cp">複製程式碼</button> <span id="msg" class="mut"></span>
 <textarea id="code" readonly spellcheck="false">//@version=5
-indicator(&quot;回檔買點 pullback v1.1&quot;, overlay=true, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
+indicator(&quot;回檔買點 pullback v1.2&quot;, overlay=true, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
 
 // ===== 設定 =====
 smax     = input.float(8.0, &quot;停損上限 %（跟 pullback.html 的停損上限一樣）&quot;, minval=3, maxval=15, step=1) / 100
@@ -109,15 +106,13 @@ sigFar = sig and stopPct &gt; smax + 0.02
 plot(e21, &quot;21 日線&quot;, color=color.aqua, linewidth=2)
 plot(showMA20 ? ma20 : na, &quot;20 日線（出場參考）&quot;, color=color.orange, linewidth=1)
 
-// 標籤用「深色底＋白字」，不管後面是什麼背景色都看得清楚
-plotshape(sigGo and ttOk, &quot;買點&quot;, shape.labelup, location.belowbar, color.rgb(0, 120, 70), text=&quot;買點&quot;, textcolor=color.white, size=size.tiny)
-plotshape(sigEdge, &quot;勉強&quot;, shape.labelup, location.belowbar, color.rgb(190, 95, 0), text=&quot;勉強&quot;, textcolor=color.white, size=size.tiny)
-plotshape(sigLate, &quot;別追&quot;, shape.labelup, location.belowbar, color.rgb(90, 90, 90), text=&quot;別追&quot;, textcolor=color.white, size=size.tiny)
-plotshape(sigFar, &quot;停損大&quot;, shape.labelup, location.belowbar, color.rgb(200, 30, 30), text=&quot;停損大&quot;, textcolor=color.white, size=size.tiny)
-
-// 型態符合但長線沒過齊：標「差N關」（N 會變，所以用 label）
-if sigGo and not ttOk
-    label.new(bar_index, na, &quot;差&quot; + str.tostring(ttMiss) + &quot;關&quot;, yloc=yloc.belowbar, style=label.style_label_up, color=color.rgb(90, 90, 90), textcolor=color.white, size=size.tiny)
+// 標籤只用「單一個字」，寬度剛好一根 K 棒，不會跨到旁邊
+//   買＝可以考慮；勉＝停損稍微超過上限（勉強）
+//   灰色叉叉＝有站回，但不能買（別追／停損太大／長線沒過齊），原因看小表
+plotshape(sigGo and ttOk, &quot;買點&quot;, shape.labelup, location.belowbar, color.rgb(0, 120, 70), text=&quot;買&quot;, textcolor=color.white, size=size.tiny)
+plotshape(sigEdge, &quot;勉強&quot;, shape.labelup, location.belowbar, color.rgb(190, 95, 0), text=&quot;勉&quot;, textcolor=color.white, size=size.tiny)
+notBuy = (sigGo and not ttOk) or sigLate or sigFar
+plotshape(notBuy, &quot;有站回但不能買&quot;, shape.xcross, location.belowbar, color.rgb(120, 120, 120), size=size.tiny)
 
 // 方框與停損線：只畫最近 recentN 根 K 棒內的訊號
 isRecent = last_bar_index - bar_index &lt;= recentN
@@ -202,10 +197,9 @@ alertcondition(sigGo and ttOk, &quot;回檔買點&quot;, &quot;回檔買點出�
 <div class="card">
 <h2>裝好之後怎麼驗證</h2>
 <ul>
-<li><b>訊號的位置跟 v1 一樣</b>：這次只改了字、符號、顏色和方框，判斷規則沒動（我逐行對照過）。打開 NTNX 日線，10/23 應該還是有「買點」；OKTA 10/23 應該是「別追」。</li>
-<li>標籤都是<b>深色底、白字</b>的小方塊，在綠色、紫色、橘色背景上都應該看得清楚。看不清楚的地方請截圖給我。</li>
-<li>方框和紅色虛線只會出現在最近 10 根 K 棒內的訊號旁邊，更早的訊號只剩小標籤。</li>
-<li>小表在股價低於 150 日線時，不再寫「長期趨勢向下」，改寫「股價在 150 日線下方」或「150 日線還在往下走」；最下面一格會列出長線差哪幾關。</li>
+<li><b>訊號的位置跟 v1、v1.1 一樣</b>：判斷規則沒動，只改了畫法。同一天以前是「停損大／別追／差N關」的，現在都是灰色小叉叉；以前是「買點」的，現在是綠色的「買」。</li>
+<li>每個符號都應該只對著一根 K 棒，不再跨到旁邊。</li>
+<li>灰色叉叉是什麼原因，請看右下小表。</li>
 </ul>
 <div class="mut" style="line-height:1.7">
 <b>要知道的限制：</b><br>
