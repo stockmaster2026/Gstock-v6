@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>回檔買點 Pine 指標 v1.2（複製頁）</title>
+<title>回檔買點 Pine 指標 v1.4（複製頁）</title>
 <style>
 :root{--bg:#f5f7fa;--card:#fff;--tx:#1f2937;--mut:#6b7280;--g:#15803d;--r:#b91c1c;--b:#1d4ed8;--bd:#e5e7eb}
 @media (prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--tx:#f3f4f6;--mut:#9ca3af;--bd:#374151}}
@@ -14,8 +14,8 @@ textarea{width:100%;height:260px;font:13px/1.45 ui-monospace,Menlo,monospace;bor
 .ok{color:var(--g);font-weight:700}.bad{color:var(--r);font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}
 </style></head><body>
-<h1>回檔買點 Pine 指標 v1.2</h1>
-<div class="mut">這是 v1.1 的改版（標籤改成「單一個字」，不會跨到旁邊的 K 棒；所有不能買的統一畫成灰色小叉叉）。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
+<h1>回檔買點 Pine 指標 v1.4</h1>
+<div class="mut">這是 v1.3 的改版：<b>新增「買點之後什麼時候賣」</b>（賣出線與賣出標記）。標籤每行一個字、直排、不能買的原因寫在標籤上，這些跟 v1.3 一樣。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
 
 <div class="card">
 <h2>它在圖上畫什麼</h2>
@@ -23,34 +23,42 @@ table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid 
 <tr><th>圖上的東西</th><th>意思</th></tr>
 <tr><td>青色粗線</td><td>21 日線（這套方法的「站回」指的就是它）</td></tr>
 <tr><td>橘色細線</td><td>20 日線（連續 3 天收盤在它下面就賣）</td></tr>
-<tr><td>深綠底白字「買」</td><td>這一天可以考慮：收盤站回 21 日線、停損放得進你的上限、現價在買進範圍內、長線 6 關全過</td></tr>
-<tr><td>深橘底白字「勉」</td><td>勉強：停損稍微超過你的上限，要買只能少買</td></tr>
-<tr><td>灰色小叉叉</td><td><b>這一天有站回，但不能買。</b>可能是：現價已高過買進範圍（別追）、停損要放太大、或長線 6 關沒過齊。是哪一種，看右下小表（最新一天）</td></tr>
+<tr><td>綠底白字「買」</td><td><b>可以考慮</b>：收盤站回 21 日線、停損放得進你的上限、現價在買進範圍內、長線 6 關全過</td></tr>
+<tr><td>橘底白字「勉」</td><td><b>勉強</b>：停損稍微超過你的上限，要買只能少買</td></tr>
+<tr><td>灰底白字「別追」（直排）</td><td><b>不能買</b>：站回了，但收盤價已高過可買的上限</td></tr>
+<tr><td>紅底白字「停損大」（直排）</td><td><b>不能買</b>：站回了，但停損要放太遠，超過你的上限</td></tr>
+<tr><td>藍底白字「差N關」（直排）</td><td><b>不能買</b>：站回了，但長線 6 關差 N 關沒過。差哪幾關看右下小表</td></tr>
+<tr><td>買點之後的紅色粗線、綠色細線、灰色細線</td><td><b>停損線</b>（紅）、<b>賺 3 倍風險價</b>（綠，漲到先賣 1/3）、<b>推算買進價</b>（灰）。只在綠底「買」的訊號之後出現，賣掉或停損後線就消失</td></tr>
+<tr><td>K 棒上方綠底「賺」</td><td>這一天碰到賺 3 倍風險價：賣 1/3，停損拉到成本</td></tr>
+<tr><td>K 棒上方橘底「賣」</td><td>連續 3 天收盤在 20 日線下：<b>隔天開盤把剩下的全賣</b></td></tr>
+<tr><td>K 棒上方紅底「停」</td><td>跌破停損線，出場</td></tr>
 <tr><td>綠色方框、紅色虛線</td><td>隔天開盤可以考慮的價格範圍、停損價（<b>只畫最近 10 根 K 棒內的訊號</b>，設定裡可改）</td></tr>
-<tr><td>小表（預設右下）</td><td>這一檔「現在的狀況」、「該怎麼做」、「長線差哪幾關」。設定裡可以改位置或關掉</td></tr>
+<tr><td>小表（預設右下）</td><td>這一檔「現在的狀況」、「該怎麼做」、「長線差哪幾關」，最下面一格在買點之後會寫出停損價、賺 3 倍價和賣出規則。設定裡可以改位置或關掉</td></tr>
 </table>
+<div class="mut" style="margin-top:6px">只有<b>綠底「買」和橘底「勉」</b>是可以考慮的，其他顏色的標籤都是不能買。</div>
 <div class="mut" style="margin-top:6px">設定裡可以填「買進價、停損價」（有買才填），圖上就會多出：買進價、停損、賺 3 倍風險價（先賣 1/3）、−5% 警戒價四條線。<b>注意：這兩格是整個指標共用，不是每檔各一份</b>，切到別檔不會自動換，所以平常保持 0（空白）就好，持股以 pullback.html 的持股卡為準。</div>
 </div>
 
 <div class="card">
 <h2>怎麼裝（跟上次一樣的做法）</h2>
 <ol>
-<li>先把這個頁面的新版放上 GitHub（取代舊檔，檔名不變），再用 Safari 打開，確認標題寫「v1.2」。</li>
+<li>先把這個頁面的新版放上 GitHub（取代舊檔，檔名不變），再用 Safari 打開，確認標題寫「v1.4」。</li>
 <li>在 TradingView 切到<b>日線</b>，打開 Pine 編輯器，左上角腳本名稱旁的箭頭選「Create new」→「Indicator」。</li>
 <li>把範例程式碼<b>全部刪掉</b>，回到這個頁面按「複製程式碼」，再回編輯器貼上。</li>
-<li>按 Save，名稱用預設的「回檔買點 pullback v1.2」，再按「Add to chart」。</li>
-<li>打開右邊的「物件樹」（疊在一起的菱形圖示），把舊的兩個「回檔買點」（v1 和 v1.1）都<b>隱藏</b>（眼睛有斜線）或直接刪掉（垃圾桶），只留 v1.2。</li>
+<li>按 Save，名稱用預設的「回檔買點 pullback v1.4」，再按「Add to chart」。</li>
+<li>打開右邊的「物件樹」（疊在一起的菱形圖示），把舊的兩個「回檔買點」（v1 和 v1.1）都<b>隱藏</b>（眼睛有斜線）或直接刪掉（垃圾桶），只留 v1.4。</li>
 <li>如果貼上後出現紅字錯誤：截圖整個畫面給我（要看到是第幾行），不要自己改。</li>
 </ol>
 <button id="cp">複製程式碼</button> <span id="msg" class="mut"></span>
 <textarea id="code" readonly spellcheck="false">//@version=5
-indicator(&quot;回檔買點 pullback v1.2&quot;, overlay=true, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
+indicator(&quot;回檔買點 pullback v1.4&quot;, overlay=true, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
 
 // ===== 設定 =====
 smax     = input.float(8.0, &quot;停損上限 %（跟 pullback.html 的停損上限一樣）&quot;, minval=3, maxval=15, step=1) / 100
 showMA20 = input.bool(true, &quot;畫 20 日線（出場參考）&quot;)
 showBox  = input.bool(true, &quot;訊號後畫出隔天買進範圍與停損&quot;)
 recentN  = input.int(10, &quot;方框只畫最近幾根 K 棒內的訊號&quot;, minval=1, maxval=250)
+showSell = input.bool(true, &quot;買點之後畫出賣出線與賣出標記（依回測的「你的式」推算）&quot;)
 showTbl  = input.bool(true, &quot;顯示小表（現在的狀況）&quot;)
 tblPosIn = input.string(&quot;右下&quot;, &quot;小表位置&quot;, options=[&quot;右下&quot;, &quot;左下&quot;, &quot;右上&quot;, &quot;左上&quot;])
 entryIn  = input.float(0.0, &quot;買進價（有買才填）&quot;, minval=0, step=0.01, group=&quot;我的持股&quot;)
@@ -106,13 +114,16 @@ sigFar = sig and stopPct &gt; smax + 0.02
 plot(e21, &quot;21 日線&quot;, color=color.aqua, linewidth=2)
 plot(showMA20 ? ma20 : na, &quot;20 日線（出場參考）&quot;, color=color.orange, linewidth=1)
 
-// 標籤只用「單一個字」，寬度剛好一根 K 棒，不會跨到旁邊
-//   買＝可以考慮；勉＝停損稍微超過上限（勉強）
-//   灰色叉叉＝有站回，但不能買（別追／停損太大／長線沒過齊），原因看小表
+// 標籤每行只放「一個字」，由上往下直著排，寬度剛好一根 K 棒，不會跨到旁邊
+//   綠底「買」＝可以考慮；橘底「勉」＝停損稍微超過上限（勉強）
+//   其他都是「有站回，但不能買」，原因直接寫在標籤上：
+//   灰底「別追」＝現價已高過買進範圍；紅底「停損大」＝停損要放太遠；藍底「差N關」＝長線 6 關沒過齊
 plotshape(sigGo and ttOk, &quot;買點&quot;, shape.labelup, location.belowbar, color.rgb(0, 120, 70), text=&quot;買&quot;, textcolor=color.white, size=size.tiny)
 plotshape(sigEdge, &quot;勉強&quot;, shape.labelup, location.belowbar, color.rgb(190, 95, 0), text=&quot;勉&quot;, textcolor=color.white, size=size.tiny)
-notBuy = (sigGo and not ttOk) or sigLate or sigFar
-plotshape(notBuy, &quot;有站回但不能買&quot;, shape.xcross, location.belowbar, color.rgb(120, 120, 120), size=size.tiny)
+plotshape(sigLate, &quot;別追&quot;, shape.labelup, location.belowbar, color.rgb(90, 90, 90), text=&quot;別\n追&quot;, textcolor=color.white, size=size.tiny)
+plotshape(sigFar, &quot;停損大&quot;, shape.labelup, location.belowbar, color.rgb(200, 30, 30), text=&quot;停\n損\n大&quot;, textcolor=color.white, size=size.tiny)
+if sigGo and not ttOk
+    label.new(bar_index, na, &quot;差\n&quot; + str.tostring(ttMiss) + &quot;\n關&quot;, yloc=yloc.belowbar, style=label.style_label_up, color=color.rgb(70, 85, 150), textcolor=color.white, size=size.tiny)
 
 // 方框與停損線：只畫最近 recentN 根 K 棒內的訊號
 isRecent = last_bar_index - bar_index &lt;= recentN
@@ -122,6 +133,56 @@ if showBox and isRecent and (sigGo or sigEdge or sigLate)
         label.new(bar_index + 4, rHi, &quot;可買 &quot; + str.tostring(rLo, &quot;#.##&quot;) + &quot; ~ &quot; + str.tostring(rHi, &quot;#.##&quot;), style=label.style_label_left, color=color.new(color.green, 20), textcolor=color.white, size=size.tiny)
     line.new(bar_index, stopPx, bar_index + 6, stopPx, color=color.red, style=line.style_dashed)
     label.new(bar_index + 6, stopPx, &quot;停損 &quot; + str.tostring(stopPx, &quot;#.##&quot;) + &quot; (-&quot; + str.tostring(stopPct * 100, &quot;#.#&quot;) + &quot;%)&quot;, style=label.style_label_left, color=color.new(color.red, 20), textcolor=color.white, size=size.tiny)
+
+// ===== 買點之後的賣出（依回測的「你的式」推算，只追蹤綠底「買」那種訊號）=====
+// 規則：買點隔天開盤買進；跌破停損就賣；漲到「買進價＋3×風險」賣 1/3 並把停損拉到成本；
+//       連續 3 天收盤在 20 日線下，隔天開盤全賣。一次只追蹤一筆，賣掉後才會追蹤下一個買點。
+newBuy = sigGo and ttOk
+var bool pWait = false
+var bool pOn = false
+var bool pPartial = false
+var float wStop = na
+var float pEntry = na
+var float pStop = na
+var float pTgt = na
+var int below3 = 0
+stopHit = false
+tgtHit = false
+sellNow = false
+if pWait
+    pEntry := open
+    pStop := wStop
+    pTgt := open + 3 * (open - wStop)
+    pOn := open &gt; wStop
+    pPartial := false
+    below3 := 0
+    pWait := false
+lnStop = showSell and pOn ? pStop : na
+lnTgt = showSell and pOn and not pPartial ? pTgt : na
+lnEntry = showSell and pOn ? pEntry : na
+if pOn
+    if low &lt;= pStop
+        stopHit := true
+        pOn := false
+    else
+        if not pPartial and high &gt;= pTgt
+            tgtHit := true
+            pPartial := true
+            pStop := math.max(pStop, pEntry)
+        below3 := close &lt; ma20 ? below3 + 1 : 0
+        if below3 &gt;= 3
+            sellNow := true
+            pOn := false
+if newBuy and not pOn and not pWait
+    pWait := true
+    wStop := stopPx
+
+plot(lnEntry, &quot;推算買進價&quot;, color=color.gray, linewidth=1, style=plot.style_linebr)
+plot(lnStop, &quot;推算停損線&quot;, color=color.red, linewidth=2, style=plot.style_linebr)
+plot(lnTgt, &quot;推算賺3倍風險價（賣1/3）&quot;, color=color.green, linewidth=1, style=plot.style_linebr)
+plotshape(showSell and tgtHit, &quot;賺到3倍風險：賣1/3&quot;, shape.labeldown, location.abovebar, color.rgb(0, 120, 70), text=&quot;賺&quot;, textcolor=color.white, size=size.tiny)
+plotshape(showSell and sellNow, &quot;連3天收盤在20日線下：隔天開盤全賣&quot;, shape.labeldown, location.abovebar, color.rgb(190, 95, 0), text=&quot;賣&quot;, textcolor=color.white, size=size.tiny)
+plotshape(showSell and stopHit, &quot;跌破停損&quot;, shape.labeldown, location.abovebar, color.rgb(200, 30, 30), text=&quot;停&quot;, textcolor=color.white, size=size.tiny)
 
 // ===== 我的持股：買進價、停損價、賺3倍風險價、-5%警戒價 =====
 hasPos = entryIn &gt; 0 and stopIn &gt; 0 and stopIn &lt; entryIn
@@ -133,7 +194,7 @@ plot(hasPos ? entryIn * 0.95 : na, &quot;警戒價 -5%&quot;, color=color.orange
 
 // ===== 小表：現在的狀況、該怎麼做、長線差哪幾關 =====
 tblPos = tblPosIn == &quot;右下&quot; ? position.bottom_right : tblPosIn == &quot;左下&quot; ? position.bottom_left : tblPosIn == &quot;右上&quot; ? position.top_right : position.top_left
-var table tbl = table.new(tblPos, 1, 3, border_width=1)
+var table tbl = table.new(tblPos, 1, 4, border_width=1)
 if showTbl and barstate.islast
     trig = math.max(e21, high)
     st = &quot;&quot;
@@ -189,6 +250,12 @@ if showTbl and barstate.islast
     table.cell(tbl, 0, 0, st, text_color=color.white, bgcolor=bg, text_size=size.small)
     table.cell(tbl, 0, 1, todo, text_color=color.white, bgcolor=bg, text_size=size.tiny)
     table.cell(tbl, 0, 2, longTxt, text_color=color.white, bgcolor=color.new(color.gray, 60), text_size=size.tiny)
+    holdTxt = &quot;&quot;
+    if showSell and pOn
+        holdTxt := &quot;照買點推算（你的式）：\n・停損線 &quot; + str.tostring(pStop, &quot;#.##&quot;) + (pPartial ? &quot;（已拉到成本）&quot; : &quot;&quot;) + &quot;\n・&quot; + (pPartial ? &quot;已賣 1/3，剩下的看 20 日線&quot; : &quot;漲到 &quot; + str.tostring(pTgt, &quot;#.##&quot;) + &quot; 先賣 1/3&quot;) + &quot;\n・連 3 天收盤在 20 日線下，隔天開盤全賣&quot;
+    else if showSell and pWait
+        holdTxt := &quot;照買點推算：隔天開盤買進\n・停損 &quot; + str.tostring(wStop, &quot;#.##&quot;) + &quot;\n・賺到 3 倍風險先賣 1/3\n・連 3 天收盤在 20 日線下，隔天開盤全賣&quot;
+    table.cell(tbl, 0, 3, holdTxt, text_color=color.white, bgcolor=holdTxt == &quot;&quot; ? na : color.new(color.green, 70), text_size=size.tiny)
 
 alertcondition(sigGo and ttOk, &quot;回檔買點&quot;, &quot;回檔買點出現：收盤站回 21 日線，隔天開盤看買進範圍&quot;)
 </textarea>
@@ -197,9 +264,11 @@ alertcondition(sigGo and ttOk, &quot;回檔買點&quot;, &quot;回檔買點出�
 <div class="card">
 <h2>裝好之後怎麼驗證</h2>
 <ul>
-<li><b>訊號的位置跟 v1、v1.1 一樣</b>：判斷規則沒動，只改了畫法。同一天以前是「停損大／別追／差N關」的，現在都是灰色小叉叉；以前是「買點」的，現在是綠色的「買」。</li>
-<li>每個符號都應該只對著一根 K 棒，不再跨到旁邊。</li>
-<li>灰色叉叉是什麼原因，請看右下小表。</li>
+<li><b>訊號的位置跟 v1、v1.1 一樣</b>：判斷規則沒動，只改了畫法。以前是「買點」的，現在是綠底的「買」；其他原因都直接寫在標籤上。</li>
+<li><b>賣出線只是「照買點推算」</b>：假設你在綠底「買」的隔天開盤買進。你實際的成本如果不同，線會有差距；真正持有的部位，以 pullback.html 的持股卡為準。設定裡的「買進價、停損價」欄位保持 0（空白）。</li>
+<li>這套賣出規則跟 pb-test 回測用的「你的式」相同（我另外拿隨機資料對照過，賣出日一致；回測多了一個「最長持有 120 天」的限制，圖上沒有）。</li>
+<li>每個標籤都應該只有一個字寬，對著一根 K 棒，不會跨到旁邊。</li>
+<li>「別追」、「停損大」、「差N關」是直著排的；如果文字沒有直排、變成橫的或擠在一起，請截圖給我。</li>
 </ul>
 <div class="mut" style="line-height:1.7">
 <b>要知道的限制：</b><br>
