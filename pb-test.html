@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.3</title>
+<title>回檔法回測 pb-test v1.4</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.3</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.4（新增「進場時機比較」）</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -161,11 +161,31 @@ function runExit(P,e,E,S,rule){
   real-=0.002*E;
   return {exit,ret:real/E,R:real/Rd,hold:exit-e+1,reason,open};
 }
+const TMBUF=[];
 function simTicker(tk,b,spyOk,cfg){
   const P=prep(b),out=[];const free={};
   for(let i=200;i<P.n-1;i++){
     const sg=signalAt(P,i,cfg);if(!sg)continue;
     const e=i+1,E=P.O[e];
+    if(sg.grp==='S'){
+      // v1.4 進場時機比較：同一個訊號，用不同的買法各算一次（只存到 TMBUF，不影響原本的結果）
+      const c0=P.C[i],stp=sg.stop,hiR=Math.min(stp/(1-cfg.smax),c0*1.05),loR=P.e21[i],O1=E,rangeOk=hiR>loR;
+      const addT=(v,Ep,ee)=>{
+        if(!(Ep>stp))return;
+        for(const rule of RULES){
+          const key='T|'+v+'|'+rule;
+          if(free[key]!=null&&ee<=free[key])continue;
+          const r=runExit(P,ee,Ep,stp,rule);free[key]=r.exit;
+          TMBUF.push({tk,v,rule,date:P.date[i],year:P.year[i],R:r.R,ret:r.ret,risk:(Ep-stp)/Ep});
+        }
+      };
+      if((O1-stp)/O1<=cfg.smax)addT('A',O1,e);
+      if(rangeOk&&O1>=loR&&O1<=hiR)addT('IN',O1,e);
+      if(O1<loR)addT('LOW',O1,e);
+      if(rangeOk&&O1>hiR)addT('HIGH',O1,e);
+      if(rangeOk&&O1>hiR&&P.L[e]<=hiR)addT('LIM',hiR,e);
+      if((c0-stp)/c0<=cfg.smax)addT('B',c0,e);
+    }
     if(!(E>sg.stop))continue;
     const risk=(E-sg.stop)/E;
     if(risk>cfg.smax)continue;
@@ -285,7 +305,7 @@ async function doRun(){
     tks.forEach(tk=>{const b=all[tk];for(let i=126;i<b.length;i++){(byD[b[i].date]=byD[b[i].date]||[]).push(b[i].c/b[i-126].c-1);}});
     cfg.rsThr={};Object.keys(byD).forEach(d=>{const a=byD[d].sort((x,y)=>x-y);cfg.rsThr[d]=a.length>=30?a[Math.floor(a.length*0.7)]:null;});
   }
-  let trades=[];
+  let trades=[];TMBUF.length=0;
   for(let i=0;i<tks.length;i++){
     $('stat').innerHTML='計算中 '+(i+1)+' / '+tks.length+'：'+tks[i];
     trades=trades.concat(simTicker(tks[i],all[tks[i]],spy,cfg));
@@ -328,6 +348,31 @@ function render(trades,nT,yrs,cfg){
     h+='<div class="small">你之前的過關標準（樣本≥30、EV＞+0.3R、報酬中位數為正、最大連虧≤6）：'+['樣本','EV','中位數','連虧'].map((n,i)=>'<span class="'+(ok[i]?'ok':'bad')+'">'+(ok[i]?'✓':'✗')+n+'</span>').join(' ')+'。<br>⚠ 這種「小賠、偶爾大賺」的做法，勝率本來就低，報酬中位數通常是負的，所以「中位數」這一格容易不過；主要看跟對照組比、以及 EV。</div>';
   });
   h+='</div>';
+  // 進場時機比較（v1.4）
+  {
+    const VN=[['A','現在的做法：訊號隔天開盤就買（停損不超過上限）'],['IN','開盤價在「買進範圍」內（工具會叫你買）'],['LOW','開盤已跌到 21 日線以下（工具叫你不買）'],['HIGH','開盤直接高過範圍上限（追高，工具叫你不買）'],['LIM','開盤高過上限，但盤中跌回上限就成交（限價單掛在範圍上限）'],['B','另一種做法：訊號當天收盤價買（等於收盤前買）']];
+    const TV=(v,r)=>TMBUF.filter(t=>t.v===v&&t.rule===r);
+    h+='<div class="card"><h2>進場時機比較（只看「回檔後已收復」）</h2><div class="small">問題：訊號要收盤才確定，隔天才能買，可能被跳空甩掉；而「隔天跌進範圍才買到」也可能剛好是行情轉壞。這裡用同樣的訊號、同樣的停損和出場，只改「什麼時候買」，看哪一種比較好。<b>買的價格不同，停損距離也不同，R 是各自以自己的停損距離算的。</b>每一種出場各看一次。</div>';
+    const T2={better:'前者比後者好，統計上看得出來',better_unstable:'前者看起來較好，但前後半段不一致',worse:'前者比後者差，統計上看得出來',worse_unstable:'前者看起來較差，但前後半段不一致',same:'兩者統計上看不出差別',few:'有一組少於 20 筆，不能比'};
+    const cmpTxt=(a,b,name)=>{const c=compare(a,b);return '<div class="small">'+name+'：'+T2[c.v]+(c.d!=null?'（平均每筆差 '+F2(c.d)+'R）':'')+'。</div>';};
+    let bBetter=0,bTested=0;
+    RULES.forEach(r=>{
+      h+='<div style="margin:12px 0 2px"><b>'+RN[r]+'</b></div><table><thead><tr><th style="text-align:left">買法</th><th>筆數</th><th>勝率</th><th>平均賺</th><th>平均賠</th><th>EV（R）</th><th>報酬中位數</th><th>白話</th></tr></thead><tbody>';
+      VN.forEach(x=>{const g=TV(x[0],r),q=stats(g);const say=!q.n?'沒有訊號':(q.n<20?'樣本太少，只能參考':(q.ev>0.3?'這組平均有賺':(q.ev>0?'賺很薄':'平均是虧的')));
+        h+='<tr><td style="text-align:left">'+x[1]+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td>'+F2(q.avgW)+'R</td><td>'+F2(q.avgL)+'R</td><td><b class="'+(q.ev>0.3?'ok':(q.ev<=0?'bad':'warnc'))+'">'+F2(q.ev)+'</b></td><td>'+P1(q.medRet)+'</td>':'<td>0</td><td colspan="5">—</td>')+'<td style="text-align:left" class="small">'+say+'</td></tr>';});
+      h+='</tbody></table>';
+      const gA=TV('A',r),gB=TV('B',r),gIN=TV('IN',r),gLOW=TV('LOW',r),gHI=TV('HIGH',r),gLIM=TV('LIM',r);
+      h+=cmpTxt(gB,gA,'「當天收盤買」vs「隔天開盤買」');
+      const cBA=compare(gB,gA);if(cBA.v!=='few'){bTested++;if(cBA.d>0)bBetter++;}
+      // 同一批訊號逐筆對比
+      const mA={};gA.forEach(t=>{mA[t.tk+'|'+t.date]=t.R;});const dl=[];gB.forEach(t=>{const k=t.tk+'|'+t.date;if(mA[k]!=null)dl.push(t.R-mA[k]);});
+      if(dl.length>=20){const m=mean(dl),se=sd(dl)/Math.sqrt(dl.length);h+='<div class="small">同一批訊號逐筆對比（'+dl.length+' 筆，兩種買法都買得到的）：當天收盤買平均每筆'+(m>=0?'多賺 ':'少賺 ')+Math.abs(m).toFixed(2)+'R，其中 '+P0(dl.filter(x=>x>0).length/dl.length)+' 的訊號當天收盤買比較好'+(Math.abs(m)>2*se?'；差距統計上看得出來':'；差距統計上看不出來')+'。</div>';}
+      h+=cmpTxt(gIN,gLOW,'「開盤在範圍內」vs「開盤已跌破 21 日線」');
+      h+=cmpTxt(gIN,gHI,'「開盤在範圍內」vs「開盤高過上限（追高）」');
+      h+=cmpTxt(gLIM,gIN,'「高開後盤中跌回上限才成交」vs「開盤在範圍內」');
+    });
+    h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(bTested?('5 種出場裡，有 '+bTested+' 種能比較；其中「當天收盤買」平均較好的有 '+bBetter+' 種。'):'樣本不夠，不能比較。')+'<br>・「開盤已跌破 21 日線」那一列，就是在回答「隔天往下掉，可能其實是轉壞」這個擔心：如果它明顯比「範圍內」差，就代表工具叫你「低於範圍不買」是對的。<br>・「高開後盤中跌回上限才成交」是模擬你今天那種「掛在範圍裡，等它回來」的做法；它假設價格只要碰到你的價位就一定成交，實際上不一定，結果會偏樂觀。<br>・如果「當天收盤買」一致比較好、而且統計上看得出來，才值得考慮改成收盤前買；如果看不出差別，維持隔天開盤就好（比較不會因為盤中亂跳而買到沒守住的訊號）。<br>⚠ 多個比較、每組筆數不多；這批股票是今天挑的（倖存者偏差）；「當天收盤買」用的是真正收盤價，實際上你要在收盤前幾分鐘就下單，價格會有一點差。只看「五種出場方向一致」且「統計上看得出來」。</div></div></div>';
+  }
   // 切片：用 EV 最高的規則
   const pick=bestEV&&bestEV.sS.n>=20?bestEV.r:'Q20';
   const S=by('S',pick);
@@ -369,7 +414,7 @@ function render(trades,nT,yrs,cfg){
   const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);
   h+='<div class="card"><h2>賺的錢集中在哪幾檔？</h2><div class="small">'+(tot>0?'總共 '+F2(tot)+'R，最賺的 5 檔：'+top.map(t=>t[0]+' '+F2(t[1])+'R（占 '+P0(t[1]/tot)+'）').join('、')+'。如果少數幾檔就占了大半，這個結果就不穩。':'總和不是正的，沒有集中度問題。')+'</div></div>';
   const op=trades.filter(t=>t.open).length;
-  h+='<div class="card"><h2>資料說明</h2><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。</div></div>';
+  h+='<div class="card"><h2>資料說明</h2><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組；「進場時機比較」另外算，不在這個數字裡），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。</div></div>';
   $('out').innerHTML=h;
 }
 $('fetch').addEventListener('click',doFetch);$('run').addEventListener('click',doRun);
