@@ -19,11 +19,17 @@ button.red{background:#5b1d1d;border-color:#f85149}button.blue{background:#16407
 <div class="sub">看哪些資料占滿瀏覽器空間。不會自動刪任何東西，每一項要你自己按、再確認。</div>
 <div class="box"><div class="big" id="tot">…</div><div class="d" id="totd"></div>
 <button class="blue" id="probe">測試還能再寫多少</button> <span id="probeRes" class="d"></span></div>
+<div class="box"><button class="red" id="quick">一鍵清掉：rrg 暫存 ＋ 舊版總表（最安全）</button><div class="d">只清 rrg 的暫存和已經沒人讀的舊版總表。不動 dna 的任何資料、不動觀察本和持股。</div></div>
 <div class="box d">顏色：<span class="tag keep">你的資料</span> 刪了就沒了，不建議動　<span class="tag redo">可重跑</span> 只是算出來的結果或暫存，清掉再跑一次就回來　<span class="tag unk">不確定</span> 我不認得，別動</div>
 <div id="list"></div>
 <script>
 const KEEP={dna_holdings:'dna 持股',dna_positions:'dna 部位',pb_obs_v1:'pullback 觀察本',pb_hold_v1:'pullback 持股',riskStops_v1:'risk 停損',riskEntryStop_v1:'risk 進場停損',riskOrig_v1:'risk 原始部位',riskSnap_v1:'risk 快照',dnaWatchlist_v1:'dna 我的清單',stock_profiles:'公司速寫',dnaSecBox_v1:'板塊框',dnaSecEdit_v1:'板塊框編輯',dnaCapital_v1:'本金設定',dnaRiskPct_v1:'風險%設定',watch_syms:'觀察清單',fund_syms:'基本面清單',rd_v1:'news 閱讀紀錄',rdacc_v1:'news 閱讀累計',dnaNearMiss_v1:'差一點清單'};
 const REDO={gstock_v65_table:'dna 累積總表（重跑板塊就回來）',gstock_v65_batches:'dna 批次記錄',dna_batchwhy_v1:'批次失敗原因',dnaBT_v1:'dna 回測結果',dnaBTrs_v1:'dna 回測 RS',dnaBTHot_v1:'dna 回測熱門',dnaCand_v1:'dna 候選',dna_secdone_v1:'板塊跑完標記',pb_v1:'pullback 掃描結果',pb_done_v1:'pullback 已跑標記',thermo_v1:'溫度計暫存',stocks_scan_v1:'stocks 掃描暫存',rrg_snapshots_v1:'rrg 快照'};
+function redoName(k){
+ if(REDO[k])return REDO[k];
+ if(/^rrg_(deepscan|overview|ranking)_/.test(k))return 'rrg 暫存（重開 rrg 會自動重抓）';
+ if(/^gstock_v\d+_table$/.test(k)&&k!=='gstock_v65_table')return '舊版總表（現在的 dna 只用 v65，這些已經沒人讀）';
+ return null;}
 const $=id=>document.getElementById(id);
 function sizes(){const a=[];let t=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);const v=localStorage.getItem(k)||'';const n=(k.length+v.length)*2;t+=n;a.push({k,n,v});}a.sort((x,y)=>y.n-x.n);return {a,t};}
 function fmt(n){return n>=1048576?(n/1048576).toFixed(2)+' MB':(n/1024).toFixed(0)+' KB';}
@@ -32,7 +38,7 @@ function draw(){
  $('tot').textContent='共用了 '+fmt(t);
  $('totd').textContent='上限通常約 5 MB（iPad Safari）。共 '+a.length+' 項。'+(t>4*1048576?'⚠ 已經很滿了。':'');
  $('list').innerHTML=a.map((o,i)=>{
-  const kp=KEEP[o.k],rd=REDO[o.k];const tag=kp?'<span class="tag keep">你的資料</span>':rd?'<span class="tag redo">可重跑</span>':'<span class="tag unk">不確定</span>';
+  const kp=KEEP[o.k],rd=redoName(o.k);const tag=kp?'<span class="tag keep">你的資料</span>':rd?'<span class="tag redo">可重跑</span>':'<span class="tag unk">不確定</span>';
   const col=kp?'#3fb950':rd?'#d29922':'#8b949e';
   return '<div class="box"><div class="row"><div><b>'+fmt(o.n)+'</b> '+tag+'</div><div class="k">'+o.k+'</div><div class="d">'+(kp||rd||'沒有登記這是什麼')+'</div>'
    +'<div class="bar"><i style="width:'+Math.max(2,o.n/max*100)+'%;background:'+col+'"></i></div>'
@@ -43,6 +49,11 @@ function draw(){
   if(d!=null){const o=sizes().a[+d];if(confirm('確定清掉「'+o.k+'」（'+fmt(o.n)+'）嗎？\n這是可以重跑的資料，清掉後要再跑一次才會回來。')){localStorage.removeItem(o.k);draw();}}
  };
 }
+$('quick').onclick=function(){
+ const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^rrg_(deepscan|overview|ranking)_/.test(k)||(/^gstock_v\d+_table$/.test(k)&&k!=='gstock_v65_table'))ks.push(k);}
+ if(!ks.length){alert('沒有可清的項目');return;}
+ if(confirm('要清掉 '+ks.length+' 項 rrg 暫存／舊版總表嗎？\n重開 rrg 時會自動重抓，不會少東西。')){ks.forEach(k=>localStorage.removeItem(k));draw();}
+};
 $('probe').onclick=function(){
  let n=0;const chunk='x'.repeat(100000);let ok=true;
  try{while(n<60){localStorage.setItem('__probe',(localStorage.getItem('__probe')||'')+chunk);n++;}}catch(e){ok=false;}
