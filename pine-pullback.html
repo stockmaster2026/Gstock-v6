@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>回檔買點 Pine 指標 v1.7（複製頁）</title>
+<title>回檔買點 Pine 指標 v1.8（複製頁）</title>
 <style>
 :root{--bg:#f5f7fa;--card:#fff;--tx:#1f2937;--mut:#6b7280;--g:#15803d;--r:#b91c1c;--b:#1d4ed8;--bd:#e5e7eb}
 @media (prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--tx:#f3f4f6;--mut:#9ca3af;--bd:#374151}}
@@ -14,8 +14,8 @@ textarea{width:100%;height:260px;font:13px/1.45 ui-monospace,Menlo,monospace;bor
 .ok{color:var(--g);font-weight:700}.bad{color:var(--r);font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}
 </style></head><body>
-<h1>回檔買點 Pine 指標 v1.7</h1>
-<div class="mut"><b>v1.7 新增：指標自己只用「正規盤」（美西 6:30～13:00）的價格，不管圖表有沒有開盤前盤後；美西 13:05 之後標記就會出現，不用等到下午 5 點。</b>設定裡有開關可以關掉（關掉就回到 v1.6 的算法）。<b>這一版我沒有 Pine 編譯器可以先測，要你在 TradingView 上試。</b>　上一版（v1.6）的說明：這是 v1.5 的改版：<b>藍色「i」點了沒反應，所以拿掉</b>，改成在設定裡用開關顯示詳細說明（預設關，畫面乾淨）；「買」旁邊的「可買範圍」和「停損」兩個小框合成一個；小表的「還沒收盤」改成「今天還沒收完」。判斷規則跟 v1.5 完全一樣。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
+<h1>回檔買點 Pine 指標 v1.8</h1>
+<div class="mut"><b>v1.8：拿掉綠／灰方框，只留文字標籤、紅色虛線，和最新訊號旁兩條淡色細線（範圍上下緣）。</b><br><b>v1.7 新增：指標自己只用「正規盤」（美西 6:30～13:00）的價格，不管圖表有沒有開盤前盤後；美西 13:05 之後標記就會出現，不用等到下午 5 點。</b>設定裡有開關可以關掉（關掉就回到 v1.6 的算法）。<b>這一版我沒有 Pine 編譯器可以先測，要你在 TradingView 上試。</b>　上一版（v1.6）的說明：這是 v1.5 的改版：<b>藍色「i」點了沒反應，所以拿掉</b>，改成在設定裡用開關顯示詳細說明（預設關，畫面乾淨）；「買」旁邊的「可買範圍」和「停損」兩個小框合成一個；小表的「還沒收盤」改成「今天還沒收完」。判斷規則跟 v1.5 完全一樣。它一樣是<b>獨立</b>的指標，不要貼進舊的 dna 指標裡。</div>
 
 <div class="card">
 <h2>它在圖上畫什麼</h2>
@@ -43,16 +43,16 @@ table{border-collapse:collapse;width:100%;font-size:15px}td,th{border:1px solid 
 <div class="card">
 <h2>怎麼裝（跟上次一樣的做法）</h2>
 <ol>
-<li>先把這個頁面的新版放上 GitHub（取代舊檔，檔名不變），再用 Safari 打開，確認標題寫「v1.7」。</li>
+<li>先把這個頁面的新版放上 GitHub（取代舊檔，檔名不變），再用 Safari 打開，確認標題寫「v1.8」。</li>
 <li>在 TradingView 切到<b>日線</b>，打開 Pine 編輯器，左上角腳本名稱旁的箭頭選「Create new」→「Indicator」。</li>
 <li>把範例程式碼<b>全部刪掉</b>，回到這個頁面按「複製程式碼」，再回編輯器貼上。</li>
-<li>按 Save，名稱用預設的「回檔買點 pullback v1.7」，再按「Add to chart」。</li>
-<li>打開右邊的「物件樹」（疊在一起的菱形圖示），把舊的「回檔買點」（v1、v1.1、v1.4、v1.5、v1.6 都是）都<b>隱藏</b>（眼睛有斜線）或直接刪掉（垃圾桶），只留 v1.7。</li>
+<li>按 Save，名稱用預設的「回檔買點 pullback v1.8」，再按「Add to chart」。</li>
+<li>打開右邊的「物件樹」（疊在一起的菱形圖示），把舊的「回檔買點」（v1、v1.1、v1.4～v1.7 都是）都<b>隱藏</b>（眼睛有斜線）或直接刪掉（垃圾桶），只留 v1.7。</li>
 <li>如果貼上後出現紅字錯誤：截圖整個畫面給我（要看到是第幾行），不要自己改。</li>
 </ol>
 <button id="cp">複製程式碼</button> <span id="msg" class="mut"></span>
 <textarea id="code" readonly spellcheck="false">//@version=5
-indicator(&quot;回檔買點 pullback v1.7&quot;, overlay=true, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
+indicator(&quot;回檔買點 pullback v1.8&quot;, overlay=true, max_labels_count=500, max_lines_count=100)
 
 // ===== 設定 =====
 smax     = input.float(8.0, &quot;停損上限 %（跟 pullback.html 的停損上限一樣）&quot;, minval=3, maxval=15, step=1) / 100
@@ -142,16 +142,23 @@ plotshape(sigFar, &quot;停損大&quot;, shape.labelup, location.belowbar, color
 if sigGo and not ttOk
     label.new(bar_index, na, &quot;差\n&quot; + str.tostring(ttMiss) + &quot;\n關&quot;, yloc=yloc.belowbar, style=label.style_label_up, color=color.rgb(70, 85, 150), textcolor=color.white, size=size.tiny)
 
-// 方框與停損線：只畫最近 recentN 根 K 棒內的訊號
-//   綠框＝買（可以考慮）；橘框＝勉（停損稍超過上限）；灰框＝別追（只告訴你要等回到哪個範圍，現在不能買）
-//   差N關、停損大：不畫框
+// 範圍細線與停損線：只畫最近 recentN 根 K 棒內的訊號
+//   綠線＝買（可以考慮）；橘線＝勉（停損稍超過上限）；灰線＝別追（只告訴你要等回到哪個範圍，現在不能買）
+//   差N關、停損大：不畫線
+var line rngHi = na
+var line rngLo = na
 isRecent = last_bar_index - bar_index &lt;= recentN
 if showBox and isRecent and ((sigGo and ttOk) or sigEdge or sigLate)
     isG = sigGo and ttOk
     bc = isG ? color.green : sigEdge ? color.orange : color.gray
     lc = isG ? color.rgb(0, 120, 70) : sigEdge ? color.rgb(190, 95, 0) : color.rgb(90, 90, 90)
+    // v1.8：不畫方框；只在最新一個訊號旁畫兩條淡色細線標出範圍上下緣（舊的會自動刪掉）
     if rOk
-        box.new(bar_index + 1, rHi, bar_index + 4, rLo, border_color=bc, bgcolor=color.new(bc, 85))
+        if not na(rngHi)
+            line.delete(rngHi)
+            line.delete(rngLo)
+        rngHi := line.new(bar_index + 1, rHi, bar_index + 6, rHi, color=color.new(bc, 40), width=1)
+        rngLo := line.new(bar_index + 1, rLo, bar_index + 6, rLo, color=color.new(bc, 40), width=1)
     rTxt = rOk ? (sigLate ? &quot;別追，等回到 &quot; : &quot;可買 &quot;) + str.tostring(rLo, &quot;#.##&quot;) + &quot; ~ &quot; + str.tostring(rHi, &quot;#.##&quot;) : &quot;&quot;
     sTxt = sigLate ? &quot;&quot; : &quot;停損 &quot; + str.tostring(stopPx, &quot;#.##&quot;) + &quot; (-&quot; + str.tostring(stopPct * 100, &quot;#.#&quot;) + &quot;%)&quot;
     bTxt = rTxt + (rTxt != &quot;&quot; and sTxt != &quot;&quot; ? &quot;\n&quot; : &quot;&quot;) + sTxt
