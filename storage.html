@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>儲存空間檢查 v1</title>
+<style>
+body{margin:0;background:#0d1117;color:#e6edf3;font:16px/1.6 -apple-system,"PingFang TC",sans-serif;padding:16px;max-width:760px;margin:auto}
+h1{font-size:22px;margin:4px 0 2px}.sub{color:#8b949e;font-size:14px;margin-bottom:12px}
+.box{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;margin:10px 0}
+.big{font-size:28px;font-weight:700}
+.row{border-top:1px dashed #30363d;padding:10px 0}.row:first-child{border-top:0}
+.k{font-family:ui-monospace,monospace;font-size:14px;word-break:break-all}
+.bar{height:8px;background:#21262d;border-radius:4px;margin:6px 0;overflow:hidden}.bar i{display:block;height:100%}
+.tag{display:inline-block;font-size:13px;border-radius:6px;padding:1px 8px;margin-left:6px}
+.keep{background:#12351f;color:#3fb950}.redo{background:#3a2e0d;color:#d29922}.unk{background:#2b2f36;color:#8b949e}
+button{font-size:15px;border-radius:8px;border:1px solid #30363d;background:#21262d;color:#e6edf3;padding:8px 12px;margin:4px 6px 0 0}
+button.red{background:#5b1d1d;border-color:#f85149}button.blue{background:#16407a;border-color:#58a6ff}
+.d{color:#8b949e;font-size:14px}.warn{color:#f0883e}
+</style></head><body>
+<h1>儲存空間檢查</h1>
+<div class="sub">看哪些資料占滿瀏覽器空間。不會自動刪任何東西，每一項要你自己按、再確認。</div>
+<div class="box"><div class="big" id="tot">…</div><div class="d" id="totd"></div>
+<button class="blue" id="probe">測試還能再寫多少</button> <span id="probeRes" class="d"></span></div>
+<div class="box d">顏色：<span class="tag keep">你的資料</span> 刪了就沒了，不建議動　<span class="tag redo">可重跑</span> 只是算出來的結果或暫存，清掉再跑一次就回來　<span class="tag unk">不確定</span> 我不認得，別動</div>
+<div id="list"></div>
+<script>
+const KEEP={dna_holdings:'dna 持股',dna_positions:'dna 部位',pb_obs_v1:'pullback 觀察本',pb_hold_v1:'pullback 持股',riskStops_v1:'risk 停損',riskEntryStop_v1:'risk 進場停損',riskOrig_v1:'risk 原始部位',riskSnap_v1:'risk 快照',dnaWatchlist_v1:'dna 我的清單',stock_profiles:'公司速寫',dnaSecBox_v1:'板塊框',dnaSecEdit_v1:'板塊框編輯',dnaCapital_v1:'本金設定',dnaRiskPct_v1:'風險%設定',watch_syms:'觀察清單',fund_syms:'基本面清單',rd_v1:'news 閱讀紀錄',rdacc_v1:'news 閱讀累計',dnaNearMiss_v1:'差一點清單'};
+const REDO={gstock_v65_table:'dna 累積總表（重跑板塊就回來）',gstock_v65_batches:'dna 批次記錄',dna_batchwhy_v1:'批次失敗原因',dnaBT_v1:'dna 回測結果',dnaBTrs_v1:'dna 回測 RS',dnaBTHot_v1:'dna 回測熱門',dnaCand_v1:'dna 候選',dna_secdone_v1:'板塊跑完標記',pb_v1:'pullback 掃描結果',pb_done_v1:'pullback 已跑標記',thermo_v1:'溫度計暫存',stocks_scan_v1:'stocks 掃描暫存',rrg_snapshots_v1:'rrg 快照'};
+const $=id=>document.getElementById(id);
+function sizes(){const a=[];let t=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);const v=localStorage.getItem(k)||'';const n=(k.length+v.length)*2;t+=n;a.push({k,n,v});}a.sort((x,y)=>y.n-x.n);return {a,t};}
+function fmt(n){return n>=1048576?(n/1048576).toFixed(2)+' MB':(n/1024).toFixed(0)+' KB';}
+function draw(){
+ const {a,t}=sizes();const max=a.length?a[0].n:1;
+ $('tot').textContent='共用了 '+fmt(t);
+ $('totd').textContent='上限通常約 5 MB（iPad Safari）。共 '+a.length+' 項。'+(t>4*1048576?'⚠ 已經很滿了。':'');
+ $('list').innerHTML=a.map((o,i)=>{
+  const kp=KEEP[o.k],rd=REDO[o.k];const tag=kp?'<span class="tag keep">你的資料</span>':rd?'<span class="tag redo">可重跑</span>':'<span class="tag unk">不確定</span>';
+  const col=kp?'#3fb950':rd?'#d29922':'#8b949e';
+  return '<div class="box"><div class="row"><div><b>'+fmt(o.n)+'</b> '+tag+'</div><div class="k">'+o.k+'</div><div class="d">'+(kp||rd||'沒有登記這是什麼')+'</div>'
+   +'<div class="bar"><i style="width:'+Math.max(2,o.n/max*100)+'%;background:'+col+'"></i></div>'
+   +'<button data-c="'+i+'">複製內容備份</button>'+(rd?'<button class="red" data-d="'+i+'">清掉這一項</button>':'')+'</div></div>';}).join('');
+ $('list').onclick=function(e){
+  const c=e.target.getAttribute('data-c'),d=e.target.getAttribute('data-d');
+  if(c!=null){const o=sizes().a[+c];const ta=document.createElement('textarea');ta.value=o.v;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');e.target.textContent='已複製（'+fmt(o.n)+'）';}catch(x){e.target.textContent='複製失敗';}ta.remove();}
+  if(d!=null){const o=sizes().a[+d];if(confirm('確定清掉「'+o.k+'」（'+fmt(o.n)+'）嗎？\n這是可以重跑的資料，清掉後要再跑一次才會回來。')){localStorage.removeItem(o.k);draw();}}
+ };
+}
+$('probe').onclick=function(){
+ let n=0;const chunk='x'.repeat(100000);let ok=true;
+ try{while(n<60){localStorage.setItem('__probe',(localStorage.getItem('__probe')||'')+chunk);n++;}}catch(e){ok=false;}
+ try{localStorage.removeItem('__probe');}catch(e){}
+ $('probeRes').textContent=ok?'至少還能再寫 6 MB（很夠）':'還能再寫約 '+(n*0.2).toFixed(1)+' MB（每次寫入占 2 倍空間）';
+ draw();
+};
+draw();
+</script></body></html>
