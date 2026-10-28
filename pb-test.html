@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.5</title>
+<title>回檔法回測 pb-test v1.6</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.5（新增「領先測試」：回檔買點後，幾天內會不會突破前高）</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.6（領先測試改成深度對齊；新增「回檔深度 × 五種出場」）</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -393,7 +393,7 @@ function render(trades,nT,yrs,cfg){
     const nearIn=n=>x=>x.dNear!=null&&x.dNear<=n;
     const zt=(a,b,n)=>{if(a.length<20||b.length<20)return null;const p1=frac(a,brkIn(n)),p2=frac(b,brkIn(n)),p=(a.filter(brkIn(n)).length+b.filter(brkIn(n)).length)/(a.length+b.length),se=Math.sqrt(p*(1-p)*(1/a.length+1/b.length));return se>0?(p1-p2)/se:0;};
     const med=g=>{const a=g.filter(x=>x.dBrk!=null).map(x=>x.dBrk);return a.length?median(a):null;};
-    h+='<div class="card"><h2>領先測試：回檔買點出現後，幾天內會突破前高？（v1.5）</h2>';
+    h+='<div class="card"><h2>領先測試：回檔買點出現後，幾天內會突破前高？（v1.6）</h2>';
     h+='<div class="small">起因：你回頭看發現，很多股票在突破 pivot 的前 4～5 天，Pullback 就先出現買點。這裡用資料檢查兩件事：①這個比例是真的比較高嗎？②是不是只是「本來就離前高很近」造成的假象？<br>';
     h+='做法：每個訊號日往後看 20 天，「收盤站上訊號日當時的 20 日高點」算突破（這是 pivot 的簡化版，不等於 dna 的 pivot）；如果途中先碰到停損，就不算會突破。三組比較：<b>回檔後已收復</b>（Pullback 的買點）、<b>對照A 沒收復但在支撐附近回檔</b>、<b>對照B 任何強勢日，但也回檔了 3% 以上</b>（這樣深度才公平）。只算後面還有完整 20 天的訊號。</div>';
     const rowL=(name,g)=>{
@@ -411,17 +411,36 @@ function render(trades,nT,yrs,cfg){
     const mx=Math.max(1,...dist);
     h+='<div style="margin:10px 0 2px"><b>Pullback 買點之後，第幾天收盤突破？</b></div><table><thead><tr><th style="text-align:left">第幾天</th>'+dist.map((_,i)=>'<th>'+(i+1)+'</th>').join('')+'</tr></thead><tbody><tr><td style="text-align:left">筆數</td>'+dist.map(v=>'<td>'+v+'</td>').join('')+'</tr></tbody></table>';
     h+='<div class="small">如果你的觀察成立，第 4～5 天附近應該特別多；如果每一天差不多，就只是平均分散。</div>';
-    const z5=zt(gS,gC1,10),z6=zt(gS,gC2,10);
+    // v1.6：回檔深度對齊。把對照組依「回檔深度」分三格（淺3～5%／中5～10%／深10%以上），
+    //   再用 Pullback 買點自己在三格的比例當權重，算出「如果對照組跟 Pullback 回檔一樣深，突破率會是多少」。
+    const BIN=d=>d>-0.05?0:(d>-0.10?1:2),BN=['淺（3～5%）','中（5～10%）','深（10%以上）'];
+    const adj=ctrl=>{
+      let w=0,pS=0,sS=0,pC=0,sC=0,nSc=0,nCc=0;
+      for(let k=0;k<3;k++){const sb=gS.filter(x=>BIN(x.depth)===k),cb=ctrl.filter(x=>BIN(x.depth)===k);
+        if(sb.length>=10&&cb.length>=20){const wk=sb.length/gS.length;w+=wk;pS+=wk*frac(sb,brkIn(10));pC+=wk*frac(cb,brkIn(10));sS+=wk*frac(sb,x=>x.stopFirst);sC+=wk*frac(cb,x=>x.stopFirst);nSc+=sb.length;nCc+=cb.length;}}
+      if(w<0.5)return null;pS/=w;pC/=w;sS/=w;sC/=w;
+      const se=Math.sqrt(pS*(1-pS)/nSc+pC*(1-pC)/nCc);
+      return {pS,pC,sS,sC,w,z:se>0?(pS-pC)/se:0};
+    };
+    const mB=adj(gC1),mA=adj(gC2);
+    h+='<div style="margin:12px 0 2px"><b>回檔深度對齊後的比較（10 天內收盤突破）</b></div><div class="small">原本的對照組回檔深淺跟 Pullback 買點不一樣（尤其對照B 有很多很淺的回檔，本來就貼著前高，容易很快突破）。這裡把對照組依深度分三格，用 Pullback 買點自己的深度比例重新加權，才是公平比較。</div>';
+    h+='<table><thead><tr><th style="text-align:left">回檔深度</th><th>Pullback 筆數</th><th>Pullback 突破</th><th>Pullback 先碰停損</th><th>對照B 筆數</th><th>對照B 突破</th><th>對照B 先碰停損</th><th>對照A 筆數</th><th>對照A 突破</th><th>對照A 先碰停損</th></tr></thead><tbody>';
+    for(let k=0;k<3;k++){const sb=gS.filter(x=>BIN(x.depth)===k),bb=gC1.filter(x=>BIN(x.depth)===k),ab=gC2.filter(x=>BIN(x.depth)===k);
+      const c=(g,f)=>g.length?P0(frac(g,f)):'—';
+      h+='<tr><td style="text-align:left">'+BN[k]+'</td><td>'+sb.length+'</td><td>'+c(sb,brkIn(10))+'</td><td>'+c(sb,x=>x.stopFirst)+'</td><td>'+bb.length+'</td><td>'+c(bb,brkIn(10))+'</td><td>'+c(bb,x=>x.stopFirst)+'</td><td>'+ab.length+'</td><td>'+c(ab,brkIn(10))+'</td><td>'+c(ab,x=>x.stopFirst)+'</td></tr>';}
+    h+='</tbody></table>';
+    const cmpT=(m,name)=>m?('對「'+name+'」（深度對齊後）：Pullback '+P0(m.pS)+' vs 對照 '+P0(m.pC)+'，先碰停損 '+P0(m.sS)+' vs '+P0(m.sC)+'。'+(m.z>2?'Pullback 較高，統計上看得出來。':(m.z<-2?'Pullback 較低，統計上看得出來。':'差別在誤差範圍內，看不出來。'))):('對「'+name+'」：樣本不夠做深度對齊。');
+    h+='<div class="small" style="margin-top:6px">'+cmpT(mB,'任何回檔≥3% 的強勢日')+'<br>'+cmpT(mA,'沒收復的回檔')+'</div>';
     let big,cls,det;
     if(gS.length<30){big='Pullback 買點樣本不夠（'+gS.length+' 筆），先不下結論';cls='n';det='資料不足，不要憑這一區的數字做任何判斷。';}
-    else{
-      const p10=frac(gS,brkIn(10)),pC1=frac(gC1,brkIn(10)),pC2=frac(gC2,brkIn(10));
+    else if(mB&&mA){
       const sf=frac(gS,x=>x.stopFirst);
-      if(z5!=null&&z5>2&&(z6==null||z6>0)){big='Pullback 買點之後 10 天內突破前高的比例，比同樣回檔幅度的對照組高（'+P0(p10)+' vs '+P0(pC1)+'），統計上看得出來';cls='g';det='你的觀察有資料支持。但還要看「先碰停損」那一欄（Pullback '+P0(sf)+'）：突破的機率高，不代表停損不會被先打到。';}
-      else if(z5!=null&&z5<-2){big='Pullback 買點之後 10 天內突破的比例，反而比對照組低（'+P0(p10)+' vs '+P0(pC1)+'）';cls='r';det='目前資料不支持「Pullback 買點之後比較容易突破」。';}
-      else{big='Pullback 買點之後 10 天內突破前高的比例是 '+P0(p10)+'，跟同樣回檔幅度的對照組（'+P0(pC1)+'、'+P0(pC2)+'）看不出明顯差別';cls='n';det='也就是說，這份資料沒有證據顯示「站回 21 日線」讓突破變得更容易；「很多會突破」可能只是強勢股回檔之後本來就常常再創高。你觀察到的現象可能是真的，但目前不能歸功於這個買點。';}
-    }
-    h+='<div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>⚠ 限制：①「突破」用 20 日高點簡化，不是 dna 的 pivot；②這批股票是現在的名單，有倖存者偏差；③同一檔股票連續幾天的訊號互相重疊，實際獨立的樣本比筆數少。</div></div></div>';
+      const vB=mB.z>2?'高於':(mB.z<-2?'低於':'沒有明顯差別於'),vA=mA.z>2?'高於':(mA.z<-2?'低於':'沒有明顯差別於');
+      big='深度對齊後：Pullback 買點的 10 天內突破率 '+vA+'「沒收復的回檔」（'+P0(mA.pS)+' vs '+P0(mA.pC)+'），也'+vB+'「任何回檔的強勢日」（'+P0(mB.pS)+' vs '+P0(mB.pC)+'）';
+      cls=(mA.z>2&&mB.z>=-2)?'g':((mB.z<-2||mA.z<-2)?'r':'n');
+      det=(mA.z>2?'站回 21 日線確實把比較差的回檔濾掉了。':'')+(mB.z>2?'而且比同樣深度的任何強勢日更容易突破，你的觀察有資料支持。':(mB.z<-2?'但比同樣深度的任何強勢日更低，沒有看到「站回 21 日線」本身多出的好處。':'但跟同樣深度的任何強勢日比，看不出站回 21 日線有額外好處。'))+'<br>也要看「先碰停損」：Pullback 買點在 20 天內有 '+P0(sf)+' 先碰到停損，突破率高不代表停損不會先被打到。';
+    }else{big='深度對齊的樣本不夠，只能看上面未對齊的數字';cls='n';det='不要憑這一區下結論。';}
+    h+='<div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>⚠ 限制：①「突破」用 20 日高點簡化，不是 dna 的 pivot；②這批股票是現在的名單，有倖存者偏差；③同一檔股票連續幾天的訊號互相重疊，實際獨立的樣本比筆數少；④深度只分三格，同一格裡的深淺仍有差別。</div></div></div>';
   }
   // 切片：用 EV 最高的規則
   const pick=bestEV&&bestEV.sS.n>=20?bestEV.r:'Q20';
@@ -459,6 +478,24 @@ function render(trades,nT,yrs,cfg){
     h+='<div class="small">高 vs 低：'+T+(c.d!=null?'（平均每筆差 '+F2(c.d)+'R）':'')+'。</div>';
   });
   h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(tested?('5 種出場裡，有 '+tested+' 種能比較高、低組；其中高 ADR 平均較好的有 '+consist+' 種。'):'樣本不夠，五種出場都不能比較高、低組。')+'<br>・若低 ADR 一致比較差、且「統計上看得出來」→ 值得在 pullback.html 加一句白話提醒（例如「這檔平常波動小，反彈空間可能有限」）。<br>・若多半「看不出差別」→ 不加任何東西，ADR 不是關鍵。<br>・若高 ADR 反而較差 → 先不動，另外查原因。<br>⚠ 三組、五種出場，總共 15 格，隨機也可能出現幾格看起來有差；每組筆數不多；這批股票是今天挑的（倖存者偏差）。所以只看「五種出場方向一致」且「統計上看得出來」。</div></div></div>';
+  // 回檔深度 × 五種出場（v1.6）：確認「回檔太深平均沒優勢」是不是每種出場都一樣
+  {
+    const DB=x=>-x.depth<0.05?0:(-x.depth<0.10?1:2),DN=['淺（3～5%）','中（5～10%）','深（10%以上）'];
+    h+='<div class="card"><h2>依「回檔深度」分組，五種出場各看一次（只看「回檔後已收復」）</h2><div class="small">問題：之前只用 EV 最高的那一種出場看過，深回檔（10% 以上）平均接近 0。這裡每一種出場都看，如果方向一致才比較可信。</div>';
+    let worse=0,tested2=0;
+    RULES.forEach(r=>{
+      const Sx=by('S',r);const g=[0,1,2].map(k=>Sx.filter(x=>DB(x)===k)),st=g.map(stats);
+      h+='<div style="margin:12px 0 2px"><b>'+RN[r]+'</b></div><table><thead><tr><th>回檔深度</th><th>筆數</th><th>勝率</th><th>EV（R）</th><th>報酬中位數</th><th>白話</th></tr></thead><tbody>';
+      [0,1,2].forEach(k=>{const q=st[k];const say=!q.n?'沒有訊號':(q.n<20?'樣本太少，只能參考':(q.ev>0.3?'這組平均有賺':(q.ev>0?'賺很薄':'平均是虧的')));
+        h+='<tr><td>'+DN[k]+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td><b class="'+(q.ev>0.3?'ok':(q.ev<=0?'bad':'warnc'))+'">'+F2(q.ev)+'</b></td><td>'+P1(q.medRet)+'</td>':'<td>0</td><td colspan="3">—</td>')+'<td style="text-align:left" class="small">'+say+'</td></tr>';});
+      h+='</tbody></table>';
+      const c=compare(g[2],g[0].concat(g[1]));
+      if(c.v!=='few'){tested2++;if(c.d<0)worse++;}
+      const T={better:'深回檔比較好，統計上看得出來',better_unstable:'深回檔看起來較好，但前後半段不一致',worse:'深回檔比淺／中回檔差，統計上看得出來',worse_unstable:'深回檔看起來較差，但前後半段不一致',same:'深回檔跟淺／中回檔統計上看不出差別',few:'樣本不夠，不能比較'};
+      h+='<div class="small">深 vs 淺＋中：'+T[c.v]+(c.d!=null?'（平均每筆差 '+F2(c.d)+'R）':'')+'。</div>';
+    });
+    h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(tested2?('5 種出場裡，有 '+tested2+' 種能比較；其中深回檔平均較差的有 '+worse+' 種。'):'樣本不夠，不能比較。')+'<br>・如果 5 種裡多數都是「深回檔較差、而且統計上看得出來」，pullback.html 現有的那句「回檔超過 10% 要更小心」就有根據。<br>・如果多半「看不出差別」，那句提醒的根據就不夠，可以拿掉。<br>⚠ 15 格比較，隨機也會有幾格看起來有差；每組筆數不多；有倖存者偏差。</div></div></div>';
+  }
   // 集中度
   const byT={};S.forEach(x=>{byT[x.tk]=(byT[x.tk]||0)+x.R;});const tot=Object.values(byT).reduce((a,b)=>a+b,0);
   const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);
