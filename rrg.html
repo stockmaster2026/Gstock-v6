@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.11.0</title>
+<title>RRG 板塊輪動圖 v2.12.1</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.11.0 · 每個分數都附一份收合的解讀</div>
+<div class="sub">v2.12.1 · 每個分數都附一份收合的解讀</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.11.0 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.12.1 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -362,7 +362,7 @@ window.onerror = function(msg, src, line, col, err) {
                  'https://corsproxy.io/?key=00bcaf2a&url=',
                  'https://api.allorigins.win/raw?url=',
                  'https://api.codetabs.com/v1/proxy/?quest='];
-  var SECTOR_COLORS = {'資安':'#ef476f','軟體 SaaS':'#8b5cf6','AI 晶片':'#76b900','半導體設備':'#06d4f0','光通訊':'#00d4a8','記憶體與儲存':'#ff6b35','AI 電力與散熱':'#ffd166','太空與國防':'#4ea5ff','生技與醫材':'#f97316','金融':'#eab308','量子運算':'#22c55e','七巨頭':'#ec4899','必需消費(XLP)':'#94a3b8','公用事業(XLU)':'#a3a3a3','醫療保健(XLV)':'#fb923c','能源(XLE)':'#b45309','工業(XLI)':'#64748b','非必需消費(XLY)':'#e879f9','傳統類股 ETF':'#9ca3af','防禦型個股':'#2dd4bf'};
+  var SECTOR_COLORS = {'資安':'#ef476f','軟體 SaaS':'#8b5cf6','AI 晶片':'#76b900','半導體設備':'#06d4f0','光通訊':'#00d4a8','記憶體與儲存':'#ff6b35','AI 電力與散熱':'#ffd166','太空與國防':'#4ea5ff','生技與醫材':'#f97316','金融':'#eab308','量子運算':'#22c55e','七巨頭':'#ec4899','必需消費(XLP)':'#94a3b8','公用事業(XLU)':'#a3a3a3','醫療保健(XLV)':'#fb923c','能源(XLE)':'#b45309','工業(XLI)':'#64748b','非必需消費(XLY)':'#e879f9','傳統類股 ETF':'#9ca3af','防禦型個股':'#2dd4bf','其他成長股':'#f59e0b'};
   // v2.10.0：板塊名單與 dna.html 的 DNA_SECTORS、news.html 的 SECTORS 同一份（12 組）。要改名單，三邊要一起改。
   var BUILTIN_WATCHLIST = [
     {name:'資安',stocks:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'.split(' ')},
@@ -378,6 +378,7 @@ window.onerror = function(msg, src, line, col, err) {
     {name:'量子運算',stocks:'IONQ RGTI QBTS QUBT LAES ARQQ'.split(' ')},
     // v2.11.0 新增：防禦型個股（科技走弱時，資金常跑去的「大家天天用、不太受景氣影響」的大公司）。個股，會進個股排名。
     //   日用品／零售：COST WMT PG KO PEP CL MDLZ PM MCD　醫療：JNJ ABT MRK　公用事業與必需服務：DUK SO NEE WM
+    {name:'其他成長股',stocks:'UBER DASH ABNB DUOL CAVA SHOP MELI SE NFLX CRCL AFRM SOFI NU TOST APP RDDT TTD DOCU CELH DKNG'.split(' ')},
     {name:'防禦型個股',stocks:'COST WMT PG KO PEP CL MDLZ PM MCD JNJ ABT MRK DUK SO NEE WM'.split(' ')},
     {name:'七巨頭',stocks:'AAPL MSFT GOOGL AMZN NVDA META TSLA'.split(' ')},
     // v2.10.0 新增：傳統大類股 ETF（SPDR 11 大類）。只用來看「資金有沒有從成長股轉去防禦／傳統類股」，
@@ -412,7 +413,7 @@ window.onerror = function(msg, src, line, col, err) {
     } catch(e) { return null; }
   }
   // v2.11.0：已存過名單的人，新加的內建組（防禦型個股）也要出現 —— 沒有就補在最後面。
-  var MERGE_BUILTIN = ['防禦型個股'];
+  var MERGE_BUILTIN = ['防禦型個股','其他成長股'];
   function getSectorList() {
     var fromRadar=readRadarSectors(); if(!fromRadar) return BUILTIN_WATCHLIST;
     MERGE_BUILTIN.forEach(function(n){ if(!fromRadar.some(function(x){return x.name===n;})){ var b=BUILTIN_WATCHLIST.filter(function(x){return x.name===n;})[0]; if(b) fromRadar=fromRadar.concat([b]); } });
@@ -1114,26 +1115,39 @@ window.onerror = function(msg, src, line, col, err) {
     return '（RS 正好跟大盤一樣強 —— 這時候「領先／落後」只差在小數點）';
   }
   function distFromCenter(ratio, mom) { return Math.sqrt(Math.pow(ratio-100,2)+Math.pow(mom-100,2)); }
-  function loadCache(key) {
-    try { var raw=localStorage.getItem(key); if(!raw) return null; var c=JSON.parse(raw); if (Date.now()-c.timestamp>CACHE_TTL) return null; return c; } catch(e){ return null; }
+  // v2.12.1：暫存改存 IndexedDB（空間大），不再佔 localStorage 那 5 MB。
+  //   記憶體裡放一份（讀取仍是同步）；每次存檔同步寫進 IndexedDB；開頁面時先讀回來再啟動。
+  //   舊版留在 localStorage 的 rrg 暫存（rrg_deepscan_／rrg_overview_／rrg_ranking_）一律清掉 —— 它們本來就只是暫存。
+  var CMEM={}, CIDB=null;
+  function cIdbOpen(cb){ try{ var r=indexedDB.open('rrg_cache_idb',1); r.onupgradeneeded=function(){ r.result.createObjectStore('kv'); }; r.onsuccess=function(){ CIDB=r.result; cb(); }; r.onerror=function(){ cb(); }; }catch(e){ cb(); } }
+  function cIdbPut(k,v){ if(!CIDB) return; try{ CIDB.transaction('kv','readwrite').objectStore('kv').put(v,k); }catch(e){} }
+  function cIdbDel(k){ if(!CIDB) return; try{ CIDB.transaction('kv','readwrite').objectStore('kv').delete(k); }catch(e){} }
+  function rrgCacheInit(done){
+    purgeLegacy();
+    cIdbOpen(function(){
+      if(!CIDB){ done(); return; }
+      try{
+        var req=CIDB.transaction('kv','readonly').objectStore('kv').openCursor();
+        req.onsuccess=function(){ var cur=req.result; if(cur){ try{ var c=JSON.parse(cur.value); if(c&&Date.now()-c.timestamp<=CACHE_TTL) CMEM[cur.key]=c; else cIdbDel(cur.key); }catch(e){ cIdbDel(cur.key); } cur.continue(); } else done(); };
+        req.onerror=function(){ done(); };
+      }catch(e){ done(); }
+    });
   }
-  // v2.10.0: 暫存不再無限堆積 —— 過期的自動清掉；寫入失敗（空間滿）時清光 rrg 暫存再試一次
+  function loadCache(key) {
+    var c=CMEM[key]; if(!c) return null; if (Date.now()-c.timestamp>CACHE_TTL) return null; return c;
+  }
+  function purgeLegacy() {
+    try { var ks=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^rrg_(deepscan|overview|ranking)_/.test(k)) ks.push(k); } ks.forEach(function(k){ localStorage.removeItem(k); }); } catch(e){}
+  }
   function purgeCache(all) {
-    try {
-      var ks=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^rrg_(deepscan|overview|ranking)_/.test(k)) ks.push(k); }
-      ks.forEach(function(k){
-        if(all){ localStorage.removeItem(k); return; }
-        try{ var c=JSON.parse(localStorage.getItem(k)); if(!c||Date.now()-c.timestamp>CACHE_TTL) localStorage.removeItem(k); }catch(e){ localStorage.removeItem(k); }
-      });
-    } catch(e){}
+    Object.keys(CMEM).forEach(function(k){ if(all||Date.now()-CMEM[k].timestamp>CACHE_TTL){ delete CMEM[k]; cIdbDel(k); } });
   }
   function saveCache(key, data) {
-    var v=JSON.stringify({timestamp:Date.now(),data:data});
+    var o={timestamp:Date.now(),data:data};
     purgeCache(false);
-    try{ localStorage.setItem(key, v); }
-    catch(e){ purgeCache(true); try{ localStorage.setItem(key, v); }catch(e2){} }
+    CMEM[key]=o;
+    try{ cIdbPut(key, JSON.stringify(o)); }catch(e){}
   }
-  purgeCache(false);
   function setStatus(html) { var el=document.getElementById('status'); if(el){ el.style.display='block'; el.innerHTML=html; } }
   function sleep(ms) { return new Promise(function(resolve){ setTimeout(resolve, ms); }); }
   function hideAllResults() {
@@ -3269,7 +3283,7 @@ window.onerror = function(msg, src, line, col, err) {
       if (lastRenderData) renderChart(lastRenderData, lastRenderMode);
     });
   }
-  if (loadCache(getCacheKeyOverview())) loadOverview(false);
+  rrgCacheInit(function(){ if (loadCache(getCacheKeyOverview())) loadOverview(false); });
 })();
 </script>
 </body>
