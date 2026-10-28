@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.7.3</title>
+<title>回檔盤點 pullback v1.7.4</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.7.3（新增「其他成長股」板塊；③ 分成「可以考慮」和「不要追」兩區）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.7.4（「回檔很淺」改成正面說法；「超過 10%」提醒補上回測根據）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -197,7 +197,7 @@ function analyze(bars){
   if(stage2){
     if(reclaim && depth<=-0.03){
       cat='reclaim';
-      why='趨勢還在，回檔後已經收回 21 日線，今天收盤還高過昨天的高點 —— 這就是「收復」。從 20 天高點回檔了 '+pct(-depth)+(depth>-0.05?'（回檔很淺，比較像小震盪）':'')+'。';
+      why='趨勢還在，回檔後已經收回 21 日線，今天收盤還高過昨天的高點 —— 這就是「收復」。從 20 天高點回檔了 '+pct(-depth)+(depth>-0.05?'（回檔不深，回測裡這類表現較好）':'')+'。';
     }else if(depth<=-0.05 && depth>=-0.25 && nearSup){
       cat='touch';
       why='趨勢還在，從近期高點回檔 '+pct(-depth)+'，現在貼在 '+supName+'附近（離它 '+pct(Math.abs(supName==='21 日線'?dE21:dM50))+'）。還沒出現「收復」，要等。';
@@ -472,7 +472,7 @@ function actionOf(a,top,rankOk,stale){
   }
   if(v[0]==='ok'){
     const deep=Math.abs(a.depth||0)>0.10;
-    return mk('go','✅ 可以開始考慮買','參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡這種比較沒優勢，要更小心。':''),facts(),'下一步');
+    return mk('go','✅ 可以開始考慮買','參考價約 $'+a.px.toFixed(2)+'（實際看隔天開盤），停損放 $'+a.stopPx.toFixed(2)+'（−'+sp+'%）。'+rangeTxt(a)+' 先對照 TradingView 的圖，不要重壓。'+(a.q==='pass'?' 強勢條件（Q）也符合，回測略好。':'')+(deep?' ⚠ 這次回檔超過 10%，回測裡 5 種賣法平均都比回檔較淺的差，10 天內突破的比例也只有約四分之一，要更小心。':''),facts(),'下一步');
   }
   if(v[0]==='edge')return mk('edge','⚠ 已站回，勉強，不建議','停損要放 −'+sp+'%，稍微超過你的 '+lim+'%。要買只能少買。'+rangeTxt(a),facts(),'下一步');
   return mk('no','🚫 已站回，但停損太遠，先不要買','下一次回檔，讓停損縮進你的 '+lim+'% 以內。',facts().concat(['停損要放 −'+sp+'%，超過你的 '+lim+'% 上限，賠太多。']),'現在在等');
