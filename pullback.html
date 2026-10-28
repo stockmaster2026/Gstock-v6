@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.7.2</title>
+<title>回檔盤點 pullback v1.7.3</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.7.2（③ 分成「可以考慮」和「不要追」兩區，不再全是綠色）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.7.3（新增「其他成長股」板塊；③ 分成「可以考慮」和「不要追」兩區）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -149,7 +149,8 @@ const SECTORS=[
   {n:'生技與醫材', s:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'},
   {n:'金融', s:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'},
   {n:'量子運算', s:'IONQ RGTI QBTS QUBT LAES ARQQ'},
-  {n:'七巨頭', s:'AAPL MSFT GOOGL AMZN NVDA META TSLA'}
+  {n:'七巨頭', s:'AAPL MSFT GOOGL AMZN NVDA META TSLA'},
+  {n:'其他成長股', s:'UBER DASH ABNB DUOL CAVA SHOP MELI SE NFLX CRCL AFRM SOFI NU TOST APP RDDT TTD DOCU CELH DKNG'}
 ];
 
 //==PURE==
