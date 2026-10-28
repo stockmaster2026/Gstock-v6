@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.7</title>
+<title>回檔法回測 pb-test v1.7.1</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -47,7 +47,7 @@ details.det>:last-child{margin-bottom:14px}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.7（結果重排：最上面先看結論，細節收起來）</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.7.1（結果重排；結論文字修正：突破率與賺賠分開講、深度結論看統計顯著）</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -376,6 +376,8 @@ function render(trades,nT,yrs,cfg){
     [['回檔後已收復',x.sS],['對照A 沒收復',x.sC2],['對照B 任何強勢日',x.sC1]].forEach(p=>{const q=p[1];
       h+='<tr><td>'+p[0]+'</td>'+(q.n?'<td>'+q.n+'</td><td>'+P0(q.win)+'</td><td>'+F2(q.avgW)+'R</td><td>'+F2(q.avgL)+'R</td><td><b class="'+(q.ev>0.3?'ok':(q.ev<=0?'bad':'warnc'))+'">'+F2(q.ev)+'</b></td><td>'+P1(q.medRet)+'</td><td>'+q.maxLose+'</td><td>'+P0(q.topShare)+'</td>':'<td colspan="8" class="small">沒有訊號</td>')+'</tr>';});
     h+='</tbody></table>';
+    {const wild=[['回檔後已收復',x.sS],['對照A 沒收復',x.sC2],['對照B 任何強勢日',x.sC1]].filter(p=>p[1].n&&p[1].avgL<-5);
+     if(wild.length)h+='<div class="small bad">⚠ '+wild.map(p=>p[0]).join('、')+'：平均賠高達 '+wild.map(p=>F2(p[1].avgL)+'R').join('、')+'，不正常（停損正常只賠約 −1R），多半是少數資料異常（例如股票分割沒還原）。這一格的 EV 不可信；上面「比對照組好／差」的判斷有做極端值處理，不受影響。最糟的幾筆列在「細節 H」。</div>';}
     const ok=[s.n>=30,s.ev>0.3,s.medRet>0,s.maxLose<=6];
     h+='<div class="small">你之前的過關標準（樣本≥30、EV＞+0.3R、報酬中位數為正、最大連虧≤6）：'+['樣本','EV','中位數','連虧'].map((n,i)=>'<span class="'+(ok[i]?'ok':'bad')+'">'+(ok[i]?'✓':'✗')+n+'</span>').join(' ')+'。<br>⚠ 這種「小賠、偶爾大賺」的做法，勝率本來就低，報酬中位數通常是負的，所以「中位數」這一格容易不過；主要看跟對照組比、以及 EV。</div>';
   });
@@ -524,7 +526,7 @@ function render(trades,nT,yrs,cfg){
   const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);SUM.top=top;SUM.tot=tot;
   h+='<details class="card det"><summary>細節 G　賺的錢集中在哪幾檔？</summary><div class="small">'+(tot>0?'總共 '+F2(tot)+'R，最賺的 5 檔：'+top.map(t=>t[0]+' '+F2(t[1])+'R（占 '+P0(t[1]/tot)+'）').join('、')+'。如果少數幾檔就占了大半，這個結果就不穩。':'總和不是正的，沒有集中度問題。')+'</div></details>';
   const op=trades.filter(t=>t.open).length;
-  h+='<details class="card det"><summary>細節 H　資料說明</summary><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組；「進場時機比較」另外算，不在這個數字裡），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。</div></details>';
+  h+='<details class="card det"><summary>細節 H　資料說明</summary><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組；「進場時機比較」另外算，不在這個數字裡），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。<br>最糟的 5 筆（用來抓資料異常）：'+trades.slice().sort((a,b)=>a.R-b.R).slice(0,5).map(t=>t.tk+' '+t.date+' '+F2(t.R)+'R（'+(t.grp==='S'?'收復':(t.grp==='C2'?'對照A':'對照B'))+'・'+t.rule+'）').join('、')+'。</div></details>';
   $('out').innerHTML=buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN)+'<div class="zone"><span class="zt z5">⑤ 細節</span>要查證時再按開（每一塊都是上面結論的原始數字）</div>'+h;
 }
 
@@ -537,26 +539,30 @@ function buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN){
   const DN=['淺（3～5%）','中（5～10%）','深（10%以上）'];
   const rg=(a,f)=>{const lo=Math.min.apply(null,a),hi=Math.max.apply(null,a);return f(lo)===f(hi)?f(lo):f(lo)+'～'+f(hi);};
   const evc=e=>e==null?'n':(e>0.3?'g':(e>0?'y':'r'));
-  // 問題1：站回 21 日線有沒有額外好處
+  // 問題1：站回 21 日線有沒有額外好處（v1.7.1：突破率與賺賠分開講；每個比較用「自己那一組」的 Pullback 數字）
+  const nbEV=cnt.better||0, nwEV=cnt.worse||0, nTest=rows.filter(x=>x.cmp.v!=='few').length;
+  const nbB=rows.filter(x=>x.cmp1&&x.cmp1.v==='better').length, nwB=rows.filter(x=>x.cmp1&&x.cmp1.v==='worse').length;
   let q1={c:'n',t:'樣本不夠，這題先不下結論',d:'深度對齊需要每一格都有足夠筆數。'};
   if(mA&&mB){
     const sA=mA.z>2?1:(mA.z<-2?-1:0),sB=mB.z>2?1:(mB.z<-2?-1:0);
+    const sayZ=(z)=>z>2?'Pullback 較高，統計上看得出來':(z<-2?'Pullback 較低，統計上看得出來':'差別在誤差範圍內');
     let c,t;
-    if(sA>0&&sB>0){c='g';t='站回 21 日線有加分：比「沒站回」好，也比「同樣深度的任何強勢回檔」好';}
-    else if(sA>0&&sB===0){c='y';t='站回 21 日線只有「濾掉比較差的回檔」的作用，沒有額外加分';}
-    else if(sA<0||sB<0){c='r';t='站回 21 日線沒有看到好處（比對照組差）';}
+    if(nbEV>=3&&sA>0){c='g';t='站回 21 日線有加分：突破率比「沒站回」高，賺賠也有 '+nbEV+'／'+nTest+' 種賣法看得出比較好';}
+    else if(nwEV>=3||sA<0){c='r';t='站回 21 日線沒有看到好處（比對照組差）';}
+    else if(sA>0||nbEV>=1){c='y';t='站回 21 日線有一點效果，但不一致';}
     else{c='n';t='站回 21 日線跟對照組看不出差別';}
-    let d='10 天內收盤突破前高的比例（深度對齊後）：Pullback 買點 <b>'+P0(mA.pS)+'</b>，沒站回的回檔 '+P0(mA.pC)+'，同樣深度的任何強勢回檔 '+P0(mB.pC)+'。';
-    d+='<br>'+(sA>0?'比「沒站回」高，表示站回 21 日線確實擋掉了比較弱的回檔。':(sA<0?'比「沒站回」還低。':'跟「沒站回」差不多。'))+(sB===0?' 但跟「同樣深度的任何強勢回檔」差不多，所以你看到「Pullback 買點常常在突破前出現」，比較像是這類買點本身離前高近，而不是 21 日線有魔力。':(sB>0?' 也比同樣深度的任何回檔高，你的觀察有資料支持。':' 比同樣深度的任何回檔還低。'));
-    d+='<br>先碰到停損的比例 '+P0(mA.sS)+'（對照：沒站回 '+P0(mA.sC)+'）。突破率高不代表停損不會先被打到。';
+    let d='<b>突破率</b>（10 天內收盤突破前高，回檔深度對齊後）：<br>・Pullback 買點 '+P0(mA.pS)+' vs 沒站回的回檔 '+P0(mA.pC)+'：'+sayZ(mA.z)+'<br>・Pullback 買點 '+P0(mB.pS)+' vs 同樣深度的任何強勢回檔 '+P0(mB.pC)+'：'+sayZ(mB.z);
+    d+='<br><b>賺賠（EV）</b>：跟「沒站回」比，5 種賣法裡「Pullback 較好、統計上看得出來」的有 '+nbEV+' 種'+(nwEV?'，較差的有 '+nwEV+' 種':'')+'，其餘看不出差別；跟「任何強勢日」比，較好 '+nbB+' 種、較差 '+nwB+' 種。';
+    d+='<br>'+(sB>0?'突破率也比同樣深度的任何強勢回檔高，Pullback 買點比單純的回檔好。':(sB<0?'突破率比同樣深度的任何強勢回檔還低。':'跟「任何強勢回檔」比差不多：Pullback 買點的好處，大多是強勢股回檔本來就容易再突破，不是 21 日線本身多出來的。'));
+    d+='<br>先碰到停損的比例 '+P0(mA.sS)+'（沒站回 '+P0(mA.sC)+'）。突破率高不代表停損不會先被打到。';
     q1={c,t,d};
   }
   // 問題2：回檔多深
   const dT=SUM.dT||0,dW=SUM.dW||0,dS=SUM.dSig||0;
   let q2c='n',q2t='樣本不夠，這題先不下結論';
   if(dT){
-    if(dW>=Math.max(3,dT-1)){q2c='r';q2t='回檔越深越差：深回檔（10% 以上）在 '+dT+' 種賣法裡有 '+dW+' 種平均比淺／中回檔差'+(dS?'，其中 '+dS+' 種統計上看得出來':'，但統計上都還看不出明顯差別');}
-    else if(dW>=3){q2c='y';q2t='深回檔（10% 以上）有偏差的跡象：'+dT+' 種賣法裡有 '+dW+' 種較差'+(dS?'，其中 '+dS+' 種統計上看得出來':'');}
+    if(dW>=Math.max(3,dT-1)&&dS>=2){q2c='r';q2t='回檔越深越差：深回檔（10% 以上）在 '+dT+' 種賣法裡有 '+dW+' 種平均比淺／中回檔差，其中 '+dS+' 種統計上看得出來';}
+    else if(dW>=3){q2c='y';q2t='深回檔（10% 以上）有偏差的跡象：'+dT+' 種賣法裡 '+dW+' 種平均較差，但統計上'+(dS?'只有 '+dS+' 種':'都')+'看不出明顯差別，證據不算強';}
     else{q2c='n';q2t='回檔深淺看不出一致的差別';}
   }
   const bins=lead.bins||[];
@@ -583,9 +589,9 @@ function buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN){
   // 一句話
   const parts=[];
   if(evs.length)parts.push('<span class="'+(q3.c==='g'?'hg':(q3.c==='r'?'hr':'hy'))+'">整體：'+(q3.c==='g'?'平均有賺':(q3.c==='r'?'平均沒賺':'平均有賺但偏薄、勝率低'))+'</span>');
-  if(mA&&mB)parts.push('<span class="'+(q1.c==='g'?'hg':(q1.c==='r'?'hr':'hy'))+'">站回 21 日線：'+(q1.c==='g'?'有額外加分':(q1.c==='r'?'沒好處':(q1.c==='y'?'只是濾掉較差的回檔':'看不出差別')))+'</span>');
-  if(dT)parts.push('<span class="'+(q2c==='r'?'hr':(q2c==='y'?'hy':'hg'))+'">回檔深度：'+(q2c==='r'?'越深越差，10% 以上要小心':(q2c==='y'?'深回檔有偏差跡象':'看不出一致差別'))+'</span>');
-  const hc=(q3.c==='r'||q1.c==='r')?'r':((q3.c==='g'&&q2c!=='r')?'g':'y');
+  if(mA&&mB)parts.push('<span class="'+(q1.c==='g'?'hg':(q1.c==='r'?'hr':'hy'))+'">站回 21 日線：'+(q1.c==='g'?'有加分':(q1.c==='r'?'沒好處':(q1.c==='y'?'有一點效果，但不一致':'看不出差別')))+'</span>');
+  if(dT)parts.push('<span class="'+(q2c==='r'?'hr':(q2c==='y'?'hy':'hg'))+'">回檔深度：'+(q2c==='r'?'越深越差，10% 以上要小心':(q2c==='y'?'10% 以上有偏差跡象（證據不算強）':'看不出一致差別'))+'</span>');
+  const hc=(q3.c==='r'||q1.c==='r')?'r':((q3.c==='g'&&q2c!=='r'&&q1.c!=='y')?'g':'y');
   let o='<div class="zone"><span class="zt z1">① 一句話結論</span></div><div class="verd '+hc+'"><div class="big1">'+(parts.join('<br>')||'樣本不夠，這批資料跑不出結論')+'</div><div class="d">範圍：'+scopeTxt+'；'+nT+' 檔股票、'+yrs+' 年資料；回檔收復訊號最多 '+maxN+' 筆。<br><span class="small">我們在測：Pullback 的買點（回檔後站回 21 日線）值不值得做？哪些條件好、哪些條件差？下面拆成四個問題。</span></div></div>';
   o+='<div class="zone"><span class="zt z2">② 四個問題的答案</span></div>';
   o+='<div class="verd '+q1.c+'"><div class="q">問題 1　站回 21 日線，有沒有比較容易突破、比較不會被停損？</div><div class="t">'+q1.t+'</div><div class="d">'+q1.d+'</div></div>';
@@ -595,7 +601,7 @@ function buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN){
   // 怎麼用
   const use=[];
   if(dEv[0]!=null&&dEv[0]>0)use.push('<span class="hg">可以做</span>：回檔 3～10%（淺、中）＋站回 21 日線，回測裡表現較好。照 Pullback 給的買進範圍與停損，不用特別縮小部位。');
-  if(q2c==='r'||q2c==='y')use.push('<span class="hr">要更小心</span>：回檔超過 10%。歷史上賣法平均都比較差，也比較容易先被停損；不要因為「跌比較多、比較便宜」就當成加分。');
+  if(q2c==='r'||q2c==='y')use.push('<span class="'+(q2c==='r'?'hr':'hy')+'">要更小心</span>：回檔超過 10%。'+(q2c==='r'?'歷史上賣法平均都比較差，也比較容易先被停損':'方向上賣法平均都比較差，但證據還不夠強，不是硬性不能做')+'；不要因為「跌比較多、比較便宜」就當成加分。');
   use.push('<span class="hy">心理準備</span>：勝率低是這種做法的常態（小賠多、偶爾大賺），靠停損與每筆 1% 風險撐過連虧，不要因為連輸幾筆就改規則。');
   o+='<div class="zone"><span class="zt z3">③ 實際怎麼用</span></div><div class="card" style="margin-top:6px"><div class="d" style="font-size:14px;line-height:1.9">'+use.join('<br>')+'</div></div>';
   o+='<div class="zone"><span class="zt z4">④ 這份結論要打折的地方</span></div><div class="card" style="margin-top:6px"><div class="small" style="line-height:1.8">①股票名單是今天挑的，後來沒漲的、下市的不在裡面（倖存者偏差，會讓結果偏樂觀）。②同一檔連續幾天的訊號互相重疊，實際獨立的樣本比筆數少。③「突破」是 20 日高點的簡化版，不等於 dna 的 pivot。④分組很多（三種深度×五種賣法等），隨機也會有幾格看起來有差，所以只看「五種賣法方向一致」的結論。⑤這是歷史回測，不保證未來。</div></div>';
