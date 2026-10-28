@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v9.1</title>
+<title>飆股雷達 v9.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -143,7 +143,7 @@ transition:all 0.2s;width:152px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v9.1</div>
+  <div class="logo">飆股<span>RADAR</span> v9.2</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -674,7 +674,7 @@ function analyzeYahoo(result, floatShares){
       ma150:ma150,dist150:dist150,hi52:hi52,off52:off52,asOf:asOf,
       ma200:ma200,lo52:lo52,off52lo:off52lo,c21:c21,
       dev30:dev30,dev50:dev50,dev80:dev80,mainCostMid:mainCostMid,
-      // v9.1: 整年的收盤／最高／最低／日期留下來 —— 板塊過去幾十天的 breadth 靠它當場重算
+      // v9.2: 整年的收盤／最高／最低／日期留下來 —— 板塊過去幾十天的 breadth 靠它當場重算
       H:{c:valid.map(function(d){return d.c;}),h:valid.map(function(d){return d.h;}),l:valid.map(function(d){return d.l;}),
          d:valid.map(function(d){return new Date(d.t*1000).toISOString().slice(0,10);})}};
   }catch(e){return null;}
@@ -916,7 +916,7 @@ function bdHi(B){
   if(B.nLo>0)  return '🔻 '+B.nLo+' 檔貼著 52 週低點';
   return '沒有人創新高，也沒有人破底';
 }
-// ═══ v9.1:【板塊趨勢 —— 用已經抓到的一年日線，當場重算過去每一天】═══════════
+// ═══ v9.2:【板塊趨勢 —— 用已經抓到的一年日線，當場重算過去每一天】═══════════
 //   v8.9 的問題: 強勢股家數等主要數字每次重算、沒有任何歷史; 存歷史的只有舊總分,
 //   而且靠「你有開頁面的那幾天」—— 沒開的日子就是洞。
 //   做法: 每檔股票的一整年日線本來就抓下來了(只是之前丟掉), 這裡留下來, 對 SPY 的
@@ -1082,7 +1082,7 @@ function renderHeatStrip(selId){
     var sc=heatScore(sec.tickers, sec.etf);
     todayScores[sec.id]=sc;
     var hi=heatInfo(sc);
-    // v9.1: 舊的「↑↓ 幾分／上升中／落後」拿掉 —— 那是拿「上一次開啟那天」的總分比，
+    // v9.2: 舊的「↑↓ 幾分／上升中／落後」拿掉 —— 那是拿「上一次開啟那天」的總分比，
     //   AI算力雲 7 天掉 21 分、今天彈 9 分還被標「上升中」。改成階段標籤＋30 天走勢線。
     var R=SERIES[sec.id], stageHtml='';
     if(R&&R.stage){
@@ -1301,7 +1301,7 @@ function getDiaryHoldings(){
 
 var TR_DIR='desc';
 function setTrDir(d){TR_DIR=d;renderDailyObserve();}
-// v9.1: 趨勢排行 —— 板塊原本的順序不動，另外依「現在多強、這幾天往哪走」排一張表
+// v9.2: 趨勢排行 —— 板塊原本的順序不動，另外依「現在多強、這幾天往哪走」排一張表
 //   動能分數＝現在強勢股比例 +（現在比例 − 5 天前比例）的一半。比例＝跑贏大盤的檔數 ÷ 有資料的檔數。
 function trendRankHtml(sectors){
   var rows=[];
@@ -1311,14 +1311,15 @@ function trendRankHtml(sectors){
     var A=R.days,n=A.length,t=A[n-1],b=A[n-6];
     if(!t.nRs||!b.nRs) return;
     var now=t.lead/t.nRs, bef=b.lead/b.nRs, sc=now+0.5*(now-bef);
-    rows.push({sec:sec,R:R,now:now,bef:bef,d:t.lead-b.lead,sc:sc,t:t});
+    var SO={new:6,mid:5,late:4,brew:3,none:2,fade:1};
+    rows.push({sec:sec,R:R,now:now,bef:bef,d:t.lead-b.lead,sc:sc+(R.stage?SO[R.stage.k]*10:0),t:t});
   });
   if(!rows.length) return '';
   rows.sort(function(a,b){return TR_DIR==='desc'?b.sc-a.sc:a.sc-b.sc;});
   var btn=function(k,txt){var on=TR_DIR===k;return '<span onclick="setTrDir(\''+k+'\')" style="cursor:pointer;display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-right:6px;'+(on?'background:#0066bb;color:#fff':'background:#fff;color:#0066bb;border:1px solid #0066bb')+'">'+txt+'</span>';};
   var h='<div style="margin-top:12px;padding-top:8px;border-top:2px solid #d4b800"><div style="font-weight:700;color:#0066bb;margin-bottom:3px">📈 板塊趨勢排行（一眼看誰在轉強、誰在轉弱）</div>'+
     '<div style="margin-bottom:5px">'+btn('desc','由強到弱')+btn('asc','由弱到強')+'</div>'+
-    '<div style="color:#8a8a6a;font-size:11px;margin-bottom:4px">排序＝現在有多少比例的股票在跑贏大盤，再加上「這 5 天是變多還是變少」。▲＝比 5 天前多，▼＝比 5 天前少。板塊卡片原本的順序沒動。</div>';
+    '<div style="color:#8a8a6a;font-size:11px;margin-bottom:4px">排序＝先依階段（剛起步 → 進行中 → 偏後段 → 醞釀中 → 沒動靜 → 轉弱中），同一階段內再比現在有多少比例的股票在跑贏大盤、加上這 5 天變多還是變少。▲＝比 5 天前多，▼＝比 5 天前少。板塊卡片原本的順序沒動。</div>';
   rows.forEach(function(r,i){
     var up=r.d>0,dn=r.d<0,col=up?'#0d8a3f':(dn?'#c62828':'#8b949e');
     var arrow=up?'▲ +'+r.d:(dn?'▼ '+r.d:'－ 0');
@@ -1634,14 +1635,14 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
   var chg=avgChg(sec.tickers);
   var chgStr=chg!==null?(chg>=0?'▲+':'▼')+Math.abs(chg).toFixed(1)+'%':'';
   var chgCol=chg===null?'var(--dim)':chg>=0?'var(--green)':'var(--red)';
-  var trendInfo='';   // v9.1: 舊的「1日／7日」分數變化拿掉，改看下面的趨勢面板
+  var trendInfo='';   // v9.2: 舊的「1日／7日」分數變化拿掉，改看下面的趨勢面板
   document.getElementById('listHeader').innerHTML=
     sec.icon+' <strong>'+sec.name+'</strong>　'+
     '<span style="color:'+hi.col+'">'+hi.fire+' '+sc+'分</span>　'+
@@ -1982,7 +1983,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -2098,7 +2099,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.1</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.2</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
