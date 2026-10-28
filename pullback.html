@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.7.4</title>
+<title>回檔盤點 pullback v1.7.5</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.7.4（「回檔很淺」改成正面說法；「超過 10%」提醒補上回測根據）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.7.5（「不要追」改成「停損會太寬」：回測看不出追高或開盤低於 21 日線會比較差）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -95,7 +95,7 @@ tr.row-go td{background:#f0fdf4}
   <details open><summary>回測學到的（10/21，191 檔、5 年，已把這些放進下面的判斷）</summary>
   <div class="small" style="margin-top:6px;line-height:1.8">
     ① <b>贏在選對強勢股，「收復」只多一點</b>：Q 條件強勢股版，收復 EV 約 +0.2～+0.5R，比沒收復的同組多 +0.05～+0.24R，方向 10 個比較全部同向，但幾乎都「統計上看不出差別」。<br>
-    ② <b>最好的出場是你的式</b>（賺 3 倍風險賣 1/3，剩下連 3 天破 20 日線出）：收復 +0.54R vs 沒收復 +0.30R（n=239）。<br>
+    ② <b>最好的出場是你的式</b>（賺 3 倍風險賣 1/3，剩下連 3 天破 20 日線出）：收復 +0.54R vs 沒收復 +0.30R（n=239）。最新一次 pb-test：你的式 +0.31R ≈ 抱滿 20 天 +0.29R，都明顯比短線賣法（+0.14～0.18R）好，抱得久比跑得快好。<br>
     ③ <b>停損別太緊</b>：5% 以內那組是負的，5～8% 才賺。<b>回檔別太深</b>：10% 以上賺很薄。<br>
     ④ <b>勝率只有 33～40%，報酬中位數是負的，靠少數大賺</b>：跟 Martin Luk 的「形狀」一致，但我們的幅度小很多，沒有重現他的成績。最大連虧 15～23 次，所以每筆風險先抓小一點、分散在約 5 檔。<br>
     ⑦ <b>v1.4 的判斷依據（10/22 三個版本比較）</b>：「Q 條件」「Q＋長期趨勢」「長期趨勢＋半年漲幅前 30%」三版比，第三版筆數最多（收復約 780 筆）、賺錢最分散（前 5 檔只占約 25%，另兩版是 56%、85%）、2023～2026 每年都是正的，所以主名單改用它。收復比沒收復只多 +0.04～+0.15R，5 種出場全是「統計上看不出差別」；Q 條件不符合的也有 +0.41R，所以 Q 只當加分標記。<br>
@@ -426,7 +426,7 @@ function buyRange(a){
 function rangeTxt(a){
   const r=buyRange(a);
   if(!r.ok)return '現在沒有合適的買進範圍（上限 $'+r.hi.toFixed(2)+' 比 21 日線 $'+r.lo.toFixed(2)+' 還低）。';
-  return '隔天開盤在 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 之間才考慮；高過 $'+r.hi.toFixed(2)+' 不要追（'+(r.by==='risk'?'再高停損就超過你的 '+(cfgGet().smax*100).toFixed(0)+'%':'已比訊號價高過 5%')+'）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）表示收復失敗，也不買。'+(r.above?'現價已經高於上限，要等價格回到範圍內。':'');
+  return '隔天開盤在 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 之間才考慮；高過 $'+r.hi.toFixed(2)+' 先不買（'+(r.by==='risk'?'再高停損就超過你的 '+(cfgGet().smax*100).toFixed(0)+'%（這條是為了控制停損寬度，回測看不出追高會比較差）':'已比訊號價高過 5%')+'）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）表示收復失敗，先不買（回測裡開盤低於 21 日線並沒有比較差，這條主要是保守起見）。'+(r.above?'現價已經高於上限，要等價格回到範圍內。':'');
 }
 // v1.7：只寫工具確實算得出的事實，不下「體質好壞」的評語。每檔固定三段：
 //   ① 大標題＝現況＋該做什麼（先不要買／可以考慮）　② 現在在等什麼　③ 幾行事實
@@ -466,7 +466,7 @@ function actionOf(a,top,rankOk,stale){
   const br=buyRange(a);
   if(v[0]!=='skip'&&(!br.ok||br.above)){
     const close='$'+a.px.toFixed(2);
-    return mk('wait',br.ok?'⏳ 已站回，但現價已超過買進範圍，先不要追':'⏳ 已站回，但目前沒有合適的買進範圍，先不要買',
+    return mk('wait',br.ok?'⏳ 已站回，但現價已超過買進範圍，先不買（停損會太寬）':'⏳ 已站回，但目前沒有合適的買進範圍，先不要買',
       br.ok?'價格回到 $'+br.lo.toFixed(2)+' ~ $'+br.hi.toFixed(2)+' 之間才考慮（隔天開盤在範圍內才算）。現在收盤 '+close+'，已高過上限 $'+br.hi.toFixed(2)+'。':'等下一次回檔，重新算停損與範圍。',
       facts().concat(['買進範圍上限 $'+(br.hi).toFixed(2)+'（停損距離不超過你的 '+lim+'%，且不高過訊號價 +5%）']),'現在在等');
   }
@@ -556,15 +556,15 @@ function renderPicksAndObs(){
   let big,rd;
   const nIn=nowA.filter(inR).length,nAbove=nowA.length-nIn;
   if(nowA.length){
-    big=nIn?('有 '+nIn+' 檔現價還在買進範圍內，可以開始考慮'+(nAbove?'；另有 '+nAbove+' 檔已超過範圍，不追':'')):('有 '+nAbove+' 檔已站回 21 日線，但現價都已超過買進範圍，今天先不要追');
-    rd='都是半年漲幅排前 30% 的強勢股、長期趨勢也過關、回檔後已收復 21 日線（Q 條件只當加分標記）。'+(nAbove?'「已超過範圍」＝今天收盤價已高過可買的上限（例如收復那天漲很多），等價格回到範圍內才考慮，不追高。':'')+'這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
+    big=nIn?('有 '+nIn+' 檔現價還在買進範圍內，可以開始考慮'+(nAbove?'；另有 '+nAbove+' 檔已超過範圍，不追':'')):('有 '+nAbove+' 檔已站回 21 日線，但現價都已超過買進範圍，今天先不買（停損會太寬）');
+    rd='都是半年漲幅排前 30% 的強勢股、長期趨勢也過關、回檔後已收復 21 日線（Q 條件只當加分標記）。'+(nAbove?'「已超過範圍」＝今天收盤價已高過可買的上限（例如收復那天漲很多），買進去停損會變太寬，等價格回到範圍內再考慮。回測看不出追高本身會比較差，這是在控制停損寬度。':'')+'這是「可以開始看」，不是「一定要買」：請再對照 TradingView 的圖，並且分散在約 '+c.nn+' 檔，不要重壓。';}
   else if(waitA.length){big='還沒有已收復的；有 '+waitA.length+' 檔接近確認價（要等）';rd='回測顯示「等收復再買」比「跌到支撐就先買」有證據；這一批都還沒收復，今天先不用動，把確認價記起來。';}
   else{big='現在沒有「長期趨勢＋半年漲幅前 30%＋收復」的價位，今天不用做';rd='沒有一檔同時過半年漲幅前 30%、長期趨勢、又出現收復或接近確認價。'+(nowB.length||waitB.length?'下面「長期趨勢有問題」那區有幾檔 Q 條件過關但長期趨勢沒過，先不列入。':'')+(noQ?'（另有 '+noQ+' 檔已收復但半年漲幅不在前 30%，不列。）':'');}
   h+='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'</div></div>';
     const nowTable=(list,cls)=>{cls=cls||'pick';let t='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const v=stopVerdict(a);
       t+='<tr class="'+cls+'"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div></td>'
-       +'<td>'+(()=>{const r=buyRange(a);if(cls==='late'){return r.ok?'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現價已超過上限</div><div class="mini">等價格回到 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮；高過 $'+r.hi.toFixed(2)+' 不要追。</div>':'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現在沒有合適的買進範圍</div><div class="mini">要停損不超過上限，買價得低於 21 日線，兩個條件湊不起來。</div>';}return r.ok?'<div style="font-size:15px;font-weight:800;color:#15803d">✅ 隔天開盤 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮</div><div class="mini"><b>高過 $'+r.hi.toFixed(2)+' 不要追</b>；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）不買。'+(r.above?'<b class="warnc">現價已高於上限，要等回到範圍內。</b>':'')+'</div>':'<div class="mini warnc">現在沒有合適的買進範圍</div>';})()+'<div class="mini" style="margin-top:4px">收盤（'+a.lastDate+'）$'+a.px.toFixed(2)+'。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
+       +'<td>'+(()=>{const r=buyRange(a);if(cls==='late'){return r.ok?'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現價已超過上限</div><div class="mini">等價格回到 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮；高過 $'+r.hi.toFixed(2)+' 停損會太寬。</div>':'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現在沒有合適的買進範圍</div><div class="mini">要停損不超過上限，買價得低於 21 日線，兩個條件湊不起來。</div>';}return r.ok?'<div style="font-size:15px;font-weight:800;color:#15803d">✅ 隔天開盤 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮</div><div class="mini"><b>高過 $'+r.hi.toFixed(2)+' 先不買</b>（停損會太寬）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）先不買。'+(r.above?'<b class="warnc">現價已高於上限，要等回到範圍內。</b>':'')+'</div>':'<div class="mini warnc">現在沒有合適的買進範圍</div>';})()+'<div class="mini" style="margin-top:4px">收盤（'+a.lastDate+'）$'+a.px.toFixed(2)+'。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
        +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
        +'<td>'+sizeTxt(buyRange(a).hi,a.stopPx)+'<div class="mini">（以可買範圍的上限價估算，買在低一點股數會多一點）</div></td>'
        +'<td style="min-width:200px" class="mini">'+a.why+(a.q==='pass'?' Q 條件也符合，回測裡這組略好（+0.70R，n=75）。':'')+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>'
@@ -579,7 +579,7 @@ function renderPicksAndObs(){
     return t+'</tbody></table>';};
   if(nowA.length){const inA=nowA.filter(inR),abA=nowA.filter(a=>!inR(a));
     if(inA.length)h+='<h2 style="margin-top:14px;font-size:16px;color:#15803d">✅ 可以考慮（現價還在買進範圍內）：'+inA.length+' 檔</h2>'+nowTable(inA,'pick');
-    if(abA.length)h+='<h2 style="margin-top:14px;font-size:16px;color:#6b7280">⛔ 不要追（站回了，但現價已超過範圍，或沒有合適範圍）：'+abA.length+' 檔</h2><div class="mini" style="margin-bottom:4px">這幾檔先放著，等價格回到範圍內才考慮；不用看賣出規則。</div>'+nowTable(abA,'late');}
+    if(abA.length)h+='<h2 style="margin-top:14px;font-size:16px;color:#6b7280">⛔ 先不買（站回了，但現價已超過範圍，停損會太寬，或沒有合適範圍）：'+abA.length+' 檔</h2><div class="mini" style="margin-bottom:4px">這幾檔先放著，等價格回到範圍內才考慮；不用看賣出規則。</div>'+nowTable(abA,'late');}
   if(waitA.length)h+='<h2 style="margin-top:14px;font-size:15px">接近確認價的（要等）</h2>'+waitTable(waitA);
   if(nowB.length||waitB.length){
     h+='<details style="margin-top:12px"><summary class="warnc">⚠ 半年漲幅前 30%，但「長期趨勢」有問題的（'+(nowB.length+waitB.length)+' 檔）—— 先不列入，點開看原因</summary><div class="mini" style="margin:6px 0">短期漲得多，但長期均線結構沒過 Minervini 趨勢模板（例如 200 日線還沒上升、離 52 週低點不夠遠）。常見於「大跌後的 V 型反彈」。這類回測還沒驗證有沒有優勢。</div>'+(nowB.length?nowTable(nowB):'')+(waitB.length?waitTable(waitB):'')+'</details>';
