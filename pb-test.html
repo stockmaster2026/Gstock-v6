@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.4</title>
+<title>回檔法回測 pb-test v1.5</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.4（新增「進場時機比較」）</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.5（新增「領先測試」：回檔買點後，幾天內會不會突破前高）</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -80,7 +80,8 @@ const SECTORS=['CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS 
 'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV',
 'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC',
 'IONQ RGTI QBTS QUBT LAES ARQQ',
-'AAPL MSFT GOOGL AMZN NVDA META TSLA'];
+'AAPL MSFT GOOGL AMZN NVDA META TSLA',
+'UBER DASH ABNB DUOL CAVA SHOP MELI SE NFLX CRCL AFRM SOFI NU TOST APP RDDT TTD DOCU CELH DKNG'];
 const UNIVERSE=Array.from(new Set(SECTORS.join(' ').split(/\s+/)));
 
 //==SIM==
@@ -161,7 +162,7 @@ function runExit(P,e,E,S,rule){
   real-=0.002*E;
   return {exit,ret:real/E,R:real/Rd,hold:exit-e+1,reason,open};
 }
-const TMBUF=[];
+const TMBUF=[],LEADBUF=[];
 function simTicker(tk,b,spyOk,cfg){
   const P=prep(b),out=[];const free={};
   for(let i=200;i<P.n-1;i++){
@@ -185,6 +186,17 @@ function simTicker(tk,b,spyOk,cfg){
       if(rangeOk&&O1>hiR)addT('HIGH',O1,e);
       if(rangeOk&&O1>hiR&&P.L[e]<=hiR)addT('LIM',hiR,e);
       if((c0-stp)/c0<=cfg.smax)addT('B',c0,e);
+    }
+    // v1.5 領先測試：訊號日之後 20 天內，收盤第一次站上「訊號日當時的 20 日高點」要幾天；途中有沒有先碰到停損。
+    //   只收「後面還有完整 20 天」的訊號（避免最近的訊號因為資料不夠而被當成沒突破）。
+    if(i+20<P.n){
+      const hiB=maxH(P,i-19,i);let dBrk=null,dNear=null,stopFirst=false;
+      for(let j=i+1;j<=i+20;j++){
+        if(dNear==null&&P.H[j]>=hiB*0.98)dNear=j-i;
+        if(P.C[j]>hiB){dBrk=j-i;break;}
+        if(P.L[j]<=sg.stop){stopFirst=true;break;}
+      }
+      LEADBUF.push({tk,grp:sg.grp,date:P.date[i],year:P.year[i],depth:sg.depth,dBrk,dNear,stopFirst,okRisk:((E-sg.stop)/E)<=cfg.smax&&E>sg.stop});
     }
     if(!(E>sg.stop))continue;
     const risk=(E-sg.stop)/E;
@@ -305,7 +317,7 @@ async function doRun(){
     tks.forEach(tk=>{const b=all[tk];for(let i=126;i<b.length;i++){(byD[b[i].date]=byD[b[i].date]||[]).push(b[i].c/b[i-126].c-1);}});
     cfg.rsThr={};Object.keys(byD).forEach(d=>{const a=byD[d].sort((x,y)=>x-y);cfg.rsThr[d]=a.length>=30?a[Math.floor(a.length*0.7)]:null;});
   }
-  let trades=[];TMBUF.length=0;
+  let trades=[];TMBUF.length=0;LEADBUF.length=0;
   for(let i=0;i<tks.length;i++){
     $('stat').innerHTML='計算中 '+(i+1)+' / '+tks.length+'：'+tks[i];
     trades=trades.concat(simTicker(tks[i],all[tks[i]],spy,cfg));
@@ -372,6 +384,44 @@ function render(trades,nT,yrs,cfg){
       h+=cmpTxt(gLIM,gIN,'「高開後盤中跌回上限才成交」vs「開盤在範圍內」');
     });
     h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(bTested?('5 種出場裡，有 '+bTested+' 種能比較；其中「當天收盤買」平均較好的有 '+bBetter+' 種。'):'樣本不夠，不能比較。')+'<br>・「開盤已跌破 21 日線」那一列，就是在回答「隔天往下掉，可能其實是轉壞」這個擔心：如果它明顯比「範圍內」差，就代表工具叫你「低於範圍不買」是對的。<br>・「高開後盤中跌回上限才成交」是模擬你今天那種「掛在範圍裡，等它回來」的做法；它假設價格只要碰到你的價位就一定成交，實際上不一定，結果會偏樂觀。<br>・如果「當天收盤買」一致比較好、而且統計上看得出來，才值得考慮改成收盤前買；如果看不出差別，維持隔天開盤就好（比較不會因為盤中亂跳而買到沒守住的訊號）。<br>⚠ 多個比較、每組筆數不多；這批股票是今天挑的（倖存者偏差）；「當天收盤買」用的是真正收盤價，實際上你要在收盤前幾分鐘就下單，價格會有一點差。只看「五種出場方向一致」且「統計上看得出來」。</div></div></div>';
+  }
+  // 領先測試（v1.5）
+  {
+    const L=LEADBUF,gS=L.filter(x=>x.grp==='S'),gC2=L.filter(x=>x.grp==='C2'),gC1=L.filter(x=>x.grp==='C1'&&x.depth<=-0.03);
+    const frac=(g,f)=>g.length?g.filter(f).length/g.length:0;
+    const brkIn=n=>x=>x.dBrk!=null&&x.dBrk<=n;
+    const nearIn=n=>x=>x.dNear!=null&&x.dNear<=n;
+    const zt=(a,b,n)=>{if(a.length<20||b.length<20)return null;const p1=frac(a,brkIn(n)),p2=frac(b,brkIn(n)),p=(a.filter(brkIn(n)).length+b.filter(brkIn(n)).length)/(a.length+b.length),se=Math.sqrt(p*(1-p)*(1/a.length+1/b.length));return se>0?(p1-p2)/se:0;};
+    const med=g=>{const a=g.filter(x=>x.dBrk!=null).map(x=>x.dBrk);return a.length?median(a):null;};
+    h+='<div class="card"><h2>領先測試：回檔買點出現後，幾天內會突破前高？（v1.5）</h2>';
+    h+='<div class="small">起因：你回頭看發現，很多股票在突破 pivot 的前 4～5 天，Pullback 就先出現買點。這裡用資料檢查兩件事：①這個比例是真的比較高嗎？②是不是只是「本來就離前高很近」造成的假象？<br>';
+    h+='做法：每個訊號日往後看 20 天，「收盤站上訊號日當時的 20 日高點」算突破（這是 pivot 的簡化版，不等於 dna 的 pivot）；如果途中先碰到停損，就不算會突破。三組比較：<b>回檔後已收復</b>（Pullback 的買點）、<b>對照A 沒收復但在支撐附近回檔</b>、<b>對照B 任何強勢日，但也回檔了 3% 以上</b>（這樣深度才公平）。只算後面還有完整 20 天的訊號。</div>';
+    const rowL=(name,g)=>{
+      if(!g.length)return '<tr><td>'+name+'</td><td>0</td><td colspan="6">—</td></tr>';
+      return '<tr><td>'+name+'</td><td>'+g.length+'</td><td>'+P0(frac(g,nearIn(5)))+'</td><td>'+P0(frac(g,brkIn(5)))+'</td><td>'+P0(frac(g,brkIn(10)))+'</td><td>'+P0(frac(g,brkIn(20)))+'</td><td>'+P0(frac(g,x=>x.stopFirst))+'</td><td>'+(med(g)==null?'—':med(g)+' 天')+'</td></tr>';
+    };
+    h+='<table><thead><tr><th style="text-align:left">組別</th><th>筆數</th><th>5天內摸到前高 2% 以內</th><th>5天內收盤突破</th><th>10天內收盤突破</th><th>20天內收盤突破</th><th>先碰停損</th><th>突破的中位天數</th></tr></thead><tbody>';
+    h+=rowL('回檔後已收復（Pullback 買點）',gS)+rowL('對照A 沒收復',gC2)+rowL('對照B 任何強勢日，回檔≥3%',gC1);
+    h+='</tbody></table>';
+    // 只看「工具真的會叫你買」的（停損放得進）
+    const gSok=gS.filter(x=>x.okRisk);
+    h+='<div class="small" style="margin-top:6px">只看「停損放得進（≤'+Math.round(cfg.smax*100)+'%）」的 Pullback 買點：'+gSok.length+' 筆，10 天內突破 '+P0(frac(gSok,brkIn(10)))+'，先碰停損 '+P0(frac(gSok,x=>x.stopFirst))+'。</div>';
+    // 天數分布
+    const dist=[];for(let d=1;d<=10;d++)dist.push(gS.filter(x=>x.dBrk===d).length);
+    const mx=Math.max(1,...dist);
+    h+='<div style="margin:10px 0 2px"><b>Pullback 買點之後，第幾天收盤突破？</b></div><table><thead><tr><th style="text-align:left">第幾天</th>'+dist.map((_,i)=>'<th>'+(i+1)+'</th>').join('')+'</tr></thead><tbody><tr><td style="text-align:left">筆數</td>'+dist.map(v=>'<td>'+v+'</td>').join('')+'</tr></tbody></table>';
+    h+='<div class="small">如果你的觀察成立，第 4～5 天附近應該特別多；如果每一天差不多，就只是平均分散。</div>';
+    const z5=zt(gS,gC1,10),z6=zt(gS,gC2,10);
+    let big,cls,det;
+    if(gS.length<30){big='Pullback 買點樣本不夠（'+gS.length+' 筆），先不下結論';cls='n';det='資料不足，不要憑這一區的數字做任何判斷。';}
+    else{
+      const p10=frac(gS,brkIn(10)),pC1=frac(gC1,brkIn(10)),pC2=frac(gC2,brkIn(10));
+      const sf=frac(gS,x=>x.stopFirst);
+      if(z5!=null&&z5>2&&(z6==null||z6>0)){big='Pullback 買點之後 10 天內突破前高的比例，比同樣回檔幅度的對照組高（'+P0(p10)+' vs '+P0(pC1)+'），統計上看得出來';cls='g';det='你的觀察有資料支持。但還要看「先碰停損」那一欄（Pullback '+P0(sf)+'）：突破的機率高，不代表停損不會被先打到。';}
+      else if(z5!=null&&z5<-2){big='Pullback 買點之後 10 天內突破的比例，反而比對照組低（'+P0(p10)+' vs '+P0(pC1)+'）';cls='r';det='目前資料不支持「Pullback 買點之後比較容易突破」。';}
+      else{big='Pullback 買點之後 10 天內突破前高的比例是 '+P0(p10)+'，跟同樣回檔幅度的對照組（'+P0(pC1)+'、'+P0(pC2)+'）看不出明顯差別';cls='n';det='也就是說，這份資料沒有證據顯示「站回 21 日線」讓突破變得更容易；「很多會突破」可能只是強勢股回檔之後本來就常常再創高。你觀察到的現象可能是真的，但目前不能歸功於這個買點。';}
+    }
+    h+='<div class="verd '+cls+'"><div class="t">'+big+'</div><div class="d">'+det+'<br>⚠ 限制：①「突破」用 20 日高點簡化，不是 dna 的 pivot；②這批股票是現在的名單，有倖存者偏差；③同一檔股票連續幾天的訊號互相重疊，實際獨立的樣本比筆數少。</div></div></div>';
   }
   // 切片：用 EV 最高的規則
   const pick=bestEV&&bestEV.sS.n>=20?bestEV.r:'Q20';
