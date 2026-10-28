@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔法回測 pb-test v1.7.1</title>
+<title>回檔法回測 pb-test v1.7.2</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00}
 *{box-sizing:border-box}
@@ -47,7 +47,7 @@ details.det>:last-child{margin-bottom:14px}
 .bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
 @media (max-width:700px){table{font-size:12.5px}th,td{padding:5px 3px}}
 </style></head><body>
-<h1>回檔法回測 <span class="small">pb-test v1.7.1（結果重排；結論文字修正：突破率與賺賠分開講、深度結論看統計顯著）</span></h1>
+<h1>回檔法回測 <span class="small">pb-test v1.7.2（進場時機結論只算統計上明顯的差距；排除單筆虧損超過 20R 的資料異常）</span></h1>
 <div class="sub">把 pullback.html 盤點用的規則放到過去幾年，<b>每一天只用「當天以前的資料」判斷</b>，隔天開盤進場，再看後來走勢。規則在跑之前就寫死，不會看到結果再改。</div>
 
 <div class="card">
@@ -342,6 +342,10 @@ async function doRun(){
     trades=trades.concat(simTicker(tks[i],all[tks[i]],spy,cfg));
     if(i%5===0)await new Promise(r=>setTimeout(r,0));
   }
+  // v1.7.2：單筆虧損超過 20R 不可能是真的（停損上限 8%，除非停損距離趨近 0 或資料錯誤），排除並在細節 H 列出
+  window.EXCL=trades.filter(t=>t.R<-20).map(t=>t.tk+' '+t.date+' '+t.R.toFixed(0)+'R');
+  trades=trades.filter(t=>t.R>=-20);
+  for(let k=TMBUF.length-1;k>=0;k--)if(TMBUF[k].R<-20){window.EXCL.push(TMBUF[k].tk+' '+TMBUF[k].date+'（進場時機比較）');TMBUF.splice(k,1);}
   $('stat').innerHTML='<b class="ok">✓ 算完了</b>：'+tks.length+' 檔股票'+(spy?'':'（SPY 沒抓到，大盤強弱切片無法使用）')+'，共 '+trades.length+' 筆模擬交易。';
   window.TR=trades;window.CFG=cfg;render(trades,tks.length,yrs,cfg);
   BUSY=false;setB(false);
@@ -389,7 +393,7 @@ function render(trades,nT,yrs,cfg){
     h+='<details class="card det"><summary>細節 B　進場時機比較（隔天開盤買、還是當天收盤買？）</summary><div class="small">問題：訊號要收盤才確定，隔天才能買，可能被跳空甩掉；而「隔天跌進範圍才買到」也可能剛好是行情轉壞。這裡用同樣的訊號、同樣的停損和出場，只改「什麼時候買」，看哪一種比較好。<b>買的價格不同，停損距離也不同，R 是各自以自己的停損距離算的。</b>每一種出場各看一次。</div>';
     const T2={better:'前者比後者好，統計上看得出來',better_unstable:'前者看起來較好，但前後半段不一致',worse:'前者比後者差，統計上看得出來',worse_unstable:'前者看起來較差，但前後半段不一致',same:'兩者統計上看不出差別',few:'有一組少於 20 筆，不能比'};
     const cmpTxt=(a,b,name)=>{const c=compare(a,b);return '<div class="small">'+name+'：'+T2[c.v]+(c.d!=null?'（平均每筆差 '+F2(c.d)+'R）':'')+'。</div>';};
-    let bBetter=0,bTested=0;
+    let bBetter=0,bTested=0,bWorse=0;
     RULES.forEach(r=>{
       h+='<div style="margin:12px 0 2px"><b>'+RN[r]+'</b></div><table><thead><tr><th style="text-align:left">買法</th><th>筆數</th><th>勝率</th><th>平均賺</th><th>平均賠</th><th>EV（R）</th><th>報酬中位數</th><th>白話</th></tr></thead><tbody>';
       VN.forEach(x=>{const g=TV(x[0],r),q=stats(g);const say=!q.n?'沒有訊號':(q.n<20?'樣本太少，只能參考':(q.ev>0.3?'這組平均有賺':(q.ev>0?'賺很薄':'平均是虧的')));
@@ -397,7 +401,7 @@ function render(trades,nT,yrs,cfg){
       h+='</tbody></table>';
       const gA=TV('A',r),gB=TV('B',r),gIN=TV('IN',r),gLOW=TV('LOW',r),gHI=TV('HIGH',r),gLIM=TV('LIM',r);
       h+=cmpTxt(gB,gA,'「當天收盤買」vs「隔天開盤買」');
-      const cBA=compare(gB,gA);if(cBA.v!=='few'){bTested++;if(cBA.d>0)bBetter++;}
+      const cBA=compare(gB,gA);if(cBA.v!=='few'){bTested++;if(cBA.v==='better')bBetter++;if(cBA.v==='worse')bWorse++;}
       // 同一批訊號逐筆對比
       const mA={};gA.forEach(t=>{mA[t.tk+'|'+t.date]=t.R;});const dl=[];gB.forEach(t=>{const k=t.tk+'|'+t.date;if(mA[k]!=null)dl.push(t.R-mA[k]);});
       if(dl.length>=20){const m=mean(dl),se=sd(dl)/Math.sqrt(dl.length);h+='<div class="small">同一批訊號逐筆對比（'+dl.length+' 筆，兩種買法都買得到的）：當天收盤買平均每筆'+(m>=0?'多賺 ':'少賺 ')+Math.abs(m).toFixed(2)+'R，其中 '+P0(dl.filter(x=>x>0).length/dl.length)+' 的訊號當天收盤買比較好'+(Math.abs(m)>2*se?'；差距統計上看得出來':'；差距統計上看不出來')+'。</div>';}
@@ -405,8 +409,8 @@ function render(trades,nT,yrs,cfg){
       h+=cmpTxt(gIN,gHI,'「開盤在範圍內」vs「開盤高過上限（追高）」');
       h+=cmpTxt(gLIM,gIN,'「高開後盤中跌回上限才成交」vs「開盤在範圍內」');
     });
-    SUM.tm={t:bTested,b:bBetter};
-    h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(bTested?('5 種出場裡，有 '+bTested+' 種能比較；其中「當天收盤買」平均較好的有 '+bBetter+' 種。'):'樣本不夠，不能比較。')+'<br>・「開盤已跌破 21 日線」那一列，就是在回答「隔天往下掉，可能其實是轉壞」這個擔心：如果它明顯比「範圍內」差，就代表工具叫你「低於範圍不買」是對的。<br>・「高開後盤中跌回上限才成交」是模擬你今天那種「掛在範圍裡，等它回來」的做法；它假設價格只要碰到你的價位就一定成交，實際上不一定，結果會偏樂觀。<br>・如果「當天收盤買」一致比較好、而且統計上看得出來，才值得考慮改成收盤前買；如果看不出差別，維持隔天開盤就好（比較不會因為盤中亂跳而買到沒守住的訊號）。<br>⚠ 多個比較、每組筆數不多；這批股票是今天挑的（倖存者偏差）；「當天收盤買」用的是真正收盤價，實際上你要在收盤前幾分鐘就下單，價格會有一點差。只看「五種出場方向一致」且「統計上看得出來」。</div></div></details>';
+    SUM.tm={t:bTested,b:bBetter,w:bWorse};
+    h+='<div class="verd n" style="margin-top:12px"><div class="t">怎麼讀這一區</div><div class="d">'+(bTested?('5 種出場裡，有 '+bTested+' 種能比較；其中「當天收盤買」統計上明顯較好的有 '+bBetter+' 種、明顯較差的有 '+bWorse+' 種，其餘看不出差別。'):'樣本不夠，不能比較。')+'<br>・「開盤已跌破 21 日線」那一列，就是在回答「隔天往下掉，可能其實是轉壞」這個擔心：如果它明顯比「範圍內」差，就代表工具叫你「低於範圍不買」是對的。<br>・「高開後盤中跌回上限才成交」是模擬你今天那種「掛在範圍裡，等它回來」的做法；它假設價格只要碰到你的價位就一定成交，實際上不一定，結果會偏樂觀。<br>・如果「當天收盤買」一致比較好、而且統計上看得出來，才值得考慮改成收盤前買；如果看不出差別，維持隔天開盤就好（比較不會因為盤中亂跳而買到沒守住的訊號）。<br>⚠ 多個比較、每組筆數不多；這批股票是今天挑的（倖存者偏差）；「當天收盤買」用的是真正收盤價，實際上你要在收盤前幾分鐘就下單，價格會有一點差。只看「五種出場方向一致」且「統計上看得出來」。</div></div></details>';
   }
   // 領先測試（v1.5）
   {
@@ -526,7 +530,7 @@ function render(trades,nT,yrs,cfg){
   const top=Object.entries(byT).sort((a,b)=>b[1]-a[1]).slice(0,5);SUM.top=top;SUM.tot=tot;
   h+='<details class="card det"><summary>細節 G　賺的錢集中在哪幾檔？</summary><div class="small">'+(tot>0?'總共 '+F2(tot)+'R，最賺的 5 檔：'+top.map(t=>t[0]+' '+F2(t[1])+'R（占 '+P0(t[1]/tot)+'）').join('、')+'。如果少數幾檔就占了大半，這個結果就不穩。':'總和不是正的，沒有集中度問題。')+'</div></details>';
   const op=trades.filter(t=>t.open).length;
-  h+='<details class="card det"><summary>細節 H　資料說明</summary><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組；「進場時機比較」另外算，不在這個數字裡），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。<br>最糟的 5 筆（用來抓資料異常）：'+trades.slice().sort((a,b)=>a.R-b.R).slice(0,5).map(t=>t.tk+' '+t.date+' '+F2(t.R)+'R（'+(t.grp==='S'?'收復':(t.grp==='C2'?'對照A':'對照B'))+'・'+t.rule+'）').join('、')+'。</div></details>';
+  h+='<details class="card det"><summary>細節 H　資料說明</summary><div class="small">模擬交易共 '+trades.length+' 筆（含各出場規則與對照組；「進場時機比較」另外算，不在這個數字裡），其中 '+op+' 筆到資料結束時還沒平倉，用最後收盤價估。<br>停損上限 '+(cfg.smax*100).toFixed(0)+'%。這份結果沒有自動儲存，離開頁面要重跑。<br>'+(window.EXCL&&window.EXCL.length?'<b class="warnc">已排除 '+window.EXCL.length+' 筆單筆虧損超過 20R 的資料異常：'+window.EXCL.slice(0,6).join('、')+'。</b><br>':'')+'最糟的 5 筆（用來抓資料異常）：'+trades.slice().sort((a,b)=>a.R-b.R).slice(0,5).map(t=>t.tk+' '+t.date+' '+F2(t.R)+'R（'+(t.grp==='S'?'收復':(t.grp==='C2'?'對照A':'對照B'))+'・'+t.rule+'）').join('、')+'。</div></details>';
   $('out').innerHTML=buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN)+'<div class="zone"><span class="zt z5">⑤ 細節</span>要查證時再按開（每一塊都是上面結論的原始數字）</div>'+h;
 }
 
@@ -585,7 +589,7 @@ function buildSummary(rows,SUM,cnt,scopeTxt,nT,yrs,maxN){
   let concTxt='';
   if(SUM.top&&SUM.tot>0){const s5=SUM.top.reduce((a,t)=>a+t[1],0)/SUM.tot;concTxt='<b>賺的錢集中度</b>：最賺的 5 檔合計占總獲利 '+P0(s5)+(s5<0.5?'（沒有過半，不算只靠少數幾檔）。':'（超過一半，結果不太穩）。');}
   else concTxt='<b>賺的錢集中度</b>：總和不是正的，沒有集中問題。';
-  const tmTxt=(SUM.tm&&SUM.tm.t)?('<b>進場時機</b>：「當天收盤買」平均比「隔天開盤買」好的有 '+SUM.tm.b+'／'+SUM.tm.t+' 種賣法，詳見細節 B。'):'';
+  const tmTxt=(SUM.tm&&SUM.tm.t)?('<b>進場時機</b>：「當天收盤買」跟「隔天開盤買」比，'+(SUM.tm.b+SUM.tm.w===0?'沒有任何一種賣法看得出差別（差距很小），維持隔天開盤買就好；「不要追」「跌破範圍不買」主要是控制停損寬度，不是為了多賺。':'統計上明顯較好的有 '+SUM.tm.b+' 種、明顯較差的有 '+SUM.tm.w+' 種（共 '+SUM.tm.t+' 種賣法）。')+'詳見細節 B。'):'';
   // 一句話
   const parts=[];
   if(evs.length)parts.push('<span class="'+(q3.c==='g'?'hg':(q3.c==='r'?'hr':'hy'))+'">整體：'+(q3.c==='g'?'平均有賺':(q3.c==='r'?'平均沒賺':'平均有賺但偏薄、勝率低'))+'</span>');
