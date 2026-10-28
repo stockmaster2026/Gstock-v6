@@ -23,7 +23,7 @@ button.red{background:#5b1d1d;border-color:#f85149}button.blue{background:#16407
 <div class="box d">顏色：<span class="tag keep">你的資料</span> 刪了就沒了，不建議動　<span class="tag redo">可重跑</span> 只是算出來的結果或暫存，清掉再跑一次就回來　<span class="tag unk">不確定</span> 我不認得，別動</div>
 <div id="list"></div>
 <script>
-const KEEP={dnaBT_v1:'dna 回測研究累積結果（還沒搬家的舊資料，不要清）',dnaBTrs_v1:'dna 回測研究 RS（不要清）',dna_holdings:'dna 持股',dna_positions:'dna 部位',pb_obs_v1:'pullback 觀察本',pb_hold_v1:'pullback 持股',riskStops_v1:'risk 停損',riskEntryStop_v1:'risk 進場停損',riskOrig_v1:'risk 原始部位',riskSnap_v1:'risk 快照',dnaWatchlist_v1:'dna 我的清單',stock_profiles:'公司速寫',dnaSecBox_v1:'板塊框',dnaSecEdit_v1:'板塊框編輯',dnaCapital_v1:'本金設定',dnaRiskPct_v1:'風險%設定',watch_syms:'觀察清單',fund_syms:'基本面清單',rd_v1:'news 閱讀紀錄',rdacc_v1:'news 閱讀累計',dnaNearMiss_v1:'差一點清單'};
+const KEEP={dnaBT_v1:'dna 回測研究累積結果（還沒搬家的舊資料，不要清）',dnaBTrs_v1:'dna 回測研究 RS（不要清）',dna_holdings:'dna 持股',dna_positions:'dna 部位',pb_obs_v1:'pullback 觀察本',pb_hold_v1:'pullback 持股',riskStops_v1:'risk 停損',riskEntryStop_v1:'risk 進場停損',riskOrig_v1:'risk 原始部位',riskSnap_v1:'risk 每日紀錄',riskSnapArchive_v1:'risk 已封存的舊紀錄（不要清）',dnaWatchlist_v1:'dna 我的清單',stock_profiles:'公司速寫',dnaSecBox_v1:'板塊框',dnaSecEdit_v1:'板塊框編輯',dnaCapital_v1:'本金設定',dnaRiskPct_v1:'風險%設定',watch_syms:'觀察清單',fund_syms:'基本面清單',rd_v1:'news 閱讀紀錄',rdacc_v1:'news 閱讀累計',dnaNearMiss_v1:'差一點清單'};
 const REDO={gstock_v65_table:'dna 累積總表（重跑板塊就回來）',gstock_v65_batches:'dna 批次記錄',dna_batchwhy_v1:'批次失敗原因',dnaBTHot_v1:'dna 回測熱門',dnaCand_v1:'dna 候選',dna_secdone_v1:'板塊跑完標記',pb_v1:'pullback 掃描結果',pb_done_v1:'pullback 已跑標記',thermo_v1:'溫度計暫存',stocks_scan_v1:'stocks 掃描暫存',rrg_snapshots_v1:'rrg 快照'};
 function redoName(k){
  if(REDO[k])return REDO[k];
