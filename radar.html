@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v9.7</title>
+<title>飆股雷達 v9.8</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -143,7 +143,7 @@ transition:all 0.2s;width:152px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v9.7</div>
+  <div class="logo">飆股<span>RADAR</span> v9.8</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -1743,7 +1743,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -1757,7 +1757,7 @@ function showSector(sectorId){
     '<span style="color:'+chgCol+'">'+chgStr+'</span>　'+
     '<span style="color:var(--dim);">'+sec.tickers.length+'支</span>'+trendInfo;
   var cont=document.getElementById('cardContainer');
-  cont.innerHTML='<div id="secTrend">'+sectorPanelHtml(sec)+'</div><button onclick="openBatchAdd(\''+sectorId+'\')" style="width:100%;background:#fff;border:2px dashed var(--orange);color:var(--orange);padding:10px;border-radius:10px;font-size:13px;font-weight:700;margin-bottom:10px;cursor:pointer;">+ 批量新增股票到「'+sec.name+'」</button>';
+  cont.innerHTML='<div id="secTrend">'+sectorPanelHtml(sec)+'</div><a href="charts.html?sector='+encodeURIComponent(sectorId)+'" style="display:block;text-align:center;text-decoration:none;background:#0066bb;color:#fff;padding:13px;border-radius:10px;font-size:15px;font-weight:900;margin-bottom:10px;">📈 看這一組所有股票的 K 線圖（'+sec.tickers.length+' 檔一次看）</a><button onclick="openBatchAdd(\''+sectorId+'\')" style="width:100%;background:#fff;border:2px dashed var(--orange);color:var(--orange);padding:10px;border-radius:10px;font-size:13px;font-weight:700;margin-bottom:10px;cursor:pointer;">+ 批量新增股票到「'+sec.name+'」</button>';
   if(sec.etf){
     var etfData=cache[sec.etf];
     var etfHtml='';
@@ -2166,7 +2166,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -2282,7 +2282,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.7</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
