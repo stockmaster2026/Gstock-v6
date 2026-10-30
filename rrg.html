@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.12.1</title>
+<title>RRG 板塊輪動圖 v2.13.0</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.12.1 · 每個分數都附一份收合的解讀</div>
+<div class="sub">v2.13.0 · 每個分數都附一份收合的解讀</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.12.1 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.13.0 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -362,8 +362,8 @@ window.onerror = function(msg, src, line, col, err) {
                  'https://corsproxy.io/?key=00bcaf2a&url=',
                  'https://api.allorigins.win/raw?url=',
                  'https://api.codetabs.com/v1/proxy/?quest='];
-  var SECTOR_COLORS = {'資安':'#ef476f','軟體 SaaS':'#8b5cf6','AI 晶片':'#76b900','半導體設備':'#06d4f0','光通訊':'#00d4a8','記憶體與儲存':'#ff6b35','AI 電力與散熱':'#ffd166','太空與國防':'#4ea5ff','生技與醫材':'#f97316','金融':'#eab308','量子運算':'#22c55e','七巨頭':'#ec4899','必需消費(XLP)':'#94a3b8','公用事業(XLU)':'#a3a3a3','醫療保健(XLV)':'#fb923c','能源(XLE)':'#b45309','工業(XLI)':'#64748b','非必需消費(XLY)':'#e879f9','傳統類股 ETF':'#9ca3af','防禦型個股':'#2dd4bf','其他成長股':'#f59e0b'};
-  // v2.10.0：板塊名單與 dna.html 的 DNA_SECTORS、news.html 的 SECTORS 同一份（12 組）。要改名單，三邊要一起改。
+  var SECTOR_COLORS = {'資安':'#ef476f','軟體 SaaS':'#8b5cf6','AI 晶片':'#76b900','半導體設備':'#06d4f0','光通訊':'#00d4a8','記憶體與儲存':'#ff6b35','AI 電力散熱（發電端）':'#ffd166','AI 電力設備（含散熱）':'#f4a261','太空與國防':'#4ea5ff','生技與醫材':'#f97316','金融':'#eab308','量子運算':'#22c55e','七巨頭':'#ec4899','必需消費(XLP)':'#94a3b8','公用事業(XLU)':'#a3a3a3','醫療保健(XLV)':'#fb923c','能源(XLE)':'#b45309','工業(XLI)':'#64748b','非必需消費(XLY)':'#e879f9','傳統類股 ETF':'#9ca3af','防禦型個股':'#2dd4bf','其他成長股':'#f59e0b'};
+  // v2.13.0（2026-10-29）：「AI 電力與散熱」拆成「AI 電力散熱（發電端）」與「AI 電力設備（含散熱）」兩組。v2.10.0：板塊名單與 dna.html 的 DNA_SECTORS、news.html 的 SECTORS 同一份。要改名單，三邊要一起改。
   var BUILTIN_WATCHLIST = [
     {name:'資安',stocks:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'.split(' ')},
     {name:'軟體 SaaS',stocks:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS'.split(' ')},
@@ -371,7 +371,8 @@ window.onerror = function(msg, src, line, col, err) {
     {name:'半導體設備',stocks:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'.split(' ')},
     {name:'光通訊',stocks:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'.split(' ')},
     {name:'記憶體與儲存',stocks:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'.split(' ')},
-    {name:'AI 電力與散熱',stocks:'VRT BE OKLO GEV PWR ETN CEG TLN SMR NNE VST NRG MOD NVT AAON POWL FIX STRL BWXT CW FLEX GNRC JCI'.split(' ')},
+    {name:'AI 電力散熱（發電端）',stocks:'OKLO CEG TLN SMR NNE VST NRG BWXT'.split(' ')},
+    {name:'AI 電力設備（含散熱）',stocks:'VRT BE GEV PWR ETN MOD NVT AAON POWL FIX STRL CW FLEX GNRC JCI'.split(' ')},
     {name:'太空與國防',stocks:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'.split(' ')},
     {name:'生技與醫材',stocks:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'.split(' ')},
     {name:'金融',stocks:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'.split(' ')},
@@ -388,7 +389,7 @@ window.onerror = function(msg, src, line, col, err) {
   var OVERVIEW_REPRESENTATIVES = [
     {name:'資安',ticker:'CRWD'},{name:'軟體 SaaS',ticker:'NOW'},{name:'AI 晶片',ticker:'NVDA'},
     {name:'半導體設備',ticker:'AMAT'},{name:'光通訊',ticker:'COHR'},{name:'記憶體與儲存',ticker:'MU'},
-    {name:'AI 電力與散熱',ticker:'VRT'},{name:'太空與國防',ticker:'RKLB'},{name:'生技與醫材',ticker:'LLY'},
+    {name:'AI 電力散熱（發電端）',ticker:'VST'},{name:'AI 電力設備（含散熱）',ticker:'VRT'},{name:'太空與國防',ticker:'RKLB'},{name:'生技與醫材',ticker:'LLY'},
     {name:'金融',ticker:'JPM'},{name:'量子運算',ticker:'IONQ'},{name:'七巨頭',ticker:'MSFT'},
     {name:'防禦型個股',ticker:'COST'}
   ];
@@ -416,6 +417,14 @@ window.onerror = function(msg, src, line, col, err) {
   var MERGE_BUILTIN = ['防禦型個股','其他成長股'];
   function getSectorList() {
     var fromRadar=readRadarSectors(); if(!fromRadar) return BUILTIN_WATCHLIST;
+    // v2.13.0：舊名單裡還是「AI 電力與散熱」一組的，自動換成拆開後的兩組（發電端／設備端）。已存的名單不會被其他改動影響。
+    if(fromRadar.some(function(x){return x.name==='AI 電力與散熱';})){
+      var _g=BUILTIN_WATCHLIST.filter(function(x){return x.name==='AI 電力散熱（發電端）';})[0];
+      var _e=BUILTIN_WATCHLIST.filter(function(x){return x.name==='AI 電力設備（含散熱）';})[0];
+      var _out=[];
+      fromRadar.forEach(function(x){ if(x.name==='AI 電力與散熱'){ if(_g)_out.push(_g); if(_e)_out.push(_e); } else _out.push(x); });
+      fromRadar=_out;
+    }
     MERGE_BUILTIN.forEach(function(n){ if(!fromRadar.some(function(x){return x.name===n;})){ var b=BUILTIN_WATCHLIST.filter(function(x){return x.name===n;})[0]; if(b) fromRadar=fromRadar.concat([b]); } });
     return fromRadar;
   }
