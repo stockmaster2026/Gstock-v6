@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.1</title>
+<title>板塊圖表總覽 v1.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -59,6 +59,14 @@ canvas.cv{width:100%;height:170px;display:block;margin-top:6px;border-radius:6px
 .stgtxt{font-size:12px;color:#556;line-height:1.4;flex:1 1 100%;}
 .stgleg{font-size:12.5px;font-weight:700;margin-top:8px;color:#334;}
 .stgleg i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin:0 4px 0 12px;border:1px solid rgba(0,0,0,.15);}
+.addrow{display:flex;gap:8px;margin-top:12px;}
+.addrow input{flex:1;min-width:0;font-size:16px;padding:10px 12px;border:2px solid var(--blue);border-radius:8px;background:#fff;font-family:inherit;text-transform:uppercase;}
+.addrow input::placeholder{text-transform:none;color:#99a;}
+.addrow button{flex-shrink:0;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:15px;font-weight:900;font-family:inherit;cursor:pointer;}
+.addmsg{font-size:13px;margin-top:6px;font-weight:700;min-height:0;}
+.topup{font-size:13px;margin-top:8px;line-height:1.7;color:#445;}
+.topup button{border:2px solid var(--orange);background:#fff8ee;color:#a04800;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:800;font-family:inherit;margin:2px 6px 2px 0;cursor:pointer;}
+.rm{border:none;background:#ece7cf;color:#665;border-radius:50%;width:28px;height:28px;font-size:13px;font-weight:900;cursor:pointer;flex-shrink:0;margin-left:2px;}
 .err{padding:30px 10px;text-align:center;font-size:14px;color:#a33;}
 .err button{margin-top:8px;border:2px solid var(--blue);background:#fff;color:var(--blue);border-radius:8px;padding:7px 12px;font-weight:800;font-size:13px;font-family:inherit;}
 .prog{font-size:14px;color:#556;padding:20px 4px;text-align:center;}
@@ -79,7 +87,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.1</div>
+  <div class="logo">板塊<span>圖表</span> v1.2</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -98,6 +106,12 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
       <span class="seg" id="segSort"><button data-v="lead">近半年最強在前</button><button data-v="orig">原本名單順序</button></span>
       <span class="legend"><i style="background:#e67e22"></i>20線<i style="background:#1565c0"></i>50線<i style="background:#8e44ad"></i>200線<i style="background:#999;height:0;border-top:2px dashed #999"></i>52週高</span>
     </div>
+    <div class="addrow">
+      <input id="addIn" type="text" placeholder="想多看哪幾檔？輸入代號，例如 NTNX（多檔用空格或逗號隔開）" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="addBtn">＋ 加入這組</button>
+    </div>
+    <div class="addmsg" id="addMsg"></div>
+    <div class="topup" id="topup"></div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="foot">
@@ -187,6 +201,40 @@ function getSectors(){
   var ids={}; out.forEach(function(sec){ids[sec.id]=true;});
   defs.forEach(function(d){ if(!ids[d.id] && d.id!=='custom') out.push(d); });
   return out.filter(function(sec){ return sec.id!=='custom' || (sec.tickers&&sec.tickers.length); });
+}
+
+// ── 其他工具的名單（只讀來「補入」用；RRG 的名單存在 rrg_sectors_v2，沒開過 RRG 就用內建預設）──
+  var RRG_BUILTIN=[
+    {name:'資安',stocks:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'.split(' ')},
+    {name:'軟體 SaaS',stocks:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS'.split(' ')},
+    {name:'AI 晶片',stocks:'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX'.split(' ')},
+    {name:'半導體設備',stocks:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'.split(' ')},
+    {name:'光通訊',stocks:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'.split(' ')},
+    {name:'記憶體與儲存',stocks:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'.split(' ')},
+    {name:'AI 電力散熱（發電端）',stocks:'OKLO CEG TLN SMR NNE VST NRG BWXT'.split(' ')},
+    {name:'AI 電力設備（含散熱）',stocks:'VRT BE GEV PWR ETN MOD NVT AAON POWL FIX STRL CW FLEX GNRC JCI'.split(' ')},
+    {name:'太空與國防',stocks:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'.split(' ')},
+    {name:'生技與醫材',stocks:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'.split(' ')},
+    {name:'金融',stocks:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'.split(' ')},
+    {name:'量子運算',stocks:'IONQ RGTI QBTS QUBT LAES ARQQ'.split(' ')},
+    // v2.11.0 新增：防禦型個股（科技走弱時，資金常跑去的「大家天天用、不太受景氣影響」的大公司）。個股，會進個股排名。
+    //   日用品／零售：COST WMT PG KO PEP CL MDLZ PM MCD　醫療：JNJ ABT MRK　公用事業與必需服務：DUK SO NEE WM
+    {name:'其他成長股',stocks:'UBER DASH ABNB DUOL CAVA SHOP MELI SE NFLX CRCL AFRM SOFI NU TOST APP RDDT TTD DOCU CELH DKNG'.split(' ')},
+    {name:'防禦型個股',stocks:'COST WMT PG KO PEP CL MDLZ PM MCD JNJ ABT MRK DUK SO NEE WM'.split(' ')},
+    {name:'七巨頭',stocks:'AAPL MSFT GOOGL AMZN NVDA META TSLA'.split(' ')},
+    // v2.10.0 新增：傳統大類股 ETF（SPDR 11 大類）。只用來看「資金有沒有從成長股轉去防禦／傳統類股」，
+    //   etf:true ＝ 不進「個股排名」（排名是個股對個股，混進 ETF 會失真）。
+    {name:'傳統類股 ETF',etf:true,stocks:'XLP XLU XLV XLE XLI XLY XLF XLB XLRE XLC XLK'.split(' ')}
+  ];
+
+// radar 的板塊名稱 → RRG 裡對應的組名（沒列出的就不做補入，避免把整組不相干的股票倒進來）
+var RRG_MAP={'資安':'資安','AI軟體應用':'軟體 SaaS','光通信':'光通訊','儲存硬體':'記憶體與儲存','AI電力散熱':'AI 電力散熱（發電端）','AI電力設備':'AI 電力設備（含散熱）','生技健康':'生技與醫材','金融':'金融','量子運算':'量子運算'};
+function rrgList(){
+  try{
+    var raw=JSON.parse(localStorage.getItem('rrg_sectors_v2')||'null');
+    if(Array.isArray(raw)&&raw.length) return raw.map(function(s){ return {name:s.name,stocks:s.stocks||s.tickers||[]}; });
+  }catch(e){}
+  return RRG_BUILTIN;
 }
 
 // ── 偏好 ──
@@ -519,6 +567,7 @@ async function pick(id,force){
   buildData(); renderCards();
 }
 function buildData(){
+  renderTopup();
   var sec=CUR, S=BARS['SPY']||null, LM=leaderTags(sec);
   CURDATA=sec.tickers.map(function(t,i){
     var a=analyze(t,sec,S); return {t:t,i:i,a:a,m:LM[t]||null,err:ERR[t]||null};
@@ -558,11 +607,11 @@ function stageChip(a){
   return '<span class="stgchip" style="background:'+STG_COL[a.sc]+'">'+STG_NAME[a.sc]+'</span><span class="stgday">'+(a.sc===22?'整段 Stage 2 已 ':'已 ')+a.sdays+' 天</span>';
 }
 function cardHtml(o,idx){
-  if(!o.a) return '<div class="card" data-t="'+o.t+'" data-err="1"><div class="ch"><span class="tk">'+o.t+'</span></div><div class="err">抓不到資料（'+(o.err||'未知原因')+'）<br><button data-retry="'+o.t+'">重試</button></div></div>';
+  if(!o.a) return '<div class="card" data-t="'+o.t+'" data-err="1"><div class="ch"><span class="tk">'+o.t+'</span><span class="px"></span><button class="rm" data-rm="'+o.t+'" title="從這組移除">✕</button></div><div class="err">抓不到資料（'+(o.err||'未知原因')+'）<br><button data-retry="'+o.t+'">重試</button></div></div>';
   var a=o.a, cls=a.dp>=0?'up':'dn';
   return '<div class="card" data-t="'+o.t+'">'+
     '<div class="ch"><span class="tk">'+o.t+'</span>'+badgeHtml(o.m)+
-      '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">今天 '+fmtPct(a.dp,1)+'</small></span></div>'+
+      '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">今天 '+fmtPct(a.dp,1)+'</small></span><button class="rm" data-rm="'+o.t+'" title="從這組移除">✕</button></div>'+
     '<div class="stgline">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="cv" id="cv'+idx+'"></canvas>'+
     '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
@@ -577,6 +626,8 @@ function renderCards(){
   el('grid').innerHTML=h;
   Array.prototype.forEach.call(el('grid').querySelectorAll('.card'),function(c){
     c.onclick=function(ev){
+      var rm=ev.target.getAttribute&&ev.target.getAttribute('data-rm');
+      if(rm){ ev.stopPropagation(); removeTicker(rm); return; }
       var rb=ev.target.getAttribute&&ev.target.getAttribute('data-retry');
       if(rb){ ev.stopPropagation(); retry(rb); return; }
       if(c.getAttribute('data-err')) return;
@@ -593,6 +644,66 @@ async function retry(t){
   try{ await getBars(t); delete ERR[t]; }catch(e){ ERR[t]=String(e&&e.message||e); }
   buildData(); renderCards();
 }
+
+// ── 名單：加入／移除／補入（存進跟 radar 同一份名單，radar 按「更新」後就會一起掃）──
+function persistSector(sec){
+  try{
+    var raw=JSON.parse(localStorage.getItem(SKEY)||'null');
+    if(!Array.isArray(raw)) raw=JSON.parse(JSON.stringify(SECS));
+    var hit=false;
+    raw.forEach(function(s){ if(s&&(s.id===sec.id||s.name===sec.name)){ s.tickers=sec.tickers.slice(); hit=true; } });
+    if(!hit) raw.push({id:sec.id,icon:sec.icon,name:sec.name,etf:sec.etf||null,tickers:sec.tickers.slice()});
+    localStorage.setItem(SKEY,JSON.stringify(raw));
+    return true;
+  }catch(e){ return false; }
+}
+function normTickers(str){
+  var out=[];
+  String(str||'').toUpperCase().split(/[\s,;、，]+/).forEach(function(x){
+    x=x.replace(/\./g,'-');
+    if(/^[A-Z0-9\-\^]{1,10}$/.test(x)&&out.indexOf(x)<0) out.push(x);
+  });
+  return out;
+}
+function msg(text,col){ var m=el('addMsg'); m.style.color=col||'#334'; m.textContent=text; }
+function addTickers(list,label){
+  if(!CUR) return;
+  var add=list.filter(function(t){ return CUR.tickers.indexOf(t)<0; });
+  var dup=list.length-add.length;
+  if(!add.length){ msg(list.length?('這組已經有 '+list.join('、')+' 了'):'沒看到可用的股票代號','#a06a08'); return; }
+  add.forEach(function(t){ CUR.tickers.push(t); });
+  var ok=persistSector(CUR);
+  pick(CUR.id).then(function(){
+    msg((label||'已加入')+' '+add.join('、')+'（共 '+add.length+' 檔）'+(dup?'，另外 '+dup+' 檔本來就有':'')+(ok?'。已存進名單，radar 按「更新」後也會一起掃。':'。⚠ 沒存成功（瀏覽器不讓存），重開頁面後會不見。'),ok?'#0d8a3f':'#cc1133');
+  });
+}
+function removeTicker(t){
+  if(!CUR) return;
+  if(!confirm('把 '+t+' 從「'+CUR.name+'」移除？（radar 的這組名單也會一起少掉它）')) return;
+  CUR.tickers=CUR.tickers.filter(function(x){return x!==t;});
+  persistSector(CUR);
+  pick(CUR.id).then(function(){ msg('已移除 '+t,'#334'); });
+}
+function missingFromDefault(){
+  var d=null; SECTORS_DEFAULT.forEach(function(x){ if(x.id===CUR.id) d=x; });
+  return d?d.tickers.filter(function(t){return CUR.tickers.indexOf(t)<0;}):[];
+}
+function missingFromRrg(){
+  var nm=RRG_MAP[CUR.name]; if(!nm) return [];
+  var hit=null; rrgList().forEach(function(s){ if(s.name===nm) hit=s; });
+  return hit?hit.stocks.filter(function(t){return CUR.tickers.indexOf(t)<0;}):[];
+}
+function renderTopup(){
+  var a=missingFromDefault(), b=missingFromRrg(), h='';
+  if(a.length) h+='<div>radar 預設名單裡還有 <b>'+a.length+'</b> 檔你這組沒有：'+a.join(' ')+' <button data-tu="def">全部補進來</button></div>';
+  if(b.length) h+='<div>RRG 這組還有 <b>'+b.length+'</b> 檔你這組沒有：'+b.join(' ')+' <button data-tu="rrg">全部補進來</button></div>';
+  var box=el('topup'); box.innerHTML=h;
+  Array.prototype.forEach.call(box.querySelectorAll('button'),function(btn){
+    btn.onclick=function(){ addTickers(btn.getAttribute('data-tu')==='def'?missingFromDefault():missingFromRrg(), '已補入'); };
+  });
+}
+el('addBtn').onclick=function(){ var v=el('addIn').value; el('addIn').value=''; addTickers(normTickers(v)); };
+el('addIn').addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); el('addBtn').onclick(); } });
 
 // ── 放大 ──
 var MODAL_T=null, MODAL_RANGE=252;
