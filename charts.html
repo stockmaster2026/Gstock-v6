@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.0</title>
+<title>板塊圖表總覽 v1.1</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -53,6 +53,12 @@ canvas.cv{width:100%;height:170px;display:block;margin-top:6px;border-radius:6px
 .rd{font-size:13px;line-height:1.5;color:#334;margin-top:6px;}
 .rd .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:baseline;}
 .rd2{font-size:12.5px;color:#556;margin-top:2px;line-height:1.5;}
+.stgline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px;}
+.stgchip{color:#fff;border-radius:6px;padding:3px 9px;font-size:13.5px;font-weight:900;white-space:nowrap;}
+.stgday{font-size:12.5px;font-weight:800;color:#445;white-space:nowrap;}
+.stgtxt{font-size:12px;color:#556;line-height:1.4;flex:1 1 100%;}
+.stgleg{font-size:12.5px;font-weight:700;margin-top:8px;color:#334;}
+.stgleg i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin:0 4px 0 12px;border:1px solid rgba(0,0,0,.15);}
 .err{padding:30px 10px;text-align:center;font-size:14px;color:#a33;}
 .err button{margin-top:8px;border:2px solid var(--blue);background:#fff;color:var(--blue);border-radius:8px;padding:7px 12px;font-weight:800;font-size:13px;font-family:inherit;}
 .prog{font-size:14px;color:#556;padding:20px 4px;text-align:center;}
@@ -73,7 +79,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.0</div>
+  <div class="logo">板塊<span>圖表</span> v1.1</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -82,7 +88,9 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
   <div class="sumbox" id="sumbox">
     <div class="sum-h" id="sumH">載入中…</div>
     <div class="sum-r" id="sumR"></div>
+    <div class="sum-r" id="stgSum" style="font-size:15px"></div>
     <div class="sum-n" id="sumN"></div>
+    <div class="stgleg">背景色：<i style="background:rgba(150,170,195,.55)"></i>Stage 1 打底<i style="background:rgba(76,175,80,.45)"></i>2A 上升<i style="background:rgba(156,39,176,.4)"></i>2B 轉弱<i style="background:rgba(255,152,0,.5)"></i>Stage 3 頭部<i style="background:rgba(244,67,54,.45)"></i>Stage 4 下跌</div>
     <div class="ctrls">
       <span class="lb">時間長度</span>
       <span class="seg" id="segRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>
@@ -95,6 +103,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
   <div class="foot">
     這一頁是「看圖對照」用的，不是買賣判決：把 radar 說的（誰最強、強幾天）跟圖實際長的樣子放在一起看。<br>
     「強」＝近 20 天裡有 6 成以上的日子漲得比大盤（SPY）多，跟 radar 同一個定義；「近半年最強／次強／落後」＝板塊內依近 6 個月漲幅排名（暫定定義，還沒回測）。<br>
+    <b>背景色＝四階段</b>，規則照你 TradingView 的「Jasmine 四階段乾淨版 V1」（日線版）：150 日線＋20 天斜率（超過 ±0.5% 算上升／下降）＋50 日線，連續 3 根才換階段；Stage 2 裡跌破 50 日線或短線均線排列轉空＝2B 轉弱。斜率門檻和 3 根是我從圖上指標名稱旁的設定值推的，顏色是照 Pine 的顏色種類估的，跟你 TradingView 上的可能有一點深淺差；兩邊階段對不上時請截圖給我。<br>
     圖用的是 Yahoo 日線（經你的 Worker），最後一根可能是還沒收盤的當天。每個板塊的成分股名單跟 radar 同一份。
   </div>
 </div>
@@ -105,7 +114,8 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
 var SKEY='biaoguo_sectors_v5';
 var PKEY='gstock_charts_prefs_v1';
-var CKEY='gstock_charts_cache_v1_';
+var CKEY='gstock_charts_cache_v2_';
+try{ for(var _k=localStorage.length-1;_k>=0;_k--){ var _n=localStorage.key(_k); if(_n&&_n.indexOf('gstock_charts_cache_v1_')===0) localStorage.removeItem(_n); } }catch(e){}
 var TTL=20*60*1000;
 
 var SECTORS_DEFAULT=[
@@ -188,7 +198,7 @@ function savePref(){ try{localStorage.setItem(PKEY,JSON.stringify(PREF));}catch(
 var BARS={}, ERR={}, loadTok=0;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 async function fetchYahoo(t,retried){
-  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=1y';
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=2y';
   var r=await fetch(PROXY+encodeURIComponent(base));
   if(r.status===429 && !retried){ await sleep(2000); return fetchYahoo(t,true); }
   if(!r.ok) throw new Error('Yahoo HTTP '+r.status);
@@ -214,8 +224,40 @@ function sma(c,k){
   for(var i=0;i<c.length;i++){ s+=c[i]; if(i>=k) s-=c[i-k]; out[i]=(i>=k-1)?s/k:null; }
   return out;
 }
+// ── 四階段：照「Jasmine 四階段乾淨版 V1」Pine 的規則（日線版）──
+//   長均線 150 日、中均線 50 日；斜率＝150 日線跟 20 天前比的變化 %，> +0.5 算上升、< −0.5 算下降；
+//   rawStage：站上長線＋長線上升＋50 日線在長線上 → 2；站上長線 → 3；沒站上但長線下降 → 4；其餘 → 1；
+//   連續 3 根才換階段（避免一根雜訊就變色）；Stage 2 裡「跌破 50 日線，或 5<10<20 日線排列轉空」＝2B 轉弱。
+//   code：1＝打底　2＝2A 上升　22＝2B 轉弱　3＝頭部　4＝下跌　0＝資料不足
+function calcStage(B){
+  var n=B.c.length,c=B.c,ma5=B.ma5,ma10=B.ma10,ma20=B.ma20,mid=B.ma50,lg=B.ma150;
+  var LB=20,THR=0.5,SM=3, code=new Array(n), st=0, run=0, prev=-1;
+  for(var i=0;i<n;i++){
+    var raw=0;
+    if(lg[i]!=null){
+      var base=(i>=LB)?lg[i-LB]:null;
+      var sp=(base!=null&&base>0)?(lg[i]-base)/base*100:null;
+      var rising=(sp!=null&&sp>THR), falling=(sp!=null&&sp<-THR), above=c[i]>lg[i];
+      if(above&&rising&&mid[i]!=null&&mid[i]>lg[i]) raw=2;
+      else if(above) raw=3;
+      else if(falling) raw=4;
+      else raw=1;
+    }
+    run=(raw===prev)?run+1:1; prev=raw;
+    if(run>=SM&&raw!==0) st=raw;
+    var cd=st;
+    if(st===2){
+      var weak=(mid[i]!=null&&c[i]<mid[i])||(ma5[i]!=null&&ma10[i]!=null&&ma20[i]!=null&&ma5[i]<ma10[i]&&ma10[i]<ma20[i]);
+      cd=weak?22:2;
+    }
+    code[i]=cd;
+  }
+  B.stg=code;
+}
 function prep(B){
+  B.ma5=sma(B.c,5);B.ma10=sma(B.c,10);B.ma150=sma(B.c,150);
   B.ma20=sma(B.c,20);B.ma50=sma(B.c,50);B.ma200=sma(B.c,200);
+  calcStage(B);
   B.map={}; for(var i=0;i<B.d.length;i++) B.map[B.d[i]]=i;
   var n=B.c.length, st=Math.max(0,n-252), mx=0;
   for(var j=st;j<n;j++) if(B.h[j]>mx) mx=B.h[j];
@@ -229,9 +271,17 @@ async function getBars(t){
     if(raw){ var o=JSON.parse(raw); if(o&&o.ts&&Date.now()-o.ts<TTL&&o.B&&o.B.c){ BARS[t]=prep(o.B); return BARS[t]; } }
   }catch(e){}
   var B=parseBars(await fetchYahoo(t));
-  try{ localStorage.setItem(CKEY+t,JSON.stringify({ts:Date.now(),B:B})); }catch(e){}
+  putCache(t,B);
   BARS[t]=prep(B);
   return BARS[t];
+}
+function putCache(t,B){
+  var s=JSON.stringify({ts:Date.now(),B:B});
+  try{ localStorage.setItem(CKEY+t,s); return; }catch(e){}
+  try{   // 空間滿了：清掉其他股票的快取再試一次
+    for(var k=localStorage.length-1;k>=0;k--){ var n=localStorage.key(k); if(n&&n.indexOf(CKEY)===0&&n!==CKEY+t) localStorage.removeItem(n); }
+    localStorage.setItem(CKEY+t,s);
+  }catch(e){}
 }
 function clearCache(list){
   list.forEach(function(t){ delete BARS[t]; delete ERR[t]; try{localStorage.removeItem(CKEY+t);}catch(e){} });
@@ -309,6 +359,9 @@ function analyze(t,sec,S){
   else if(m200!=null&&px>m200) tr={t:'回檔中：跌到 50 線下，但還守在 200 線上',c:'#a06a08'};
   else tr={t:'弱勢：50 線和 200 線都壓在頭上',c:'#cc1133'};
   a.tr=tr;
+  var sc=B.stg[n-1], sn=(sc===22?2:sc), dd=0;
+  for(var q=n-1;q>=0;q--){ var qn=(B.stg[q]===22?2:B.stg[q]); if(qn===sn) dd++; else break; }
+  a.sc=sc; a.sdays=dd;
   a.hiTxt=a.off>=-0.03?'貼著 52 週高點':('離 52 週高點 '+(a.off*100).toFixed(0)+'%');
   return a;
 }
@@ -338,6 +391,17 @@ function streakHtml(st){
   return '<span style="color:#667">目前沒在強（近 20 天沒怎麼跑贏大盤）</span>';
 }
 
+var STG_BG={1:'rgba(150,170,195,.34)',2:'rgba(76,175,80,.22)',22:'rgba(156,39,176,.20)',3:'rgba(255,152,0,.27)',4:'rgba(244,67,54,.22)'};
+var STG_COL={1:'#6f819a',2:'#2e8b3a',22:'#8e44ad',3:'#e67e00',4:'#cc1133',0:'#8b949e'};
+var STG_NAME={1:'Stage 1 打底',2:'Stage 2A 上升',22:'Stage 2B 轉弱',3:'Stage 3 頭部',4:'Stage 4 下跌',0:'階段資料不足'};
+var STG_PLAIN={
+  1:'股價在 150 日線下方，但這條線沒在往下（打底區，還沒站上去）',
+  2:'股價在 150 日線上，這條線往上，短線也沒轉弱',
+  22:'還在長線上升段（算 Stage 2），但跌破 50 日線或短線均線排列轉空，先小心',
+  3:'股價還在 150 日線上方，但這條線不再往上了（頭部區）',
+  4:'股價在 150 日線下方，而且這條線在往下',
+  0:'資料不夠算 150 日線'
+};
 // ── 畫 K 線 ──
 function drawChart(cv,B,nBars,big){
   var dpr=window.devicePixelRatio||1;
@@ -355,6 +419,17 @@ function drawChart(cv,B,nBars,big){
   var step=plotW/cnt, bw=Math.max(1,Math.min(step*0.72,big?10:7));
   function xc(k){return (k-s+0.5)*step;}
   g.font=(big?'12':'11')+'px sans-serif'; g.textBaseline='middle';
+  // 階段背景色（連續同階段合併成一塊）
+  if(B.stg){
+    var runS=s;
+    for(i=s+1;i<=n;i++){
+      if(i===n||B.stg[i]!==B.stg[runS]){
+        var cc=STG_BG[B.stg[runS]];
+        if(cc){ g.fillStyle=cc; g.fillRect(Math.floor((runS-s)*step),0,Math.ceil((i-runS)*step)+1,Hh-padB); }
+        runS=i;
+      }
+    }
+  }
   // 橫線與價格標
   g.lineWidth=1;
   var cy0=y(B.c[n-1]);
@@ -437,7 +512,7 @@ async function pick(id,force){
   var list=sec.tickers.slice(); if(list.indexOf('SPY')<0) list.push('SPY');
   if(force) clearCache(list);
   el('sumH').textContent=sec.icon+' '+sec.name+'（'+sec.tickers.length+' 檔）';
-  el('sumR').textContent=''; el('sumN').textContent='';
+  el('sumR').textContent=''; el('sumN').textContent=''; el('stgSum').textContent='';
   el('grid').innerHTML='<div class="prog" id="prog" style="grid-column:1/-1">載入中 0/'+list.length+' …</div>';
   await loadMany(list,function(d,tot){ if(tok!==loadTok) return; var p=el('prog'); if(p) p.textContent='載入中 '+d+'/'+tot+' …'; });
   if(tok!==loadTok) return;
@@ -460,6 +535,13 @@ function buildData(){
   else if(ratio<=0.3) verdict='整組多數跌在 50 線下，整體偏弱。';
   else verdict='有的站著、有的跌破，組內分歧。';
   el('sumR').textContent=verdict;
+  var cnt={1:0,2:0,22:0,3:0,4:0,0:0}; ok.forEach(function(o){ cnt[o.a.sc]++; });
+  el('stgSum').innerHTML='階段分布：'+
+    '<b style="color:'+STG_COL[2]+'">Stage 2A '+cnt[2]+'</b>　'+
+    '<b style="color:'+STG_COL[22]+'">2B 轉弱 '+cnt[22]+'</b>　'+
+    '<b style="color:'+STG_COL[3]+'">Stage 3 '+cnt[3]+'</b>　'+
+    '<b style="color:'+STG_COL[4]+'">Stage 4 '+cnt[4]+'</b>　'+
+    '<b style="color:'+STG_COL[1]+'">Stage 1 '+cnt[1]+'</b>'+(cnt[0]?'　資料不足 '+cnt[0]:'');
   el('sumN').textContent=N+' 檔有資料：'+a50+' 檔站在 50 線上、'+nearHi+' 檔離 52 週高點 5% 以內、'+on+' 檔在持續跑贏大盤（radar 的「強」）。'+(ok.length<sec.tickers.length?'（有 '+(sec.tickers.length-ok.length)+' 檔沒抓到，卡片上有重試鍵）':'');
 }
 function sortedData(){
@@ -472,14 +554,18 @@ function sortedData(){
   }
   return arr;
 }
+function stageChip(a){
+  return '<span class="stgchip" style="background:'+STG_COL[a.sc]+'">'+STG_NAME[a.sc]+'</span><span class="stgday">'+(a.sc===22?'整段 Stage 2 已 ':'已 ')+a.sdays+' 天</span>';
+}
 function cardHtml(o,idx){
   if(!o.a) return '<div class="card" data-t="'+o.t+'" data-err="1"><div class="ch"><span class="tk">'+o.t+'</span></div><div class="err">抓不到資料（'+(o.err||'未知原因')+'）<br><button data-retry="'+o.t+'">重試</button></div></div>';
   var a=o.a, cls=a.dp>=0?'up':'dn';
   return '<div class="card" data-t="'+o.t+'">'+
     '<div class="ch"><span class="tk">'+o.t+'</span>'+badgeHtml(o.m)+
       '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">今天 '+fmtPct(a.dp,1)+'</small></span></div>'+
+    '<div class="stgline">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="cv" id="cv'+idx+'"></canvas>'+
-    '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>'+a.tr.t+'；'+a.hiTxt+'</div>'+
+    '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2">'+streakHtml(a.st)+'</div>'+
     '<div class="rd2">近半年 '+(a.r6==null?'—':fmtPct(a.r6*100,0))+'　·　近 20 天 '+(a.ex==null?'—':(a.ex>=0?'贏':'輸')+'大盤 '+Math.abs(a.ex).toFixed(1)+'%')+'</div>'+
   '</div>';
@@ -520,8 +606,9 @@ function openModal(t){
     '<span style="font-size:18px;font-weight:900">'+fmtP(a.px)+' <span class="'+cls+'" style="font-size:14px">今天 '+fmtPct(a.dp,1)+'</span></span>'+
     '<span class="seg" id="mRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>'+
     '<button class="mclose" id="mClose">✕ 關閉</button></div>'+
+    '<div class="stgline" style="font-size:14px">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="big" id="cvBig"></canvas>'+
-    '<div class="rd" style="font-size:14.5px"><span class="dot" style="background:'+a.tr.c+'"></span>'+a.tr.t+'；'+a.hiTxt+'</div>'+
+    '<div class="rd" style="font-size:14.5px"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2" style="font-size:14px">'+streakHtml(a.st)+'</div>'+
     '<div class="rd2" style="font-size:14px">20 線 '+fmtP(a.m20)+'　50 線 '+(a.m50==null?'—':fmtP(a.m50))+'　200 線 '+(a.m200==null?'—':fmtP(a.m200))+'（股價在 50 線'+(a.a50?'上':'下')+'）</div>'+
     '<div class="mlinks"><a href="https://www.tradingview.com/chart/?symbol='+encodeURIComponent(t)+'" target="_blank" rel="noopener">在 TradingView 開啟 '+t+' ↗</a></div>';
