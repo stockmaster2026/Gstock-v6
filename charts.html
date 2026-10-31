@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.4</title>
+<title>板塊圖表總覽 v1.5</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -87,7 +87,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.4</div>
+  <div class="logo">板塊<span>圖表</span> v1.5</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -248,8 +248,8 @@ function savePref(){ try{localStorage.setItem(PKEY,JSON.stringify(PREF));}catch(
 var BARS={}, ERR={}, loadTok=0;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 async function fetchYahoo(t,retried){
-  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=2y';
-  var r=await fetch(PROXY+encodeURIComponent(base));
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=2y&_cb='+Date.now();   // 時間戳：避免代理或中間層回傳舊快取
+  var r=await fetch(PROXY+encodeURIComponent(base),{cache:'no-store'});
   if(r.status===429 && !retried){ await sleep(2000); return fetchYahoo(t,true); }
   if(!r.ok) throw new Error('Yahoo HTTP '+r.status);
   var data=await r.json();
@@ -267,6 +267,20 @@ function parseBars(res){
     }
   }
   if(B.c.length<20) throw new Error('資料太少（'+B.c.length+' 天）');
+  // Yahoo 的日線最後一根有時還沒更新到今天：用 meta 的最新成交價補上或更新
+  try{
+    var m=res.meta||{};
+    if(m.regularMarketPrice>0&&m.regularMarketTime){
+      var nyd=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(m.regularMarketTime*1000));
+      var L=B.d.length-1, px=rd3(m.regularMarketPrice);
+      if(nyd===B.d[L]){
+        if(Math.abs(B.c[L]-px)>1e-6){ B.c[L]=px; if(px>B.h[L]) B.h[L]=px; if(px<B.l[L]) B.l[L]=px; B.patched='更新'; }
+      }else if(nyd>B.d[L]){
+        B.d.push(nyd); B.o.push(px); B.h.push(rd3(m.regularMarketDayHigh>0?Math.max(m.regularMarketDayHigh,px):px));
+        B.l.push(rd3(m.regularMarketDayLow>0?Math.min(m.regularMarketDayLow,px):px)); B.c.push(px); B.v.push(m.regularMarketVolume||0); B.patched='補上';
+      }
+    }
+  }catch(e){}
   return B;
 }
 function sma(c,k){
@@ -387,7 +401,7 @@ function md(d){ return d.slice(5).replace('-','/'); }
 function analyze(t,sec,S){
   var B=BARS[t]; if(!B) return null;
   var n=B.c.length, px=B.c[n-1], prev=B.c[n-2];
-  var a={t:t,px:px,dp:(px/prev-1)*100};
+  var a={t:t,px:px,dp:(px/prev-1)*100,lastDate:B.d[n-1]};
   var b6=n-1-126;
   a.r6=(n>=100&&b6>=0&&B.c[b6]>0)?(px/B.c[b6]-1):null;
   var m20=B.ma20[n-1],m50=B.ma50[n-1],m200=B.ma200[n-1];
@@ -470,6 +484,7 @@ function assignRoles(data){
   });
   return {key:key,k:k,R:R};
 }
+function refDate(){ var S=BARS['SPY']; if(S&&S.d.length) return S.d[S.d.length-1]; var mx=''; for(var k in BARS){ var d=BARS[k].d; if(d[d.length-1]>mx) mx=d[d.length-1]; } return mx; }
 function badgeHtml(m){
   if(!m) return '';
   var s=ROLE_STY[m.tag]||ROLE_STY['落後'];
@@ -654,6 +669,8 @@ function buildData(){
   el('storyBox').innerHTML='<b>這組走到哪裡：</b>'+story+(RS.key==='r6'?'<br><small style="color:#778">（資料不到 1 年，「過去帶頭」改用近半年漲幅判斷）</small>':'');
   var pk=ok.slice().sort(function(x,y){return x.a.hiAgo-y.a.hiAgo;});
   el('relayBox').innerHTML='<b>52 週高點的先後（越右越新）：</b>'+pk.slice().reverse().map(function(o){ return '<span style="white-space:nowrap"><b>'+o.t+'</b> '+md(o.a.hiDate)+(o.a.off>=-0.03?' ★':'')+'</span>'; }).join(' → ')+'<br><small style="color:#778">★＝現在仍貼著高點。看高點日期可以知道誰先漲完、誰是最近才創高。</small>';
+  var rd=refDate(), old=ok.filter(function(o){return o.a.lastDate!==rd;}).map(function(o){return o.t+' '+md(o.a.lastDate);});
+  el('relayBox').innerHTML+='<br><small style="color:#778">價格資料到 '+md(rd)+'（SPY）'+(old.length?'；<b style="color:#c0600a">這幾檔不是最新一天：'+old.join('、')+'</b>，按右上「更新」重抓':'；全部是同一天')+'。</small>';
   el('sumN').textContent=N+' 檔有資料：'+a50+' 檔站在 50 線上、'+nearHi+' 檔離 52 週高點 5% 以內、'+on+' 檔在持續跑贏大盤（radar 的「強」）。'+(ok.length<sec.tickers.length?'（有 '+(sec.tickers.length-ok.length)+' 檔沒抓到，卡片上有重試鍵）':'');
 }
 function sortedData(){
@@ -677,7 +694,7 @@ function cardHtml(o,idx){
   var a=o.a, cls=a.dp>=0?'up':'dn';
   return '<div class="card" data-t="'+o.t+'">'+
     '<div class="ch"><span class="tk">'+o.t+'</span>'+badgeHtml(o.m)+
-      '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">今天 '+fmtPct(a.dp,1)+'</small></span><button class="rm" data-rm="'+o.t+'" title="從這組移除">✕</button></div>'+
+      '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">'+(a.lastDate===refDate()?'今天':'<span style="color:#c0600a">'+md(a.lastDate)+'</span>')+' '+fmtPct(a.dp,1)+'</small></span><button class="rm" data-rm="'+o.t+'" title="從這組移除">✕</button></div>'+
     '<div class="stgline">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="cv" id="cv'+idx+'"></canvas>'+
     '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
@@ -783,7 +800,7 @@ function openModal(t){
   var a=o.a, cls=a.dp>=0?'up':'dn';
   el('mbox').innerHTML=
     '<div class="mtop"><span class="tk">'+t+'</span>'+badgeHtml(o.m)+
-    '<span style="font-size:18px;font-weight:900">'+fmtP(a.px)+' <span class="'+cls+'" style="font-size:14px">今天 '+fmtPct(a.dp,1)+'</span></span>'+
+    '<span style="font-size:18px;font-weight:900">'+fmtP(a.px)+' <span class="'+cls+'" style="font-size:14px">'+(a.lastDate===refDate()?'今天':'<span style="color:#c0600a">'+md(a.lastDate)+'</span>')+' '+fmtPct(a.dp,1)+'</span></span>'+
     '<span class="seg" id="mRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>'+
     '<button class="mclose" id="mClose">✕ 關閉</button></div>'+
     '<div class="stgline" style="font-size:14px">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
