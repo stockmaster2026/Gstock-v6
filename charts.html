@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.6</title>
+<title>板塊圖表總覽 v1.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -79,6 +79,8 @@ canvas.cv{width:100%;height:170px;display:block;margin-top:6px;border-radius:6px
 .mclose{margin-left:auto;border:none;background:#444;color:#fff;font-size:15px;font-weight:900;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:inherit;}
 canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8px;background:#fff;}
 .mlinks{margin-top:10px;font-size:14px;font-weight:700;}
+.co{margin:4px 0 4px;font-size:14px;line-height:1.55;color:#223;}
+.szchip{display:inline-block;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:800;vertical-align:middle;}
 .trail{margin:6px 0 2px;padding:7px 9px;border-radius:9px;background:#f3f6fb;font-size:15px;line-height:1.6;color:#223;}
 .rkwrap{margin:8px 0;font-size:14px;}
 .rkwrap summary{font-weight:800;cursor:pointer;padding:4px 0;}
@@ -94,7 +96,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.6</div>
+  <div class="logo">板塊<span>圖表</span> v1.7</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -113,7 +115,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
       <span class="lb">時間長度</span>
       <span class="seg" id="segRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>
       <span class="lb">排序</span>
-      <span class="seg" id="segSort"><button data-v="lead">領頭羊在前</button><button data-v="past">過去名次</button><button data-v="now">現在名次</button><button data-v="peak">最近創高在前</button><button data-v="orig">原本名單順序</button></span>
+      <span class="seg" id="segSort"><button data-v="lead">領漲在前</button><button data-v="past">過去名次</button><button data-v="now">現在名次</button><button data-v="peak">最近創高在前</button><button data-v="orig">原本名單順序</button></span>
       <span class="legend"><i style="background:#e67e22"></i>20線<i style="background:#1565c0"></i>50線<i style="background:#8e44ad"></i>200線<i style="background:#999;height:0;border-top:2px dashed #999"></i>52週高</span>
     </div>
     <div class="addrow">
@@ -126,7 +128,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
   <div class="grid" id="grid"></div>
   <div class="foot">
     這一頁是「看圖對照」用的，不是買賣判決：把 radar 說的（誰最強、強幾天）跟圖實際長的樣子放在一起看。<br>
-    「強」＝近 20 天裡有 6 成以上的日子漲得比大盤（SPY）多，跟 radar 同一個定義；<b>角色標籤（暫定規則，還沒回測）</b>：先看「過去有沒有帶頭」＝板塊內 1 年漲幅前幾名（差一點也算）；再看「現在」＝是否在 Stage 2 且離 52 週高點不到 12%。過去帶頭＋現在健康＝現任領頭羊；過去帶頭但現在休息／走弱＝老龍頭；過去沒帶頭但現在健康＝補漲新秀。這是用來幫你抓板塊脈絡的，不是買賣訊號。<br>
+    「強」＝近 20 天裡有 6 成以上的日子漲得比大盤（SPY）多，跟 radar 同一個定義；<b>角色標籤（暫定規則，還沒回測）</b>：先看「過去有沒有帶頭」＝板塊內 1 年漲幅前幾名（差一點也算）；再看「現在」＝是否在 Stage 2 且離 52 週高點不到 12%。過去帶頭＋現在健康＝近期領漲；過去帶頭但現在休息／走弱＝老龍頭；過去沒帶頭但現在健康＝補漲新秀。這是用來幫你抓板塊脈絡的，不是買賣訊號。<br>
     <b>背景色＝四階段</b>，規則照你 TradingView 的「Jasmine 四階段乾淨版 V1」（日線版）：150 日線＋20 天斜率（超過 ±0.5% 算上升／下降）＋50 日線，連續 3 根才換階段；Stage 2 裡跌破 50 日線或短線均線排列轉空＝2B 轉弱。斜率門檻和 3 根是我從圖上指標名稱旁的設定值推的，顏色是照 Pine 的顏色種類估的，跟你 TradingView 上的可能有一點深淺差；兩邊階段對不上時請截圖給我。<br>
     圖用的是 Yahoo 日線（經你的 Worker），最後一根可能是還沒收盤的當天。每個板塊的成分股名單跟 radar 同一份。
   </div>
@@ -190,6 +192,8 @@ var SECTORS_DEFAULT=[
   {id:'finance',   icon:'🏦', name:'金融',       etf:'XLF',  tickers:['JPM','GS','MS','BLK','KKR','BX','SCHW','COIN','HOOD','V','ARCC','APO','SYF','ALLY','AXP','COF','MA','CME','SPGI','BAC']},
   {id:'custom',    icon:'⭐', name:'自訂',       etf:null,   tickers:[]},
 ];
+
+var COMPANY={"NVDA":["NVIDIA Corporation",5150,"10-29",1,"設計GPU與AI/高效能運算晶片及平台",null,null],"MSFT":["Microsoft Corporation",3940,"10-29",1,"Windows、Azure雲端、Office與AI軟體服務",null,null],"GOOGL":["Alphabet Inc. (Class A)",3490,"10-29",1,"Google搜尋/YouTube廣告、Google Cloud與Other Bets",null,null],"AMZN":["Amazon.com, Inc.",2630,"10-29",1,"電商零售、AWS雲端、廣告與串流",null,null],"META":["Meta Platforms, Inc.",1600,"10-29",1,"Facebook/Instagram/WhatsApp社群與廣告、AI",null,null],"AAPL":["Apple Inc.",5090,"10-29",1,"iPhone/Mac等消費電子、軟體與服務",null,null],"AVGO":["Broadcom Inc.",1650,"10-29",1,"半導體(含AI客製晶片/網通)與基礎架構軟體",null,null],"ORCL":["Oracle Corporation",422,"10-29",1,"資料庫軟體、雲端基礎設施與企業應用",null,null],"TSM":["Taiwan Semiconductor Manufacturing Co. (ADR)",2240,"10-29",1,"晶圓代工,先進製程、特殊製程與封測","台灣",null],"ANET":["Arista Networks, Inc.",232.3,"10-29",1,"高速乙太網路交換器、路由器與網路作業系統",null,null],"SMCI":["Super Micro Computer, Inc.",22.6,"10-29",1,"AI/資料中心伺服器、儲存與機櫃整合方案",null,null],"DELL":["Dell Technologies Inc.",302.3,"10-29",1,"PC與企業IT基礎設施(伺服器、儲存)硬體、軟體與服務",null,null],"VRT":["Vertiv Holdings Co",75.33,"10-23",1,"資料中心電力與散熱基礎設施及服務",null,null],"CRDO":["Credo Technology Group Holding Ltd",null,"",null,null,null,null],"HPE":["Hewlett Packard Enterprise",73.78,"10-16",1,"企業伺服器、儲存與網路(含Juniper)及混合雲服務",null,null],"MRVL":["Marvell Technology, Inc.",191,"10-29",1,"半導體與相關技術(資料中心/網通晶片)",null,null],"NTAP":["NetApp Inc",39.51,"09-25",1,null,null,null],"P":["Everpure Inc.",45.7,"10-29",1,"資料儲存與資料管理平台(AI/混合雲企業儲存)",null,"P ＝ Everpure（原 Pure Storage，2026/4 起改用代號 P）。"],"COHR":["Coherent Corp.",46.4,"10-29",1,"雷射、光學/光通訊收發模組與工程材料",null,null],"LITE":["Lumentum Holdings Inc.",82.5,"10-29",null,"光通訊與光子元件、雷射(雲端/AI資料中心)",null,null],"AAOI":["Applied Optoelectronics Inc.",5.8,"10-30",0,"光纖網路產品:光收發模組、雷射(資料中心/CATV/FTTH)",null,null],"AXTI":["AXT Inc",null,"",null,null,null,null],"APH":["Amphenol Corporation",176.69,"04-29",null,null,null,null],"CIEN":["Ciena Corporation",49.6,"10-29",1,"光網路/高容量通訊網路設備、軟體與服務",null,null],"FN":[null,null,"",null,null,null,null],"POET":[null,null,"",null,null,null,null],"TSEM":[null,null,"",null,null,"以色列",null],"NOK":["Nokia Corporation (Sponsored ADR)",49,"10-30",1,"電信網路設備、行動/固網基礎設施、雲與網路服務及專利授權","芬蘭",null],"VST":[null,null,"",null,null,null,null],"CEG":["Constellation Energy Corp",89.8,"10-23",1,"電力生產(核能為主)與天然氣、能源管理服務,約200萬客戶",null,null],"TLN":["Talen Energy Corporation",16.22,"10-30",0,"獨立發電商，擁有核能（Susquehanna）與天然氣電廠，向資料中心供電",null,null],"NRG":["NRG Energy, Inc.",20.19,"10-30",1,"美國發電與零售電力公司，供應住宅與商業用戶及資料中心",null,null],"PEG":["Public Service Enterprise Group Incorporated",37.03,"10-30",1,"新澤西州受管制電力與天然氣公用事業，另有核能發電",null,null],"D":["Dominion Energy, Inc.",56.53,"10-28",1,"維吉尼亞等州受管制電力與天然氣公用事業",null,null],"EXC":["Exelon Corporation",47.29,"10-29",1,"美國最大受管制電力輸配公用事業之一（ComEd、PECO 等），不含發電",null,null],"AES":["The AES Corporation",10.57,"10-30",1,"全球發電與公用事業公司，含再生能源與儲能",null,null],"NEE":["NextEra Energy, Inc.",169.92,"10-28",1,"全美最大受管制公用事業（Florida Power & Light）及最大風光再生能源發電商",null,null],"ETN":["Eaton Corporation plc",143.65,"10-30",1,"電力管理設備（配電、UPS、斷路器）與航太、車用元件",null,null],"GEV":["GE Vernova Inc.",236,"10-30",1,"燃氣渦輪、風力與電網設備製造商（GE 能源業務分拆）",null,null],"PWR":["Quanta Services, Inc.",93.52,"10-30",1,"電網、再生能源與通訊基礎建設工程承包商",null,null],"GNRC":["Generac Holdings Inc.",11.44,"10-27",1,"備用發電機與家用儲能，並擴展資料中心用大型發電機",null,null],"EMR":["Emerson Electric Co.",90.5,"10",1,"工業自動化軟硬體與控制系統（閥門、量測、軟體）",null,null],"HUBB":["Hubbell Incorporated",23.1,"10-28",1,"電力與公用事業用電氣元件（輸配電、接線設備）",null,null],"NVT":["nVent Electric plc",22.36,"10-29",1,"電氣連接與防護、資料中心液冷與機櫃產品",null,null],"AME":["AMETEK, Inc.",55.26,"10-30",1,"電子儀器與機電設備（精密量測、航太電子）",null,null],"LUNR":["Intuitive Machines, Inc.",1.85,"10",null,"月球著陸器、月球通訊與太空任務服務",null,null],"RKLB":["Rocket Lab Corporation",37.46,"10-28",0,"小型運載火箭 Electron、中型 Neutron 與衛星/太空系統製造",null,null],"PL":["Planet Labs PBC",5.2,"10-29",0,"地球觀測衛星影像與分析資料訂閱服務",null,null],"BKSY":["BlackSky Technology Inc.",0.78,"10-28",0,"高頻率地球觀測衛星影像與即時地理空間情報",null,null],"ASTS":["AST SpaceMobile, Inc.",16.76,"10-29",0,"低軌衛星直連一般手機的寬頻服務",null,null],"IRDM":["Iridium Communications Inc.",4.75,"10-30",1,"全球低軌衛星語音/數據/IoT 通訊服務",null,null],"GSAT":["Globalstar, Inc.",10.89,"10-28",0,"衛星行動通訊服務（Apple 手機緊急衛星連線合作）",null,null],"VSAT":["Viasat, Inc.",10.78,"10-28",0,"衛星寬頻、政府與國防通訊系統",null,null],"KTOS":["Kratos Defense & Security Solutions, Inc.",8.2,"10-29",1,"無人機靶機/戰術無人機、高超音速測試與國防電子",null,null],"AVAV":["AeroVironment, Inc.",6.37,"10-26",0,"小型無人機、巡飛彈（Switchblade）與國防系統",null,null],"LDOS":["Leidos Holdings, Inc.",17.55,"10-28",1,"美國政府/國防 IT、情報與健康科技服務承包商",null,null],"LMT":["Lockheed Martin Corporation",148.67,"10-29",1,"F-35 戰機、飛彈與防禦、太空系統的國防承包商",null,null],"RTX":["RTX Corporation",269.07,"10-29",1,"飛機引擎（Pratt & Whitney）、航電（Collins）與飛彈防禦（Raytheon）",null,null],"NOC":["Northrop Grumman Corporation",79.9,"10-29",1,"B-21 轟炸機、太空、飛彈與自主系統國防承包商",null,null],"GD":["General Dynamics Corporation",100.32,"10-29",1,"潛艦與艦艇（Electric Boat）、Gulfstream 商務機、戰鬥系統與 IT",null,null],"AXON":["Axon Enterprise, Inc.",35.59,"-10-29 (undated on page)",1,"警用電擊槍(TASER)、隨身攝影機與雲端證據管理軟體，並延伸無人機/反無人機",null,null],"HII":["Huntington Ingalls Industries, Inc.",12.47,"10-29",1,"美國海軍艦艇(航艦、潛艦)建造商，另有 Mission Technologies 國防科技/無人系統部門",null,null],"IONQ":["IonQ, Inc.",12.09,"-10-30 (undated on page)",0,"以離子阱技術製造量子電腦，並涵蓋量子網路、感測與安全",null,null],"RGTI":["Rigetti Computing, Inc.",3.72,"-10-30 (price $11.20 x 333.77M shs)",0,"超導量子處理器(硬體)與量子雲端服務",null,null],"QBTS":["D-Wave Quantum Inc.",4.31,"10-29 (close)",0,"量子退火與閘式超導量子電腦、量子雲端(QCaaS)服務",null,null],"QUBT":["Quantum Computing Inc.",1.48,"10-30",0,"薄膜鈮酸鋰(TFLN)光子晶片/光子量子技術與代工",null,null],"MU":["Micron Technology, Inc.",1120,"10-28",1,"DRAM、HBM 與 NAND 記憶體晶片製造商",null,null],"WDC":["Western Digital Corporation",137.05,"10-30",1,"硬碟(HDD)與資料儲存裝置/平台",null,null],"STX":["Seagate Technology Holdings plc",151.87,"10-27",1,"硬碟(HDD)製造商，主打資料中心 nearline 大容量碟",null,null],"SNDK":["Sandisk Corporation",170.97,"-10-30 (undated on page)",1,"NAND 快閃記憶體與 SSD/記憶卡(自 WDC 分拆)",null,null],"SKHY":["SK hynix Inc. (Sponsored ADR)",832.06,"10-30 (close, thestreet)",null,"DRAM 與 HBM 記憶體製造商(SK 海力士)；SKHY 為其在美掛牌的 ADR","南韓","SK hynix 在美國的 ADR，市值是 SK hynix 本尊的規模。"],"AMKR":["Amkor Technology, Inc.",10.22,"10-29",1,"半導體封裝與測試(OSAT)代工",null,null],"TER":["Teradyne, Inc.",41.86,"-10-30 (price $274.14)",1,"半導體自動測試設備(ATE)與協作機器人(Universal Robots)",null,null],"ONTO":["Onto Innovation Inc.",9.9,"-10-30 (computed: 49.07M shs x $201.57)",1,"半導體製程控制/檢測量測設備與軟體(含先進封裝)",null,null],"CRSP":["CRISPR Therapeutics AG",5.25,"-10-30 (price $51.13)",0,"基因編輯療法公司；與 Vertex 合作的 CASGEVY 已核准上市",null,null],"NTRA":["Natera, Inc.",61.18,"-10-29 (price $432.75)",0,"無創基因檢測(產前 Panorama、癌症 MRD Signatera 等)",null,null],"NVAX":["Novavax, Inc.",1.7,"10-29",0,"蛋白質次單元疫苗(Nuvaxovid COVID-19)，與 Sanofi 合作",null,null],"RXRX":["Recursion Pharmaceuticals, Inc.",2.61,"10-28",0,"AI 驅動藥物發現平台，與 Roche/Genentech、Sanofi 合作",null,null],"BEAM":["Beam Therapeutics Inc.",2.97,"-10-28",0,"鹼基編輯(base editing)基因療法開發",null,null],"NTLA":["Intellia Therapeutics, Inc.",1.73,"10-27",0,"CRISPR 體內基因編輯療法(lonvo-z 治遺傳性血管水腫、nex-z 治 ATTR-CM)，與 Regeneron 合作",null,null],"EDIT":["Editas Medicine, Inc.",0.45,"10-29",0,"CRISPR 基因編輯療法開發(早期管線)",null,null],"ALNY":["Alnylam Pharmaceuticals, Inc.",22.1,"-10-30 (price $165.88 x 133.94M shs)",1,"RNAi 療法(Onpattro、Amvuttra 等)",null,null],"VKTX":["Viking Therapeutics, Inc.",3.38,"-10-30",0,"GLP-1/GIP 減重藥(VK2735)臨床階段生技，尚無上市產品",null,null],"SRPT":["Sarepta Therapeutics, Inc.",2.05,"10-28",0,"杜顯型肌肉失養症基因/RNA 療法(Elevidys、Amondys 45、Vyondys 53)",null,null],"NEM":["Newmont Corporation",116.19,"10-30",1,"全球最大黃金生產商，兼產銅、銀、鋅、鉛",null,null],"AEM":["Agnico Eagle Mines Limited",89.08,"-10-30 (undated on page)",null,"以加拿大為主的大型金礦商","加拿大",null],"WPM":["Wheaton Precious Metals Corp.",55.49,"-10-30 (undated on page)",1,"貴金屬權利金/串流(streaming)公司，金、銀、鈀、鈷","加拿大",null],"GOLD":["Gold.com, Inc. (formerly A-Mark Precious Metals)",1.14,"10-29",1,"貴金屬(金銀鉑鈀)批發交易、直售消費者與擔保借貸；並非礦業公司",null,"代號 GOLD 現在是 Gold.com（金條交易商，市值很小），不是 Barrick（巴里克黃金）。貴金屬礦業這組的 GOLD 放錯公司了。"],"KGC":["Kinross Gold Corporation",25.62,"-10-30 (undated on page)",1,"中型/大型金礦商，礦區遍及美洲與西非","加拿大",null],"AU":["AngloGold Ashanti plc",42.97,"10-30",null,"全球性金礦商(阿根廷、澳洲、巴西、剛果(金)、迦納、幾內亞、坦尚尼亞)，副產銀與硫酸",null,null],"FNV":["Franco-Nevada Corporation",43.46,"10-30",1,"貴金屬版稅與串流（royalty/stream）公司，另有少量油氣權益","加拿大",null],"RGLD":["Royal Gold, Inc.",19.84,"10-26",1,"貴金屬串流與版稅權益收購與管理（美洲、非洲、澳洲等）",null,null],"ISRG":["Intuitive Surgical, Inc.",155.99,"10-27",1,"達文西手術機器人系統、Ion肺部活檢系統及耗材",null,null],"CGNX":["Cognex Corporation",9.36,"10-26",1,"機器視覺系統、感測器與讀碼產品，用於製造與物流自動化",null,null],"SYM":["Symbotic Inc.",22.94,"10-30",1,"倉儲自動化機器人系統（棧板、箱、單品處理）",null,null],"SERV":["Serve Robotics Inc.",0.24094,"10-23",0,"人行道自動送餐機器人",null,null],"OUST":["Ouster, Inc.",2.14,"10-26",0,"光達（lidar）感測器，用於車用、工業、機器人與智慧基礎建設",null,null],"AMBA":["Ambarella, Inc.",2.95,"10-26",0,"低功耗邊緣AI/視覺SoC晶片與軟體（CVflow）",null,null],"PATH":["UiPath, Inc.",7.19,"10-30",1,"機器人流程自動化（RPA）與AI代理協作平台",null,null],"IRBT":["iRobot Corporation (IRBTQ)",0.00523,"01-23",0,"Roomba掃地機器人與家用機器人產品",null,"iRobot 已破產，目前在 OTC 交易（代號 IRBTQ），價格資料不具參考性。"],"NBIS":["Nebius Group N.V.",49.98,"10-28",1,"全端AI基礎設施／GPU雲，另有TripleTen教育與Avride自駕","荷蘭",null],"CRWV":["CoreWeave, Inc.",33.5,"10-29",0,"AI專用GPU雲端基礎設施服務",null,null],"IREN":["IREN Limited",10.73,"10-27",0,"可再生能源資料中心：比特幣挖礦轉型AI雲服務","澳洲",null],"APLD":["Applied Digital Corporation",5.85,"10-27",0,"AI/HPC資料中心託管與雲服務，兼顧加密貨幣託管",null,null],"CORZ":["Core Scientific, Inc.",4.34,"10-26",0,"高密度主機託管（AI）與數位資產挖礦基礎設施",null,null],"WULF":["TeraWulf Inc.",6.32,"10-27",0,"比特幣挖礦設施與HPC/AI資料中心",null,null],"HUT":["Hut 8 Corp.",7.76,"10-26",0,"能源基礎設施、數位基礎設施與運算（含比特幣挖礦）",null,null],"GLXY":["Galaxy Digital Inc.",6.13,"10-26",0,"加密資產交易/借貸/顧問、資料中心（Helios）與資產管理",null,null],"NOW":["ServiceNow, Inc.",113.83,"10-29",1,"雲端數位工作流程平台（ITSM、客服、HR等）",null,null],"CRM":["Salesforce, Inc.",203.78,"10-26",1,"CRM雲端軟體與Agentforce AI代理",null,null],"SNOW":["Snowflake Inc.",118.52,"10-27",0,"雲端資料平台（AI Data Cloud）",null,null],"DDOG":["Datadog, Inc.",99.6,"10-27",1,"雲端可觀測性與資安監控平台",null,null],"WDAY":["Workday, Inc.",50.25,"10-26",1,"企業雲端人資、財務管理軟體",null,null],"TEAM":["Atlassian Corporation",51.67,"10-29",0,"協作與開發軟體（Jira、Confluence、Trello、Loom、Rovo）",null,null],"APP":["AppLovin Corporation",87.26,"10-26",1,"AI行動廣告投放與變現軟體（MAX、Adjust），含Apps部門",null,null],"MDB":["MongoDB, Inc.",31.35,"10-27",1,"文件型資料庫平台（Atlas雲服務）",null,null],"PLTR":["Palantir Technologies Inc.",479.65,"10-27",1,"政府與企業資料分析/AI軟體平台（Gotham、Foundry、AIP）",null,null],"INTU":["Intuit Inc.",88.27,"10-27",1,"QuickBooks、Mailchimp、TurboTax等財務與稅務軟體",null,null],"PANW":["Palo Alto Networks, Inc.",323.07,"10-27",1,"網路安全平台（SASE、防火牆、雲端安全）",null,null],"CRWD":["CrowdStrike Holdings, Inc.",273.69,"10-27",1,"雲端原生端點／雲／身分資安平台（Falcon）",null,null],"FTNT":["Fortinet, Inc.",102.06,"10-30",1,"網路安全硬體與軟體（FortiGate 防火牆、SASE、SecOps）",null,null],"ZS":["Zscaler, Inc.",38.78,"10-30",0,"雲端零信任資安平台（Zero Trust Exchange，保護使用者、裝置、工作負載與 AI agent）",null,null],"S":["SentinelOne, Inc.",8.59,"10-30",0,"AI 驅動的端點／雲端資安平台（Singularity）",null,null],"OKTA":["Okta, Inc.",38.79,"10-30",1,"雲端身分識別與存取管理（SSO、MFA、Identity）",null,null],"TENB":["Tenable Holdings, Inc.",5.51,"10-30",1,"弱點管理與曝險管理平台（Nessus、Tenable One）",null,null],"QLYS":["Qualys, Inc.",7.8,"10-30",1,"雲端資安與合規、弱點管理平台（Qualys Cloud Platform）",null,null],"RBRK":["Rubrik, Inc.",28.02,"10-29",0,"資料保護、備份復原與網路韌性平台",null,null],"NET":["Cloudflare, Inc.",110.49,"10-30",0,"CDN、網路安全與邊緣運算雲端平台",null,null],"JPM":["JPMorgan Chase & Co.",913.3,"10-30",1,"美國最大銀行：投資銀行、商業銀行、消費金融與資產管理",null,null],"GS":["The Goldman Sachs Group, Inc.",269.38,"10-29",1,"投資銀行、交易、資產與財富管理",null,null],"MS":["Morgan Stanley",298.41,"10-30",1,"投資銀行與證券、財富管理、投資管理",null,null],"BLK":["BlackRock, Inc.",372.9,"10-30",1,"全球最大資產管理公司（iShares ETF、私募市場、Aladdin 科技）",null,null],"KKR":["KKR & Co. Inc.",84.73,"10-30",1,"另類資產管理（私募股權、基建、信貸、保險 Global Atlantic）",null,null],"BX":["Blackstone Inc.",90.53,"10-30",1,"全球最大另類資產管理（不動產、私募股權、信貸、基建）",null,null],"SCHW":["The Charles Schwab Corporation",155.2,"10-26",1,"零售券商、銀行與財富管理（嘉信理財）",null,null],"COIN":["Coinbase Global, Inc.",42.52,"10-29",0,"加密貨幣交易所與託管、USDC 穩定幣收入、預測市場",null,null],"HOOD":["Robinhood Markets, Inc.",82.48,"10-30",1,"零售證券與加密貨幣交易 App（Robinhood Gold、退休帳戶）",null,null],"V":["Visa Inc.",740.59,"10-30",1,"全球支付網路（VisaNet、跨境支付、加值服務）",null,null],"ARCC":["Ares Capital Corporation",13.81,"10-29",1,"最大上市 BDC，向美國中型私人企業放款（主要 first lien）",null,null],"APO":["Apollo Global Management, Inc.",70.01,"10-29",1,"另類資產管理與退休服務（Athene 年金保險）",null,null],"SYF":["Synchrony Financial",23.35,"10-28",1,"零售聯名信用卡與消費金融（數位、家居、健康、生活）",null,null],"ALLY":["Ally Financial Inc.",12.06,"10-30",1,"數位銀行與汽車貸款／車商融資",null,null],"AXP":["American Express Company",217.06,"10-30",1,"信用卡發行與支付網路（個人、小企業、企業卡）",null,null],"COF":["Capital One Financial Corporation",128.06,"10-29",1,"信用卡、汽車貸款與銀行；已整合 Discover 支付網路",null,null],"MA":["Mastercard Incorporated",553.81,"10-30",1,"全球支付網路與加值服務",null,null],"CME":["CME Group Inc.",108.36,"10-30",1,"全球最大衍生品交易所（利率、股指、能源、農產品期貨與選擇權）",null,null],"SPGI":["S&P Global Inc.",135.66,"10-30",1,"信用評等、指數（S&P 500）、市場情報與能源資料",null,null],"BAC":["Bank of America Corporation",349.71,"10-30",1,"大型銀行：消費金融、環球銀行、環球市場、財富管理",null,null]};  // 2026-10-30 上網查證（第三方網站，市值僅供量級參考）
 
 
 // ── 板塊名單：跟 radar 同一份（同網域的 localStorage），讀不到就用內建預設 ──
@@ -468,9 +472,9 @@ function rankOf(list,key){
   return {rk:out,n:arr.length,arr:arr};
 }
 var ROLE_STY={
-  '現任領頭羊':['#fff3c4','#b8860b'],'補漲新秀':['#e2f4e5','#1f8a3b'],'老龍頭（休息中）':['#ece6f7','#6a4aa5'],
-  '老龍頭（已走弱）':['#fbe5e8','#b3262e'],'跟漲整理':['#e6edf7','#4a6fa5'],'落後':['#f0f2f5','#8b949e']};
-var ROLE_ORD={'現任領頭羊':0,'補漲新秀':1,'老龍頭（休息中）':2,'跟漲整理':3,'老龍頭（已走弱）':4,'落後':5};
+  '近期領漲':['#fff3c4','#b8860b'],'補漲新秀':['#e2f4e5','#1f8a3b'],'過去領漲（休息中）':['#ece6f7','#6a4aa5'],
+  '過去領漲（已走弱）':['#fbe5e8','#b3262e'],'跟漲整理':['#e6edf7','#4a6fa5'],'落後':['#f0f2f5','#8b949e']};
+var ROLE_ORD={'近期領漲':0,'補漲新秀':1,'過去領漲（休息中）':2,'跟漲整理':3,'過去領漲（已走弱）':4,'落後':5};
 function assignRoles(data){
   var ok=data.filter(function(o){return o.a;});
   var key=ok.filter(function(o){return o.a.r12!=null;}).length>=Math.ceil(ok.length*0.6)?'r12':'r6';
@@ -481,18 +485,34 @@ function assignRoles(data){
     var a=o.a, rk=R.rk[o.t];
     var past=(rk!=null)&&(rk<=k||(thr>0&&a[key]>=thr*0.8));   // 差一點也算（近似區）
     var healthy=(a.sc===2&&a.off>=-0.12), tag, why;
-    if(past&&healthy){ tag='現任領頭羊'; why='過去帶頭、現在還在 Stage 2 上升且離高點不遠。'; }
+    if(past&&healthy){ tag='近期領漲'; why='過去帶頭、現在還在 Stage 2 上升且離高點不遠。'; }
     else if(past){
-      if(a.sc===1||a.sc===4||a.off<-0.30){ tag='老龍頭（已走弱）'; why='過去帶頭，但現在已跌破長線或離高點很遠，龍頭地位已過。'; }
-      else { tag='老龍頭（休息中）'; why='過去帶頭、漲幅大；現在在回檔／整理，先不是主角。'; }
+      if(a.sc===1||a.sc===4||a.off<-0.30){ tag='過去領漲（已走弱）'; why='過去帶頭，但現在已跌破長線或離高點很遠，龍頭地位已過。'; }
+      else { tag='過去領漲（休息中）'; why='過去帶頭、漲幅大；現在在回檔／整理，先不是主角。'; }
     }
     else if(healthy){ tag='補漲新秀'; why='過去不是帶頭的，但現在上升段健康，是這一波才跑出來的。'; }
     else if(a.sc===2||a.sc===22){ tag='跟漲整理'; why='還在長線上升段，但沒有特別強。'; }
     else { tag='落後'; why='長線沒轉好，在組內屬後段。'; }
-    o.m={tag:tag,why:why,rank:rk,n:R.n,key:key,rk6:R6.rk[o.t],rk1:R1.rk[o.t],rk3:R3.rk[o.t],n6:R6.n,n1:R1.n};
+    var small=isSmall(o.t);
+    o.m={small:small,tag:tag,why:why,rank:rk,n:R.n,key:key,rk6:R6.rk[o.t],rk1:R1.rk[o.t],rk3:R3.rk[o.t],n6:R6.n,n1:R1.n};
     var d=(m_=o.m).rk1!=null&&m_.rank!=null?m_.rk1-m_.rank:null; o.m.chg=d;   // 現在名次 − 過去名次（正＝往後退）
   });
   return {key:key,k:k,R:R};
+}
+
+// ── 公司資料：全名、市值、獲利、業務（查證日 2026-10-30）──
+function coInfo(t){ var c=COMPANY[t]; if(!c) return null; return {name:c[0],mc:c[1],asof:c[2],pf:c[3],biz:c[4],cn:c[5],warn:c[6]}; }
+function mcStr(mc){ if(mc==null) return '市值未查到'; if(mc>=1000) return '市值約 '+(mc/1000).toFixed(2)+' 兆美元'; var y=mc*10; return '市值約 '+(y>=100?Math.round(y):y.toFixed(1))+' 億美元'; }
+function sizeOf(mc){ if(mc==null) return null; if(mc>=200) return {l:'巨型',c:'#2a6f3a'}; if(mc>=50) return {l:'大型',c:'#2a6f3a'}; if(mc>=10) return {l:'中型',c:'#556'}; if(mc>=2) return {l:'小型',c:'#c0600a'}; return {l:'微型',c:'#b3262e'}; }
+function isSmall(t){ var c=coInfo(t); return !!(c&&c.mc!=null&&c.mc<10); }
+function coHtml(t){
+  var c=coInfo(t);
+  if(!c) return '<div class="co" style="color:#889">公司資料：這檔還沒查證（不在預設名單）。</div>';
+  var sz=sizeOf(c.mc);
+  return '<div class="co"><b>'+(c.name||t)+'</b>'+(c.cn?'（'+c.cn+'）':'')+'　'+mcStr(c.mc)+(sz?' <span class="szchip" style="background:'+sz.c+'">'+sz.l+'</span>':'')+
+    (c.pf===0?' <span class="szchip" style="background:#b3262e">GAAP 虧損</span>':'')+
+    (c.biz?'<br><span style="color:#556">'+c.biz+'</span>':'')+
+    (c.warn?'<br><b style="color:#b3262e">⚠ '+c.warn+'</b>':'')+'</div>';
 }
 function refDate(){ var S=BARS['SPY']; if(S&&S.d.length) return S.d[S.d.length-1]; var mx=''; for(var k in BARS){ var d=BARS[k].d; if(d[d.length-1]>mx) mx=d[d.length-1]; } return mx; }
 var m_;
@@ -512,7 +532,7 @@ function trailHtml(m,big){
 function badgeHtml(m){
   if(!m) return '';
   var s=ROLE_STY[m.tag]||ROLE_STY['落後'];
-  return '<span class="bdg" style="background:'+s[0]+';color:'+s[1]+';border-color:'+s[1]+'" title="'+m.why+'">'+(m.tag==='現任領頭羊'?'👑 ':'')+m.tag+'</span>';
+  return '<span class="bdg" style="background:'+s[0]+';color:'+s[1]+';border-color:'+s[1]+'" title="'+m.why+'">'+(m.tag==='近期領漲'&&!m.small?'👑 ':'')+m.tag+'</span>';
 }
 function streakHtml(st){
   if(!st) return '<span style="color:#8b949e">（沒抓到大盤資料，算不出「強幾天」）</span>';
@@ -681,16 +701,20 @@ function buildData(){
     '<b style="color:'+STG_COL[1]+'">Stage 1 '+cnt[1]+'</b>'+(cnt[0]?'　資料不足 '+cnt[0]:'');
   // 一句話說這組走到哪裡＋高點接力
   var by=function(tag){ return ok.filter(function(o){return o.m&&o.m.tag===tag;}).sort(function(x,y){return (x.m.rank||99)-(y.m.rank||99);}).map(function(o){return o.t;}); };
-  var L=by('現任領頭羊'), OLD=by('老龍頭（休息中）').concat(by('老龍頭（已走弱）')), NEW=by('補漲新秀');
-  var jn=function(a){return a.slice(0,4).join('、');};
+  var L=by('近期領漲'), OLD=by('過去領漲（休息中）').concat(by('過去領漲（已走弱）')), NEW=by('補漲新秀');
+  var jn=function(a){return a.slice(0,4).map(function(x){return x+(isSmall(x)?'（小型股）':'');}).join('、');};
   var story;
-  if(L.length&&!OLD.length) story='領頭羊 '+jn(L)+' 還在跑（Stage 2、離高點不遠），這組還在上升段。'+(NEW.length?'後面 '+jn(NEW)+' 也開始跟上，表示漲勢在擴散。':'');
-  else if(L.length&&OLD.length) story='老龍頭 '+jn(OLD)+' 已經在休息或轉弱，現在由 '+jn(L.concat(NEW))+' 接力——這組在「輪動」，新進場的話要確認接棒的是不是夠強。';
-  else if(OLD.length&&NEW.length) story='老龍頭 '+jn(OLD)+' 已過高峰，現在是 '+jn(NEW)+' 在補漲。這是輪動後段的樣子，新進場要特別謹慎（跑在後面的通常漲幅有限）。';
-  else if(OLD.length) story='老龍頭 '+jn(OLD)+' 已經休息／轉弱，而且沒有新的接棒者，這組偏整理或尾聲。';
-  else if(NEW.length) story='還沒有明確的老龍頭；'+jn(NEW)+' 是目前上升段健康的。';
-  else story='這組目前沒有明確的領頭羊，也沒有健康的接棒者。';
-  el('storyBox').innerHTML='<b>這組走到哪裡：</b>'+story+(RS.key==='r6'?'<br><small style="color:#778">（資料不到 1 年，「過去帶頭」改用近半年漲幅判斷）</small>':'');
+  if(L.length&&!OLD.length) story='近期領漲的 '+jn(L)+' 還在跑（Stage 2、離高點不遠），這組還在上升段。'+(NEW.length?'後面 '+jn(NEW)+' 也開始跟上，表示漲勢在擴散。':'');
+  else if(L.length&&OLD.length) story='過去領漲的 '+jn(OLD)+' 已經在休息或轉弱，現在由 '+jn(L.concat(NEW))+' 接力——這組在「輪動」，新進場的話要確認接棒的是不是夠強。';
+  else if(OLD.length&&NEW.length) story='過去領漲的 '+jn(OLD)+' 已過高峰，現在是 '+jn(NEW)+' 在補漲。這是輪動後段的樣子，新進場要特別謹慎（跑在後面的通常漲幅有限）。';
+  else if(OLD.length) story='過去領漲的 '+jn(OLD)+' 已經休息／轉弱，而且沒有新的接棒者，這組偏整理或尾聲。';
+  else if(NEW.length) story='還沒有明確的過去領漲股；'+jn(NEW)+' 是目前上升段健康的。';
+  else story='這組目前沒有明確的領漲股，也沒有健康的接棒者。';
+  var lead=L.concat(OLD,NEW), smallN=lead.filter(function(x){var c=coInfo(x);return c&&((c.mc!=null&&c.mc<10)||c.pf===0);}).length;
+  if(lead.length>=2&&smallN*2>=lead.length) story+=' <span style="color:#c0600a">注意：這些領漲的多半是小型或虧損公司，更像題材炒作，不一定是產業真正的龍頭。</span>';
+  var big=ok.filter(function(o){var c=coInfo(o.t);return c&&c.mc!=null;}).sort(function(x,y){return coInfo(y.t).mc-coInfo(x.t).mc;}).slice(0,3);
+  var bigTxt=big.length>=2?'<br><b>這組市值最大的（產業真正的大公司）：</b>'+big.map(function(o){var c=coInfo(o.t);return o.t+'（'+(c.name||'')+'，'+mcStr(c.mc).replace('市值約 ','')+'，現在 '+STG_NAME[o.a.sc]+'，'+(o.m?o.m.tag:'')+'）';}).join('；')+'。':'';
+  el('storyBox').innerHTML='<b>這組走到哪裡：</b>'+story+bigTxt+(RS.key==='r6'?'<br><small style="color:#778">（資料不到 1 年，「過去帶頭」改用近半年漲幅判斷）</small>':'');
   var pk=ok.slice().sort(function(x,y){return x.a.hiAgo-y.a.hiAgo;});
   el('relayBox').innerHTML='<b>52 週高點的先後（越右越新）：</b>'+pk.slice().reverse().map(function(o){ return '<span style="white-space:nowrap"><b>'+o.t+'</b> '+md(o.a.hiDate)+(o.a.off>=-0.03?' ★':'')+'</span>'; }).join(' → ')+'<br><small style="color:#778">★＝現在仍貼著高點。看高點日期可以知道誰先漲完、誰是最近才創高。</small>';
   var rd=refDate(), old=ok.filter(function(o){return o.a.lastDate!==rd;}).map(function(o){return o.t+' '+md(o.a.lastDate);});
@@ -726,7 +750,7 @@ function cardHtml(o,idx){
   return '<div class="card" data-t="'+o.t+'">'+
     '<div class="ch"><span class="tk">'+o.t+'</span>'+badgeHtml(o.m)+
       '<span class="px"><b>'+fmtP(a.px)+'</b><small class="'+cls+'">'+(a.lastDate===refDate()?'今天':'<span style="color:#c0600a">'+md(a.lastDate)+'</span>')+' '+fmtPct(a.dp,1)+'</small></span><button class="rm" data-rm="'+o.t+'" title="從這組移除">✕</button></div>'+
-    '<div class="stgline">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
+    coHtml(o.t)+'<div class="stgline">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="cv" id="cv'+idx+'"></canvas>'+
     '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2">'+streakHtml(a.st)+'</div>'+
@@ -834,7 +858,7 @@ function openModal(t){
     '<span style="font-size:18px;font-weight:900">'+fmtP(a.px)+' <span class="'+cls+'" style="font-size:14px">'+(a.lastDate===refDate()?'今天':'<span style="color:#c0600a">'+md(a.lastDate)+'</span>')+' '+fmtPct(a.dp,1)+'</span></span>'+
     '<span class="seg" id="mRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>'+
     '<button class="mclose" id="mClose">✕ 關閉</button></div>'+
-    '<div class="stgline" style="font-size:14px">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
+    coHtml(t)+'<div class="stgline" style="font-size:14px">'+stageChip(a)+'<span class="stgtxt">'+STG_PLAIN[a.sc]+'</span></div>'+
     '<canvas class="big" id="cvBig"></canvas>'+
     '<div class="rd" style="font-size:14.5px"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2" style="font-size:14px">'+streakHtml(a.st)+'</div>'+
