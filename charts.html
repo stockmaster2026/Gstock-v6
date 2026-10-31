@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.2</title>
+<title>板塊圖表總覽 v1.4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -87,7 +87,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.2</div>
+  <div class="logo">板塊<span>圖表</span> v1.4</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -97,13 +97,15 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
     <div class="sum-h" id="sumH">載入中…</div>
     <div class="sum-r" id="sumR"></div>
     <div class="sum-r" id="stgSum" style="font-size:15px"></div>
+    <div class="sum-r" id="storyBox" style="font-size:16px;line-height:1.6"></div>
+    <div class="sum-r" id="relayBox" style="font-size:14px;color:#445"></div>
     <div class="sum-n" id="sumN"></div>
     <div class="stgleg">背景色：<i style="background:rgba(150,170,195,.55)"></i>Stage 1 打底<i style="background:rgba(76,175,80,.45)"></i>2A 上升<i style="background:rgba(156,39,176,.4)"></i>2B 轉弱<i style="background:rgba(255,152,0,.5)"></i>Stage 3 頭部<i style="background:rgba(244,67,54,.45)"></i>Stage 4 下跌</div>
     <div class="ctrls">
       <span class="lb">時間長度</span>
       <span class="seg" id="segRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>
       <span class="lb">排序</span>
-      <span class="seg" id="segSort"><button data-v="lead">近半年最強在前</button><button data-v="orig">原本名單順序</button></span>
+      <span class="seg" id="segSort"><button data-v="lead">領頭羊在前</button><button data-v="peak">最近創高在前</button><button data-v="orig">原本名單順序</button></span>
       <span class="legend"><i style="background:#e67e22"></i>20線<i style="background:#1565c0"></i>50線<i style="background:#8e44ad"></i>200線<i style="background:#999;height:0;border-top:2px dashed #999"></i>52週高</span>
     </div>
     <div class="addrow">
@@ -116,7 +118,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
   <div class="grid" id="grid"></div>
   <div class="foot">
     這一頁是「看圖對照」用的，不是買賣判決：把 radar 說的（誰最強、強幾天）跟圖實際長的樣子放在一起看。<br>
-    「強」＝近 20 天裡有 6 成以上的日子漲得比大盤（SPY）多，跟 radar 同一個定義；「近半年最強／次強／落後」＝板塊內依近 6 個月漲幅排名（暫定定義，還沒回測）。<br>
+    「強」＝近 20 天裡有 6 成以上的日子漲得比大盤（SPY）多，跟 radar 同一個定義；<b>角色標籤（暫定規則，還沒回測）</b>：先看「過去有沒有帶頭」＝板塊內 1 年漲幅前幾名（差一點也算）；再看「現在」＝是否在 Stage 2 且離 52 週高點不到 12%。過去帶頭＋現在健康＝現任領頭羊；過去帶頭但現在休息／走弱＝老龍頭；過去沒帶頭但現在健康＝補漲新秀。這是用來幫你抓板塊脈絡的，不是買賣訊號。<br>
     <b>背景色＝四階段</b>，規則照你 TradingView 的「Jasmine 四階段乾淨版 V1」（日線版）：150 日線＋20 天斜率（超過 ±0.5% 算上升／下降）＋50 日線，連續 3 根才換階段；Stage 2 裡跌破 50 日線或短線均線排列轉空＝2B 轉弱。斜率門檻和 3 根是我從圖上指標名稱旁的設定值推的，顏色是照 Pine 的顏色種類估的，跟你 TradingView 上的可能有一點深淺差；兩邊階段對不上時請截圖給我。<br>
     圖用的是 Yahoo 日線（經你的 Worker），最後一根可能是還沒收盤的當天。每個板塊的成分股名單跟 radar 同一份。
   </div>
@@ -308,8 +310,9 @@ function prep(B){
   calcStage(B);
   B.map={}; for(var i=0;i<B.d.length;i++) B.map[B.d[i]]=i;
   var n=B.c.length, st=Math.max(0,n-252), mx=0;
-  for(var j=st;j<n;j++) if(B.h[j]>mx) mx=B.h[j];
-  B.hi52=mx;
+  var mi=st;
+  for(var j=st;j<n;j++) if(B.h[j]>mx){ mx=B.h[j]; mi=j; }
+  B.hi52=mx; B.hiIdx=mi;
   return B;
 }
 async function getBars(t){
@@ -390,6 +393,10 @@ function analyze(t,sec,S){
   var m20=B.ma20[n-1],m50=B.ma50[n-1],m200=B.ma200[n-1];
   a.m20=m20;a.m50=m50;a.m200=m200;
   a.off=px/B.hi52-1;
+  a.hiDate=B.d[B.hiIdx]; a.hiAgo=n-1-B.hiIdx;
+  var b12=n-1-252, b1=n-1-21;
+  a.r12=(b12>=0&&B.c[b12]>0)?(px/B.c[b12]-1):null;
+  a.r1=(b1>=0&&B.c[b1]>0)?(px/B.c[b1]-1):null;
   a.a50=(m50!=null)?px>m50:null;
   a.a200=(m200!=null)?px>m200:null;
   var ex=null;
@@ -410,22 +417,63 @@ function analyze(t,sec,S){
   var sc=B.stg[n-1], sn=(sc===22?2:sc), dd=0;
   for(var q=n-1;q>=0;q--){ var qn=(B.stg[q]===22?2:B.stg[q]); if(qn===sn) dd++; else break; }
   a.sc=sc; a.sdays=dd;
+  var SP=BARS['SPY']||null;
+  a.stgRet=retInfo(B,B.d[n-dd],SP);
+  a.stgRet&&(a.stgRet.start=B.d[n-dd]);
+  a.strRet=(a.st&&a.st.state==='on'&&a.st.start)?retInfo(B,a.st.start,SP):null;
   a.hiTxt=a.off>=-0.03?'貼著 52 週高點':('離 52 週高點 '+(a.off*100).toFixed(0)+'%');
   return a;
 }
-function leaderTags(sec){
-  var arr=[];
-  sec.tickers.forEach(function(t){ var B=BARS[t]; if(!B||B.c.length<100) return; var n=B.c.length,b=Math.max(0,n-1-126); if(!(B.c[b]>0)) return; arr.push({t:t,r:B.c[n-1]/B.c[b]-1}); });
-  arr.sort(function(x,y){return y.r-x.r;});
-  var k=Math.min(3,Math.max(1,Math.ceil(arr.length*0.25))), out={};
-  arr.forEach(function(o,i){ out[o.t]={rank:i+1,n:arr.length,r:o.r,tag:i<k?'近半年最強':(i<2*k?'次強':'落後')}; });
-  return out;
+// 從某一天的收盤到現在：漲了多少元、幾 %，以及同一段時間大盤（SPY）漲跌多少
+function retInfo(B,startDate,S){
+  var i=B.map[startDate]; if(i==null) return null;
+  var n=B.c.length, p0=B.c[i], p1=B.c[n-1];
+  var r={d:startDate,p0:p0,p1:p1,abs:p1-p0,pct:(p1/p0-1)*100,spy:null};
+  if(S&&S.map&&S.map[startDate]!=null){ var j=S.map[startDate]; r.spy=(S.c[S.c.length-1]/S.c[j]-1)*100; }
+  return r;
+}
+function retLine(label,r,withSpy){
+  if(!r) return '';
+  var up=r.abs>=0, col=up?'#0d8a3f':'#cc1133';
+  return '<div class="rd2">'+label+' <b>'+md(r.d)+'</b> 收 $'+fmtP(r.p0)+' → 現在 $'+fmtP(r.p1)+'：<b style="color:'+col+'">'+(up?'+':'−')+'$'+Math.abs(r.abs).toFixed(2)+'（'+fmtPct(r.pct,1)+'）</b>'+
+    (withSpy&&r.spy!=null?'，同期大盤 '+fmtPct(r.spy,1):'')+'</div>';
+}
+// 組內排名＋「角色」：過去有沒有帶頭（1 年漲幅）× 現在在哪個階段/位置
+function rankOf(list,key){
+  var arr=list.filter(function(o){return o.a&&o.a[key]!=null;}).sort(function(x,y){return y.a[key]-x.a[key];}), out={};
+  arr.forEach(function(o,i){ out[o.t]=i+1; });
+  return {rk:out,n:arr.length,arr:arr};
+}
+var ROLE_STY={
+  '現任領頭羊':['#fff3c4','#b8860b'],'補漲新秀':['#e2f4e5','#1f8a3b'],'老龍頭（休息中）':['#ece6f7','#6a4aa5'],
+  '老龍頭（已走弱）':['#fbe5e8','#b3262e'],'跟漲整理':['#e6edf7','#4a6fa5'],'落後':['#f0f2f5','#8b949e']};
+var ROLE_ORD={'現任領頭羊':0,'補漲新秀':1,'老龍頭（休息中）':2,'跟漲整理':3,'老龍頭（已走弱）':4,'落後':5};
+function assignRoles(data){
+  var ok=data.filter(function(o){return o.a;});
+  var key=ok.filter(function(o){return o.a.r12!=null;}).length>=Math.ceil(ok.length*0.6)?'r12':'r6';
+  var R=rankOf(ok,key), R6=rankOf(ok,'r6'), R1=rankOf(ok,'r1');
+  var k=Math.min(3,Math.max(1,Math.ceil(R.n*0.25)));
+  var thr=R.n?R.arr[Math.min(k,R.n)-1].a[key]:0;
+  ok.forEach(function(o){
+    var a=o.a, rk=R.rk[o.t];
+    var past=(rk!=null)&&(rk<=k||(thr>0&&a[key]>=thr*0.8));   // 差一點也算（近似區）
+    var healthy=(a.sc===2&&a.off>=-0.12), tag, why;
+    if(past&&healthy){ tag='現任領頭羊'; why='過去帶頭、現在還在 Stage 2 上升且離高點不遠。'; }
+    else if(past){
+      if(a.sc===1||a.sc===4||a.off<-0.30){ tag='老龍頭（已走弱）'; why='過去帶頭，但現在已跌破長線或離高點很遠，龍頭地位已過。'; }
+      else { tag='老龍頭（休息中）'; why='過去帶頭、漲幅大；現在在回檔／整理，先不是主角。'; }
+    }
+    else if(healthy){ tag='補漲新秀'; why='過去不是帶頭的，但現在上升段健康，是這一波才跑出來的。'; }
+    else if(a.sc===2||a.sc===22){ tag='跟漲整理'; why='還在長線上升段，但沒有特別強。'; }
+    else { tag='落後'; why='長線沒轉好，在組內屬後段。'; }
+    o.m={tag:tag,why:why,rank:rk,n:R.n,key:key,rk6:R6.rk[o.t],rk1:R1.rk[o.t],n6:R6.n,n1:R1.n};
+  });
+  return {key:key,k:k,R:R};
 }
 function badgeHtml(m){
   if(!m) return '';
-  var col=m.tag==='近半年最強'?'#b8860b':(m.tag==='次強'?'#4a6fa5':'#8b949e');
-  var bg=m.tag==='近半年最強'?'#fff3c4':(m.tag==='次強'?'#e6edf7':'#f0f2f5');
-  return '<span class="bdg" style="background:'+bg+';color:'+col+';border-color:'+col+'" title="板塊內近 6 個月漲幅第 '+m.rank+' 名（共 '+m.n+' 檔）">'+(m.tag==='近半年最強'?'👑 ':'')+m.tag+' #'+m.rank+'</span>';
+  var s=ROLE_STY[m.tag]||ROLE_STY['落後'];
+  return '<span class="bdg" style="background:'+s[0]+';color:'+s[1]+';border-color:'+s[1]+'" title="'+m.why+'">'+(m.tag==='現任領頭羊'?'👑 ':'')+m.tag+'</span>';
 }
 function streakHtml(st){
   if(!st) return '<span style="color:#8b949e">（沒抓到大盤資料，算不出「強幾天」）</span>';
@@ -568,10 +616,11 @@ async function pick(id,force){
 }
 function buildData(){
   renderTopup();
-  var sec=CUR, S=BARS['SPY']||null, LM=leaderTags(sec);
+  var sec=CUR, S=BARS['SPY']||null;
   CURDATA=sec.tickers.map(function(t,i){
-    var a=analyze(t,sec,S); return {t:t,i:i,a:a,m:LM[t]||null,err:ERR[t]||null};
+    var a=analyze(t,sec,S); return {t:t,i:i,a:a,m:null,err:ERR[t]||null};
   });
+  var RS=assignRoles(CURDATA);
   // 板塊整體白話
   var ok=CURDATA.filter(function(o){return o.a;}), N=ok.length;
   if(!N){ el('sumR').textContent='這組一檔都沒抓到資料，按右上「更新」再試一次。'; return; }
@@ -591,15 +640,32 @@ function buildData(){
     '<b style="color:'+STG_COL[3]+'">Stage 3 '+cnt[3]+'</b>　'+
     '<b style="color:'+STG_COL[4]+'">Stage 4 '+cnt[4]+'</b>　'+
     '<b style="color:'+STG_COL[1]+'">Stage 1 '+cnt[1]+'</b>'+(cnt[0]?'　資料不足 '+cnt[0]:'');
+  // 一句話說這組走到哪裡＋高點接力
+  var by=function(tag){ return ok.filter(function(o){return o.m&&o.m.tag===tag;}).sort(function(x,y){return (x.m.rank||99)-(y.m.rank||99);}).map(function(o){return o.t;}); };
+  var L=by('現任領頭羊'), OLD=by('老龍頭（休息中）').concat(by('老龍頭（已走弱）')), NEW=by('補漲新秀');
+  var jn=function(a){return a.slice(0,4).join('、');};
+  var story;
+  if(L.length&&!OLD.length) story='領頭羊 '+jn(L)+' 還在跑（Stage 2、離高點不遠），這組還在上升段。'+(NEW.length?'後面 '+jn(NEW)+' 也開始跟上，表示漲勢在擴散。':'');
+  else if(L.length&&OLD.length) story='老龍頭 '+jn(OLD)+' 已經在休息或轉弱，現在由 '+jn(L.concat(NEW))+' 接力——這組在「輪動」，新進場的話要確認接棒的是不是夠強。';
+  else if(OLD.length&&NEW.length) story='老龍頭 '+jn(OLD)+' 已過高峰，現在是 '+jn(NEW)+' 在補漲。這是輪動後段的樣子，新進場要特別謹慎（跑在後面的通常漲幅有限）。';
+  else if(OLD.length) story='老龍頭 '+jn(OLD)+' 已經休息／轉弱，而且沒有新的接棒者，這組偏整理或尾聲。';
+  else if(NEW.length) story='還沒有明確的老龍頭；'+jn(NEW)+' 是目前上升段健康的。';
+  else story='這組目前沒有明確的領頭羊，也沒有健康的接棒者。';
+  el('storyBox').innerHTML='<b>這組走到哪裡：</b>'+story+(RS.key==='r6'?'<br><small style="color:#778">（資料不到 1 年，「過去帶頭」改用近半年漲幅判斷）</small>':'');
+  var pk=ok.slice().sort(function(x,y){return x.a.hiAgo-y.a.hiAgo;});
+  el('relayBox').innerHTML='<b>52 週高點的先後（越右越新）：</b>'+pk.slice().reverse().map(function(o){ return '<span style="white-space:nowrap"><b>'+o.t+'</b> '+md(o.a.hiDate)+(o.a.off>=-0.03?' ★':'')+'</span>'; }).join(' → ')+'<br><small style="color:#778">★＝現在仍貼著高點。看高點日期可以知道誰先漲完、誰是最近才創高。</small>';
   el('sumN').textContent=N+' 檔有資料：'+a50+' 檔站在 50 線上、'+nearHi+' 檔離 52 週高點 5% 以內、'+on+' 檔在持續跑贏大盤（radar 的「強」）。'+(ok.length<sec.tickers.length?'（有 '+(sec.tickers.length-ok.length)+' 檔沒抓到，卡片上有重試鍵）':'');
 }
 function sortedData(){
   var arr=CURDATA.slice();
+  var rv=function(o){ if(!o.a) return -9; return o.a.r12!=null?o.a.r12:(o.a.r6!=null?o.a.r6:-9); };
   if(PREF.sort==='lead'){
     arr.sort(function(x,y){
-      var rx=x.m?x.m.rank:999, ry=y.m?y.m.rank:999;
-      if(rx!==ry) return rx-ry; return x.i-y.i;
+      var ox=x.m?ROLE_ORD[x.m.tag]:9, oy=y.m?ROLE_ORD[y.m.tag]:9;
+      if(ox!==oy) return ox-oy; var d=rv(y)-rv(x); return d||x.i-y.i;
     });
+  } else if(PREF.sort==='peak'){
+    arr.sort(function(x,y){ var hx=x.a?x.a.hiAgo:9999, hy=y.a?y.a.hiAgo:9999; return hx-hy||x.i-y.i; });
   }
   return arr;
 }
@@ -616,6 +682,9 @@ function cardHtml(o,idx){
     '<canvas class="cv" id="cv'+idx+'"></canvas>'+
     '<div class="rd"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2">'+streakHtml(a.st)+'</div>'+
+    retLine((a.st&&a.st.trunc?'強勢期間（至少）從':'強勢期間從'),a.strRet,true)+
+    retLine('這個階段從',a.stgRet,false)+
+    (o.m?'<div class="rd2"><b>角色：</b>'+o.m.why+'</div><div class="rd2">組內排名：1 年漲幅'+(a.r12==null?'—':fmtPct(a.r12*100,0))+(o.m.key==='r12'&&o.m.rank?'（第 '+o.m.rank+'／'+o.m.n+'）':'')+'；半年'+(a.r6==null?'—':fmtPct(a.r6*100,0))+(o.m.rk6?'（第 '+o.m.rk6+'）':'')+'；近 1 個月'+(a.r1==null?'—':fmtPct(a.r1*100,0))+(o.m.rk1?'（第 '+o.m.rk1+'）':'')+'</div><div class="rd2">52 週高點在 '+md(a.hiDate)+'（'+(a.hiAgo<=0?'今天':a.hiAgo+' 個交易日前')+'）</div>':'')+
     '<div class="rd2">近半年 '+(a.r6==null?'—':fmtPct(a.r6*100,0))+'　·　近 20 天 '+(a.ex==null?'—':(a.ex>=0?'贏':'輸')+'大盤 '+Math.abs(a.ex).toFixed(1)+'%')+'</div>'+
   '</div>';
 }
@@ -721,6 +790,7 @@ function openModal(t){
     '<canvas class="big" id="cvBig"></canvas>'+
     '<div class="rd" style="font-size:14.5px"><span class="dot" style="background:'+a.tr.c+'"></span>均線位置：'+a.tr.t+'；'+a.hiTxt+'</div>'+
     '<div class="rd2" style="font-size:14px">'+streakHtml(a.st)+'</div>'+
+    '<div style="font-size:14px">'+retLine((a.st&&a.st.trunc?'強勢期間（至少）從':'強勢期間從'),a.strRet,true)+retLine('這個階段從',a.stgRet,false)+'</div>'+
     '<div class="rd2" style="font-size:14px">20 線 '+fmtP(a.m20)+'　50 線 '+(a.m50==null?'—':fmtP(a.m50))+'　200 線 '+(a.m200==null?'—':fmtP(a.m200))+'（股價在 50 線'+(a.a50?'上':'下')+'）</div>'+
     '<div class="mlinks"><a href="https://www.tradingview.com/chart/?symbol='+encodeURIComponent(t)+'" target="_blank" rel="noopener">在 TradingView 開啟 '+t+' ↗</a></div>';
   el('modal').className='modal show';
