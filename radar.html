@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v9.8</title>
+<title>飆股雷達 v9.9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -143,7 +143,7 @@ transition:all 0.2s;width:152px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v9.8</div>
+  <div class="logo">飆股<span>RADAR</span> v9.9</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -272,9 +272,9 @@ var SECTORS_DEFAULT=[
   // TEM(醫療資料 AI)、HIMS(遠距醫療通路)移出 —— 不在 XBI; 補進同族基因編輯與罕病
   {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['CRSP','NTRA','NVAX','RXRX','BEAM','NTLA','EDIT','ALNY','VKTX','SRPT']},
   // GLD/SLV 移除 —— 那是金屬本身不是礦股, 會把板塊分數拉成金價走勢
-  {id:'metals',    icon:'💰', name:'貴金屬礦業', etf:'GDX',  tickers:['NEM','AEM','WPM','GOLD','KGC','AU','FNV','RGLD']},
+  {id:'metals',    icon:'💰', name:'貴金屬礦業', etf:'GDX',  tickers:['NEM','AEM','WPM','B','KGC','AU','FNV','RGLD']},
   // TSLA/TEL 移除 —— 都不在 BOTZ
-  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['ISRG','CGNX','SYM','SERV','OUST','AMBA','PATH','IRBT']},
+  {id:'robot',     icon:'🤖', name:'機器人',     etf:'BOTZ', tickers:['ISRG','CGNX','SYM','SERV','OUST','AMBA','PATH']},
   // ⚠ 基準從 SKYY 改 XLK: SKYY 是雲端【軟體】, 這一組是礦工轉 AI 代管的算力商, 性質不同
   {id:'ai_compute',icon:'☁️', name:'AI算力雲',   etf:'XLK',  tickers:['NBIS','CRWV','IREN','APLD','CORZ','WULF','HUT','GLXY']},
   // ═══ v7.8 新增：應用層原本一個都沒有 ═══════════════════════════
@@ -351,6 +351,13 @@ function getSectors(){
   }
   var deduped=[];
   for(var n=0;n<nameOrder.length;n++) deduped.push(nameMap[nameOrder[n]]);
+  // v9.9 遷移：GOLD 現在是 Gold.com（金條商），Barrick 已改代號 B；IRBT（iRobot）已破產下市
+  deduped.forEach(function(sc){
+    sc.tickers=sc.tickers||[];
+    var gi=sc.tickers.indexOf('GOLD');
+    if(gi>=0&&sc.name==='貴金屬礦業'){ if(sc.tickers.indexOf('B')<0) sc.tickers[gi]='B'; else sc.tickers.splice(gi,1); }
+    if(sc.name==='機器人'){ var ri=sc.tickers.indexOf('IRBT'); if(ri>=0) sc.tickers.splice(ri,1); }
+  });
   var defaultByName={};
   for(var p=0;p<defaultSectors.length;p++) defaultByName[defaultSectors[p].name]=defaultSectors[p];
   for(var q=0;q<deduped.length;q++){
@@ -1743,7 +1750,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -2166,7 +2173,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -2282,7 +2289,7 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.8</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
