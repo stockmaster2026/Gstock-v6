@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v1.5</title>
+<title>板塊圖表總覽 v1.6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -79,6 +79,13 @@ canvas.cv{width:100%;height:170px;display:block;margin-top:6px;border-radius:6px
 .mclose{margin-left:auto;border:none;background:#444;color:#fff;font-size:15px;font-weight:900;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:inherit;}
 canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8px;background:#fff;}
 .mlinks{margin-top:10px;font-size:14px;font-weight:700;}
+.trail{margin:6px 0 2px;padding:7px 9px;border-radius:9px;background:#f3f6fb;font-size:15px;line-height:1.6;color:#223;}
+.rkwrap{margin:8px 0;font-size:14px;}
+.rkwrap summary{font-weight:800;cursor:pointer;padding:4px 0;}
+.rkt{border-collapse:collapse;width:100%;font-size:14px;}
+.rkt th,.rkt td{padding:5px 6px;border-bottom:1px solid #e3e6ee;text-align:center;white-space:nowrap;}
+.rkt th{background:#f3f6fb;font-size:13px;}
+.rkt td:first-child{text-align:left;font-weight:900;}
 .foot{font-size:12px;color:#665;padding:14px 4px 30px;line-height:1.6;}
 @media (max-width:700px){canvas.big{height:320px;}}
 </style>
@@ -87,7 +94,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v1.5</div>
+  <div class="logo">板塊<span>圖表</span> v1.6</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -99,13 +106,14 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
     <div class="sum-r" id="stgSum" style="font-size:15px"></div>
     <div class="sum-r" id="storyBox" style="font-size:16px;line-height:1.6"></div>
     <div class="sum-r" id="relayBox" style="font-size:14px;color:#445"></div>
+    <details open class="rkwrap"><summary>名次變化表：過去 → 現在</summary><div id="rankBox"></div></details>
     <div class="sum-n" id="sumN"></div>
     <div class="stgleg">背景色：<i style="background:rgba(150,170,195,.55)"></i>Stage 1 打底<i style="background:rgba(76,175,80,.45)"></i>2A 上升<i style="background:rgba(156,39,176,.4)"></i>2B 轉弱<i style="background:rgba(255,152,0,.5)"></i>Stage 3 頭部<i style="background:rgba(244,67,54,.45)"></i>Stage 4 下跌</div>
     <div class="ctrls">
       <span class="lb">時間長度</span>
       <span class="seg" id="segRange"><button data-v="63">3個月</button><button data-v="126">6個月</button><button data-v="252">1年</button></span>
       <span class="lb">排序</span>
-      <span class="seg" id="segSort"><button data-v="lead">領頭羊在前</button><button data-v="peak">最近創高在前</button><button data-v="orig">原本名單順序</button></span>
+      <span class="seg" id="segSort"><button data-v="lead">領頭羊在前</button><button data-v="past">過去名次</button><button data-v="now">現在名次</button><button data-v="peak">最近創高在前</button><button data-v="orig">原本名單順序</button></span>
       <span class="legend"><i style="background:#e67e22"></i>20線<i style="background:#1565c0"></i>50線<i style="background:#8e44ad"></i>200線<i style="background:#999;height:0;border-top:2px dashed #999"></i>52週高</span>
     </div>
     <div class="addrow">
@@ -411,6 +419,7 @@ function analyze(t,sec,S){
   var b12=n-1-252, b1=n-1-21;
   a.r12=(b12>=0&&B.c[b12]>0)?(px/B.c[b12]-1):null;
   a.r1=(b1>=0&&B.c[b1]>0)?(px/B.c[b1]-1):null;
+  var b3=n-1-63; a.r3=(b3>=0&&B.c[b3]>0)?(px/B.c[b3]-1):null;
   a.a50=(m50!=null)?px>m50:null;
   a.a200=(m200!=null)?px>m200:null;
   var ex=null;
@@ -465,7 +474,7 @@ var ROLE_ORD={'現任領頭羊':0,'補漲新秀':1,'老龍頭（休息中）':2,
 function assignRoles(data){
   var ok=data.filter(function(o){return o.a;});
   var key=ok.filter(function(o){return o.a.r12!=null;}).length>=Math.ceil(ok.length*0.6)?'r12':'r6';
-  var R=rankOf(ok,key), R6=rankOf(ok,'r6'), R1=rankOf(ok,'r1');
+  var R=rankOf(ok,key), R6=rankOf(ok,'r6'), R1=rankOf(ok,'r1'), R3=rankOf(ok,'r3');
   var k=Math.min(3,Math.max(1,Math.ceil(R.n*0.25)));
   var thr=R.n?R.arr[Math.min(k,R.n)-1].a[key]:0;
   ok.forEach(function(o){
@@ -480,11 +489,26 @@ function assignRoles(data){
     else if(healthy){ tag='補漲新秀'; why='過去不是帶頭的，但現在上升段健康，是這一波才跑出來的。'; }
     else if(a.sc===2||a.sc===22){ tag='跟漲整理'; why='還在長線上升段，但沒有特別強。'; }
     else { tag='落後'; why='長線沒轉好，在組內屬後段。'; }
-    o.m={tag:tag,why:why,rank:rk,n:R.n,key:key,rk6:R6.rk[o.t],rk1:R1.rk[o.t],n6:R6.n,n1:R1.n};
+    o.m={tag:tag,why:why,rank:rk,n:R.n,key:key,rk6:R6.rk[o.t],rk1:R1.rk[o.t],rk3:R3.rk[o.t],n6:R6.n,n1:R1.n};
+    var d=(m_=o.m).rk1!=null&&m_.rank!=null?m_.rk1-m_.rank:null; o.m.chg=d;   // 現在名次 − 過去名次（正＝往後退）
   });
   return {key:key,k:k,R:R};
 }
 function refDate(){ var S=BARS['SPY']; if(S&&S.d.length) return S.d[S.d.length-1]; var mx=''; for(var k in BARS){ var d=BARS[k].d; if(d[d.length-1]>mx) mx=d[d.length-1]; } return mx; }
+var m_;
+function trailInfo(m){
+  if(!m||m.rank==null||m.rk1==null) return null;
+  var d=m.rk1-m.rank, tol=2, arrow,txt,col;
+  if(d>=tol+1){ arrow='↘'; txt='往後退'; col='#b3262e'; }
+  else if(d<=-(tol+1)){ arrow='↗'; txt='往前進'; col='#1f8a3b'; }
+  else { arrow='→'; txt='差不多'; col='#667'; }
+  return {arrow:arrow,txt:txt,col:col,d:d};
+}
+function trailHtml(m,big){
+  var ti=trailInfo(m); if(!ti) return '';
+  var past=(m.key==='r12'?'過去（1 年）':'過去（半年）');
+  return '<span style="white-space:nowrap">'+past+' 第 <b>'+m.rank+'</b></span> → <span style="white-space:nowrap">3 個月 第 <b>'+(m.rk3||'—')+'</b></span> → <span style="white-space:nowrap">現在（1 個月） 第 <b>'+m.rk1+'</b></span>　<b style="color:'+ti.col+'">'+ti.arrow+' '+ti.txt+'</b>';
+}
 function badgeHtml(m){
   if(!m) return '';
   var s=ROLE_STY[m.tag]||ROLE_STY['落後'];
@@ -671,6 +695,10 @@ function buildData(){
   el('relayBox').innerHTML='<b>52 週高點的先後（越右越新）：</b>'+pk.slice().reverse().map(function(o){ return '<span style="white-space:nowrap"><b>'+o.t+'</b> '+md(o.a.hiDate)+(o.a.off>=-0.03?' ★':'')+'</span>'; }).join(' → ')+'<br><small style="color:#778">★＝現在仍貼著高點。看高點日期可以知道誰先漲完、誰是最近才創高。</small>';
   var rd=refDate(), old=ok.filter(function(o){return o.a.lastDate!==rd;}).map(function(o){return o.t+' '+md(o.a.lastDate);});
   el('relayBox').innerHTML+='<br><small style="color:#778">價格資料到 '+md(rd)+'（SPY）'+(old.length?'；<b style="color:#c0600a">這幾檔不是最新一天：'+old.join('、')+'</b>，按右上「更新」重抓':'；全部是同一天')+'。</small>';
+  var rows=ok.filter(function(o){return o.m&&o.m.rank!=null;}).sort(function(x,y){return x.m.rank-y.m.rank;});
+  el('rankBox').innerHTML='<div style="overflow-x:auto"><table class="rkt"><tr><th>股票</th><th>過去 '+(RS.key==='r12'?'(1 年)':'(半年)')+'</th><th>3 個月</th><th>現在 (1 個月)</th><th>變化</th><th>角色</th></tr>'+
+    rows.map(function(o){ var ti=trailInfo(o.m), m=o.m; return '<tr><td>'+o.t+'</td><td>'+m.rank+'</td><td>'+(m.rk3||'—')+'</td><td>'+(m.rk1||'—')+'</td><td style="color:'+(ti?ti.col:'#667')+';font-weight:800">'+(ti?ti.arrow+' '+ti.txt:'—')+'</td><td style="text-align:left">'+m.tag+'</td></tr>'; }).join('')+
+    '</table></div><small style="color:#778">名次是在這一組裡比：數字小＝漲得多。「變化」看過去和現在差 3 名以上才標前進／後退，差 1～2 名算差不多。加入或移除股票會讓名次跟著變。</small>';
   el('sumN').textContent=N+' 檔有資料：'+a50+' 檔站在 50 線上、'+nearHi+' 檔離 52 週高點 5% 以內、'+on+' 檔在持續跑贏大盤（radar 的「強」）。'+(ok.length<sec.tickers.length?'（有 '+(sec.tickers.length-ok.length)+' 檔沒抓到，卡片上有重試鍵）':'');
 }
 function sortedData(){
@@ -681,6 +709,9 @@ function sortedData(){
       var ox=x.m?ROLE_ORD[x.m.tag]:9, oy=y.m?ROLE_ORD[y.m.tag]:9;
       if(ox!==oy) return ox-oy; var d=rv(y)-rv(x); return d||x.i-y.i;
     });
+  } else if(PREF.sort==='past'||PREF.sort==='now'){
+    var kk=PREF.sort==='past'?'rank':'rk1';
+    arr.sort(function(x,y){ var vx=(x.m&&x.m[kk]!=null)?x.m[kk]:999, vy=(y.m&&y.m[kk]!=null)?y.m[kk]:999; return vx-vy||x.i-y.i; });
   } else if(PREF.sort==='peak'){
     arr.sort(function(x,y){ var hx=x.a?x.a.hiAgo:9999, hy=y.a?y.a.hiAgo:9999; return hx-hy||x.i-y.i; });
   }
@@ -701,7 +732,7 @@ function cardHtml(o,idx){
     '<div class="rd2">'+streakHtml(a.st)+'</div>'+
     retLine((a.st&&a.st.trunc?'強勢期間（至少）從':'強勢期間從'),a.strRet,true)+
     retLine('這個階段從',a.stgRet,false)+
-    (o.m?'<div class="rd2"><b>角色：</b>'+o.m.why+'</div><div class="rd2">組內排名：1 年漲幅'+(a.r12==null?'—':fmtPct(a.r12*100,0))+(o.m.key==='r12'&&o.m.rank?'（第 '+o.m.rank+'／'+o.m.n+'）':'')+'；半年'+(a.r6==null?'—':fmtPct(a.r6*100,0))+(o.m.rk6?'（第 '+o.m.rk6+'）':'')+'；近 1 個月'+(a.r1==null?'—':fmtPct(a.r1*100,0))+(o.m.rk1?'（第 '+o.m.rk1+'）':'')+'</div><div class="rd2">52 週高點在 '+md(a.hiDate)+'（'+(a.hiAgo<=0?'今天':a.hiAgo+' 個交易日前')+'）</div>':'')+
+    (o.m?'<div class="trail">名次：'+trailHtml(o.m)+'（共 '+o.m.n+' 檔）</div><div class="rd2"><b>角色：</b>'+o.m.why+'</div><div class="rd2">漲幅：1 年 '+(a.r12==null?'—':fmtPct(a.r12*100,0))+'　·　3 個月 '+(a.r3==null?'—':fmtPct(a.r3*100,0))+'　·　1 個月 '+(a.r1==null?'—':fmtPct(a.r1*100,0))+'</div><div class="rd2">52 週高點在 '+md(a.hiDate)+'（'+(a.hiAgo<=0?'今天':a.hiAgo+' 個交易日前')+'）</div>':'')+
     '<div class="rd2">近半年 '+(a.r6==null?'—':fmtPct(a.r6*100,0))+'　·　近 20 天 '+(a.ex==null?'—':(a.ex>=0?'贏':'輸')+'大盤 '+Math.abs(a.ex).toFixed(1)+'%')+'</div>'+
   '</div>';
 }
