@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.0</title>
+<title>板塊時光機 v1.1</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.0</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.1</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -492,6 +492,19 @@ function reveal(R,k){
   el('rev').innerHTML=h;
 }
 function median(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function winP(v){ return v.length?Math.round(v.filter(function(x){return x>0;}).length/v.length*100)+'%':'—'; }
+function statRow(name,a){
+  var e20=a.map(function(r){return r.e20;}), e60=a.filter(function(r){return r.e60!=null;}).map(function(r){return r.e60;});
+  var m20=median(e20), m60=median(e60), ep={}; a.forEach(function(r){ ep[r.key]=1; }); var ne=Object.keys(ep).length;
+  var cl=function(v){ return v==null?'':(v>=0?'pos':'neg'); };
+  return '<tr><td><b>'+name+'</b></td><td>'+a.length+'</td><td>'+ne+'</td><td class="'+cl(m20)+'">'+f0(m20)+'</td><td>'+winP(e20)+'</td><td class="'+cl(m60)+'">'+f0(m60)+'</td><td>'+winP(e60)+'</td></tr>';
+}
+var THEAD='<tr><th>分類</th><th>次數</th><th>獨立事件數</th><th>後 20 日比大盤（中位數）</th><th>20 日贏大盤</th><th>後 60 日比大盤（中位數）</th><th>60 日贏大盤</th></tr>';
+function splitTable(title,a,defs){
+  var h='<div style="font-weight:800;margin:10px 0 2px">'+title+'</div><div style="overflow-x:auto"><table class="t">'+THEAD;
+  defs.forEach(function(d){ var g=a.filter(d[1]); if(g.length) h+=statRow(d[0],g); });
+  return h+'</table></div>';
+}
 function runAgg(){
   var btn=el('btnAgg'), out=el('aggOut'); btn.disabled=true; out.innerHTML='<div class="prog">計算中…</div>';
   var sl=secLists(), ks=[]; for(var k=119;k<SPYB.d.length-20;k+=5) ks.push(k);
@@ -503,19 +516,33 @@ function runAgg(){
       sl.forEach(function(x){
         var r=stateAt(x,k), a=fwdOf(x.s.name,k,20), b=fwdOf(x.s.name,k,60);
         if(a==null||s20==null) return;
-        rec.push({cat:catOf(r.st),e20:a-s20,e60:(b!=null&&s60!=null)?b-s60:null});
+        var st=r.st, n=r.A?r.A.NB:0;
+        rec.push({cat:catOf(st),sec:x.s.name,key:x.s.name+'|'+(st?r.A.dates[st.last.i0]:'none'),e20:a-s20,e60:(b!=null&&s60!=null)?b-s60:null,
+          gain:st?st.last.gain:null,r3:r.r3,r5:(r.A&&n>5)?r.A.idx[n-1]/r.A.idx[n-6]-1:null,big:st?st.isMain:null,bars:st?st.bars:null});
       });
     }
     out.innerHTML='<div class="prog">計算中… '+i+'／'+ks.length+' 個日期</div>';
     if(i<ks.length) return setTimeout(step,0);
-    var h='<div style="overflow-x:auto"><table class="t"><tr><th>當時的位階</th><th>次數</th><th>後 20 日比大盤（中位數）</th><th>20 日贏大盤的比例</th><th>後 60 日比大盤（中位數）</th><th>60 日贏大盤的比例</th></tr>';
-    var row=function(name,a){ var e20=a.map(function(r){return r.e20;}), e60=a.filter(function(r){return r.e60!=null;}).map(function(r){return r.e60;});
-      var win=function(v){ return v.length?Math.round(v.filter(function(x){return x>0;}).length/v.length*100)+'%':'—'; }; var m20=median(e20), m60=median(e60);
-      return '<tr><td><b>'+name+'</b></td><td>'+a.length+'</td><td class="'+(m20==null?'':(m20>=0?'pos':'neg'))+'">'+f0(m20)+'</td><td>'+win(e20)+'</td><td class="'+(m60==null?'':(m60>=0?'pos':'neg'))+'">'+f0(m60)+'</td><td>'+win(e60)+'</td></tr>'; };
-    CATS.forEach(function(c){ var a=rec.filter(function(r){return r.cat===c;}); if(a.length) h+=row(c,a); });
-    h+=row('全部（基準線）',rec)+'</table></div>';
-    h+='<div class="read"><b>怎麼讀：</b>每一列和最下面「全部」比：比它好，才代表這個位階之後的表現比隨便挑一個板塊好。贏大盤比例接近 50% ＝ 跟丟銅板差不多。</div>';
-    h+='<div class="sub" style="margin-top:6px">⚠ 一共 '+rec.length+' 筆，但相鄰日期的結果高度重疊（同一個板塊隔 5 天位階通常一樣），實際獨立的樣本少很多；而且資料只有約 2 年、全是同一段 AI 行情。所以只能看「有沒有明顯差別」，差別小就不要相信，差別大也只是線索，不是規律。</div>';
+    var h='<div style="overflow-x:auto"><table class="t">'+THEAD;
+    CATS.forEach(function(c){ var a=rec.filter(function(r){return r.cat===c;}); if(a.length) h+=statRow(c,a); });
+    h+=statRow('全部（基準線）',rec)+'</table></div>';
+    h+='<div class="read"><b>怎麼讀：</b>每一列和最下面「全部」比：比它好，才代表這個位階之後比隨便挑一個板塊好。贏大盤比例接近 50% ＝ 跟丟銅板差不多。<b>獨立事件數</b>＝把連續幾天同一個板塊、同一波的紀錄算成一件事，這才是真正的樣本數；小於 10 的列不要相信。</div>';
+    // 剛起步 拆開看
+    var js=rec.filter(function(r){return r.cat==='剛起步';});
+    if(js.length){
+      h+='<div class="h" style="margin-top:14px">為什麼「剛起步」表現這麼差？把它拆開看</div><div class="sub">只看標成「剛起步」的紀錄（'+js.length+' 次），按不同條件分組。看哪一組特別差、哪一組沒那麼差。</div>';
+      h+=splitTable('① 起漲那一波已經漲了多少',js,[['已漲 15～20%',function(r){return r.gain<0.20;}],['已漲 20～30%',function(r){return r.gain>=0.20&&r.gain<0.30;}],['已漲 30% 以上',function(r){return r.gain>=0.30;}]]);
+      h+=splitTable('② 最近 5 天已經漲了多少（追高程度）',js,[['最近 5 天漲不到 5%',function(r){return r.r5!=null&&r.r5<0.05;}],['漲 5～10%',function(r){return r.r5!=null&&r.r5>=0.05&&r.r5<0.10;}],['漲 10% 以上',function(r){return r.r5!=null&&r.r5>=0.10;}]]);
+      h+=splitTable('③ 起漲前的大環境（前 3 個月漲跌）',js,[['前 3 個月是跌的',function(r){return r.r3!=null&&r.r3<0;}],['前 3 個月小漲（0～15%）',function(r){return r.r3!=null&&r.r3>=0&&r.r3<0.15;}],['前 3 個月已漲 15% 以上',function(r){return r.r3!=null&&r.r3>=0.15;}]]);
+      h+=splitTable('④ 這一波是不是到目前為止最大的一波',js,[['是（到當天為止最大一波）',function(r){return r.big===true;}],['不是（只是小反彈）',function(r){return r.big===false;}]]);
+      var secs={}; js.forEach(function(r){ secs[r.sec]=1; });
+      h+=splitTable('⑤ 是不是被少數幾個板塊拉低',js,Object.keys(secs).map(function(n){ return [n,function(r){return r.sec===n;}]; }));
+      var rows=[['已漲幅',[['<20%',function(r){return r.gain<0.20;}],['20～30%',function(r){return r.gain>=0.20&&r.gain<0.30;}],['≥30%',function(r){return r.gain>=0.30;}]]],['最近5天',[['<5%',function(r){return r.r5!=null&&r.r5<0.05;}],['5～10%',function(r){return r.r5!=null&&r.r5>=0.05&&r.r5<0.10;}],['≥10%',function(r){return r.r5!=null&&r.r5>=0.10;}]]]];
+      var good=[], bad=[];
+      rows.forEach(function(rw){ rw[1].forEach(function(d){ var g=js.filter(d[1]); if(g.length>=10){ var m=median(g.map(function(r){return r.e20;})); (m>=0?good:bad).push(rw[0]+' '+d[0]+'（'+f0(m)+'）'); } }); });
+      h+='<div class="read"><b>白話：</b>'+(good.length?'比較沒那麼差的分組：'+good.join('、')+'。':'每一組（次數 10 以上的）後 20 日中位數都是負的，代表不是某一種情況造成，是這個位階本身的特性。')+(bad.length?' 特別差的分組：'+bad.join('、')+'。':'')+' 請特別留意「獨立事件數」：如果只有幾件，那只是幾次事件的巧合。</div>';
+    }
+    h+='<div class="sub" style="margin-top:6px">⚠ 資料只有約 2 年、全是同一段 AI 行情；相鄰日期的結果高度重疊；拆越細樣本越少。所有結果只能當線索，不是規律。</div>';
     out.innerHTML=h; btn.disabled=false;
   }
   setTimeout(step,0);
