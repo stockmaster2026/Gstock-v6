@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v2.1</title>
+<title>板塊圖表總覽 v3.0</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v2.1</div>
+  <div class="logo">板塊<span>圖表</span> v3.0</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -116,9 +116,11 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
   <div class="sumbox" id="sumbox">
     <div class="sum-h" id="sumH">載入中…</div>
     <div class="sum-r" id="sumR"></div>
+    <div id="verdict"></div>
     <details open class="rkwrap" id="tlWrap"><summary>波與棒：板塊漲了幾波？每一波誰是第一棒、第二棒、第三棒</summary>
       <div id="tlTabs" class="wtabs"></div>
       <div id="tlSum" style="font-size:15px;line-height:1.65;margin:4px 0 8px"></div>
+      <div id="tlSc"></div>
       <canvas id="tlCv" style="width:100%;display:block;background:#fff;border-radius:8px"></canvas>
       <div style="overflow-x:auto;margin-top:8px"><div id="tlTbl"></div></div>
     </details>
@@ -173,7 +175,7 @@ var SECTORS_DEFAULT=[
   //   ⚠ 新增一組【AI電力設備】: 原本 power 把發電端與設備端混在一起,
   //     而 2026 年這兩邊<b>走相反方向</b>(發電端 −20%、設備端 +29%), 混在一組會互相抵銷成雜訊。
   {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','MSFT','GOOGL','AMZN','META','AAPL','AVGO','ORCL','TSM']},
-  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','NTAP','P']},
+  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','ALAB']},
   {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH','CIEN','FN','POET','TSEM','NOK']},
   // 發電端: 九檔全部都在 XLU 成分裡(已查證 XLU 只有 34~35 檔, 全是受監管公用事業與 IPP)
   {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','TLN','NRG','PEG','D','EXC','AES','NEE']},
@@ -186,7 +188,7 @@ var SECTORS_DEFAULT=[
   // ⚠ 只有 4 檔, 全市場就這幾家 —— 樣本太小, breadth 判不準, 看的時候要打折
   {id:'quantum',   icon:'⚛️', name:'量子運算',   etf:'QTUM', tickers:['IONQ','RGTI','QBTS','QUBT']},
   // NTAP/P 移到 AI基礎設施(它們是系統廠不是半導體, 不在 SMH); 補進上游設備與封裝
-  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO']},
+  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO','NTAP','P']},
   // TEM(醫療資料 AI)、HIMS(遠距醫療通路)移出 —— 不在 XBI; 補進同族基因編輯與罕病
   {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['CRSP','NTRA','NVAX','RXRX','BEAM','NTLA','EDIT','ALNY','VKTX','SRPT']},
   // GLD/SLV 移除 —— 那是金屬本身不是礦股, 會把板塊分數拉成金價走勢
@@ -215,6 +217,26 @@ var COMPANY={"NVDA":["NVIDIA Corporation",5150,"10-29",1,"設計GPU與AI/高效�
 
 
 // ── 板塊名單：跟 radar 同一份（同網域的 localStorage），讀不到就用內建預設 ──
+
+// ═══ v10.0【一次性名單搬移】P、NTAP 只留在「儲存硬體」；CRDO、ALAB 只留在「AI基礎設施」（缺的補進去）。radar 與 charts 共用同一旗標，誰先開誰做一次 ═══
+function migrateNames2(){
+  try{
+    var fk='gstock_names_mig', done=localStorage.getItem(fk)||'';
+    if(done.indexOf('v100')>=0) return;
+    var raw=JSON.parse(localStorage.getItem(SKEY)||'null');
+    if(Array.isArray(raw)){
+      var find=function(id,nm){ for(var i=0;i<raw.length;i++){ if(raw[i]&&(raw[i].id===id||raw[i].name===nm)) return raw[i]; } return null; };
+      var ai=find('ai_infra','AI基礎設施'), st=find('storage','儲存硬體'), op=find('optical','光通信')||find('optical','光通訊');
+      var rm=function(sec,ts){ if(sec) sec.tickers=(sec.tickers||[]).filter(function(t){return ts.indexOf(t)<0;}); };
+      var ad=function(sec,ts){ if(sec) ts.forEach(function(t){ sec.tickers=sec.tickers||[]; if(sec.tickers.indexOf(t)<0) sec.tickers.push(t); }); };
+      // 先把 4 檔從所有板塊移除，再放回指定位置
+      raw.forEach(function(sec){ if(sec&&sec.tickers&&sec.id!=='custom') rm(sec,['P','NTAP','CRDO','ALAB']); });
+      ad(st,['NTAP','P']); ad(ai,['CRDO','ALAB']);
+      localStorage.setItem(SKEY,JSON.stringify(raw));
+    }
+    localStorage.setItem(fk,done+' v100');
+  }catch(e){}
+}
 function getSectors(){
   var stored=null;
   try{var s=localStorage.getItem(SKEY);if(s) stored=JSON.parse(s);}catch(e){}
@@ -538,9 +560,9 @@ function coHtml(t){
 var TL_COL={1:'rgba(150,170,195,.65)',2:'rgba(76,175,80,.7)',22:'rgba(156,39,176,.55)',3:'rgba(255,152,0,.7)',4:'rgba(244,67,54,.65)',0:'rgba(220,220,220,.4)'};
 var TIER_COL={1:'#1f6f3a',2:'#2a5fa5',3:'#c0600a',0:'#8b949e'};
 var TIER_NAME={1:'第一棒（最早起漲）',2:'第二棒',3:'第三棒（最晚）'};
-var WAVE_TH=0.15, WAVE_GAP=15;
+var WAVE_TH=0.15, WAVE_GAP=15, CL_GAP=5, CL_SPAN=10;
 var TL={A:null,sel:-1,sectorId:null};
-function fd(d){ var S=BARS['SPY'], yr=S?S.d[S.d.length-1].slice(0,4):''; return d.slice(0,4)===yr?md(d):'’'+d.slice(2,4)+' '+md(d); }
+function fd(d){ return '’'+d.slice(2,4)+' '+md(d); }
 function sectorIdx(list,dates){
   var idx=[100];
   for(var i=1;i<dates.length;i++){
@@ -585,18 +607,55 @@ function waveRows(w,dates,list){
 function tierize(rows){
   var part=rows.filter(function(r){return !r.none&&r.gain>=WAVE_TH;}).sort(function(a,b){return a.si-b.si||b.gain-a.gain;});
   var non=rows.filter(function(r){return r.none||r.gain<WAVE_TH;});
-  var m=part.length, simul=m>=2&&(part[m-1].si-part[0].si)<=WAVE_GAP;
-  part.forEach(function(r,i){ r.tier=simul?1:(m>=3?Math.min(3,Math.floor(i*3/m)+1):i+1); });
+  // 起漲時間分群：相鄰兩檔起點相隔 >5 個交易日、或這群已橫跨 >10 日，就另開一群；同一群算同一棒
+  var cl=[], cur=null;
+  part.forEach(function(r){
+    if(!cur||r.si-cur.last>CL_GAP||r.si-cur.first>CL_SPAN){ cur={first:r.si,last:r.si,m:[]}; cl.push(cur); }
+    cur.m.push(r); cur.last=r.si;
+  });
+  var k=cl.length, simul=(k===1&&part.length>=2);
+  cl.forEach(function(c,i){
+    var t=(k===1)?1:(i===0?1:(i===k-1?(k>=3?3:2):2));
+    c.m.forEach(function(r){ r.tier=t; r.cl=i; });
+  });
   non.forEach(function(r){ r.tier=0; });
-  return {part:part,non:non,simul:simul};
+  return {part:part,non:non,simul:simul,clusters:k};
 }
 function analyzeWaves(list){
   var S=BARS['SPY']; if(!S||!list.length) return null;
   var NB=Math.min(504,S.d.length), dates=S.d.slice(-NB), idx=sectorIdx(list,dates), legs=zigzag(idx,WAVE_TH), waves=[];
-  legs.forEach(function(l){ if(l.up) waves.push({i0:l.i0,i1:l.i1,gain:idx[l.i1]/idx[l.i0]-1,open:!!l.open&&l.i1>=NB-3}); });
+  legs.forEach(function(l){ if(l.up) waves.push({i0:l.i0,i1:l.i1,gain:idx[l.i1]/idx[l.i0]-1,open:!!l.open&&l.i1>=NB-3,confirmed:!l.open}); });
   waves.forEach(function(w){ w.rows=tierize(waveRows(w,dates,list)); });
-  var lw=waves[waves.length-1];
-  return {dates:dates,idx:idx,waves:waves,tail:lw?idx[NB-1]/idx[lw.i1]-1:0};
+  var lw=waves[waves.length-1], mi=-1;
+  waves.forEach(function(w,k){ if(mi<0||w.gain>waves[mi].gain) mi=k; });
+  var A={dates:dates,idx:idx,waves:waves,tail:lw?idx[NB-1]/idx[lw.i1]-1:0,mainIdx:mi,NB:NB};
+  A.st=waveState(A);
+  return A;
+}
+// 位階判讀（門檻都是我自己訂的參考範圍，未經驗證）
+function waveState(A){
+  if(!A||!A.waves.length) return null;
+  var NB=A.NB, w=A.waves[A.waves.length-1], main=A.waves[A.mainIdx], isMain=(A.waves.length-1===A.mainIdx);
+  var now=A.idx[NB-1], hi=A.idx[w.i1], lo=A.idx[w.i0];
+  var giveRaw=Math.max(0,(hi-now)/(hi-lo||1)), give=Math.min(1,giveRaw), dayPk=NB-1-w.i1, bars=NB-1-w.i0, label, col, why, tier;
+  var gw=give<0.3?'吐回不到 3 成':(give<0.7?'吐回 3～7 成':'吐回超過 7 成');
+  if(w.confirmed){
+    label='休息中（上一波已確認結束）'; col='#8a5a00'; tier='rest';
+    why='整組從波段高點（'+fd(A.dates[w.i1])+'）回檔超過 15%，已確認上一波結束；目前離高點 '+fmtPct(A.tail*100,0)+'，還沒出現新的一波。休息期可以研究，等新的一波起漲。';
+  } else if(w.i1>=NB-4){
+    if(bars<=10){ label='剛起步'; col='#0d8a3f'; tier='go'; }
+    else if(bars<=60){ label='主升段進行中'; col='#0d8a3f'; tier='go'; }
+    else { label='進行中，偏後段'; col='#c0600a'; tier='late'; }
+    if(!isMain&&label==='主升段進行中') label='後續波進行中';
+    why='最近一波從 '+fd(A.dates[w.i0])+' 起漲，已走 '+bars+' 個交易日、累計 '+fmtPct(w.gain*100,0)+'，高點就在最近幾天，買盤還在推。';
+  } else {
+    if(give<0.3){ label='高點附近整理（暫停）'; col='#2a5fa5'; tier='pause'; }
+    else if(give<0.7){ label='回檔中'; col='#c0600a'; tier='pull'; }
+    else { label='大幅回吐'; col='#b3262e'; tier='bad'; }
+    why='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），之後整組回檔還不到 15%，所以<b>尚未確認結束，可能只是暫停</b>；'+gw+'（吐回 '+Math.round(give*10)+' 成左右）。';
+  }
+  var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
+  return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
 function heatWord(g){ return g>=1?'非常熱':(g>=0.5?'很熱':(g>=0.25?'普通':'溫和')); }
 function tierMed(w,k){ var a=w.rows.part.filter(function(r){return r.tier===k;}); return a.length?medianOf(a.map(function(r){return r.gain*100;})):null; }
@@ -605,20 +664,20 @@ function renderTimeline(ok){
   var A=analyzeWaves(list); TL.A=A;
   ok.forEach(function(o){ o.tier=null; o.run=null; });
   if(!A||!A.waves.length){
-    el('tlTabs').innerHTML=''; el('tlTbl').innerHTML='';
+    el('tlTabs').innerHTML=''; el('tlTbl').innerHTML=''; el('verdict').innerHTML=''; el('tlSc').innerHTML='';
     el('tlSum').innerHTML='過去兩年這一組沒有出現「整組平均漲 15% 以上」的上漲波段（或資料不足），所以還分不出第幾棒。';
     drawTimeline(); return;
   }
-  if(TL.sectorId!==CUR.id||TL.sel<0||TL.sel>=A.waves.length){ TL.sel=A.waves.length-1; TL.sectorId=CUR.id; }
+  if(TL.sectorId!==CUR.id||TL.sel<0||TL.sel>=A.waves.length){ TL.sel=A.mainIdx; TL.sectorId=CUR.id; }
   renderWaveView();
 }
 function renderWaveView(){
   var A=TL.A, w=A.waves[TL.sel], dates=A.dates, isLast=(TL.sel===A.waves.length-1), P=w.rows.part, NN=w.rows.non;
-  el('tlTabs').innerHTML=A.waves.map(function(x,k){ return '<button class="wtab'+(k===TL.sel?' on':'')+'" data-k="'+k+'">第 '+(k+1)+' 波　'+fd(dates[x.i0])+' → '+fd(dates[x.i1])+'　<b>'+fmtPct(x.gain*100,0)+'</b>'+(x.open?'（進行中）':'')+'</button>'; }).join('');
+  el('tlTabs').innerHTML=A.waves.map(function(x,k){ return '<button class="wtab'+(k===TL.sel?' on':'')+'" data-k="'+k+'">第 '+(k+1)+' 波'+(k===A.mainIdx?' ★主升段':'')+(k===A.waves.length-1?' ·最近':'')+'　'+fd(dates[x.i0])+' → '+fd(dates[x.i1])+'　<b>'+fmtPct(x.gain*100,0)+'</b>'+(x.open?'（進行中）':(x.confirmed?'':'（未確認結束）'))+'</button>'; }).join('');
   Array.prototype.forEach.call(el('tlTabs').children,function(b){ b.onclick=function(){ TL.sel=parseInt(b.getAttribute('data-k'),10); renderWaveView(); renderCards(); }; });
   var healthy=function(r){ var a=r.o.a; return a.sc===2&&a.off>=-0.12; };
   var days=w.i1-w.i0, lines=[];
-  lines.push('<b>這一波（第 '+(TL.sel+1)+' 波）：</b>整組平均從 '+fd(dates[w.i0])+' 漲到 '+fd(dates[w.i1])+'，約 '+days+' 個交易日，<b>'+fmtPct(w.gain*100,0)+'</b>（熱度：'+heatWord(w.gain)+'）；'+(w.open?'<b>還在進行中</b>。':'已經結束，之後整組從高點回檔過。')+'　'+(P.length+NN.length)+' 檔裡有 '+P.length+' 檔參與（這一波漲幅 15% 以上）。'+(P.simul?'<br><span style="color:#c0600a">這一波大家差不多同時起漲（起點相差不到 3 週），分不出先後，全部算第一棒。</span>':''));
+  lines.push('<b>這一波（第 '+(TL.sel+1)+' 波）：</b>整組平均從 '+fd(dates[w.i0])+' 漲到 '+fd(dates[w.i1])+'，約 '+days+' 個交易日，<b>'+fmtPct(w.gain*100,0)+'</b>（熱度：'+heatWord(w.gain)+'）；'+(w.open?'<b>還在進行中</b>。':(w.confirmed?'已確認結束（之後整組從高點回檔超過 15%）。':'高點已過、回檔還不到 15%，<b>尚未確認結束</b>（可能只是暫停）。'))+'　'+(P.length+NN.length)+' 檔裡有 '+P.length+' 檔參與（這一波漲幅 15% 以上）。'+(P.simul?'<br><span style="color:#c0600a">這一波大家差不多同時起漲（起點集中在 2 週內），分不出先後，全部算第一棒。</span>':(w.rows.clusters>1?'<br><span style="color:#667">起點相近（相隔 5 個交易日內）的算同一棒，共分成 '+w.rows.clusters+' 群。</span>':'')));
   [1,2,3].forEach(function(k){
     var a=P.filter(function(r){return r.tier===k;}); if(!a.length) return;
     var ok=a.filter(healthy).length, nowMed=medianOf(a.map(function(r){return r.now*100;}));
@@ -631,7 +690,7 @@ function renderWaveView(){
     var t1=P.filter(function(r){return r.tier===1;}), t1ok=t1.length?t1.filter(healthy).length/t1.length:0;
     var t3=P.filter(function(r){return r.tier===3;});
     if(w.open){ read+=(t1ok>=0.5?'第一棒還在上升段，這一波還沒走完。':'這一波還在進行中，但第一棒已經休息，漲勢靠後面的棒子撐著，要小心。'); }
-    else { read+='這一波已在 '+fd(dates[w.i1])+' 結束，整組目前離那個高點 '+fmtPct(A.tail*100,0)+'；現在是休息期，還沒有新的一波。'+(t1ok>=0.5?'不過第一棒大多還站在上升段，是先觀察的對象。':''); }
+    else { read+=(w.confirmed?'這一波已在 '+fd(dates[w.i1])+' 確認結束，整組目前離那個高點 '+fmtPct(A.tail*100,0)+'；現在是休息期，還沒有新的一波。':'這一波的高點在 '+fd(dates[w.i1])+'，目前離高點 '+fmtPct(A.tail*100,0)+'，回檔還不到 15%，只能說「暫停中」，不能說結束。')+(t1ok>=0.5?'不過第一棒大多還站在上升段，是先觀察的對象。':''); }
   } else read+='這是已經結束的舊波段，可以拿來對照最近一波的大小。';
   el('tlSum').innerHTML=lines.join('<br>')+'<div style="margin-top:6px;padding:7px 9px;background:#f3f6fb;border-radius:8px"><b>讀法：</b>'+read+'</div>'+
     '<div style="font-size:12.5px;color:#778;margin-top:4px">棒次只看「這一波裡誰先起漲」，不看公司大小。小型或虧損公司波動通常較大，請對照卡片上的市值和你自己寫的備註。</div>';
@@ -644,7 +703,47 @@ function renderWaveView(){
       return '<tr><td><span class="tier" style="background:'+TIER_COL[r.tier]+'">'+r.tier+'</span></td><td>'+nm+'</td><td>'+(r.trunc?'至少從 ':'')+fd(r.d0)+' 收 $'+fmtP(r.p0)+'</td><td>'+fd(r.dpk)+' 收 $'+fmtP(r.pk)+'</td><td style="font-weight:800;color:#0d8a3f">'+fmtPct(r.gain*100,0)+'</td><td>'+nowTxt+'</td><td style="white-space:normal;min-width:120px">'+nt+'</td></tr>';
     }).join('')+'</table>';
   A.waves[TL.sel].rows.part.concat(NN).forEach(function(r){ r.o.tier=r.tier; r.o.run=r.none?null:{d0:r.d0,p0:r.p0,dpk:r.dpk,pk:r.pk,gain:r.gain,now:r.now,trunc:r.trunc,wave:TL.sel+1}; });
-  drawTimeline();
+  renderVerdict(); drawScatter(); drawTimeline();
+}
+
+function barsRow(label,pct,col,txt,mark){
+  return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;position:relative;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div>'+(mark||'')+'</div><div style="width:170px;font-size:12.5px;flex:none">'+txt+'</div></div>';
+}
+function renderVerdict(){
+  var A=TL.A, box=el('verdict'); if(!box) return; if(!A||!A.st){ box.innerHTML=''; return; }
+  var st=A.st, maxg=Math.max.apply(null,A.waves.map(function(w){return w.gain;}));
+  var h='<div class="sumbox" style="border-color:'+st.col+'"><div style="font-size:13px;color:#667;font-weight:700">這個板塊現在的位置</div>'+
+    '<div style="font-size:24px;font-weight:900;color:'+st.col+';line-height:1.3">'+st.label+'</div>'+
+    '<div style="font-size:15px;line-height:1.6;margin-top:3px">'+st.why+'</div>';
+  h+='<div style="margin-top:8px;font-size:13px;font-weight:800">每一波漲了多少（★＝最大的一波，主升段）</div>';
+  A.waves.forEach(function(w,k){
+    h+=barsRow('第 '+(k+1)+' 波',w.gain/maxg*100,k===A.mainIdx?'#1f6f3a':'#9db4cf',fmtPct(w.gain*100,0)+(k===A.mainIdx?' ★':'')+'　'+fd(A.dates[w.i0])+' 起');
+  });
+  if(st.ratio!=null) h+='<div style="margin-top:6px;font-size:14px;line-height:1.6">最近一波只有主升段的 <b>'+Math.round(st.ratio*100)+'%</b>：'+(st.ratio<0.5?'比主升段小很多，通常是主升段後的小行情（參考：我看過的 15 個板塊裡約 7 成後續波不到主升段一半，只是自己的資料，不是定律）。':(st.ratio<0.7?'比主升段小，但不算太弱。':'和主升段差不多大，可能是第二個主升段。'))+'</div>';
+  else if(!st.isMain) h+='';
+  else h+='<div style="margin-top:6px;font-size:14px">最近一波就是目前最大的一波（主升段）。</div>';
+  var gp=Math.round(st.give*100);
+  h+='<div style="margin-top:8px;font-size:13px;font-weight:800">從最近一波高點吐回幾成（越短越強）</div>'+
+    barsRow('吐回',gp,st.give<0.3?'#2a5fa5':(st.give<0.7?'#c0600a':'#b3262e'),'吐回約 '+Math.round(st.give*10)+' 成；離高點已 '+st.dayPk+' 個交易日');
+  h+='<div style="font-size:13px;line-height:1.6;color:#445;margin-top:4px">'+(st.give<0.3?'吐回不到 3 成：買盤沒有撤退，比較像暫停。':(st.give<0.7?'吐回 3～7 成：有一部分獲利被拿走了，要看之後能否守住。':(st.below?'已經跌破這一波的起漲點，整波都吐回去了。':'吐回超過 7 成：這一波幾乎被吃回去，等於漲勢失敗。')))+'</div>';
+  h+='<div style="font-size:12px;color:#889;margin-top:6px">「15% 才算一波／位階天數／吐回 3、7 成」都是我訂的參考範圍，還沒用資料驗證，只拿來看大圖，不是買賣訊號。</div></div>';
+  box.innerHTML=h;
+}
+function drawScatter(){
+  var A=TL.A, box=el('tlSc'); if(!box) return;
+  if(!A||!A.waves.length){ box.innerHTML=''; return; }
+  var w=A.waves[TL.sel], P=w.rows.part; if(P.length<2){ box.innerHTML=''; return; }
+  var x0=Math.min.apply(null,P.map(function(r){return r.si;})), x1=Math.max.apply(null,P.map(function(r){return r.si;}));
+  var gmax=Math.max.apply(null,P.map(function(r){return r.gain;}));
+  var H=190, h='<div style="font-weight:800;font-size:13px;margin:4px 0">起漲先後圖：越靠左＝越早起漲，越高＝這一波漲越多（顏色＝棒次）</div><div style="position:relative;height:'+H+'px;background:#fff;border:1px solid #dde;border-radius:8px;margin-bottom:8px;overflow:hidden">';
+  var used=[];
+  P.forEach(function(r){
+    var px=(x1===x0?50:(r.si-x0)/(x1-x0)*86+6), py=r.gain/gmax*(H-34)+8, c=TIER_COL[r.tier];
+    var ly=py; used.forEach(function(u){ if(Math.abs(u.x-px)<7&&Math.abs(u.y-ly)<14) ly=u.y+14; }); used.push({x:px,y:ly});
+    h+='<div style="position:absolute;left:'+px+'%;bottom:'+py+'px;width:9px;height:9px;margin-left:-4px;background:'+c+';border-radius:50%"></div><div style="position:absolute;left:'+px+'%;bottom:'+(ly+8)+'px;font-size:11px;font-weight:700;color:'+c+';transform:translateX(-50%)">'+r.t+'</div>';
+  });
+  h+='<div style="position:absolute;left:4px;bottom:2px;font-size:11px;color:#778">'+fd(A.dates[x0])+'</div><div style="position:absolute;right:4px;bottom:2px;font-size:11px;color:#778">'+fd(A.dates[x1])+'</div></div>';
+  box.innerHTML=h;
 }
 function drawTimeline(){
   var cv=el('tlCv'), A=TL.A; if(!cv) return;
@@ -686,7 +785,7 @@ async function showCompare(){
   await loadMany(list,function(d,tot){ var p=el('cmpProg'); if(p) p.textContent='載入全部板塊 '+d+'/'+tot+' …'; });
   renderCompare(); box.setAttribute('data-done','1');
 }
-function renderCompare(){
+function renderCompareTable(){
   var rows=[];
   SECS.forEach(function(s){
     var list=s.tickers.filter(function(t){return BARS[t];}).map(function(t){return {t:t,B:BARS[t],o:{a:{sc:0,off:0}}};});
@@ -712,7 +811,62 @@ function renderCompare(){
     chk='<div style="margin-top:8px;padding:8px 10px;background:#f3f6fb;border-radius:8px;line-height:1.7"><b>你的假設檢查（資料不多，只能當參考）：</b>在 '+full.length+' 個分得出棒次的板塊裡，<b>'+dec+' 個</b>是「第一棒 > 第二棒 > 第三棒」。熱的一半板塊，第一棒平均 '+f(hA)+'、第二棒 '+f(avg(hot,'m2'))+'、第三棒 '+f(avg(hot,'m3'))+'；冷的一半，第一棒 '+f(cA)+'、第二棒 '+f(avg(cold,'m2'))+'、第三棒 '+f(avg(cold,'m3'))+'。'+
       (hA!=null&&cA!=null&&hA>cA*1.3?'→ 熱的板塊每一棒確實比較大。':'→ 熱和冷的板塊每棒差距不明顯。')+(dec>=full.length*0.6?' 每棒遞減的規律大致成立。':' 每棒遞減的規律不一定成立。')+'<br><small style="color:#778">進行中的波，後面的棒還沒漲完，會讓第二、三棒偏小。</small></div>';
   }
-  el('cmpBox').innerHTML=h+chk;
+  return h+chk;
+}
+function renderCompare(){
+  var R=[];
+  SECS.forEach(function(s){
+    var list=s.tickers.filter(function(t){return BARS[t];}).map(function(t){return {t:t,B:BARS[t],o:{a:{sc:0,off:0}}};});
+    if(list.length<3) return;
+    var A=analyzeWaves(list); if(!A) return;
+    var n=A.NB, ret=function(k){ return n>k?A.idx[n-1]/A.idx[n-1-k]-1:null; };
+    R.push({s:s,A:A,r1y:ret(Math.min(252,n-1)),r3:ret(63),r1:ret(21)});
+  });
+  var f=function(v){ return v==null?'—':fmtPct(v*100,0); };
+  var H='<div style="font-weight:900;font-size:17px;margin-bottom:2px">各板塊大圖（板塊＝成分股等權平均）</div><div style="font-size:12.5px;color:#778;margin-bottom:8px">所有門檻（15%、5/10 日分群、3/7 成）都是我訂的參考範圍，未經驗證。</div>';
+  // ① 強弱排行
+  var o1=R.slice().sort(function(a,b){return (b.r1y||-9)-(a.r1y||-9);}), mx1=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r1y||0);}))||1;
+  H+='<div class="sumbox"><div style="font-weight:900">① 近一年誰最強（條＝1 年漲幅，右邊是 3 個月、1 個月）</div>';
+  o1.forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,Math.abs(r.r1y||0)/mx1*100,(r.r1y||0)>=0?'#1f6f3a':'#b3262e','1年 <b>'+f(r.r1y)+'</b>｜3月 '+f(r.r3)+'｜1月 '+f(r.r1)); });
+  if(o1.length>=2){ var o1m=R.slice().sort(function(a,b){return (b.r1||-9)-(a.r1||-9);}); H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>1 年最強是 '+o1[0].s.name+'（'+f(o1[0].r1y)+'），第二是 '+o1[1].s.name+'（'+f(o1[1].r1y)+'）；最近 1 個月最強的是 '+o1m[0].s.name+'（'+f(o1m[0].r1)+'）。1 年強、1 個月弱＝可能在休息或轉弱。</div>'; }
+  H+='</div>';
+  // ② 主升段占比
+  var o2=R.filter(function(r){return r.A.waves.length>=2&&r.A.waves.length-1!==r.A.mainIdx||r.A.waves.length>=2;}).map(function(r){ var w=r.A.waves, m=w[r.A.mainIdx], later=w.filter(function(x,k){return k>r.A.mainIdx;}); var lg=later.length?Math.max.apply(null,later.map(function(x){return x.gain;})):null; return {r:r,m:m,lg:lg}; }).filter(function(x){return x.lg!=null;});
+  H+='<div class="sumbox"><div style="font-weight:900">② 主升段之後的波有多大（後續最大一波 ÷ 主升段；中線 50%、70%）</div>';
+  if(o2.length){
+    o2.sort(function(a,b){return b.lg/b.m.gain-a.lg/a.m.gain;});
+    var mk='<div style="position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed #555"></div><div style="position:absolute;left:70%;top:0;bottom:0;border-left:2px dashed #999"></div>';
+    o2.forEach(function(x){ var q=x.lg/x.m.gain; H+=barsRow(x.r.s.icon+' '+x.r.s.name,q*100,q<0.5?'#9db4cf':(q<0.7?'#c0600a':'#1f6f3a'),'後續 '+f(x.lg)+' ÷ 主升 '+f(x.m.gain)+' ＝ <b>'+Math.round(q*100)+'%</b>',mk); });
+    var sm=o2.filter(function(x){return x.lg/x.m.gain<0.5;}).length;
+    H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>'+o2.length+' 個有後續波的板塊裡，<b>'+sm+' 個</b>後續波不到主升段一半。多數板塊主升段後的反彈比較小，所以在「後續波」買進要抱較保守的期待（這是目前資料的觀察，不是保證）。</div>';
+  } else H+='<div style="font-size:14px;color:#667">沒有板塊在主升段之後再出現完整一波。</div>';
+  H+='</div>';
+  // ③ 時間軸
+  var dts=null; R.forEach(function(r){ if(!dts||r.A.dates.length>dts.length) dts=r.A.dates; });
+  H+='<div class="sumbox"><div style="font-weight:900">③ 各板塊的波段時間軸（深綠＝主升段，藍＝其他波，斜線＝尚未確認結束）</div>';
+  if(dts){
+    var N=dts.length, mo='', ticks='';
+    dts.forEach(function(d,i){ var m=d.slice(0,7); if(m!==mo){ mo=m; if(parseInt(d.slice(5,7),10)%3===1) ticks+='<div style="position:absolute;left:'+(i/N*100)+'%;top:0;bottom:0;border-left:1px solid #dde;font-size:10.5px;color:#778;padding-left:2px;white-space:nowrap">'+(d.slice(2,4)+'/'+d.slice(5,7))+'</div>'; } });
+    H+='<div style="display:flex;align-items:center;gap:6px"><div style="width:92px;flex:none"></div><div style="flex:1;position:relative;height:16px">'+ticks+'</div></div>';
+    R.slice().sort(function(a,b){return (a.A.waves.length?a.A.waves[a.A.mainIdx].i0:9e9)-(b.A.waves.length?b.A.waves[b.A.mainIdx].i0:9e9);}).forEach(function(r){
+      var A=r.A, off=N-A.NB, seg='';
+      A.waves.forEach(function(w,k){ var l=(w.i0+off)/N*100, wd=Math.max(0.6,(w.i1-w.i0)/N*100), isM=(k===A.mainIdx), bg=isM?'#1f6f3a':'#7fa0c8', un=!w.confirmed&&!w.open;
+        seg+='<div title="第'+(k+1)+'波 '+fmtPct(w.gain*100,0)+'" style="position:absolute;left:'+l+'%;width:'+wd+'%;top:2px;bottom:2px;background:'+(un?'repeating-linear-gradient(45deg,'+bg+','+bg+' 4px,#fff 4px,#fff 7px)':bg)+';border-radius:3px;color:#fff;font-size:10px;overflow:hidden;white-space:nowrap">'+(wd>5?'&nbsp;'+fmtPct(w.gain*100,0):'')+'</div>'; });
+      H+='<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+r.s.icon+' '+r.s.name+'</div><div style="flex:1;position:relative;height:22px;background:#f1f3f7;border-radius:4px">'+seg+'</div></div>';
+    });
+    var st0=R.filter(function(r){return r.A.waves.length;}).map(function(r){return r.A.waves[r.A.mainIdx].i0+(N-r.A.NB);}), spread=st0.length?Math.max.apply(null,st0)-Math.min.apply(null,st0):0;
+    H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>各板塊主升段的起點'+(spread<=15?'集中在同一時段（相差不到 3 週），像是大盤整體反彈而不是各自輪動。':'相差 '+spread+' 個交易日，有先有後。')+'</div>';
+  }
+  H+='</div>';
+  // ④ 位階條
+  H+='<div class="sumbox"><div style="font-weight:900">④ 現在各板塊在哪個位置（條＝最近一波高點吐回幾成；越短越強）</div>';
+  R.filter(function(r){return r.A.st;}).sort(function(a,b){return a.A.st.give-b.A.st.give;}).forEach(function(r){
+    var st=r.A.st; H+=barsRow(r.s.icon+' '+r.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><span style="color:#667">吐回約 '+Math.round(st.give*10)+' 成｜離高點 '+st.dayPk+' 日</span>');
+  });
+  R.filter(function(r){return !r.A.st;}).forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">兩年內沒有 15% 以上的波</span>'); });
+  H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。這是「最近一波」的位置，不代表之後會漲或會跌。</div></div>';
+  H+='<details style="margin-top:6px"><summary style="font-weight:800;cursor:pointer">詳細比較表（每一棒漲多少）</summary>'+renderCompareTable()+'</details>';
+  el('cmpBox').innerHTML=H;
 }
 function tierChip(o){ if(o.tier==null) return ''; var k=o.tier; return '<span class="tier" style="background:'+TIER_COL[k]+';font-size:12.5px" title="'+(k?TIER_NAME[k]:'這一波沒參與（漲幅不到 15%）')+'">'+(k?k+' 棒':'未參與')+'</span>'; }
 function runLine(o){
@@ -1099,7 +1253,7 @@ el('btnRef').onclick=function(){ if(CUR) pick(CUR.id,true); };
 
 // ── 開始 ──
 (function init(){
-  SECS=getSectors();
+  migrateNames2(); SECS=getSectors();
   var want=null;
   try{ want=new URLSearchParams(location.search).get('sector'); }catch(e){}
   if(!want) want=PREF.sector;
