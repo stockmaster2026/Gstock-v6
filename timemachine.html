@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.4</title>
+<title>板塊時光機 v1.5</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.4</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.5</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -435,6 +435,7 @@ function dRow(label,v,lo,hi,valTxt,right){
     '<div style="position:absolute;top:0;'+lab+';line-height:24px;font-size:13.5px;font-weight:900;color:'+col+';white-space:nowrap">'+valTxt+'</div></div>'+
     '<div style="width:230px;font-size:12.5px;flex:none">'+right+'</div></div>';
 }
+function mWord(v){ return v==null?'':(v>=0.02?'還在漲':(v<=-0.02?'在跌':'沒什麼動')); }
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
@@ -478,11 +479,11 @@ function showDay(ds){
   h+='<div class="read">另外 <b>'+rest+'</b> 個板塊在回檔、回吐、休息或沒動靜。'+(by['剛起步'].length===0?' 沒有板塊在剛起步，代表當天看不到「新主流剛冒出來」的訊號。':'')+'</div></div>';
   // 強弱
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
-  h+='<div class="box"><div class="h">① 當天誰最強（綠條往右＝前 3 個月漲、紅條往左＝跌；數字接在條後面；右邊再列前 1 個月）</div>';
+  h+='<div class="box"><div class="h">① 過去 3 個月，誰漲得最多？</div>';
   var zs=zList(o1.map(function(r){return r.r3;})), vs=o1.map(function(r){return (r.r3||0)*100;}), lo=Math.min(0,Math.min.apply(null,vs)), hi=Math.max(0,Math.max.apply(null,vs));
-  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'1 個月 '+f0(r.r1)+'<br>'+zTxt(zs[i])); });
+  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i])); });
   h+=Z_NOTE;
-  h+='<div class="read"><b>白話：</b>「3 個月」指當天往前推 3 個月的漲跌幅，不是 3 月。綠＝這 3 個月漲、紅＝跌，條越長幅度越大。3 個月強、1 個月也強＝還在跑；3 個月強、1 個月弱＝可能開始休息。這裡的數字都只用當天以前的價格。</div></div>';
+  h+='<div class="read"><b>怎麼看：</b>中間那條細線是 0（沒漲沒跌）。綠條往右＝這個板塊在「過去 3 個月」漲了，紅條往左＝跌了，數字就是漲跌幅。「過去 3 個月」是從你選的那一天往前數 3 個月，不是 3 月份。右邊的「最近 1 個月」是看它最近還有沒有力氣：過去 3 個月漲很多、最近 1 個月卻在跌，可能已經開始休息；兩個都在漲，才是還在跑。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
   h+='<div class="box"><div class="h">② 當天各板塊在哪個位置（條＝最近一波高點吐回幾成；越短越強）</div>';
   R.filter(function(r){return r.st;}).sort(function(a,b){return a.st.give-b.st.give;}).forEach(function(r){
