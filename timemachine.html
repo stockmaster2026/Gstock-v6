@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.1</title>
+<title>板塊時光機 v1.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.3</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -418,8 +418,14 @@ var SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','進行中','進行中
 var PRESETS=[['3/13（週五）','2026-03-13'],['4/15（週三）','2026-04-15'],['5/15（週五）','2026-05-15']];
 function wd(d){ return '日一二三四五六'.charAt(new Date(d+'T12:00:00Z').getUTCDay()); }
 function barsRow(label,pct,col,txt){
-  return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div></div><div style="width:190px;font-size:12.5px;flex:none">'+txt+'</div></div>';
+  return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div></div><div style="width:250px;font-size:12.5px;flex:none">'+txt+'</div></div>';
 }
+
+function zList(vals){ var v=vals.filter(function(x){return x!=null&&isFinite(x);}), n=v.length; if(n<3) return vals.map(function(){return null;}); return vals.map(function(x){ if(x==null||!isFinite(x)) return null; var less=0,eq=0; v.forEach(function(y){ if(y<x) less++; else if(y===x) eq++; }); return (less+0.5*(eq-1))/(n-1)*100; }); }
+function zWord(z){ return z==null?'—':(z>=80?'很強':(z>=60?'偏強':(z>=40?'中間':(z>=20?'偏弱':'很弱')))); }
+function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
+var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>強度分是什麼：</b>0～100 的名次分。100＝今天最強的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div>';
+function posScore(give){ return Math.round((1-give)*100); }
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
@@ -464,15 +470,16 @@ function showDay(ds){
   // 強弱
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
   h+='<div class="box"><div class="h">① 當天誰最強（條＝前 3 個月漲幅，右邊再列前 1 個月）</div>';
-  o1.forEach(function(r){ h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.abs(r.r3||0)/mx*100,(r.r3||0)>=0?'#1f6f3a':'#b3262e','3月 <b>'+f0(r.r3)+'</b>｜1月 '+f0(r.r1)); });
+  var zs=zList(o1.map(function(r){return r.r3;})); o1.forEach(function(r,i){ h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.abs(r.r3||0)/mx*100,(r.r3||0)>=0?'#1f6f3a':'#b3262e','3月 <b>'+f0(r.r3)+'</b>｜1月 '+f0(r.r1)+'<br>'+zTxt(zs[i])); });
+  h+=Z_NOTE;
   h+='<div class="read"><b>白話：</b>3 個月強、1 個月也強＝還在跑；3 個月強、1 個月弱＝可能開始休息。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
   h+='<div class="box"><div class="h">② 當天各板塊在哪個位置（條＝最近一波高點吐回幾成；越短越強）</div>';
   R.filter(function(r){return r.st;}).sort(function(a,b){return a.st.give-b.st.give;}).forEach(function(r){
-    var st=r.st, m=st.main; h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><span style="color:#667">吐回約 '+Math.round(st.give*10)+' 成｜離高點 '+st.dayPk+' 日｜當時最大一波 '+f0(m.gain)+'</span>');
+    var st=r.st, m=st.main; h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>位階分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日｜當時最大一波 '+f0(m.gain)+'</span>');
   });
   by['沒動靜'].forEach(function(r){ h+=barsRow(r.x.s.icon+' '+r.x.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">到當天為止沒有 15% 以上的波</span>'); });
-  h+='<div class="read"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。「當時最大一波」只算到當天為止，不含後來才出現的大波。</div></div>';
+  h+='<div class="read"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。<b>位階分</b>：100＝正在這一波的高點，0＝這一波整個吐回去了；越高越強。「當時最大一波」只算到當天為止，不含後來才出現的大波。</div></div>';
   h+='<div class="box"><div class="h">③ 對照你當時的記憶</div><div class="sub">先自己想：當時你買了什麼、為什麼買。上面的位階有沒有幫你理解當時的狀況？想好了再按下面揭曉後來發生的事。</div><div class="row"><button class="btn go" id="btnRev">揭曉：之後 20、60 個交易日發生什麼事</button></div><div id="rev"></div></div>';
   out.innerHTML=h;
   el('btnRev').onclick=function(){ reveal(R,k); };
