@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.1</title>
+<title>板塊圖表總覽 v3.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.1</div>
+  <div class="logo">板塊<span>圖表</span> v3.3</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -709,8 +709,14 @@ function renderWaveView(){
   renderVerdict(); drawScatter(); drawTimeline();
 }
 
+
+function zList(vals){ var v=vals.filter(function(x){return x!=null&&isFinite(x);}), n=v.length; if(n<3) return vals.map(function(){return null;}); return vals.map(function(x){ if(x==null||!isFinite(x)) return null; var less=0,eq=0; v.forEach(function(y){ if(y<x) less++; else if(y===x) eq++; }); return (less+0.5*(eq-1))/(n-1)*100; }); }
+function zWord(z){ return z==null?'—':(z>=80?'很強':(z>=60?'偏強':(z>=40?'中間':(z>=20?'偏弱':'很弱')))); }
+function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
+var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>強度分是什麼：</b>0～100 的名次分。100＝今天最強的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div>';
+function posScore(give){ return Math.round((1-give)*100); }
 function barsRow(label,pct,col,txt,mark){
-  return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;position:relative;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div>'+(mark||'')+'</div><div style="width:170px;font-size:12.5px;flex:none">'+txt+'</div></div>';
+  return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;position:relative;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div>'+(mark||'')+'</div><div style="width:240px;font-size:12.5px;flex:none">'+txt+'</div></div>';
 }
 function renderVerdict(){
   var A=TL.A, box=el('verdict'); if(!box) return; if(!A||!A.st){ box.innerHTML=''; return; }
@@ -830,7 +836,8 @@ function renderCompare(){
   // ① 強弱排行
   var o1=R.slice().sort(function(a,b){return (b.r1y||-9)-(a.r1y||-9);}), mx1=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r1y||0);}))||1;
   H+='<div class="sumbox"><div style="font-weight:900">① 近一年誰最強（條＝1 年漲幅，右邊是 3 個月、1 個月）</div>';
-  o1.forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,Math.abs(r.r1y||0)/mx1*100,(r.r1y||0)>=0?'#1f6f3a':'#b3262e','1年 <b>'+f(r.r1y)+'</b>｜3月 '+f(r.r3)+'｜1月 '+f(r.r1)); });
+  var zs1=zList(o1.map(function(r){return r.r1y;})); o1.forEach(function(r,i){ H+=barsRow(r.s.icon+' '+r.s.name,Math.abs(r.r1y||0)/mx1*100,(r.r1y||0)>=0?'#1f6f3a':'#b3262e','1年 <b>'+f(r.r1y)+'</b>｜3月 '+f(r.r3)+'｜1月 '+f(r.r1)+'<br>'+zTxt(zs1[i])); });
+  H+=Z_NOTE;
   if(o1.length>=2){ var o1m=R.slice().sort(function(a,b){return (b.r1||-9)-(a.r1||-9);}); H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>1 年最強是 '+o1[0].s.name+'（'+f(o1[0].r1y)+'），第二是 '+o1[1].s.name+'（'+f(o1[1].r1y)+'）；最近 1 個月最強的是 '+o1m[0].s.name+'（'+f(o1m[0].r1)+'）。1 年強、1 個月弱＝可能在休息或轉弱。</div>'; }
   H+='</div>';
   // ② 主升段占比
@@ -864,7 +871,7 @@ function renderCompare(){
   // ④ 位階條
   H+='<div class="sumbox"><div style="font-weight:900">④ 現在各板塊在哪個位置（條＝最近一波高點吐回幾成；越短越強）</div>';
   R.filter(function(r){return r.A.st;}).sort(function(a,b){return a.A.st.give-b.A.st.give;}).forEach(function(r){
-    var st=r.A.st; H+=barsRow(r.s.icon+' '+r.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><span style="color:#667">吐回約 '+Math.round(st.give*10)+' 成｜離高點 '+st.dayPk+' 日</span>');
+    var st=r.A.st; H+=barsRow(r.s.icon+' '+r.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>位階分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日</span>');
   });
   R.filter(function(r){return !r.A.st;}).forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">兩年內沒有 15% 以上的波</span>'); });
   H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。這是「最近一波」的位置，不代表之後會漲或會跌。</div></div>';
