@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.5</title>
+<title>板塊時光機 v1.6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.5</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.6</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -433,9 +433,23 @@ function dRow(label,v,lo,hi,valTxt,right){
     '<div style="flex:1;position:relative;height:24px;background:#eef0f4;border-radius:5px;min-width:120px"><div style="position:absolute;top:0;bottom:0;left:'+z+'%;border-left:2px solid #667"></div>'+
     '<div style="position:absolute;top:3px;bottom:3px;left:'+left+'%;width:'+len+'%;background:'+col+';border-radius:3px"></div>'+
     '<div style="position:absolute;top:0;'+lab+';line-height:24px;font-size:13.5px;font-weight:900;color:'+col+';white-space:nowrap">'+valTxt+'</div></div>'+
-    '<div style="width:230px;font-size:12.5px;flex:none">'+right+'</div></div>';
+    '<div style="width:230px;font-size:12.5px;flex:none">'+right+'</div></div>'+
+    (arguments[5]?'<div style="margin:-2px 0 9px 98px;font-size:13.5px;line-height:1.55;color:#223">'+arguments[5]+'</div>':'');
 }
 function mWord(v){ return v==null?'':(v>=0.02?'還在漲':(v<=-0.02?'在跌':'沒什麼動')); }
+function pctA(v){ return Math.abs(Math.round(v*100))+'%'; }
+function plainRead(r3,r1,lead){
+  if(r3==null||r1==null) return '';
+  var G='#1f6f3a',Rd='#b3262e',N='#445';
+  var t=lead?'最近 3 個月':'過去 3 個月';
+  var a3=r3>=0.05?1:(r3<=-0.05?-1:0), a1=r1>=0.02?1:(r1<=-0.02?-1:0);
+  var d3=a3>0?t+'漲了 '+pctA(r3):(a3<0?t+'跌了 '+pctA(r3):t+'大致沒動（'+fmtPct(r3*100,0)+'）');
+  var d1=a1>0?'最近 1 個月漲了 '+pctA(r1):(a1<0?'最近 1 個月跌了 '+pctA(r1):'最近 1 個月沒什麼動（'+fmtPct(r1*100,0)+'）');
+  var T={'1,1':['漲勢還在，動能沒減弱',G,''],'1,0':['漲勢停下來了，在原地整理',N,''],'1,-1':['漲的力道轉弱，可能在休息或回檔',Rd,' 前面漲得比這更多，最近已吐回一部分。'],
+    '0,1':['可能剛開始動，還要再觀察',N,''],'0,0':['目前沒有明顯方向',N,''],'0,-1':['偏弱',Rd,''],
+    '-1,1':['先看反彈能不能撐住，還不能當成轉強',N,''],'-1,0':['跌勢暫停，但還沒看到轉強',N,''],'-1,-1':['持續弱勢',Rd,'']}[a3+','+a1];
+  return '<b>白話：</b>'+(lead?lead+'；':'')+d3+'，'+d1+'。→ <b style="color:'+T[1]+'">'+T[0]+'</b>。'+T[2];
+}
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
@@ -481,7 +495,7 @@ function showDay(ds){
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
   h+='<div class="box"><div class="h">① 過去 3 個月，誰漲得最多？</div>';
   var zs=zList(o1.map(function(r){return r.r3;})), vs=o1.map(function(r){return (r.r3||0)*100;}), lo=Math.min(0,Math.min.apply(null,vs)), hi=Math.max(0,Math.max.apply(null,vs));
-  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i])); });
+  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i]),plainRead(r.r3,r.r1)); });
   h+=Z_NOTE;
   h+='<div class="read"><b>怎麼看：</b>中間那條細線是 0（沒漲沒跌）。綠條往右＝這個板塊在「過去 3 個月」漲了，紅條往左＝跌了，數字就是漲跌幅。「過去 3 個月」是從你選的那一天往前數 3 個月，不是 3 月份。右邊的「最近 1 個月」是看它最近還有沒有力氣：過去 3 個月漲很多、最近 1 個月卻在跌，可能已經開始休息；兩個都在漲，才是還在跑。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
