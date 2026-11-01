@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.0</title>
+<title>板塊圖表總覽 v3.1</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.0</div>
+  <div class="logo">板塊<span>圖表</span> v3.1</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -638,11 +638,11 @@ function waveState(A){
   var NB=A.NB, w=A.waves[A.waves.length-1], main=A.waves[A.mainIdx], isMain=(A.waves.length-1===A.mainIdx);
   var now=A.idx[NB-1], hi=A.idx[w.i1], lo=A.idx[w.i0];
   var giveRaw=Math.max(0,(hi-now)/(hi-lo||1)), give=Math.min(1,giveRaw), dayPk=NB-1-w.i1, bars=NB-1-w.i0, label, col, why, tier;
-  var gw=give<0.3?'吐回不到 3 成':(give<0.7?'吐回 3～7 成':'吐回超過 7 成');
+  var below=giveRaw>1;
   if(w.confirmed){
     label='休息中（上一波已確認結束）'; col='#8a5a00'; tier='rest';
     why='整組從波段高點（'+fd(A.dates[w.i1])+'）回檔超過 15%，已確認上一波結束；目前離高點 '+fmtPct(A.tail*100,0)+'，還沒出現新的一波。休息期可以研究，等新的一波起漲。';
-  } else if(w.i1>=NB-4){
+  } else if(w.i1>=NB-4&&give<0.3){
     if(bars<=10){ label='剛起步'; col='#0d8a3f'; tier='go'; }
     else if(bars<=60){ label='主升段進行中'; col='#0d8a3f'; tier='go'; }
     else { label='進行中，偏後段'; col='#c0600a'; tier='late'; }
@@ -652,7 +652,10 @@ function waveState(A){
     if(give<0.3){ label='高點附近整理（暫停）'; col='#2a5fa5'; tier='pause'; }
     else if(give<0.7){ label='回檔中'; col='#c0600a'; tier='pull'; }
     else { label='大幅回吐'; col='#b3262e'; tier='bad'; }
-    why='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），之後整組回檔還不到 15%，所以<b>尚未確認結束，可能只是暫停</b>；'+gw+'（吐回 '+Math.round(give*10)+' 成左右）。';
+    var pkTxt='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），累計漲了 '+fmtPct(w.gain*100,0)+'，之後整組回檔還不到 15%，所以尚未確認結束；';
+    if(tier==='pause') why=pkTxt+'吐回不到 3 成，<b>比較像暫停</b>，買盤沒有明顯撤退。';
+    else if(tier==='pull') why=pkTxt+'已吐回 '+Math.round(give*10)+' 成，<b>不像單純暫停</b>，要看之後能不能守住。';
+    else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
@@ -719,7 +722,7 @@ function renderVerdict(){
   A.waves.forEach(function(w,k){
     h+=barsRow('第 '+(k+1)+' 波',w.gain/maxg*100,k===A.mainIdx?'#1f6f3a':'#9db4cf',fmtPct(w.gain*100,0)+(k===A.mainIdx?' ★':'')+'　'+fd(A.dates[w.i0])+' 起');
   });
-  if(st.ratio!=null) h+='<div style="margin-top:6px;font-size:14px;line-height:1.6">最近一波只有主升段的 <b>'+Math.round(st.ratio*100)+'%</b>：'+(st.ratio<0.5?'比主升段小很多，通常是主升段後的小行情（參考：我看過的 15 個板塊裡約 7 成後續波不到主升段一半，只是自己的資料，不是定律）。':(st.ratio<0.7?'比主升段小，但不算太弱。':'和主升段差不多大，可能是第二個主升段。'))+'</div>';
+  if(st.ratio!=null) h+='<div style="margin-top:6px;font-size:14px;line-height:1.6">最近一波只有主升段的 <b>'+Math.round(st.ratio*100)+'%</b>：'+(st.ratio<0.4?'比主升段小很多，通常是主升段後的小行情（參考：我看過的 15 個板塊裡約 7 成後續波不到主升段一半，只是自己的資料，不是定律）。':(st.ratio<0.7?'比主升段小，但不算太弱（參考：我看過的 15 個板塊裡約 7 成後續波不到主升段一半，只是自己的資料，不是定律）。':'和主升段差不多大，可能是第二個主升段。'))+'</div>';
   else if(!st.isMain) h+='';
   else h+='<div style="margin-top:6px;font-size:14px">最近一波就是目前最大的一波（主升段）。</div>';
   var gp=Math.round(st.give*100);
