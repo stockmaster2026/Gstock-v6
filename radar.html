@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飆股雷達 v9.9</title>
+<title>飆股雷達 v10.0</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 :root{
@@ -143,7 +143,7 @@ transition:all 0.2s;width:152px;position:relative;
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo">飆股<span>RADAR</span> v9.9</div>
+  <div class="logo">飆股<span>RADAR</span> v10.0</div>
   <div style="flex:1"></div>
   <button class="refresh-btn" onclick="initApp()">🔄 更新</button>
 </div>
@@ -255,7 +255,7 @@ var SECTORS_DEFAULT=[
   //   ⚠ 新增一組【AI電力設備】: 原本 power 把發電端與設備端混在一起,
   //     而 2026 年這兩邊<b>走相反方向</b>(發電端 −20%、設備端 +29%), 混在一組會互相抵銷成雜訊。
   {id:'ai_giant',  icon:'🤖', name:'AI巨頭',    etf:'QQQ',  tickers:['NVDA','MSFT','GOOGL','AMZN','META','AAPL','AVGO','ORCL','TSM']},
-  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','NTAP','P']},
+  {id:'ai_infra',  icon:'🏗️', name:'AI基礎設施', etf:'XLK',  tickers:['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','ALAB']},
   {id:'optical',   icon:'💡', name:'光通信',     etf:'FOTO', tickers:['COHR','LITE','AAOI','AXTI','APH','CIEN','FN','POET','TSEM','NOK']},
   // 發電端: 九檔全部都在 XLU 成分裡(已查證 XLU 只有 34~35 檔, 全是受監管公用事業與 IPP)
   {id:'power',     icon:'⚡', name:'AI電力散熱', etf:'XLU',  tickers:['VST','CEG','TLN','NRG','PEG','D','EXC','AES','NEE']},
@@ -268,7 +268,7 @@ var SECTORS_DEFAULT=[
   // ⚠ 只有 4 檔, 全市場就這幾家 —— 樣本太小, breadth 判不準, 看的時候要打折
   {id:'quantum',   icon:'⚛️', name:'量子運算',   etf:'QTUM', tickers:['IONQ','RGTI','QBTS','QUBT']},
   // NTAP/P 移到 AI基礎設施(它們是系統廠不是半導體, 不在 SMH); 補進上游設備與封裝
-  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO']},
+  {id:'storage',   icon:'💾', name:'儲存硬體',   etf:'SMH',  tickers:['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO','NTAP','P']},
   // TEM(醫療資料 AI)、HIMS(遠距醫療通路)移出 —— 不在 XBI; 補進同族基因編輯與罕病
   {id:'biotech',   icon:'🧬', name:'生技健康',   etf:'XBI',  tickers:['CRSP','NTRA','NVAX','RXRX','BEAM','NTLA','EDIT','ALNY','VKTX','SRPT']},
   // GLD/SLV 移除 —— 那是金屬本身不是礦股, 會把板塊分數拉成金價走勢
@@ -328,6 +328,26 @@ function migrateSectors(){
   }catch(e){}
 }
 
+
+// ═══ v10.0【一次性名單搬移】P、NTAP 只留在「儲存硬體」；CRDO、ALAB 只留在「AI基礎設施」（缺的補進去）。radar 與 charts 共用同一旗標，誰先開誰做一次 ═══
+function migrateNames2(){
+  try{
+    var fk='gstock_names_mig', done=localStorage.getItem(fk)||'';
+    if(done.indexOf('v100')>=0) return;
+    var raw=JSON.parse(localStorage.getItem(SKEY)||'null');
+    if(Array.isArray(raw)){
+      var find=function(id,nm){ for(var i=0;i<raw.length;i++){ if(raw[i]&&(raw[i].id===id||raw[i].name===nm)) return raw[i]; } return null; };
+      var ai=find('ai_infra','AI基礎設施'), st=find('storage','儲存硬體'), op=find('optical','光通信')||find('optical','光通訊');
+      var rm=function(sec,ts){ if(sec) sec.tickers=(sec.tickers||[]).filter(function(t){return ts.indexOf(t)<0;}); };
+      var ad=function(sec,ts){ if(sec) ts.forEach(function(t){ sec.tickers=sec.tickers||[]; if(sec.tickers.indexOf(t)<0) sec.tickers.push(t); }); };
+      // 先把 4 檔從所有板塊移除，再放回指定位置
+      raw.forEach(function(sec){ if(sec&&sec.tickers&&sec.id!=='custom') rm(sec,['P','NTAP','CRDO','ALAB']); });
+      ad(st,['NTAP','P']); ad(ai,['CRDO','ALAB']);
+      localStorage.setItem(SKEY,JSON.stringify(raw));
+    }
+    localStorage.setItem(fk,done+' v100');
+  }catch(e){}
+}
 function getSectors(){
   var stored=null;
   try{var s=localStorage.getItem(SKEY);if(s) stored=JSON.parse(s);}catch(e){}
@@ -351,7 +371,7 @@ function getSectors(){
   }
   var deduped=[];
   for(var n=0;n<nameOrder.length;n++) deduped.push(nameMap[nameOrder[n]]);
-  // v9.9 遷移：GOLD 現在是 Gold.com（金條商），Barrick 已改代號 B；IRBT（iRobot）已破產下市
+  // v10.0 遷移：GOLD 現在是 Gold.com（金條商），Barrick 已改代號 B；IRBT（iRobot）已破產下市
   deduped.forEach(function(sc){
     sc.tickers=sc.tickers||[];
     var gi=sc.tickers.indexOf('GOLD');
@@ -1750,7 +1770,7 @@ function showSector(sectorId){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v10.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="reloadSector()">🔄</button>';
   var sc=heatScore(sec.tickers, sec.etf);
   var hi=heatInfo(sc);
@@ -2173,7 +2193,7 @@ function goBack(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v10.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   if(currentSector) showSector(currentSector);
 }
@@ -2289,12 +2309,12 @@ async function initApp(){
   document.getElementById('detailPage').classList.remove('active');
   document.getElementById('stockListPage').classList.add('active');
   document.getElementById('topbar').innerHTML=
-    '<div class="logo">飆股<span>RADAR</span> v9.9</div><div style="flex:1"></div>'+
+    '<div class="logo">飆股<span>RADAR</span> v10.0</div><div style="flex:1"></div>'+
     '<button class="refresh-btn" onclick="initApp()">🔄 更新</button>';
   document.getElementById('listHeader').innerHTML=
     '<span style="color:var(--dim);">👆 點選上方板塊查看個股</span>';
   document.getElementById('cardContainer').innerHTML='';
-  migrateSectors();          // v8.2: 必須在第一次畫板塊列之前跑
+  migrateSectors(); migrateNames2();          // v8.2: 必須在第一次畫板塊列之前跑
   renderHeatStrip(null);
   var sectors=getSectors();
   var allSet={};
