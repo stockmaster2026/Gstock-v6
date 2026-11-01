@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.9</title>
+<title>板塊時光機 v1.12</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.9</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.12</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -426,7 +426,7 @@ function zWord(z){ return z==null?'—':(z>=80?'很強':(z>=60?'偏強':(z>=40?'
 function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
 var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>強度分是什麼：</b>0～100 的名次分。100＝今天最強的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div><div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>每個板塊有兩條：</b>上面粗條＝過去漲跌；下面細條＝位置分（越長＝越靠近最近一波的高點，越短＝已經吐回很多）。兩條都長，才是現在真的強；上面長、下面短，代表漲的是前面那段，現在在休息或回吐。</div>';
 function posScore(give){ return Math.round((1-give)*100); }
-function posOf(st){ return st?{score:posScore(st.give),label:st.label.replace(/（.*?）/g,''),col:st.col}:null; }
+function posOf(st){ if(!st) return null; var sc=posScore(st.give), w=sc>=80?'站在高點附近':(sc>=50?'離高點有一段':(sc>=20?'吐回不少':'幾乎吐光')), c=sc>=70?'#1f6f3a':(sc>=40?'#c0600a':'#b3262e'); return {score:sc,label:w,col:c}; }
 function dRow(label,v,lo,hi,valTxt,right){
   var ps=arguments[7], posBar='';
   if(ps){ posBar='<div style="position:relative;height:14px;background:#eef0f4;border-radius:4px;margin-top:3px"><div style="position:absolute;top:2px;bottom:2px;left:0;width:'+Math.max(2,ps.score)+'%;background:'+ps.col+';border-radius:3px"></div><div style="position:absolute;top:0;right:5px;line-height:14px;font-size:11.5px;font-weight:800;color:#334;background:rgba(255,255,255,.8);padding:0 4px;border-radius:3px;white-space:nowrap">位置 '+ps.score+'／100｜'+ps.label+'</div></div>'; }
@@ -453,18 +453,15 @@ function plainRead(r3,r1,lead,st,longUp){
     '-1,1':['先看反彈能不能撐住，還不能當成轉強',N,''],'-1,0':['跌勢暫停，但還沒看到轉強',N,''],'-1,-1':['持續弱勢',Rd,'']}[a3+','+a1];
   var base='<b>白話：</b>'+(lead?lead+'；':'')+d3+'，'+d1+'。';
   if(!st) return base+'→ <b style="color:'+T[1]+'">'+T[0]+'</b>。'+T[2];
-  var PW=(r3>=0.10?'過去強':'過去有漲'), lb=st.label, sh=lb.replace(/（.*?）/g,''), pc=Math.round(st.give*100), bad=/^(休息中|回檔中|大幅回吐)/.test(lb), hd, hc;
-  if(bad){
-    hc=longUp?Rd:'#8a5a00';
-    var nowW=/^休息中/.test(lb)?'現在在休息':(/^回檔中/.test(lb)?'現在在回檔':'現在已大幅回吐');
-    hd=longUp?PW+'，'+nowW+'。漲的是前面那段，不是現在在漲，勝算較低。':'過去沒特別強，'+nowW+'，勝算較低。';
-  } else {
-    var nowG=/剛起步/.test(lb)?'剛開始動':(/偏後段/.test(lb)?'還在漲，但偏後段，要小心':(/進行中/.test(lb)?'還在漲':'在高點附近整理（暫停）'));
-    if(longUp&&a1>=0){ hc=G; hd=PW+'，現在'+nowG+'。'; }
-    else if(longUp){ hc=N; hd=PW+'，但最近 1 個月已轉弱，位置仍在高點附近。'; }
-    else { hc=N; hd=T[0]+'；位置：'+nowG+'。'; }
-  }
-  return '<div style="font-weight:900;font-size:15px;color:'+hc+';margin-bottom:2px">綜合：'+hd+'</div>'+base+'<br><b>位置：</b><b style="color:'+st.col+'">'+sh+'</b>（位階分 '+posScore(st.give)+'／100，吐回 '+pc+'%，離高點 '+st.dayPk+' 個交易日）';
+  var lb=st.label, pc=Math.round(st.give*100), tr=st.tier, PW=(r3>=0.10?'過去強':'過去有漲'), sen, C, LT;
+  var nowW=/^休息中/.test(lb)?'休息':(/^回檔中/.test(lb)?'回檔':'大幅回吐');
+  if(tr==='go'){ LT='順風'; C='#1f6f3a'; sen='現在'+(/剛起步/.test(lb)?'剛開始動':'還在漲')+'，位置在高點附近，算順風。'; }
+  else if(tr==='late'){ LT='小心'; C='#c0600a'; sen='強勢板塊的後段：站在高點附近，但這一波已經跑了 '+st.bars+' 個交易日、漲了 '+pctA(st.last.gain)+'，不是起漲位置；追的話要小、要快。'+(a1<0?' 最近 1 個月已轉弱。':''); }
+  else if(tr==='pause'){ LT='小心'; C='#c0600a'; sen='停在高點附近整理（離高點 '+st.dayPk+' 天），'+(a1<0?'最近 1 個月跌了 '+pctA(r1)+'，':(a1>0?'最近 1 個月漲了 '+pctA(r1)+'，':''))+'還沒大幅吐回，也還沒再往上；等突破確認。'; }
+  else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(longUp?'漲的是前面那段，':'')+'勝算較低，多半避開。'; }
+  return '<div style="margin-bottom:3px"><span style="background:'+C+';color:#fff;font-weight:900;padding:2px 9px;border-radius:6px;font-size:14px">'+LT+'</span> <b style="color:'+C+';font-size:15.5px;margin-left:4px">'+lb+'</b></div>'+
+    '<div style="font-size:14px;line-height:1.55;color:#223">'+sen+'</div>'+
+    '<div style="font-size:12.5px;color:#667;margin-top:2px">'+(lead?lead+'；':'')+d3+'，'+d1+'｜離高點分 '+posScore(st.give)+'／100</div>';
 }
 function catOf(st){
   if(!st) return '沒動靜';
@@ -511,16 +508,16 @@ function showDay(ds){
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
   h+='<div class="box"><div class="h">① 過去 3 個月，誰漲得最多？</div>';
   var zs=zList(o1.map(function(r){return r.r3;})), vs=o1.map(function(r){return (r.r3||0)*100;}), lo=Math.min(0,Math.min.apply(null,vs)), hi=Math.max(0,Math.max.apply(null,vs));
-  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i]),plainRead(r.r3,r.r1,'',r.st,r.r3>=0.05),posOf(r.st)); });
+  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i]),plainRead(r.r3,r.r1,'',r.st,r.r3>=0.05)); });
   h+=Z_NOTE;
   h+='<div class="read"><b>怎麼看：</b>中間那條細線是 0（沒漲沒跌）。綠條往右＝這個板塊在「過去 3 個月」漲了，紅條往左＝跌了，數字就是漲跌幅。「過去 3 個月」是從你選的那一天往前數 3 個月，不是 3 月份。右邊的「最近 1 個月」是看它最近還有沒有力氣：過去 3 個月漲很多、最近 1 個月卻在跌，可能已經開始休息；兩個都在漲，才是還在跑。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
   h+='<div class="box"><details><summary class="h" style="cursor:pointer">② 位置明細（離高點幾天、當時最大一波漲多少；研究時再展開）</summary>';
   R.filter(function(r){return r.st;}).sort(function(a,b){return a.st.give-b.st.give;}).forEach(function(r){
-    var st=r.st, m=st.main; h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>位階分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日｜當時最大一波 '+f0(m.gain)+'</span>');
+    var st=r.st, m=st.main; h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>離高點分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日｜當時最大一波 '+f0(m.gain)+'</span>');
   });
   by['沒動靜'].forEach(function(r){ h+=barsRow(r.x.s.icon+' '+r.x.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">到當天為止沒有 15% 以上的波</span>'); });
-  h+='<div class="read"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。<b>位階分</b>：100＝正在這一波的高點，0＝這一波整個吐回去了；越高越強。「當時最大一波」只算到當天為止，不含後來才出現的大波。</div></details></div>';
+  h+='<div class="read"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。<b>離高點分</b>：100＝正在這一波的高點，0＝這一波整個吐回去了；越高越強。「當時最大一波」只算到當天為止，不含後來才出現的大波。</div></details></div>';
   h+='<div class="box"><div class="h">③ 對照你當時的記憶</div><div class="sub">先自己想：當時你買了什麼、為什麼買。上面的位階有沒有幫你理解當時的狀況？想好了再按下面揭曉後來發生的事。</div><div class="row"><button class="btn go" id="btnRev">揭曉：之後 20、60 個交易日發生什麼事</button></div><div id="rev"></div></div>';
   out.innerHTML=h;
   el('btnRev').onclick=function(){ reveal(R,k); };
