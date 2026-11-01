@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.3</title>
+<title>板塊時光機 v1.4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.3</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.4</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -426,6 +426,15 @@ function zWord(z){ return z==null?'—':(z>=80?'很強':(z>=60?'偏強':(z>=40?'
 function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
 var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>強度分是什麼：</b>0～100 的名次分。100＝今天最強的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div>';
 function posScore(give){ return Math.round((1-give)*100); }
+function dRow(label,v,lo,hi,valTxt,right){
+  var span=(hi-lo)||1, L=14, W=72, z=L+(-lo)/span*W, len=Math.abs(v)/span*W, left=v>=0?z:z-len, col=v>=0?'#1f6f3a':'#b3262e';
+  var lab=v>=0?'left:'+(z+len+1)+'%':'right:'+(100-left+1)+'%';
+  return '<div style="display:flex;align-items:center;gap:6px;margin:4px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div>'+
+    '<div style="flex:1;position:relative;height:24px;background:#eef0f4;border-radius:5px;min-width:120px"><div style="position:absolute;top:0;bottom:0;left:'+z+'%;border-left:2px solid #667"></div>'+
+    '<div style="position:absolute;top:3px;bottom:3px;left:'+left+'%;width:'+len+'%;background:'+col+';border-radius:3px"></div>'+
+    '<div style="position:absolute;top:0;'+lab+';line-height:24px;font-size:13.5px;font-weight:900;color:'+col+';white-space:nowrap">'+valTxt+'</div></div>'+
+    '<div style="width:230px;font-size:12.5px;flex:none">'+right+'</div></div>';
+}
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
@@ -469,10 +478,11 @@ function showDay(ds){
   h+='<div class="read">另外 <b>'+rest+'</b> 個板塊在回檔、回吐、休息或沒動靜。'+(by['剛起步'].length===0?' 沒有板塊在剛起步，代表當天看不到「新主流剛冒出來」的訊號。':'')+'</div></div>';
   // 強弱
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
-  h+='<div class="box"><div class="h">① 當天誰最強（條＝前 3 個月漲幅，右邊再列前 1 個月）</div>';
-  var zs=zList(o1.map(function(r){return r.r3;})); o1.forEach(function(r,i){ h+=barsRow(r.x.s.icon+' '+r.x.s.name,Math.abs(r.r3||0)/mx*100,(r.r3||0)>=0?'#1f6f3a':'#b3262e','3月 <b>'+f0(r.r3)+'</b>｜1月 '+f0(r.r1)+'<br>'+zTxt(zs[i])); });
+  h+='<div class="box"><div class="h">① 當天誰最強（綠條往右＝前 3 個月漲、紅條往左＝跌；數字接在條後面；右邊再列前 1 個月）</div>';
+  var zs=zList(o1.map(function(r){return r.r3;})), vs=o1.map(function(r){return (r.r3||0)*100;}), lo=Math.min(0,Math.min.apply(null,vs)), hi=Math.max(0,Math.max.apply(null,vs));
+  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'1 個月 '+f0(r.r1)+'<br>'+zTxt(zs[i])); });
   h+=Z_NOTE;
-  h+='<div class="read"><b>白話：</b>3 個月強、1 個月也強＝還在跑；3 個月強、1 個月弱＝可能開始休息。這裡的數字都只用當天以前的價格。</div></div>';
+  h+='<div class="read"><b>白話：</b>「3 個月」指當天往前推 3 個月的漲跌幅，不是 3 月。綠＝這 3 個月漲、紅＝跌，條越長幅度越大。3 個月強、1 個月也強＝還在跑；3 個月強、1 個月弱＝可能開始休息。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
   h+='<div class="box"><div class="h">② 當天各板塊在哪個位置（條＝最近一波高點吐回幾成；越短越強）</div>';
   R.filter(function(r){return r.st;}).sort(function(a,b){return a.st.give-b.st.give;}).forEach(function(r){
