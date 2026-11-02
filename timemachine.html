@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.12</title>
+<title>板塊時光機 v1.15</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,13 +31,15 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.12</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.15</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
     <div class="sub">只用「那一天以前」的價格重算，沒有偷看後面。位階規則和 charts v3.1 相同，門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證。價格資料約 2 年，所以最早只能看到資料開始後半年左右。</div>
     <div class="row" id="presets"></div>
     <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button></div>
+    <div class="row" style="margin-top:6px"><input type="text" id="tk" placeholder="輸入股票代號，例如 TSM" autocapitalize="characters" autocomplete="off" style="font-size:16px;padding:10px 12px;border:2px solid #e6c84a;border-radius:10px;width:210px;background:#fff"><button class="btn go" id="btnTk">查它屬於哪個板塊</button><button class="btn" id="btnLatest">用最新一天</button></div>
+    <div class="sub"><b>查個股</b>：只顯示它所屬的板塊，其他板塊不會出現（用上面選的那一天；想看「現在」就按「用最新一天」）。要看全部板塊，按上面的「看這一天」或日期按鈕。</div>
     <div class="prog" id="prog">準備中…</div>
   </div>
   <div id="out"></div>
@@ -414,7 +416,7 @@ function waveState(A){
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
 function el(id){return document.getElementById(id);}
-var SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','沒動靜'];
+var TK='', SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','沒動靜'];
 var PRESETS=[['3/13（週五）','2026-03-13'],['4/15（週三）','2026-04-15'],['5/15（週五）','2026-05-15']];
 function wd(d){ return '日一二三四五六'.charAt(new Date(d+'T12:00:00Z').getUTCDay()); }
 function barsRow(label,pct,col,txt){
@@ -458,7 +460,7 @@ function plainRead(r3,r1,lead,st,longUp){
   if(tr==='go'){ LT='順風'; C='#1f6f3a'; sen='現在'+(/剛起步/.test(lb)?'剛開始動':'還在漲')+'，位置在高點附近，算順風。'; }
   else if(tr==='late'){ LT='小心'; C='#c0600a'; sen='強勢板塊的後段：站在高點附近，但這一波已經跑了 '+st.bars+' 個交易日、漲了 '+pctA(st.last.gain)+'，不是起漲位置；追的話要小、要快。'+(a1<0?' 最近 1 個月已轉弱。':''); }
   else if(tr==='pause'){ LT='小心'; C='#c0600a'; sen='停在高點附近整理（離高點 '+st.dayPk+' 天），'+(a1<0?'最近 1 個月跌了 '+pctA(r1)+'，':(a1>0?'最近 1 個月漲了 '+pctA(r1)+'，':''))+'還沒大幅吐回，也還沒再往上；等突破確認。'; }
-  else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(longUp?'漲的是前面那段，':'')+'勝算較低，多半避開。'; }
+  else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(a1<0?'最近 1 個月還在往下。':(a1>0?'最近 1 個月反彈了 '+pctA(r1)+'，但還沒走出新的一波（要從低點漲滿 15% 才算）。':'最近 1 個月沒什麼動，在低檔橫著。'))+(longUp?'漲的是前面那段，':'')+(a1>0?'勝算較低，先觀察、不急著做。':'勝算較低，多半避開。'); }
   return '<div style="margin-bottom:3px"><span style="background:'+C+';color:#fff;font-weight:900;padding:2px 9px;border-radius:6px;font-size:14px">'+LT+'</span> <b style="color:'+C+';font-size:15.5px;margin-left:4px">'+lb+'</b></div>'+
     '<div style="font-size:14px;line-height:1.55;color:#223">'+sen+'</div>'+
     '<div style="font-size:12.5px;color:#667;margin-top:2px">'+(lead?lead+'；':'')+d3+'，'+d1+'｜離高點分 '+posScore(st.give)+'／100</div>';
@@ -506,9 +508,14 @@ function showDay(ds){
   h+='<div class="read">另外 <b>'+rest+'</b> 個板塊在回檔、回吐、休息或沒動靜。'+(by['剛起步'].length===0?' 沒有板塊在剛起步，代表當天看不到「新主流剛冒出來」的訊號。':'')+'</div></div>';
   // 強弱
   var o1=R.slice().sort(function(a,b){return (b.r3==null?-9:b.r3)-(a.r3==null?-9:a.r3);}), mx=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r3||0);}))||1;
-  h+='<div class="box"><div class="h">① 過去 3 個月，誰漲得最多？</div>';
   var zs=zList(o1.map(function(r){return r.r3;})), vs=o1.map(function(r){return (r.r3||0)*100;}), lo=Math.min(0,Math.min.apply(null,vs)), hi=Math.max(0,Math.max.apply(null,vs));
-  o1.forEach(function(r,i){ h+=dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i]),plainRead(r.r3,r.r1,'',r.st,r.r3>=0.05)); });
+  var rowOf=function(r,i){ return dRow(r.x.s.icon+' '+r.x.s.name,vs[i],lo,hi,fmtPct(vs[i],0),'最近 1 個月：'+f0(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs[i]),plainRead(r.r3,r.r1,'',r.st,r.r3>=0.05)); };
+  if(TK){ var mine=[]; o1.forEach(function(r,i){ if(r.x.s.tickers.indexOf(TK)>=0) mine.push(rowOf(r,i)+(r.st?'<div style="margin:0 0 10px 98px;font-size:13px;line-height:1.55;color:#445"><b>細節：</b>'+r.st.why+'</div>':'')); });
+    out.innerHTML='<div class="box" style="border:3px solid #e6c84a"><div class="h">你查的 '+TK+'<span class="sub">　（'+fd(date)+' 當天）</span></div>'+(mine.length?'<div class="sub">'+TK+' 屬於下面這 '+mine.length+' 個板塊。這是板塊的環境，不是這檔股票自己的買點。</div>'+mine.join(''):'<div class="read">'+TK+' 不在你的任何板塊裡（或所屬板塊成分股不到 3 檔），所以這裡看不到它的環境。要看的話，要先把它加進板塊名單。</div>')+'<div class="row" style="margin-top:8px"><button class="btn" id="btnAll">看全部板塊</button></div></div>';
+    el('btnAll').onclick=function(){ TK=''; showDay(el('dt').value); };
+    return; }
+  h+='<div class="box"><div class="h">① 過去 3 個月，誰漲得最多？</div>';
+  o1.forEach(function(r,i){ h+=rowOf(r,i); });
   h+=Z_NOTE;
   h+='<div class="read"><b>怎麼看：</b>中間那條細線是 0（沒漲沒跌）。綠條往右＝這個板塊在「過去 3 個月」漲了，紅條往左＝跌了，數字就是漲跌幅。「過去 3 個月」是從你選的那一天往前數 3 個月，不是 3 月份。右邊的「最近 1 個月」是看它最近還有沒有力氣：過去 3 個月漲很多、最近 1 個月卻在跌，可能已經開始休息；兩個都在漲，才是還在跑。這裡的數字都只用當天以前的價格。</div></div>';
   // 位階
@@ -606,8 +613,11 @@ async function init(){
   el('prog').textContent='價格資料：'+fd(SPYB.d[0])+' ～ '+fd(SPYB.d[SPYB.d.length-1])+'，可以開始了。';
   var dt=el('dt'); dt.min=SPYB.d[119]; dt.max=SPYB.d[SPYB.d.length-1]; dt.value=PRESETS[0][1];
   el('presets').innerHTML=PRESETS.map(function(p){ return '<button class="btn" data-d="'+p[1]+'">'+p[0]+'</button>'; }).join('');
-  Array.prototype.forEach.call(el('presets').children,function(b){ b.onclick=function(){ dt.value=b.getAttribute('data-d'); showDay(dt.value); }; });
-  el('btnGo').onclick=function(){ showDay(dt.value); };
+  Array.prototype.forEach.call(el('presets').children,function(b){ b.onclick=function(){ TK=''; dt.value=b.getAttribute('data-d'); showDay(dt.value); }; });
+  el('btnGo').onclick=function(){ TK=''; showDay(dt.value); };
+  var goTk=function(){ TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
+  el('btnTk').onclick=goTk; el('tk').onkeydown=function(e){ if(e.key==='Enter') goTk(); };
+  el('btnLatest').onclick=function(){ dt.value=dt.max; TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
   el('btnAgg').onclick=runAgg;
   showDay(dt.value);
 }
