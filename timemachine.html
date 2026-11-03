@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.20</title>
+<title>板塊時光機 v1.21</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.20</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.21</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -408,8 +408,9 @@ function waveState(A){
     else if(give<0.7){ label='回檔中'; col='#c0600a'; tier='pull'; }
     else { label='大幅回吐'; col='#b3262e'; tier='bad'; }
     var pkTxt='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），累計漲了 '+fmtPct(w.gain*100,0)+'，之後整組回檔還不到 15%，所以尚未確認結束；';
-    if(tier==='pause') why=pkTxt+'吐回不到 3 成，<b>比較像暫停</b>，買盤沒有明顯撤退。';
-    else if(tier==='pull') why=pkTxt+'已吐回 '+Math.round(give*10)+' 成，<b>不像單純暫停</b>，要看之後能不能守住。';
+    var dropPct=Math.round((1-(1+w.gain*(1-give))/(1+w.gain))*100);
+    if(tier==='pause') why=pkTxt+'從最高點只往下退了約 '+dropPct+'%（這一波漲幅還守住 7 成以上），<b>比較像停下來喘口氣</b>，賣壓不大。';
+    else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
