@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>成交量雷達 v0.1</title>
+<title>成交量雷達 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,13 +36,13 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">① 掃描：哪些股票的量跟自己比特別突出？</div>
     <div class="sub">每檔只跟<b>自己過去 50 天的平均量</b>比（不跟別檔比）。再看那天的價格和位置，粗分成「偏準備（吸籌）」「偏出貨」「看不出來」。<b>這個分法是業界通用的判斷方向，不是驗證過的勝率</b>——到底有沒有預測力，要看下面的 ② 回測。</div>
     <div class="row">
-      <select id="thr" class="btn"><option value="1.5">量 ≥ 1.5 倍</option><option value="2" selected>量 ≥ 2 倍</option><option value="3">量 ≥ 3 倍</option></select>
+      <select id="thr" class="btn"><option value="1.5">量 ≥ 1.5 倍</option><option value="2" selected>量 ≥ 2 倍</option><option value="3">量 ≥ 3 倍</option><option value="pp">口袋支點（量不一定很大）</option></select>
       <select id="win" class="btn"><option value="1">只看最新一天</option><option value="3" selected>近 3 天</option><option value="5">近 5 天</option></select>
       <button class="btn go" id="btnScan">掃描</button>
     </div>
@@ -51,7 +51,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
   <div id="scanOut"></div>
   <div class="box" id="btBox" style="display:none">
     <div class="h">② 回測：放量到底有沒有預測力？</div>
-    <div class="sub">把你這批股票過去約 2 年、每一天都檢查一遍：那天放量的話，<b>隔天開盤買進</b>，看之後 20 天（和 60 天）的表現，跟「隨便哪一天買」比。<b>停損 8%</b> 欄＝20 天內有沒有碰到 −8%。</div>
+    <div class="sub">把你這批股票過去約 2 年、每一天都檢查一遍：那天放量的話，<b>隔天開盤買進</b>，看之後 20 天（和 60 天）的表現，跟「隨便哪一天買」比。<b>停損 8%</b> 欄＝20 天內有沒有碰到 −8%。回測會另外載入約 <b>10 年</b>價格（含 2022 熊市），所以第一次會等 1～2 分鐘；財報／消息跳空的日子另外算。</div>
     <div class="row"><button class="btn go" id="btnBt">開始回測</button></div>
     <div id="btOut"></div>
   </div>
@@ -438,10 +438,14 @@ function feat(B,i){
   var hi=0,lo=1e12,from=Math.max(0,i-252); for(var k=from;k<=i;k++){ if(h[k]>hi) hi=h[k]; }
   for(var k2=i-60;k2<=i;k2++){ if(l[k2]<lo) lo=l[k2]; }
   var top=true; for(var k3=i-60;k3<i;k3++){ if(B.v[k3]>=B.v[i]){ top=false; break; } }
-  return {rv:B.v[i]/a50, chg:c[i]/c[i-1]-1, cp:rng>0?(c[i]-l[i])/rng:0.5, ext:c[i]/m50-1, nearHi:c[i]/hi-1, up60:c[i]/lo-1, top:top};
+  var gapv=Math.abs(B.o[i]/c[i-1]-1), chg0=c[i]/c[i-1]-1;
+  var md10=0, sv=0; for(var q=i-10;q<i;q++){ sv+=B.v[q]; if(c[q]<c[q-1]&&B.v[q]>md10) md10=B.v[q]; }
+  var ext0=c[i]/m50-1;
+  return {gap:(gapv>=0.04||Math.abs(chg0)>=0.07), pp:(chg0>0&&B.v[i]>md10&&c[i]>=m50*0.97&&ext0<=0.15), dry:(sv/10/a50<=0.8), rv:B.v[i]/a50, chg:c[i]/c[i-1]-1, cp:rng>0?(c[i]-l[i])/rng:0.5, ext:c[i]/m50-1, nearHi:c[i]/hi-1, up60:c[i]/lo-1, top:top};
 }
 // 粗分：偏準備／偏出貨／看不出來（門檻是我訂的參考範圍，未驗證）
 function classify(f){
+  if(f.gap) return {k:'gap',why:'當天跳空或漲跌超過 7%，多半是財報／消息帶動，不是安靜吸籌的量；你的規則財報前後一週不買'};
   var down=f.chg<-0.005, up=f.chg>0.005, atHigh=f.nearHi>-0.10;
   if(f.ext>0.25&&f.rv>=2) return {k:'dist',why:'已經離 50 日線很遠（漲了 '+pcs(f.ext)+'）還爆大量，像漲多後的出貨／高潮量'};
   if(down&&f.cp<0.5) return {k:'dist',why:'放量下跌、收在當天下半部，賣壓重'};
@@ -449,7 +453,7 @@ function classify(f){
   if(up&&f.cp>=0.6&&f.ext<=0.15&&f.ext>=-0.08&&f.up60<0.6) return {k:'prep',why:'上漲日放量、收在當天上半部，位置離 50 日線不遠（'+pcs(f.ext)+'）、還沒漲很多，像有人在吃貨'};
   return {k:'unk',why:'量大，但價格和位置沒有明確偏向哪邊'};
 }
-var KN={prep:'偏準備',dist:'偏出貨',unk:'看不出來'}, KC={prep:'#1f6f3a',dist:'#b3262e',unk:'#667'};
+var KN={prep:'偏準備',dist:'偏出貨',unk:'看不出來',gap:'跳空／消息型'}, KC={prep:'#1f6f3a',dist:'#b3262e',unk:'#667',gap:'#7a4fb5'};
 function secLight(st){
   if(!st) return {t:'沒動靜',c:'#99a'};
   var tr=st.tier; if(tr==='go') return {t:'順風',c:'#1f6f3a'};
@@ -467,40 +471,73 @@ function calcSecStates(){
 }
 function bestSec(t){ var ns=T2S[t]||[], best=null; ns.forEach(function(n){ var q=SECST[n]; if(!q) return; var L=secLight(q.st); var rank={'順風':0,'小心':1,'沒動靜':2,'逆風':3}[L.t]; if(!best||rank<best.r) best={r:rank,q:q,L:L}; }); return best; }
 function scan(){
-  var thr=+el('thr').value, W=+el('win').value, out=[], uni=Object.keys(T2S);
+  var thrv=el('thr').value, PPm=(thrv==='pp'), thr=PPm?0:+thrv, W=+el('win').value, out=[], uni=Object.keys(T2S);
   uni.forEach(function(t){
     var B=BARS[t]; if(!B) return; var n=B.c.length;
-    for(var o=0;o<W;o++){ var i=n-1-o, f=feat(B,i); if(f&&f.rv>=thr){ out.push({t:t,i:i,f:f,cl:classify(f),B:B,sec:bestSec(t)}); break; } }
+    for(var o=0;o<W;o++){ var i=n-1-o, f=feat(B,i); if(f&&(PPm?f.pp&&!f.gap:f.rv>=thr)){ out.push({t:t,i:i,f:f,cl:classify(f),B:B,sec:bestSec(t)}); break; } }
   });
   out.sort(function(a,b){ return b.f.rv-a.f.rv; });
-  var G={watch:[],weak:[],dist:[],unk:[]};
-  out.forEach(function(r){ if(r.cl.k==='prep'){ if(r.sec&&r.sec.L.t==='順風') G.watch.push(r); else G.weak.push(r); } else if(r.cl.k==='dist') G.dist.push(r); else G.unk.push(r); });
+  var G={watch:[],weak:[],dist:[],unk:[],gap:[]};
+  out.forEach(function(r){ if(r.cl.k==='prep'){ if(r.sec&&r.sec.L.t==='順風') G.watch.push(r); else G.weak.push(r); } else if(r.cl.k==='dist') G.dist.push(r); else if(r.cl.k==='gap') G.gap.push(r); else G.unk.push(r); });
   var card=function(r){
     var f=r.f, B=r.B, L=r.sec?r.sec.L:{t:'不在任何板塊',c:'#99a'};
-    return '<div class="card"><div style="font-size:17px;font-weight:900">'+r.t+' <span class="tag" style="background:'+KC[r.cl.k]+'">'+KN[r.cl.k]+'</span><span class="tag" style="background:'+L.c+'">板塊 '+L.t+'</span><span class="sub">　'+mdd(B.d[r.i])+(r.sec?'　'+r.sec.q.icon+' '+r.sec.q.name:'')+'</span></div>'+
+    return '<div class="card"><div style="font-size:17px;font-weight:900">'+r.t+' <span class="tag" style="background:'+KC[r.cl.k]+'">'+KN[r.cl.k]+'</span><span class="tag" style="background:'+L.c+'">板塊 '+L.t+'</span>'+(f.pp?'<span class="tag" style="background:#0066bb">口袋支點</span>':'')+(f.dry&&f.rv>=1.5?'<span class="tag" style="background:#0066bb">量縮後放量</span>':'')+'<span class="sub">　'+mdd(B.d[r.i])+(r.sec?'　'+r.sec.q.icon+' '+r.sec.q.name:'')+'</span></div>'+
       '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b>那天的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價當天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+
       '<div class="sub">離 50 日線 '+pcs(f.ext)+'｜離 1 年高點 '+pcs(f.nearHi)+'｜從近 3 個月低點已漲 '+pcs(f.up60)+'</div></div>';
   };
   var sect=function(title,color,arr,note,open){ return '<div class="box"><div class="h" style="color:'+color+'">'+title+'（'+arr.length+' 檔）</div><div class="sub">'+note+'</div>'+(arr.length?(open?arr.map(card).join(''):'<details><summary>展開看</summary>'+arr.map(card).join('')+'</details>'):'<div class="sub" style="margin-top:6px">這次沒有。</div>')+'</div>'; };
-  var h='<div class="box"><div class="verdict" style="background:#eef6ee;color:#1f6f3a">'+(G.watch.length?'有 '+G.watch.length+' 檔「放量偏準備＋板塊順風」，可以先放進觀察名單':'這次沒有「放量偏準備＋板塊順風」的股票')+'</div><div class="sub">共 '+out.length+' 檔量 ≥ '+thr+' 倍（'+(W===1?'最新一天':'近 '+W+' 天內')+'）。<b>「觀察名單」只是「值得多看一眼」，不是買進訊號</b>；要不要買，還是看它自己的 pivot／DNA。DNA 的 pivot 標籤這版還沒接。</div></div>';
+  var h='<div class="box"><div class="verdict" style="background:#eef6ee;color:#1f6f3a">'+(G.watch.length?'有 '+G.watch.length+' 檔「放量偏準備＋板塊順風」，可以先放進觀察名單':'這次沒有「放量偏準備＋板塊順風」的股票')+'</div><div class="sub">共 '+out.length+' 檔'+(PPm?'出現口袋支點':'量 ≥ '+thr+' 倍')+'（'+(W===1?'最新一天':'近 '+W+' 天內')+'）。<b>「觀察名單」只是「值得多看一眼」，不是買進訊號</b>；要不要買，還是看它自己的 pivot／DNA。DNA 的 pivot 標籤這版還沒接。</div></div>';
   h+=sect('★ 觀察名單候選：放量偏準備＋板塊順風','#1f6f3a',G.watch,'量大、價格收強、位置還不高，而且所屬板塊現在是順風。',true);
   h+=sect('放量偏準備，但板塊不順','#c0600a',G.weak,'股票本身的量價像在吃貨，但板塊在小心／逆風，先留意就好。',false);
   h+=sect('偏出貨：先排除','#b3262e',G.dist,'量大但價格是弱的或已經漲多，比較像賣壓或高潮量。',false);
+  h+=sect('跳空／消息型爆量（多半是財報）','#7a4fb5',G.gap,'當天跳空或漲跌超過 7%，量大主要是消息帶動，不是安靜吸籌。這類我分開看，不算進「偏準備」；你的規則財報前後一週不買。',false);
   h+=sect('看不出來','#667',G.unk,'量大，但價格和位置沒有清楚偏向。',false);
   el('scanOut').innerHTML=h;
 }
 // ───────── 回測 ─────────
-function runBt(){
-  var btn=el('btBtn')||el('btnBt'); btn.disabled=true; var outEl=el('btOut'); outEl.innerHTML='<div class="sub">計算中…</div>';
-  var S=BARS['SPY'], uni=Object.keys(T2S).filter(function(t){return BARS[t];}), ti=0;
-  var GR=[]; // {g:groupKey, r20,r60,stop,beat}
-  var rows=[];
-  var last={};
+var LONG={};
+async function fetchLong(t,retried){
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=10y&_cb='+Date.now();
+  var r=await fetch(PROXY+encodeURIComponent(base),{cache:'no-store'});
+  if(r.status===429&&!retried){ await sleep(2000); return fetchLong(t,true); }
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json(); if(!d.chart||!d.chart.result||!d.chart.result[0]) throw new Error('no data'); return d.chart.result[0];
+}
+async function loadLong(list,onProg){
+  var idx=0,done=0;
+  async function w(){ while(idx<list.length){ var t=list[idx++]; try{ LONG[t]=prep(parseBars(await fetchLong(t))); }catch(e){ if(BARS[t]) LONG[t]=BARS[t]; } done++; onProg(done,list.length); } }
+  await Promise.all([w(),w(),w(),w()]);
+}
+// 板塊位階時間線（只用 2 年資料、每 5 個交易日一次，沒有偷看後面）
+var TL={};
+function buildTL(){
+  TL={}; var S=BARS['SPY'], save=S, n=S.d.length;
+  var lists=SECS.map(function(s){ return {s:s,list:s.tickers.filter(function(t){return BARS[t];}).map(function(t){return {t:t,B:BARS[t],o:{}};})}; }).filter(function(x){return x.list.length>=3;});
+  for(var k=119;k<n;k+=5){
+    BARS['SPY']={d:S.d.slice(0,k+1)};
+    lists.forEach(function(x){ var L; try{ var A=analyzeWaves(x.list,true); L=secLight(A.st).t; }catch(e){ L=null; } (TL[x.s.name]=TL[x.s.name]||[]).push({d:S.d[k],L:L}); });
+  }
+  BARS['SPY']=save;
+}
+function lightAt(t,date){
+  var ns=T2S[t]||[], best=null, rk={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
+  ns.forEach(function(nm){ var a=TL[nm]; if(!a) return; var L=null; for(var q=a.length-1;q>=0;q--){ if(a[q].d<=date){ L=a[q].L; break; } } if(L==null) return; if(best==null||rk[L]<rk[best]) best=L; });
+  return best;
+}
+async function runBt(){
+  var btn=el('btnBt'); btn.disabled=true; var outEl=el('btOut');
+  var uni=Object.keys(T2S).filter(function(t){return BARS[t];});
+  outEl.innerHTML='<div class="sub">載入約 10 年價格 …（第一次要 1～2 分鐘；沒抓到的股票退回用 2 年）</div>';
+  await loadLong(uni.concat(['SPY']),function(d,tot){ outEl.innerHTML='<div class="sub">載入長期價格 '+d+'／'+tot+' …</div>'; });
+  var S=LONG['SPY']||BARS['SPY']; var spanTxt=fd(S.d[0])+' ～ '+fd(S.d[S.d.length-1]);
+  outEl.innerHTML='<div class="sub">計算板塊位階時間線 …</div>'; await sleep(30); buildTL();
+  var rows=[], last={}, ti=0;
   function add(g,t,i,r){ var key=g+'|'+t; if(last[key]!=null&&i-last[key]<5) return; last[key]=i; rows.push({g:g,r:r}); }
+  var bucket=function(v,cuts,names){ for(var q=0;q<cuts.length;q++) if(v<cuts[q]) return names[q]; return names[names.length-1]; };
   function step(){
-    var end=Math.min(uni.length,ti+6);
+    var end=Math.min(uni.length,ti+5);
     for(;ti<end;ti++){
-      var t=uni[ti], B=BARS[t], n=B.c.length;
+      var t=uni[ti], B=LONG[t]||BARS[t], n=B.c.length;
       for(var i=60;i+21<n;i++){
         var f=feat(B,i); if(!f) continue;
         var e=B.o[i+1]; if(!(e>0)) continue;
@@ -509,15 +546,23 @@ function runBt(){
         var r60=(i+61<n&&j+61<S.c.length)?B.c[i+60]/e-1:null;
         var mn=1e9; for(var k=i+1;k<=i+20;k++) if(B.l[k]<mn) mn=B.l[k];
         var r={r20:r20,r60:r60,stop:mn<=e*0.92,beat:r20>s20};
-        var cl=classify(f), gs=['全部日子'];
+        var cl=classify(f), gs=['全部日子'], yr=B.d[i].slice(0,4), big=f.rv>=1.5, quiet=big&&!f.gap;
         gs.push(f.rv<1?'量 <1 倍（量縮）':f.rv<1.5?'量 1～1.5 倍':f.rv<2?'量 1.5～2 倍':f.rv<3?'量 2～3 倍':'量 ≥3 倍');
-        if(f.rv>=1.5){
-          gs.push('放量(≥1.5倍)・'+KN[cl.k]);
-          gs.push('放量(≥1.5倍)・'+(f.chg>0.005?'上漲日':f.chg<-0.005?'下跌日':'平盤日')+'・收在'+(f.cp>=0.6?'上段':f.cp<=0.4?'下段':'中段'));
-          gs.push('放量(≥1.5倍)・離50日線'+(f.ext<-0.05?'下方 >5%':f.ext<0.05?'±5% 內':f.ext<0.15?'上方 5～15%':f.ext<0.25?'上方 15～25%':'上方 >25%'));
-          gs.push('放量(≥1.5倍)・離1年高點'+(f.nearHi>-0.03?'<3%':f.nearHi>-0.10?'3～10%':f.nearHi>-0.20?'10～20%':'>20%'));
+        gs.push('Y'+yr+'|全部');
+        if(big) gs.push(f.gap?'放量(≥1.5倍)・跳空／消息型':'放量(≥1.5倍)・一般日（非跳空）');
+        if(quiet){
+          gs.push('一般日放量・'+KN[cl.k]);
+          gs.push('一般日放量・'+(f.chg>0.005?'上漲日':f.chg<-0.005?'下跌日':'平盤日')+'・收在'+(f.cp>=0.6?'上段':f.cp<=0.4?'下段':'中段'));
+          gs.push('一般日放量・離50日線'+bucket(f.ext,[-0.05,0.05,0.15,0.25],['下方 >5%','±5% 內','上方 5～15%','上方 15～25%','上方 >25%']));
+          gs.push('一般日放量・離1年高點'+bucket(-f.nearHi,[0.03,0.10,0.20],['<3%','3～10%','10～20%','>20%']));
+          if(f.rv>=2) gs.push('Y'+yr+'|放量2');
+          if(cl.k==='prep') gs.push('Y'+yr+'|準備');
         }
-        if(f.rv>=2&&f.top) gs.push('爆量(≥2倍)且是近3個月最大量');
+        if(!f.gap&&f.pp) gs.push('口袋支點（非跳空）');
+        if(!f.gap&&f.dry&&big&&f.chg>0.005&&f.cp>=0.6) gs.push('量縮後放量（10日均量≤0.8倍，今天≥1.5倍，上漲收強）');
+        if(!f.gap&&f.pp&&f.dry&&big) gs.push('口袋支點＋量縮後放量');
+        var L=lightAt(t,B.d[i]);
+        if(L){ gs.push('全部日子・板塊'+L); if(quiet&&cl.k==='prep') gs.push('偏準備・板塊'+L); if(f.pp&&!f.gap) gs.push('口袋支點・板塊'+L); }
         gs.forEach(function(g){ add(g,t,i,r); });
       }
     }
@@ -528,31 +573,40 @@ function runBt(){
   function stat(g){ var a=rows.filter(function(x){return x.g===g;}).map(function(x){return x.r;}); if(!a.length) return null;
     var r60=a.filter(function(x){return x.r60!=null;}).map(function(x){return x.r60;});
     return {n:a.length,avg:mean(a.map(function(x){return x.r20;})),med:med(a.map(function(x){return x.r20;})),win:a.filter(function(x){return x.r20>0;}).length/a.length,beat:a.filter(function(x){return x.beat;}).length/a.length,stop:a.filter(function(x){return x.stop;}).length/a.length,m60:med(r60)}; }
-  function line(g,base){ var s=stat(g); if(!s) return ''; var d=base?s.med-base.med:null; var cls=function(v){return v>=0?'pos':'neg';};
-    return '<tr><td><b>'+g+'</b></td><td>'+s.n+'</td><td class="'+cls(s.med)+'">'+pc1(s.med)+'</td><td>'+pc1(s.avg)+'</td><td>'+Math.round(s.win*100)+'%</td><td>'+Math.round(s.beat*100)+'%</td><td>'+Math.round(s.stop*100)+'%</td><td>'+pc1(s.m60)+'</td></tr>'; }
-  function table(title,gs,base,note){
-    var body=gs.map(function(g){return line(g,base);}).join(''); if(!body) return '';
-    return '<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">'+title+'</div><div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>20 天中位數</th><th>平均</th><th>20 天賺錢</th><th>贏過大盤</th><th>碰停損 8%</th><th>60 天中位數</th></tr>'+line('全部日子',null)+body+'</table></div>'+(note?'<div class="read">'+note+'</div>':'')+'</div>'; }
-  function cmp(g,base){ var s=stat(g); if(!s||!base) return null; var d=(s.med-base.med)*100, e=(s.stop-base.stop)*100;
-    var v=s.n<30?'次數太少（'+s.n+'），不能下結論':(Math.abs(d)<1.5?'看不出差別':(d>0?'比基準好':'比基準差'));
-    return {s:s,d:d,e:e,v:v}; }
+  function line(g,label){ var s=stat(g); if(!s) return ''; var cls=function(v){return v>=0?'pos':'neg';};
+    return '<tr><td><b>'+(label||g)+'</b></td><td>'+s.n+'</td><td class="'+cls(s.med)+'">'+pc1(s.med)+'</td><td>'+pc1(s.avg)+'</td><td>'+Math.round(s.win*100)+'%</td><td>'+Math.round(s.beat*100)+'%</td><td>'+Math.round(s.stop*100)+'%</td><td>'+pc1(s.m60)+'</td></tr>'; }
+  function table(title,gs,note,baseG){
+    var body=gs.map(function(g){return line(g);}).join(''); if(!body) return '';
+    return '<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">'+title+'</div><div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>20 天中位數</th><th>平均</th><th>20 天賺錢</th><th>贏過大盤</th><th>碰停損 8%</th><th>60 天中位數</th></tr>'+line(baseG||'全部日子','基準：'+(baseG||'全部日子'))+body+'</table></div>'+(note?'<div class="read">'+note+'</div>':'')+'</div>'; }
+  function cmp(g,baseG){ var s=stat(g), b=stat(baseG||'全部日子'); if(!s||!b) return null; var d=(s.med-b.med)*100;
+    return {s:s,d:d,v:s.n<30?'次數太少（'+s.n+'）':(Math.abs(d)<1.5?'看不出差別':(d>0?'比基準好':'比基準差'))}; }
   function render(){
     var base=stat('全部日子'); if(!base){ outEl.innerHTML='<div class="box">資料不夠。</div>'; return; }
-    var P=cmp('放量(≥1.5倍)・偏準備',base), D=cmp('放量(≥1.5倍)・偏出貨',base), B2=cmp('量 ≥3 倍',base), T3=cmp('爆量(≥2倍)且是近3個月最大量',base);
-    var verdict, vc;
-    if(!P||P.s.n<30){ verdict='放量偏準備的次數太少，還不能下結論。'; vc='#eee;color:#445'; }
-    else if(Math.abs(P.d)<1.5){ verdict='在你這批股票裡，「放量偏準備」之後 20 天，<b>跟隨便哪一天買看不出差別</b>（中位數差 '+P.d.toFixed(1)+' 個百分點）。目前證據不支持把量當成預測因子。'; vc='#fff3d6;color:#8a5a00'; }
-    else if(P.d>0){ verdict='「放量偏準備」之後 20 天，中位數比隨便哪一天買高 <b>'+P.d.toFixed(1)+' 個百分點</b>（弱證據：只有約 2 年、同一段行情）。量可能有一點預測力，值得繼續驗證。'; vc='#eef6ee;color:#1f6f3a'; }
-    else { verdict='「放量偏準備」之後 20 天，中位數反而比隨便哪一天買低 <b>'+(-P.d).toFixed(1)+' 個百分點</b>。這個分法目前沒有幫助。'; vc='#fbeaea;color:#b3262e'; }
+    var cand=[['偏準備（一般日放量）','一般日放量・偏準備'],['口袋支點','口袋支點（非跳空）'],['量縮後放量','量縮後放量（10日均量≤0.8倍，今天≥1.5倍，上漲收強）'],['口袋支點＋量縮後放量','口袋支點＋量縮後放量'],['爆量 ≥3 倍','量 ≥3 倍']];
+    var res=cand.map(function(c){ var x=cmp(c[1]); return x?{n:c[0],x:x}:null; }).filter(Boolean);
+    var good=res.filter(function(r){return r.x.v==='比基準好';}), bad=res.filter(function(r){return r.x.v==='比基準差';});
+    var verdict,vc;
+    if(good.length){ verdict='有 '+good.length+' 個量的條件，之後 20 天比隨便哪一天買好：'+good.map(function(r){return r.n+'（+'+r.x.d.toFixed(1)+' 個百分點，'+r.x.s.n+' 次）';}).join('、')+'。<span style="font-size:14px;font-weight:700">先別當成規律——要再看下面按年份是不是每年都一樣。</span>'; vc='#eef6ee;color:#1f6f3a'; }
+    else if(bad.length){ verdict='沒有任何量的條件比隨便哪一天買好；其中 '+bad.map(function(r){return r.n+'（'+r.x.d.toFixed(1)+' 個百分點）';}).join('、')+' 反而比較差。目前不支持把量當成買進預測因子。'; vc='#fbeaea;color:#b3262e'; }
+    else { verdict='沒有任何量的條件，跟隨便哪一天買比起來看得出差別。目前不支持把量當成買進預測因子（可以降級成風險提醒）。'; vc='#fff3d6;color:#8a5a00'; }
     var h='<div class="verdict" style="background:'+vc+'">'+verdict+'</div>';
-    h+='<div class="read"><b>白話：</b>基準（隨便哪一天買）20 天中位數 '+pc1(base.med)+'、'+Math.round(base.win*100)+'% 的時候有賺、'+Math.round(base.stop*100)+'% 的時候 20 天內碰到 8% 停損。下面每一行都跟這條基準比：<b>差不到 1.5 個百分點、或次數不到 30，都當作「看不出差別」。</b>'+(D&&D.s.n>=30?' 「偏出貨」那組中位數 '+pc1(D.s.med)+'，'+(D.d<=-1.5?'確實比基準差，排除它有道理。':(D.d>=1.5?'反而比基準好，代表我的出貨判斷可能不準。':'跟基準差不多，代表目前分不出出貨。')):'')+'</div>';
-    h+=table('A. 量放大到幾倍',['量 <1 倍（量縮）','量 1～1.5 倍','量 1.5～2 倍','量 2～3 倍','量 ≥3 倍','爆量(≥2倍)且是近3個月最大量'],base,'');
-    h+=table('B. 放量（≥1.5 倍）時，我分的「準備／出貨」準不準',['放量(≥1.5倍)・偏準備','放量(≥1.5倍)・偏出貨','放量(≥1.5倍)・看不出來'],base,'');
-    h+='<details><summary>C. 拆開看：是價格還是位置在起作用？（細項）</summary>'+
-      table('C1. 放量當天的漲跌與收位',['上漲日','平盤日','下跌日'].reduce(function(a,d){ ['上段','中段','下段'].forEach(function(p){ a.push('放量(≥1.5倍)・'+d+'・收在'+p); }); return a; },[]),base,'')+
-      table('C2. 放量時，離 50 日線多遠',['下方 >5%','±5% 內','上方 5～15%','上方 15～25%','上方 >25%'].map(function(x){return '放量(≥1.5倍)・離50日線'+x;}),base,'')+
-      table('C3. 放量時，離 1 年高點多遠',['<3%','3～10%','10～20%','>20%'].map(function(x){return '放量(≥1.5倍)・離1年高點'+x;}),base,'')+'</details>';
-    h+='<div class="sub" style="margin-top:10px">⚠ 資料只有約 2 年、全是同一段 AI 行情；同一檔股票每組每 5 個交易日最多算 1 次，但相鄰結果仍有重疊；板塊位階（順風／小心）這版沒放進回測，下一版再加。拆越細樣本越少，結果只能當線索，不是規律。「準備／出貨」的條件和 1.5 個百分點的差距門檻都是我訂的，沒有冠軍原文可驗。</div>';
+    h+='<div class="read"><b>白話：</b>資料範圍 '+spanTxt+'。基準（隨便哪一天買）20 天中位數 '+pc1(base.med)+'、'+Math.round(base.win*100)+'% 的時候有賺、'+Math.round(base.stop*100)+'% 的時候 20 天內碰到 8% 停損。每一行都跟基準比：<b>差不到 1.5 個百分點、或次數不到 30，都當作「看不出差別」。</b></div>';
+    h+=table('A. 量放大到幾倍，以及是不是財報／消息跳空',['量 <1 倍（量縮）','量 1～1.5 倍','量 1.5～2 倍','量 2～3 倍','量 ≥3 倍','放量(≥1.5倍)・跳空／消息型','放量(≥1.5倍)・一般日（非跳空）'],'');
+    h+=table('B. 一般日放量（不含跳空）時，我分的「準備／出貨」準不準',['一般日放量・偏準備','一般日放量・偏出貨','一般日放量・看不出來'],'');
+    h+=table('C. 專家講的兩個具體條件',['口袋支點（非跳空）','量縮後放量（10日均量≤0.8倍，今天≥1.5倍，上漲收強）','口袋支點＋量縮後放量'],'<b>口袋支點</b>＝上漲日的量，大於前 10 天最大的下跌日量，且位置離 50 日線不遠。<b>量縮後放量</b>＝前 10 天量縮到 50 日均量 8 成以下，之後放量上漲收強。');
+    var yrs={}; rows.forEach(function(x){ var m=x.g.match(/^Y(\d{4})\|/); if(m) yrs[m[1]]=1; });
+    var yh='<tr><th>年份</th><th>隨便哪天（次數）</th><th>一般日放量≥2倍（次數）</th><th>偏準備（次數）</th></tr>';
+    Object.keys(yrs).sort().forEach(function(y){ var a=stat('Y'+y+'|全部'), b=stat('Y'+y+'|放量2'), c=stat('Y'+y+'|準備'); var cell=function(s){ return s?'<span class="'+(s.med>=0?'pos':'neg')+'">'+pc1(s.med)+'</span>（'+s.n+'）':'—'; }; yh+='<tr><td><b>'+y+'</b></td><td>'+cell(a)+'</td><td>'+cell(b)+'</td><td>'+cell(c)+'</td></tr>'; });
+    h+='<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">D. 按年份看（20 天中位數）：是不是每年都一樣？</div><div class="tw"><table class="t">'+yh+'</table></div><div class="read">看「放量」或「偏準備」是不是<b>每一年</b>都比「隨便哪天」好。只有某一年好，多半是那一年行情的功勞，不是量的功勞。</div></div>';
+    var LS=['順風','小心','逆風'];
+    var eh='';
+    LS.forEach(function(l){ eh+=line('全部日子・板塊'+l,'【基準】板塊'+l+'時的任何一天')+line('偏準備・板塊'+l,'偏準備・板塊'+l)+line('口袋支點・板塊'+l,'口袋支點・板塊'+l); });
+    h+='<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">E. 加上板塊位階（只有最近約 2 年有資料）</div><div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>20 天中位數</th><th>平均</th><th>20 天賺錢</th><th>贏過大盤</th><th>碰停損 8%</th><th>60 天中位數</th></tr>'+eh+'</table></div><div class="read">每三行一組：先看【基準】（那種板塊狀態下的任何一天），再看偏準備、口袋支點有沒有比它好。板塊順風的次數若很少，就不能下結論。</div></div>';
+    h+='<details><summary>F. 拆開看：是價格還是位置在起作用？（細項，一般日放量）</summary>'+
+      table('F1. 當天的漲跌與收位',['上漲日','平盤日','下跌日'].reduce(function(a,d){ ['上段','中段','下段'].forEach(function(p){ a.push('一般日放量・'+d+'・收在'+p); }); return a; },[]),'')+
+      table('F2. 離 50 日線多遠',['下方 >5%','±5% 內','上方 5～15%','上方 15～25%','上方 >25%'].map(function(x){return '一般日放量・離50日線'+x;}),'')+
+      table('F3. 離 1 年高點多遠',['<3%','3～10%','10～20%','>20%'].map(function(x){return '一般日放量・離1年高點'+x;}),'')+'</details>';
+    h+='<div class="sub" style="margin-top:10px">⚠ 注意：① 股票名單是「現在」你選的熱門股，過去的失敗者不在裡面（倖存者偏差），所以基準本身偏高；比較的是「放量」跟「基準」的相對差，但這個偏差仍可能影響結果。② 同一檔股票每組每 5 個交易日最多算 1 次，但相鄰結果仍有重疊。③ 拆越細樣本越少，結果只能當線索。④ 「跳空」（開盤跳 4% 以上或當天漲跌 7% 以上）是我用價格推測財報／消息日，沒有對照真正的財報日期。⑤ 準備／出貨的條件、1.5 個百分點的門檻都是我訂的。</div>';
     outEl.innerHTML=h;
   }
   setTimeout(step,0);
