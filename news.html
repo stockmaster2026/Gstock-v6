@@ -336,7 +336,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.6</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.7</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1687,6 +1687,7 @@ async function scRowNews(btn,t){
   btn.disabled=true; btn.textContent='抓新聞中…';
   var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0], news=null;
   try{ var d=await apiR('/company-news?symbol='+t+'&from='+from+'&to='+to); news=Array.isArray(d)?d:[]; }catch(e){ news=null; }
+  try{ await nwName(t); }catch(e){}
   var pfx=t.replace(/[^A-Za-z0-9]/g,'')+'_', st=scRowSt(t);
   var row=document.createElement('tr'); row.className='sc-nr'; var td=document.createElement('td'); td.colSpan=8; td.style.cssText='padding:0 0 10px;background:#fffdf3';
   td.innerHTML='<div style="margin:8px 14px 0;font-size:14px;font-weight:800;color:#12385e">$'+esc2(t)+(st?'　今天 '+(st.chg>=0?'+':'')+st.chg.toFixed(1)+'%':'')+'</div>'
@@ -1926,6 +1927,8 @@ function vsRender(){
 
 /* ── 個股查詢：今天新聞整合（依標題關鍵字分類，不是讀全文）＋同板塊有沒有一起動 ── */
 var NW_THEMES=[
+  ['指數調整（納入／剔除）',/(join|joins|joining|added to|adds|inclusion|entry|enter|enters|replac\w*|to replace).*(s&p 500|s&p midcap|s&p smallcap|nasdaq-100|nasdaq 100|russell|index)|(s&p 500|nasdaq-100|nasdaq 100).*(entry|inclusion|addition|replac|join)/i],
+  ['財報日程公告（不是財報結果）',/\b(to|will)\s+(announce|report|release|host|participate|present|hold)\b.*(results|earnings)|conference call|webcast|earnings (date|call) (announce|schedule)/i],
   ['財報／財測',/earnings|revenue|guidance|outlook|forecast|quarterly|fiscal|\beps\b|profit|results|\bq[1-4]\b/i],
   ['增資／發股／債券',/offering|dilut|convertible|private placement|share sale|notes due|shelf|raises? \$[\d.]+ ?(m|b|million|billion)/i],
   ['訂單／合作',/order|contract|partner|agreement|\bdeal\b|customer|award|collaborat|supply|design win|purchase|selected by/i],
@@ -1934,6 +1937,7 @@ var NW_THEMES=[
   ['分析師評等／目標價',/upgrade|downgrade|price target|analyst|rating|initiat|outperform|overweight|underweight|reiterat|raises? .* target|cuts? .* target/i],
   ['管理層異動',/\bceo\b|\bcfo\b|appoint|resign|steps? down|names? .*(president|chief)|board of directors/i],
   ['產品／技術',/launch|unveil|introduc|new product|platform|technology|silicon carbide|photonic|\bai\b|chip|system|wafer|test/i],
+  ['股價異動（標題直接講漲跌）',/\b(stock|shares)\b.*\b(rise|rises|jump|jumps|surge|surges|soar|soars|climb|climbs|gain|gains|fall|falls|drop|drops|slide|slides|plunge|plunges|tumble|tumbles|rally|rallies|lower|higher|trading)\b|why .*\b(stock|shares)\b/i],
   ['大盤／板塊連動',/stocks? (rally|surge|soar|jump|fall|drop|slide)|why .*(soar|jump|surge|plunge|skyrocket|rocket|tumble)|market|nasdaq|s&p|sector|semiconductor/i]
 ];
 function nwTheme(n){
@@ -1941,7 +1945,29 @@ function nwTheme(n){
   for(var i=0;i<NW_THEMES.length;i++) if(NW_THEMES[i][1].test(t)) return NW_THEMES[i][0];
   return '其他';
 }
-var NW_LAST=null, NW_PANELS={};
+var NW_LAST=null, NW_PANELS={}, NW_NAMES={}, NW_NAME_K='nw_name_v1';
+var NW_NODRV=['財報日程公告（不是財報結果）','大盤／板塊連動','其他','大盤綜述（不是這檔專屬）'];
+async function nwName(sym){
+  if(NW_NAMES[sym]!==undefined) return NW_NAMES[sym];
+  var c={}; try{ c=JSON.parse(localStorage.getItem(NW_NAME_K)||'{}')||{}; }catch(e){}
+  if(c[sym]){ NW_NAMES[sym]=c[sym]; return c[sym]; }
+  var nm='';
+  try{ var d=await apiR('/stock/profile2?symbol='+encodeURIComponent(sym)); if(d&&d.name) nm=String(d.name); }catch(e){}
+  nm=nm.replace(/[,.]/g,' ').replace(/\b(inc|corp|corporation|co|company|ltd|limited|plc|holdings?|group|technologies|technology|systems|class [a-c]|the)\b/gi,' ').replace(/\s+/g,' ').trim();
+  NW_NAMES[sym]=nm; if(nm){ c[sym]=nm; try{ localStorage.setItem(NW_NAME_K,JSON.stringify(c)); }catch(e){} }
+  return nm;
+}
+function nwRelevant(n,sym){
+  if(!sym) return true;
+  var txt=(n.headline||'')+' '+(n.summary||''), nm=NW_NAMES[sym]||'', first=nm.split(' ')[0]||'';
+  var esc=function(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); };
+  if(sym.length>=3&&new RegExp('(^|[^A-Za-z])'+esc(sym)+'([^A-Za-z]|$)').test(txt)) return true;
+  if(new RegExp('(\\$|[:(]\\s*)'+esc(sym)+'\\b').test(txt)) return true;
+  if(first.length>=3&&new RegExp('\\b'+esc(first)+'\\b','i').test(txt)) return true;
+  var rel=(n.related||'').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+  if(rel.length===1&&rel[0]===sym) return true;
+  return false;
+}
 function nwGeneric(n){
   var h=(n.headline||'');
   if(/movers|gainers|losers|stocks to watch|stocks making|biggest .*(move|gain|loss)|what to watch|top stocks|pre-?market|after-?hours|midday|mid-day|stock market today|wall street/i.test(h)) return true;
@@ -2009,31 +2035,35 @@ async function nwPeers(sym,st){
 }
 function nwDigest(news,st,peersHtml,pfx){
   pfx=pfx||''; if(!pfx) NW_LAST=null;
-  var now=Date.now()/1000, rec=(news||[]).filter(function(n){ return n.datetime&&now-n.datetime<=36*3600; });
+  var now=Date.now()/1000, rec0=(news||[]).filter(function(n){ return n.datetime&&now-n.datetime<=36*3600; });
+  var _sym=(st&&st.t)||'', rec=rec0.filter(function(n){ return nwRelevant(n,_sym); }), irr=rec0.filter(function(n){ return rec.indexOf(n)<0; });
   var big=(st&&!st.err&&Math.abs(st.chg)>=8);
   var h='<div style="margin:10px 14px 0;background:#fffbea;border:1px solid #ecd982;border-radius:10px;padding:10px 12px">'
     +'<div style="font-size:14px;font-weight:800;color:#6b4e00;margin-bottom:4px">📰 今天的新聞整合（過去 36 小時）</div>';
+  var irrHtml=irr.length?'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#718096">另外 '+irr.length+' 則已排除（標題和內容都沒提到這檔，多半是別檔或大盤的綜述）</summary><div style="font-size:12px;color:#718096;line-height:1.6;margin-top:4px">'+irr.slice(0,12).map(function(n){ return '・'+esc2((n.headline||'').slice(0,110))+'（'+esc2(src(n.source))+'）'; }).join('<br>')+'</div></details>':'';
   if(news==null){ h+='<div style="font-size:13px">新聞這次沒抓到（可能是額度），過一會兒再按 ↻。</div>'; }
   else if(!rec.length){
-    h+='<div style="font-size:13px;line-height:1.7">過去 36 小時<b>沒有收到任何新聞</b>'+(news.length?('（近 7 日有 '+news.length+' 則，最近一則是 '+ago(news[0].datetime)+'）'):'')+'。'
-      +(big?'<br>今天漲跌幅這麼大卻沒有新聞，常見原因是：整個板塊在動、有人在回補空單、或消息還沒被這個來源收錄。<b>請看下面同板塊有沒有一起動</b>，再自己到公司網站／券商看一下公告。':'')+'</div>';
+    h+='<div style="font-size:14px;line-height:1.75"><b>過去 36 小時沒有看到針對 $'+esc2(_sym)+' 的新聞，所以目前看不出消息面的原因。</b>'
+      +(big?'<br>今天漲跌幅不小卻沒有針對它的新聞，常見原因：整個板塊在動、資金輪動、或消息還沒被這個新聞來源收錄（例如付費媒體只有標題）。<b>請看下面同板塊有沒有一起動</b>，再自己到公司網站／券商看公告。':'')+'</div>'+irrHtml;
   }else{
+    var ST=nwStories(rec), drv=ST.filter(function(x){ return NW_NODRV.indexOf(x.th)<0; });
     var groups={}, order=[]; rec.forEach(function(n){ var t=nwTheme(n); if(!groups[t]){ groups[t]=[]; order.push(t); } groups[t].push(n); });
-    var pri=NW_THEMES.map(function(x){ return x[0]; }).concat(['其他']);
-    order.sort(function(a,b){ return pri.indexOf(a)-pri.indexOf(b); });
-    var ST=nwStories(rec); var _o={sym:(st&&st.t)||'',st:st,news:rec,stories:ST.slice(0,6)}; if(pfx) NW_PANELS[pfx]=_o; else NW_LAST=_o;
-    h+='<div style="font-size:13px;line-height:1.75">共 <b>'+rec.length+'</b> 則（內容重複的合併後約 <b>'+ST.length+'</b> 個不同的消息）。集中在：'+order.map(function(t){ return '<b>'+t+'</b> '+groups[t].length+' 則'; }).join('、')+'。'
-      +(order[0]!=='其他'&&order[0]!=='大盤／板塊連動'?'<br>排在最前面的是「<b>'+order[0]+'</b>」，可能就是今天動的原因，<b>但這是依標題關鍵字分類，不是我讀懂全文，不能確認因果</b>。':'<br>標題沒有明確指向某一類消息（可能是題材連動）。<b>只是依關鍵字分類，不能確認因果</b>。')+'</div>'
-      +'<div style="margin-top:8px;font-size:13.5px;font-weight:800;color:#6b4e00">今天的重點（不同消息各一條，中文）</div><div id="nw-bul">'
-      +ST.slice(0,6).map(function(x,i){ var n=x.n, sm=(n.summary||'').trim();
-        return '<div class="nwb" id="nwb'+pfx+i+'" style="margin-top:6px;font-size:13.5px;line-height:1.65"><span style="color:#8a5a00;font-weight:800">【'+x.th+'】</span><span class="nwz"> ⏳ 翻譯中…</span>'
+    var _o={sym:_sym,st:st,news:rec,stories:ST.slice(0,6)}; if(pfx) NW_PANELS[pfx]=_o; else NW_LAST=_o;
+    var verdict;
+    if(drv.length){
+      verdict='<div style="font-size:14px;line-height:1.75"><b>有 '+drv.length+' 則針對 $'+esc2(_sym)+' 的消息可能跟今天的走勢有關</b>，最前面是「<b>'+drv[0].th+'</b>」。<span style="color:#718096">（依標題關鍵字判斷，不是讀懂全文，只能說「可能相關」，不能確認因果。）</span></div>';
+    }else{
+      verdict='<div style="font-size:14px;line-height:1.75"><b>有 '+rec.length+' 則提到 $'+esc2(_sym)+' 的新聞，但看不出哪一則能解釋今天的漲跌</b>（只有日程公告、一般報導或大盤綜述）。目前沒有明確的消息面原因，我不會硬編一個。</div>';
+    }
+    h+=verdict+'<div style="font-size:12.5px;color:#718096;margin-top:2px">針對這檔的新聞共 '+rec.length+' 則，合併重複後約 '+ST.length+' 個不同消息。</div>'
+      +'<div style="margin-top:8px;font-size:13.5px;font-weight:800;color:#6b4e00">這檔的新聞重點（中文，最可能相關的排前面）</div><div id="nw-bul">'
+      +ST.slice(0,6).map(function(x,i){ var n=x.n, sm=(n.summary||'').trim(), nd=NW_NODRV.indexOf(x.th)>=0;
+        return '<div class="nwb" id="nwb'+pfx+i+'" style="margin-top:6px;font-size:13.5px;line-height:1.65"><span style="color:'+(nd?'#8a8a8a':'#8a5a00')+';font-weight:800">【'+x.th+'】</span><span class="nwz"> ⏳ 翻譯中…</span>'
           +((i<3&&sm&&sm.length>40&&sm!==(n.headline||'').trim())?'<div class="nwy" style="font-size:13px;color:#4a3b00;margin-top:2px">⏳ 內容翻譯中…</div>':'')
           +'<div class="sc-sub">'+esc2((n.headline||'').slice(0,160))+'（'+esc2(src(n.source))+'，'+ago(n.datetime)+'）'+(sm&&sm!==(n.headline||'').trim()?'<br>摘要：'+esc2(sm.slice(0,200)):'')+'</div></div>'; }).join('')+'</div>'
       +'<div style="margin-top:8px"><button class="fb" onclick="nwCopy(this,\''+pfx+'\')">📋 複製這檔的新聞，貼給 Claude 幫你做真正的整合（原因、重點、要注意什麼）</button></div>'
-      +'<div class="wg-hint" style="margin-top:4px">上面的中文只是把標題翻譯、不同消息各挑一條；<b>要的是「綜合判斷」（為什麼漲、數字好不好、有什麼風險）這件事，工具本身做不到</b>，所以才有上面這顆按鈕。</div>'
-      +'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#6b4e00">看每一類最新一則的原文卡片（可按上面 🌐 翻譯）</summary>'
-      +order.slice(0,5).map(function(t){ var n=groups[t].slice().sort(function(x,y){ return y.datetime-x.datetime; })[0];
-        return '<div style="margin-top:6px;font-size:11.5px;color:#6b4e00;font-weight:700">【'+t+'】'+groups[t].length+' 則，最新一則：</div>'+card(n); }).join('')+'</details>';
+      +'<div class="wg-hint" style="margin-top:4px">工具只能篩選、分類、翻譯；「為什麼漲、數字好不好、有什麼風險」的綜合判斷做不到，要的話按上面這顆。</div>'
+      +irrHtml;
   }
   if(peersHtml) h+='<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #ecd982">'+peersHtml+'</div>';
   return h+'</div>';
@@ -2132,6 +2162,8 @@ async function intelRun(sym){
     var _est=null; try{ var _c=cal&&cal.earningsCalendar&&cal.earningsCalendar[0]; if(_c&&_c.epsEstimate!=null) _est=Number(_c.epsEstimate); }catch(e){}
     document.getElementById('isum').innerHTML=intelSum(sym,st,news,R,sup,_est,m);
     var _peer=''; try{ out.innerHTML='<div class="empty">看同板塊今天有沒有一起動…</div>'; _peer=await nwPeers(sym,st); }catch(e){}
+    try{ await nwName(sym); }catch(e){}
+    if(st&&!st.err&&!st.t) st.t=sym;
     var _dg=''; try{ _dg=nwDigest(news,st,_peer); }catch(e){ _dg=''; }
     var _tmpOut=wgStock(sym,st,news,_dg);
     out.innerHTML=_tmpOut
