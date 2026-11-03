@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>回檔盤點 pullback v1.7.6</title>
+<title>回檔盤點 pullback v1.8</title>
 <style>
 :root{--bg:#eef1f5;--card:#fff;--ink:#1a202c;--mut:#5a6577;--line:#d3dae4;--blue:#0b61b3;--g:#15803d;--r:#c62828;--y:#8a5a00;--p:#6d28d9}
 *{box-sizing:border-box}
@@ -48,7 +48,7 @@ details summary{cursor:pointer;font-weight:700;margin:4px 0}
 .act-go{color:#15803d}.act-edge{color:#b45309}.act-wait{color:#1d4ed8}.act-watch{color:#6b7280}.act-no{color:#b91c1c}.act-old{color:#9ca3af}
 tr.row-go td{background:#f0fdf4}
 </style></head><body>
-<h1>回檔盤點 <span class="small">pullback v1.7.6（電力板塊拆成發電端／設備端兩組；「不要追」改成「停損會太寬」：回測看不出追高或開盤低於 21 日線會比較差）</span></h1>
+<h1>回檔盤點 <span class="small">pullback v1.8（新增「板塊燈號」：順風／小心／逆風，只當背景參考、不影響判決；v1.7.6：電力板塊拆成發電端／設備端兩組；「不要追」改成「停損會太寬」：回測看不出追高或開盤低於 21 日線會比較差）</span></h1>
 <div class="sub">獨立於 dna 的新工具。第一步只做「盤點」：看你的股票池裡，現在有幾檔是 <b>強勢股回檔中</b>、有幾檔是 <b>打底快要突破</b>。只標出「可以開始考慮」的價位，不叫你買。</div>
 
 <div class="card">
@@ -317,6 +317,86 @@ async function fetchBars(tk){
   throw err;
 }
 
+
+// ===== v1.8：板塊燈號（順風／小心／逆風）=====
+// 規則同 charts.html：整個板塊等權重指數 → 漲跌 15% 轉折 → 看最近一波的位置。門檻是我自己訂的參考範圍，只用「這個板塊今天跑到的股票」算。
+const SECBARS={}, LSS='pb_seclight_v1';
+function zigzag(x,th){
+  const n=x.length,legs=[];let dir=0,lo=0,hi=0,st=0;
+  for(let i=1;i<n;i++){
+    if(dir===0){
+      if(x[i]<x[lo])lo=i;if(x[i]>x[hi])hi=i;
+      if(x[i]>=x[lo]*(1+th)){dir=1;st=lo;hi=i;}else if(x[i]<=x[hi]*(1-th)){dir=-1;st=hi;lo=i;}
+    }else if(dir===1){
+      if(x[i]>x[hi])hi=i;else if(x[i]<=x[hi]*(1-th)){legs.push({up:true,i0:st,i1:hi});dir=-1;st=hi;lo=i;}
+    }else{
+      if(x[i]<x[lo])lo=i;else if(x[i]>=x[lo]*(1+th)){legs.push({up:false,i0:st,i1:lo});dir=1;st=lo;hi=i;}
+    }
+  }
+  if(dir===1)legs.push({up:true,i0:st,i1:hi,open:true});else if(dir===-1)legs.push({up:false,i0:st,i1:lo,open:true});
+  return legs;
+}
+function secState(list){ // list: [bars]，回傳 {L:'順風/小心/逆風', t:tier, why}
+  const maps=list.map(B=>{const m={};B.forEach(b=>{m[b.date]=b.c;});return m;});
+  const ds=Array.from(new Set(list.flatMap(B=>B.map(b=>b.date)))).sort().slice(-504);
+  const NB=ds.length;if(NB<120)return null;
+  const idx=[100];
+  for(let i=1;i<NB;i++){let s0=0,c=0;maps.forEach(m=>{const a=m[ds[i]],b=m[ds[i-1]];if(a!=null&&b!=null&&b>0){s0+=a/b-1;c++;}});idx.push(idx[i-1]*(1+(c?s0/c:0)));}
+  const legs=zigzag(idx,0.15),waves=[];
+  legs.forEach(l=>{if(l.up)waves.push({i0:l.i0,i1:l.i1,gain:idx[l.i1]/idx[l.i0]-1,confirmed:!l.open});});
+  if(!waves.length)return null;
+  const w=waves[waves.length-1],now=idx[NB-1],hi=idx[w.i1],lo=idx[w.i0];
+  const giveRaw=Math.max(0,(hi-now)/(hi-lo||1)),give=Math.min(1,giveRaw),dayPk=NB-1-w.i1,bars=NB-1-w.i0;
+  const drop=Math.round((1-now/hi)*100),gp=Math.round(w.gain*100);
+  let t,L,why;
+  if(w.confirmed){t='rest';L='逆風';why='上一波（累計 +'+gp+'%）已經確認結束，整組從高點退了約 '+drop+'%，現在是休息期，還沒有新的一波。';}
+  else if(w.i1>=NB-4&&give<0.3){
+    if(bars<=60){t='go';L='順風';why='最近一波還在往上推（已走 '+bars+' 個交易日、累計 +'+gp+'%），高點就在最近幾天。';}
+    else{t='late';L='小心';why='最近一波還在漲，但已走了 '+bars+' 個交易日（累計 +'+gp+'%），算偏後段。';}
+  }else{
+    if(give<0.3){t='pause';L='小心';why='最近一波漲到高點後在高點附近整理，只退了約 '+drop+'%，比較像停下來喘口氣。';}
+    else if(give<0.7){t='pull';L='逆風';why='最近一波已從高點往下跌了約 '+drop+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），有一波賣壓，還沒破壞。';}
+    else{t='bad';L='逆風';why='最近一波的漲幅幾乎被吐回去了（從高點退了約 '+drop+'%）。';}
+  }
+  return {L:L,t:t,why:why,day:ds[NB-1],n:list.length};
+}
+function calcSecLights(){
+  const out=load(LSS);
+  SECTORS.forEach(x=>{
+    const tks=Array.from(new Set(x.s.split(/\s+/))),have=tks.filter(t=>SECBARS[t]&&SECBARS[t].length>120);
+    if(have.length<Math.max(3,Math.ceil(tks.length*0.6)))return; // 這個板塊今天沒跑完整，不算
+    try{const r=secState(have.map(t=>SECBARS[t]));if(r){r.total=tks.length;out[x.n]=r;}}catch(e){}
+  });
+  save(LSS,out);
+}
+const SEC_COL={'順風':'#15803d','小心':'#b45309','逆風':'#b91c1c'};
+function secsOf(tk){return SECTORS.filter(x=>x.s.split(/\s+/).indexOf(tk)>=0).map(x=>x.n);}
+function secLightOf(tk){ // 同時屬於幾個板塊時，取最順的那個（跟驗證時的算法一致）
+  const S=load(LSS),RK={'順風':0,'小心':1,'逆風':2};let best=null;
+  secsOf(tk).forEach(n=>{const r=S[n];if(r&&(!best||RK[r.L]<RK[best.r.L]))best={n:n,r:r};});
+  return best;
+}
+function secChip(tk){
+  const b=secLightOf(tk);if(!b)return '';
+  const old=b.r.day!==today();
+  return '<div class="small" style="margin-top:2px"'+(old?' title="這個板塊今天沒有重跑，燈號是舊的"':'')+'>板塊 '+b.n+'：<b style="color:'+SEC_COL[b.r.L]+'">'+b.r.L+'</b>'+(old?'（舊 '+b.r.day+'）':'')+'</div>';
+}
+function secSummary(){
+  const S=load(LSS),names=SECTORS.map(x=>x.n).filter(n=>S[n]);
+  if(!names.length)return '';
+  const RK={'順風':0,'小心':1,'逆風':2};
+  names.sort((a,b)=>RK[S[a].L]-RK[S[b].L]||a.localeCompare(b));
+  const t=today();
+  return '<details style="margin-top:8px"><summary class="mini" style="cursor:pointer"><b>板塊燈號（背景參考，不影響上面的判決）</b>：'
+    +['順風','小心','逆風'].map(L=>'<span style="color:'+SEC_COL[L]+'">'+L+' '+names.filter(n=>S[n].L===L).length+'</span>').join('　')+'</summary>'
+    +'<div class="mini" style="margin-top:4px"><table><thead><tr><th>板塊</th><th>燈號</th><th>白話</th></tr></thead><tbody>'
+    +names.map(n=>'<tr><td>'+n+'<div class="small">'+S[n].n+' 檔算出'+(S[n].day!==t?'；舊 '+S[n].day:'')+'</div></td><td><b style="color:'+SEC_COL[S[n].L]+'">'+S[n].L+'</b></td><td>'+S[n].why+'</td></tr>').join('')
+    +'</tbody></table>'
+    +'<div class="small" style="margin-top:4px">怎麼讀：順風＝這個板塊最近一波還在往上推；小心＝還在高點附近但偏後段或在整理；逆風＝已從高點回檔不少，或上一波已結束。<br>'
+    +'<b>這個燈號有多可靠：</b>我用 2 年資料驗證過「突破」——板塊順風時突破，平均比大盤多約 1～2 個百分點；逆風時反而少 1 個百分點左右（兩組獨立資料方向一致，但只是這段行情的樣子，不是保證）。<b>「回檔」買點我還沒驗證過</b>，所以這裡只當背景參考，不要拿它擋掉或加分。<br>'
+    +'板塊名單用的是這個頁面自己的（跟 charts.html 的不完全一樣），燈號可能略有差異；只用「今天跑到的股票」算，板塊沒跑完整就不顯示。</div></div></details>';
+}
+
 let BUSY=false;
 async function runList(list,label){
   if(BUSY)return;
@@ -329,7 +409,7 @@ async function runList(list,label){
     const tk=list[i];
     $('stat').innerHTML='跑第 <b>'+(i+1)+' / '+list.length+'</b> 檔：<b>'+tk+'</b>'+(bad.length?'　<span class="warnc">已失敗 '+bad.length+' 檔</span>':'');
     try{
-      const bars=await fetchBars(tk);
+      const bars=await fetchBars(tk);SECBARS[tk]=bars;
       const a=analyze(bars);
       if(a.err){WHY[tk]=a.err;bad.push(tk);}
       else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}try{holdUpdate(tk,bars);}catch(e2){}render();}
@@ -342,7 +422,7 @@ async function runList(list,label){
     $('stat').innerHTML='<span class="warnc">第一輪有 '+again.length+' 檔沒成功，等 8 秒自動補跑…</span>';
     await new Promise(r=>setTimeout(r,8000));
     for(const tk of again){
-      try{const bars=await fetchBars(tk);const a=analyze(bars);
+      try{const bars=await fetchBars(tk);SECBARS[tk]=bars;const a=analyze(bars);
         if(a.err){WHY[tk]=a.err;bad.push(tk);}else{a.tk=tk;a.day=a.lastDate;a.sector=label;store[tk]=a;save(LS,store);try{obsUpdate(tk,bars);}catch(e2){}try{holdUpdate(tk,bars);}catch(e2){}render();}
       }catch(e){bad.push(tk);}
       await new Promise(r=>setTimeout(r,gap*2));
@@ -355,6 +435,7 @@ async function runList(list,label){
   let h='<b class="ok">✓ 跑完 '+list.length+' 檔</b>（'+secs+' 秒）';
   if(bad.length)h+='<br><span class="bad">✗ '+bad.length+' 檔沒成功：'+bad.map(t=>t+'（'+(WHY[t]||'未知')+'）').join('、')+'</span><br><span class="small">HTTP 429＝Yahoo 暫時限流，過幾分鐘單獨再跑那幾檔；404＝代號不存在。</span>';
   $('stat').innerHTML=h;
+  try{calcSecLights();}catch(e){}
   BUSY=false;setBtns(false);renderChips();render();try{renderHold();}catch(e){}
 }
 function setBtns(b){['runAll','runOwn','clearToday'].forEach(id=>$(id).disabled=b);document.querySelectorAll('.chip').forEach(c=>c.disabled=b);}
@@ -388,7 +469,7 @@ function render(){
     rd='共 '+fresh.length+' 檔。「已收復」代表回檔後已經站回 21 日線，是最接近 Luk 說的進場訊號的一類；「貼近支撐」是還在等；「打底」要看 pivot，不是回檔。其中符合 Qullamaggie 選股條件的有 '+qn+' 檔；回檔類裡停損放得進你上限的有 '+stopOk+' 檔。';}
   if(fresh.length){const w=!rankOk?'⚠ 今天只跑了 '+fresh.length+' 檔，不到 100 檔，半年漲幅排名不準，先把全部板塊跑完。':null;
     big=w?w:(goList.length?'✅ 可以開始考慮：'+goList.join('、')+'（'+goList.length+' 檔）':'今天沒有可以開始買的股票')+(edgeList.length?'　⚠ 勉強：'+edgeList.join('、'):'')+(waitList.length?'　⏳ 等待中 '+waitList.length+' 檔':'');}
-  $('verdict').innerHTML='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'<br><span class="small">這只是「現在有幾檔」，不是買賣建議，也還沒驗證這些型態後來好不好賺。</span></div></div>';
+  $('verdict').innerHTML='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'<br><span class="small">這只是「現在有幾檔」，不是買賣建議，也還沒驗證這些型態後來好不好賺。</span></div></div>'+secSummary();
   // 表
   const rows=[];
   const PR={go:0,edge:1,wait:2,watch:3,no:4,old:5};
@@ -400,7 +481,7 @@ function render(){
     const dirTxt={up:'線上升',flat:'線走平',down:'線下降'}[a.dir];
     const qq=QTXT[a.q];
     const AC=ACT[a.tk];
-    h+='<tr'+(AC.k==='go'?' class="row-go"':'')+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div></td>'
+    h+='<tr'+(AC.k==='go'?' class="row-go"':'')+(stale?' style="opacity:.55"':'')+'><td><span class="tk">'+a.tk+'</span><div class="small">'+(a.sector||'')+(stale?'<br>⚠ 舊資料 '+a.lastDate:'')+'</div>'+secChip(a.tk)+'</td>'
       +'<td style="min-width:230px"><div class="act act-'+AC.k+'">'+AC.t+'</div><div class="mini" style="color:inherit">'+AC.why+'</div><details style="margin-top:4px"><summary class="mini">工具看到什麼（細節）</summary><div class="mini">'+a.why+'</div></details></td>'
       +'<td class="n">'+pc(a.offHi)+'<div class="small">離最高 '+(-a.offHi*100).toFixed(0)+'%</div></td>'
       +'<td class="n">'+pc(a.dMA150)+'<div class="small">'+dirTxt+'</div></td>'
@@ -564,7 +645,7 @@ function renderPicksAndObs(){
   h+='<div class="verdict"><div class="big">'+big+'</div><div class="rd">'+rd+'</div></div>';
     const nowTable=(list,cls)=>{cls=cls||'pick';let t='<table><thead><tr><th>代號</th><th>可考慮價位</th><th>停損</th><th>股數</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const v=stopVerdict(a);
-      t+='<tr class="'+cls+'"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div></td>'
+      t+='<tr class="'+cls+'"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%'+(a.r12!=null?'<br>一年 '+pc(a.r12,0):'')+'</div>'+secChip(a.tk)+'</td>'
        +'<td>'+(()=>{const r=buyRange(a);if(cls==='late'){return r.ok?'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現價已超過上限</div><div class="mini">等價格回到 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮；高過 $'+r.hi.toFixed(2)+' 停損會太寬。</div>':'<div style="font-size:15px;font-weight:800;color:#6b7280">⛔ 先不要買：現在沒有合適的買進範圍</div><div class="mini">要停損不超過上限，買價得低於 21 日線，兩個條件湊不起來。</div>';}return r.ok?'<div style="font-size:15px;font-weight:800;color:#15803d">✅ 隔天開盤 $'+r.lo.toFixed(2)+' ~ $'+r.hi.toFixed(2)+' 才考慮</div><div class="mini"><b>高過 $'+r.hi.toFixed(2)+' 先不買</b>（停損會太寬）；低於 $'+r.lo.toFixed(2)+'（跌破 21 日線）先不買。'+(r.above?'<b class="warnc">現價已高於上限，要等回到範圍內。</b>':'')+'</div>':'<div class="mini warnc">現在沒有合適的買進範圍</div>';})()+'<div class="mini" style="margin-top:4px">收盤（'+a.lastDate+'）$'+a.px.toFixed(2)+'。21 日線 $'+a.e21v.toFixed(2)+'，50 日線 $'+a.ma50v.toFixed(2)+'</div></td>'
        +'<td><b>$'+a.stopPx.toFixed(2)+'</b>（−'+(a.stopPct*100).toFixed(1)+'%）<div class="'+({ok:'ok',edge:'warnc'})[v[0]]+'">'+v[1]+'</div><div class="mini">警戒價 $'+(a.px*0.95).toFixed(2)+'</div></td>'
        +'<td>'+sizeTxt(buyRange(a).hi,a.stopPx)+'<div class="mini">（以可買範圍的上限價估算，買在低一點股數會多一點）</div></td>'
@@ -573,7 +654,7 @@ function renderPicksAndObs(){
     return t+'</tbody></table>';};
   const waitTable=list=>{let t='<table><thead><tr><th>代號</th><th>現價 → 確認價</th><th>到時候停損</th><th>白話</th></tr></thead><tbody>';
     list.forEach(a=>{const sp=(a.trigPx-a.stopPx)/a.trigPx,ok=sp<=c.smax;
-      t+='<tr class="wait"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%</div></td>'
+      t+='<tr class="wait"><td><span class="tk">'+a.tk+'</span><div class="mini">'+(a.sector||'')+'<br>Q 條件 '+(a.q==='pass'?'<b class="ok">符合（加分）</b>':a.q==='near'?'<b class="warnc">差一點</b>':'不符合')+'<br>半年漲幅排前 '+topP(a)+'%</div>'+secChip(a.tk)+'</td>'
        +'<td>$'+a.px.toFixed(2)+' → <b>$'+a.trigPx.toFixed(2)+'</b>（還差 '+(a.trigDist*100).toFixed(1)+'%）</td>'
        +'<td>約 <b>$'+a.stopPx.toFixed(2)+'</b>（−'+(sp*100).toFixed(1)+'%）<div class="'+(ok?'ok':'bad')+'">'+(ok?'✓ 在上限內':'✗ 超過上限，先不看')+'</div></td>'
        +'<td class="mini" style="min-width:220px">要「收盤」站上 $'+a.trigPx.toFixed(2)+'（今天高點與 21 日線較高者）才算收復，盤中碰到不算。收復之前先不買。'+(a.ttOk?'':'<br><b class="warnc">長期趨勢有問題：'+a.ttFail.join('；')+'。</b>')+'</td></tr>';});
