@@ -336,7 +336,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.5</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.6</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1659,26 +1659,42 @@ function scTotal(){
   var cnt={}; up.forEach(function(x){ x.secs.forEach(function(n){ cnt[n]=(cnt[n]||0)+1; }); });
   var cpTxt=function(p){ return p==null?'—':(p>=0.75?'高檔':p<=0.25?'低檔':'中間'); };
   var body=up.map(function(x,i){ var r=x.r;
-    return '<tr><td><b>$'+r.t+'</b></td><td>'+x.secs.map(esc2).join('、')+'</td><td class="wg-up"><b>+'+r.ch.toFixed(1)+'%</b></td><td><b>'+r.vr.toFixed(1)+'×</b></td><td>'+cpTxt(r.cp)+'</td><td>'+(r.dm>=0?'上':'下')+' '+Math.abs(r.dm).toFixed(0)+'%</td><td>'+(r.fh==null?'—':r.fh.toFixed(0)+'%')+'</td><td id="sct'+i+'"><button class="tr-btn" onclick="scRowNews(this,\''+r.t+'\')" style="padding:3px 8px;font-size:11px">📰</button></td></tr>'; }).join('');
+    return '<tr><td><b>$'+r.t+'</b></td><td>'+x.secs.map(esc2).join('、')+'</td><td class="wg-up"><b>+'+r.ch.toFixed(1)+'%</b></td><td><b>'+r.vr.toFixed(1)+'×</b></td><td>'+cpTxt(r.cp)+'</td><td>'+(r.dm>=0?'上':'下')+' '+Math.abs(r.dm).toFixed(0)+'%</td><td>'+(r.fh==null?'—':r.fh.toFixed(0)+'%')+'</td><td id="sct'+i+'"><button class="tr-btn" onclick="scRowNews(this,\''+r.t+'\')" style="padding:4px 9px;font-size:12px;white-space:nowrap">📰 看整合</button></td></tr>'; }).join('');
   el.innerHTML='<div style="margin:10px 16px 0;background:#fff8e6;border:2px solid #e6c46a;border-radius:12px;padding:11px 14px">'
     +'<div style="font-size:15.5px;font-weight:800;color:#6b4e00">🔥 今天全部板塊「上漲＋爆量」總表：'+(done.length?up.length+' 檔':'還沒有資料')+'</div>'
     +'<div style="font-size:12.5px;color:#5a4a1a;margin-top:3px;line-height:1.6">'+(done.length?'資料日 '+latest+'；已查 <b>'+done.length+'／'+SECTORS.length+'</b> 個板塊。爆量＝今天成交量 ≥ 近 20 天平均的 '+thr+' 倍。'+(todo.length?'<br>還沒查（不在表裡）：'+todo.map(function(c){ return esc2(c.n); }).join('、')+'。':'<br>全部板塊都查過了。')+(anyOpen?'<br><span style="color:#c62828">⚠ 有板塊是盤中查的，量還沒收完，數字偏低、也沒有記進追蹤。</span>':''):'按下面的按鈕，一次把所有板塊查完；或單獨按某個板塊，查完會自動加進這張表。')+'</div>'
     +'<div style="margin-top:6px"><button class="fb" onclick="scRunAll()"'+(SC_BUSY?' disabled':'')+'>▶ 一次跑全部 '+SECTORS.length+' 個板塊（約 1～2 分鐘；只查價格與量，新聞按每列的 📰 才抓）</button><div class="wg-hint" id="sc-allmsg" style="margin-top:4px"></div></div>'
     +(done.length?(Object.keys(cnt).length?'<div style="font-size:12.5px;margin-top:4px"><b>分布：</b>'+Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; }).map(function(n){ return esc2(n)+' '+cnt[n]; }).join('　·　')+'　<span style="color:#718096">（同一檔在兩個板塊時，兩邊都算）</span></div>':'')
-      +(up.length?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>股票</th><th>板塊</th><th>漲幅</th><th>量是平均的</th><th>K 棒收在</th><th>20 日線</th><th>離 52 週高</th><th>新聞</th></tr>'+body+'</table></div>':'<div class="rd-none">已查的板塊今天都沒有「上漲＋爆量」的股票。</div>')
+      +(up.length?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>股票</th><th>板塊</th><th>漲幅</th><th>量是平均的</th><th>K 棒收在</th><th>20 日線</th><th>離 52 週高</th><th>新聞整合</th></tr>'+body+'</table></div>':'<div class="rd-none">已查的板塊今天都沒有「上漲＋爆量」的股票。</div>')
       +(dl.length?'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#4a5568">另外「下跌＋爆量」'+dl.length+' 檔（常是有人在賣，先別當買點）</summary><div style="font-size:12.5px;line-height:1.8;margin-top:4px">'+dl.map(function(x){ return '$'+x.r.t+'（'+x.r.ch.toFixed(1)+'%，'+x.r.vr.toFixed(1)+'×，'+x.secs.map(esc2).join('、')+'）'; }).join('<br>')+'</div></details>':'')
       +'<div style="font-size:12px;color:#718096;margin-top:6px;line-height:1.6"><b>怎麼讀：</b>「K 棒收在」＝今天收盤落在當天高低區間的位置（高檔＝買方撐到最後，低檔＝被賣壓壓著收）。「20 日線 上／下 N%」＝收盤在 20 日均線的上方或下方多少；下方很多的爆量上漲，比較像「跌深反彈」，跟「站在均線上方的爆量」意義不同。「離 52 週高」＝離一年最高點還差多少。這張表只是整理，<b>不是買進訊號</b>（我的 10 年回測看不出單靠爆量有優勢）。</div>':'')
     +'</div>';
 }
+function scRowSt(t){
+  var R=scLoadRows(), ks=Object.keys(R);
+  for(var i=0;i<ks.length;i++){ var rows=(R[ks[i]]&&R[ks[i]].rows)||[]; for(var j=0;j<rows.length;j++) if(rows[j].t===t){ var r=rows[j]; return {t:t,chg:r.ch,c:r.c,vr:r.vr,fromHi:r.fh==null?0:r.fh,err:null}; } }
+  return null;
+}
+function scNewsHide(el){
+  var tr=el.closest('tr'); if(!tr) return; tr.style.display='none';
+  var pv=tr.previousElementSibling, b=pv&&pv.querySelector('.tr-btn'); if(b){ b.textContent='📰 看整合'; b.scrollIntoView({block:'nearest'}); }
+}
 async function scRowNews(btn,t){
+  var tr=btn.closest('tr'); if(!tr) return;
+  var nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains('sc-nr')){ var hid=(nx.style.display==='none'); nx.style.display=hid?'':'none'; btn.textContent=hid?'▲ 收起':'📰 看整合'; return; }
   if(!KEY()){ btn.textContent='沒 key'; return; }
-  btn.disabled=true; btn.textContent='…';
+  btn.disabled=true; btn.textContent='抓新聞中…';
   var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0], news=null;
   try{ var d=await apiR('/company-news?symbol='+t+'&from='+from+'&to='+to); news=Array.isArray(d)?d:[]; }catch(e){ news=null; }
-  var td=btn.parentNode;
-  if(news==null) td.innerHTML='<span class="sc-sub">沒抓到</span>';
-  else if(!news.length) td.innerHTML='<span class="sc-sub">近 7 日沒有新聞</span>';
-  else td.innerHTML='<a href="'+esc2(news[0].url||'#')+'" target="_blank" class="sc-sub" style="color:#0b61b3;text-decoration:none">'+esc2((news[0].headline||'').slice(0,60))+'（'+ago(news[0].datetime)+'，共 '+news.length+' 則）</a>';
+  var pfx=t.replace(/[^A-Za-z0-9]/g,'')+'_', st=scRowSt(t);
+  var row=document.createElement('tr'); row.className='sc-nr'; var td=document.createElement('td'); td.colSpan=8; td.style.cssText='padding:0 0 10px;background:#fffdf3';
+  td.innerHTML='<div style="margin:8px 14px 0;font-size:14px;font-weight:800;color:#12385e">$'+esc2(t)+(st?'　今天 '+(st.chg>=0?'+':'')+st.chg.toFixed(1)+'%':'')+'</div>'
+    +nwDigest(news,st,'',pfx)
+    +'<div style="margin:8px 14px 0"><button class="fb" onclick="scNewsHide(this)">▲ 收起這檔的新聞整合</button></div>';
+  row.appendChild(td); tr.parentNode.insertBefore(row,tr.nextSibling);
+  btn.disabled=false; btn.textContent='▲ 收起';
+  try{ nwFill(pfx); }catch(e){}
 }
 /* 沒有自動抓新聞的卡片：按鈕才抓 */
 async function scNews(btn,t){
@@ -1925,30 +1941,47 @@ function nwTheme(n){
   for(var i=0;i<NW_THEMES.length;i++) if(NW_THEMES[i][1].test(t)) return NW_THEMES[i][0];
   return '其他';
 }
-var NW_LAST=null;
+var NW_LAST=null, NW_PANELS={};
+function nwGeneric(n){
+  var h=(n.headline||'');
+  if(/movers|gainers|losers|stocks to watch|stocks making|biggest .*(move|gain|loss)|what to watch|top stocks|pre-?market|after-?hours|midday|mid-day|stock market today|wall street/i.test(h)) return true;
+  var rel=(n.related||'').split(','); return rel.length>=5;
+}
 function nwStories(rec){
   var out=[];
   rec.slice().sort(function(a,b){ return b.datetime-a.datetime; }).forEach(function(n){
     var toks=(n.headline||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){ return w.length>3; });
     var dup=out.some(function(o){ var it=toks.filter(function(w){ return o.t.indexOf(w)>=0; }).length; return it/Math.max(1,Math.min(toks.length,o.t.length))>=0.6; });
-    if(!dup) out.push({n:n,t:toks,th:nwTheme(n)});
+    if(!dup){ var g=nwGeneric(n); out.push({n:n,t:toks,g:g,th:g?'大盤綜述（不是這檔專屬）':nwTheme(n)}); }
   });
   var pri=NW_THEMES.map(function(x){ return x[0]; }).concat(['其他']);
-  out.sort(function(a,b){ return (pri.indexOf(a.th)-pri.indexOf(b.th))||(b.n.datetime-a.n.datetime); });
+  out.sort(function(a,b){ return ((a.g?1:0)-(b.g?1:0))||(pri.indexOf(a.th)-pri.indexOf(b.th))||(b.n.datetime-a.n.datetime); });
   return out;
 }
-async function nwFill(){
-  var L=NW_LAST; if(!L||!L.stories) return;
+async function nwFill(pfx){
+  pfx=pfx||''; var L=pfx?NW_PANELS[pfx]:NW_LAST; if(!L||!L.stories) return;
   for(var i=0;i<L.stories.length;i++){
-    var el=document.querySelector('#nwb'+i+' .nwz'); if(!el) continue;
+    var el=document.querySelector('#nwb'+pfx+i+' .nwz'); if(!el) continue;
     var R=null; try{ R=await tr(L.stories[i].n.headline||''); }catch(e){}
     if(R&&R.t&&!R.quota) el.innerHTML=' <b>'+esc2(R.t)+'</b>';
     else el.innerHTML=' <span style="color:#718096">（翻譯額度用完或暫時失敗，原文在下面）</span>';
     if(R&&R.quota) break;
+    var sm=(L.stories[i].n.summary||'').trim(), ey=document.querySelector('#nwb'+pfx+i+' .nwy');
+    if(ey&&sm.length>40&&sm!==(L.stories[i].n.headline||'').trim()){
+      var R2=null; try{ R2=await tr(sm.slice(0,320)); }catch(e){}
+      if(R2&&R2.t&&!R2.quota) ey.innerHTML='內容：'+esc2(R2.t);
+      else if(R2&&R2.quota){ ey.innerHTML=''; break; }
+      else ey.innerHTML='';
+    }
+  }
+  for(var k=0;k<L.stories.length;k++){
+    var z=document.querySelector('#nwb'+pfx+k+' .nwz'), y=document.querySelector('#nwb'+pfx+k+' .nwy');
+    if(z&&z.textContent.indexOf('⏳')>=0) z.innerHTML=' <span style="color:#718096">（翻譯額度用完或暫時失敗，原文在下面）</span>';
+    if(y&&y.textContent.indexOf('⏳')>=0) y.innerHTML='';
   }
 }
-function nwCopy(btn){
-  var L=NW_LAST; if(!L||!L.news){ return; }
+function nwCopy(btn,pfx){
+  pfx=pfx||''; var L=pfx?NW_PANELS[pfx]:NW_LAST; if(!L||!L.news){ return; }
   var st=L.st, lines=['請幫我整合 $'+L.sym+' 今天的新聞，用繁體中文寫：發生了什麼事、可能的上漲／下跌原因、數字好不好、有什麼要注意的風險。不要只翻譯。'];
   if(st&&!st.err) lines.push('今天 '+(st.chg>=0?'+':'')+st.chg.toFixed(2)+'%，收 $'+st.c.toFixed(2)+'，成交量是近 20 天平均的 '+(st.vr!=null?st.vr.toFixed(1):'?')+' 倍，離 52 週高點 '+st.fromHi.toFixed(0)+'%。');
   lines.push('過去 36 小時的新聞（'+L.news.length+' 則）：');
@@ -1974,8 +2007,8 @@ async function nwPeers(sym,st){
   }
   return out;
 }
-function nwDigest(news,st,peersHtml){
-  NW_LAST=null;
+function nwDigest(news,st,peersHtml,pfx){
+  pfx=pfx||''; if(!pfx) NW_LAST=null;
   var now=Date.now()/1000, rec=(news||[]).filter(function(n){ return n.datetime&&now-n.datetime<=36*3600; });
   var big=(st&&!st.err&&Math.abs(st.chg)>=8);
   var h='<div style="margin:10px 14px 0;background:#fffbea;border:1px solid #ecd982;border-radius:10px;padding:10px 12px">'
@@ -1988,14 +2021,15 @@ function nwDigest(news,st,peersHtml){
     var groups={}, order=[]; rec.forEach(function(n){ var t=nwTheme(n); if(!groups[t]){ groups[t]=[]; order.push(t); } groups[t].push(n); });
     var pri=NW_THEMES.map(function(x){ return x[0]; }).concat(['其他']);
     order.sort(function(a,b){ return pri.indexOf(a)-pri.indexOf(b); });
-    var ST=nwStories(rec); NW_LAST={sym:(st&&st.t)||'',st:st,news:rec,stories:ST.slice(0,6)};
+    var ST=nwStories(rec); var _o={sym:(st&&st.t)||'',st:st,news:rec,stories:ST.slice(0,6)}; if(pfx) NW_PANELS[pfx]=_o; else NW_LAST=_o;
     h+='<div style="font-size:13px;line-height:1.75">共 <b>'+rec.length+'</b> 則（內容重複的合併後約 <b>'+ST.length+'</b> 個不同的消息）。集中在：'+order.map(function(t){ return '<b>'+t+'</b> '+groups[t].length+' 則'; }).join('、')+'。'
       +(order[0]!=='其他'&&order[0]!=='大盤／板塊連動'?'<br>排在最前面的是「<b>'+order[0]+'</b>」，可能就是今天動的原因，<b>但這是依標題關鍵字分類，不是我讀懂全文，不能確認因果</b>。':'<br>標題沒有明確指向某一類消息（可能是題材連動）。<b>只是依關鍵字分類，不能確認因果</b>。')+'</div>'
       +'<div style="margin-top:8px;font-size:13.5px;font-weight:800;color:#6b4e00">今天的重點（不同消息各一條，中文）</div><div id="nw-bul">'
       +ST.slice(0,6).map(function(x,i){ var n=x.n, sm=(n.summary||'').trim();
-        return '<div class="nwb" id="nwb'+i+'" style="margin-top:6px;font-size:13.5px;line-height:1.65"><span style="color:#8a5a00;font-weight:800">【'+x.th+'】</span><span class="nwz"> ⏳ 翻譯中…</span>'
+        return '<div class="nwb" id="nwb'+pfx+i+'" style="margin-top:6px;font-size:13.5px;line-height:1.65"><span style="color:#8a5a00;font-weight:800">【'+x.th+'】</span><span class="nwz"> ⏳ 翻譯中…</span>'
+          +((i<3&&sm&&sm.length>40&&sm!==(n.headline||'').trim())?'<div class="nwy" style="font-size:13px;color:#4a3b00;margin-top:2px">⏳ 內容翻譯中…</div>':'')
           +'<div class="sc-sub">'+esc2((n.headline||'').slice(0,160))+'（'+esc2(src(n.source))+'，'+ago(n.datetime)+'）'+(sm&&sm!==(n.headline||'').trim()?'<br>摘要：'+esc2(sm.slice(0,200)):'')+'</div></div>'; }).join('')+'</div>'
-      +'<div style="margin-top:8px"><button class="fb" onclick="nwCopy(this)">📋 複製這檔的新聞，貼給 Claude 幫你做真正的整合（原因、重點、要注意什麼）</button></div>'
+      +'<div style="margin-top:8px"><button class="fb" onclick="nwCopy(this,\''+pfx+'\')">📋 複製這檔的新聞，貼給 Claude 幫你做真正的整合（原因、重點、要注意什麼）</button></div>'
       +'<div class="wg-hint" style="margin-top:4px">上面的中文只是把標題翻譯、不同消息各挑一條；<b>要的是「綜合判斷」（為什麼漲、數字好不好、有什麼風險）這件事，工具本身做不到</b>，所以才有上面這顆按鈕。</div>'
       +'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#6b4e00">看每一類最新一則的原文卡片（可按上面 🌐 翻譯）</summary>'
       +order.slice(0,5).map(function(t){ var n=groups[t].slice().sort(function(x,y){ return y.datetime-x.datetime; })[0];
