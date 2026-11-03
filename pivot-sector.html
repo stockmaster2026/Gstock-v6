@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DNA pivot × 板塊位階驗證 v0.3</title>
+<title>DNA pivot × 板塊位階驗證 v0.4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破×<span>板塊位階</span> v0.3</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破×<span>板塊位階</span> v0.4</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">問題：板塊在順風還是逆風，會不會影響突破的成敗？</div>
@@ -452,6 +452,9 @@ function sectorAt(name,k){
   try{ var A=analyzeWaves(LISTS[name],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){ v=null; }
   BARS['SPY']=save; SC[key]=v; return v;
 }
+function normDate(x){ // dna 存的日期可能是 26/08/03、2026-08-03、2026/8/3 ... 統一成 2026-08-03
+  var m=String(x).match(/(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null;
+  var y=m[1].length===2?'20'+m[1]:m[1]; return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2); }
 function kOfDate(ds){ var S=BARS['SPY'], k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; } return k; }
 function bestAt(t,k){
   var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
@@ -492,7 +495,7 @@ function runA(recs){
     var rows=[], skip=0;
     recs.forEach(function(e){
       if(!e||!e.tk||!e.date||!e.res||!e.res[20]) { skip++; return; }
-      var ds=String(e.date).slice(0,10), k=kOfDate(ds); if(k<119){ skip++; return; }
+      var ds=normDate(e.date); if(!ds){ skip++; return; } var k=kOfDate(ds); if(k<119){ skip++; return; }
       var b=bestAt(e.tk,k); rows.push({e:e,b:b,r:e.res[20]});
     });
     var withSec=rows.filter(function(x){return x.b;}), noSec=rows.filter(function(x){return !x.b;});
@@ -502,13 +505,13 @@ function runA(recs){
     var h='<div class="read">共讀到 '+recs.length+' 筆紀錄；其中 '+rows.length+' 筆有 20 天結果、日期在可算範圍內；'+withSec.length+' 筆的股票屬於你的板塊，'+noSec.length+' 筆不在任何板塊（不納入比較）。'+(skip?' 另有 '+skip+' 筆缺資料或日期太早，略過。':'')+'</div>';
     // 對照檢查：這些突破日當天，你的板塊整體有幾成是順風？
     var dk={}, nm=Object.keys(LISTS), cnt={'順風':0,'小心':0,'逆風':0,'沒動靜':0}, tot=0;
-    rows.forEach(function(x){ var k=kOfDate(String(x.e.date).slice(0,10)); dk[k]=1; });
+    rows.forEach(function(x){ var k=kOfDate(normDate(x.e.date)); dk[k]=1; });
     Object.keys(dk).forEach(function(k){ nm.forEach(function(n){ var v=sectorAt(n,+k); if(v){ cnt[v.L]=(cnt[v.L]||0)+1; tot++; } }); });
     var share=function(L){ return tot?Math.round(cnt[L]/tot*100):0; };
     h+='<div class="read" style="background:#fff7d6;border-radius:8px;padding:6px 9px"><b>對照檢查：</b>這些突破日當天，你的 '+nm.length+' 個板塊裡，平均 <b>'+share('順風')+'%</b> 是順風、'+share('小心')+'% 小心、'+share('逆風')+'% 逆風、'+share('沒動靜')+'% 沒動靜。'+(share('順風')>=10&&G['順風'].length===0?' ⚠ 板塊其實有不少順風的時候，但你的 dna 突破幾乎都沒落在那種板塊——這可能是真的現象（有完整 pivot 的突破，多半出現在板塊休息或整理時，順風板塊裡的股票已經漲高、沒有新平台），也可能是比對出了問題，我再查。':'')+'</div>';
-    var mo={}; rows.forEach(function(x){ var m=String(x.e.date).slice(0,7); mo[m]=(mo[m]||0)+1; });
+    var mo={}; rows.forEach(function(x){ var m=normDate(x.e.date).slice(0,7); mo[m]=(mo[m]||0)+1; });
     var mk=Object.keys(mo).sort(), mx=Math.max.apply(null,mk.map(function(m){return mo[m];}));
-    h+='<details open><summary>這些紀錄的日期分布（每個月幾筆）：集中在哪幾個月？</summary><div style="font-size:13.5px;line-height:1.7">'+mk.map(function(m){ return '<div style="display:flex;align-items:center;gap:6px"><span style="width:62px">'+m+'</span><span style="display:inline-block;height:12px;background:#0066bb;border-radius:3px;width:'+Math.round(mo[m]/mx*60)+'%"></span><span>'+mo[m]+'</span></div>'; }).join('')+'</div><div class="sub">如果紀錄只集中在少數幾個月，結果主要反映那幾個月的行情，不是板塊位階的作用。要讓比較有意義，需要涵蓋板塊順風、逆風都有的不同時期。</div></details>';
+    h+='<details open><summary>這些紀錄的日期分布（每個月幾筆）：集中在哪幾個月？</summary><div style="font-size:13.5px;line-height:1.7">'+mk.map(function(m){ return '<div style="display:flex;align-items:center;gap:6px"><span style="width:70px">'+m+'</span><span style="display:inline-block;height:12px;background:#0066bb;border-radius:3px;width:'+Math.round(mo[m]/mx*60)+'%"></span><span>'+mo[m]+'</span></div>'; }).join('')+'</div><div class="sub">如果紀錄只集中在少數幾個月，結果主要反映那幾個月的行情，不是板塊位階的作用。要讓比較有意義，需要涵蓋板塊順風、逆風都有的不同時期。</div></details>';
     h+=verdictOf(G,all,'A');
     h+=tbl('A1. 突破那天，板塊是順風／小心／逆風',[['全部突破（基準）',all],['板塊順風',G['順風']],['板塊小心',G['小心']],['板塊逆風',G['逆風']]],'「比大盤多」＝個股 20 天報酬減 SPY 同期。<b>差不到 1.5 個百分點、或次數不到 30，都當作「看不出差別」。</b>');
     var order=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中'];
