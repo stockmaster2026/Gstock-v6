@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DNA pivot × 板塊位階驗證 v0.1</title>
+<title>DNA pivot × 板塊位階驗證 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破×<span>板塊位階</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破×<span>板塊位階</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">問題：板塊在順風還是逆風，會不會影響突破的成敗？</div>
@@ -416,8 +416,9 @@ function waveState(A){
     else if(give<0.7){ label='回檔中'; col='#c0600a'; tier='pull'; }
     else { label='大幅回吐'; col='#b3262e'; tier='bad'; }
     var pkTxt='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），累計漲了 '+fmtPct(w.gain*100,0)+'，之後整組回檔還不到 15%，所以尚未確認結束；';
-    if(tier==='pause') why=pkTxt+'吐回不到 3 成，<b>比較像暫停</b>，買盤沒有明顯撤退。';
-    else if(tier==='pull') why=pkTxt+'已吐回 '+Math.round(give*10)+' 成，<b>不像單純暫停</b>，要看之後能不能守住。';
+    var dropPct=Math.round((1-(1+w.gain*(1-give))/(1+w.gain))*100);
+    if(tier==='pause') why=pkTxt+'從最高點只往下退了約 '+dropPct+'%（這一波漲幅還守住 7 成以上），<b>比較像停下來喘口氣</b>，賣壓不大。';
+    else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
@@ -499,10 +500,16 @@ function runA(recs){
     withSec.forEach(function(x){ var o={r:x.r.r,ex:x.r.ex,dd:x.r.dd}; G[x.b.L==='沒動靜'?'小心':x.b.L].push(o); (GC[x.b.c]=GC[x.b.c]||[]).push(o); });
     var all=rows.map(function(x){return {r:x.r.r,ex:x.r.ex,dd:x.r.dd};});
     var h='<div class="read">共讀到 '+recs.length+' 筆紀錄；其中 '+rows.length+' 筆有 20 天結果、日期在可算範圍內；'+withSec.length+' 筆的股票屬於你的板塊，'+noSec.length+' 筆不在任何板塊（不納入比較）。'+(skip?' 另有 '+skip+' 筆缺資料或日期太早，略過。':'')+'</div>';
+    // 對照檢查：這些突破日當天，你的板塊整體有幾成是順風？
+    var dk={}, nm=Object.keys(LISTS), cnt={'順風':0,'小心':0,'逆風':0,'沒動靜':0}, tot=0;
+    rows.forEach(function(x){ var k=kOfDate(String(x.e.date).slice(0,10)); dk[k]=1; });
+    Object.keys(dk).forEach(function(k){ nm.forEach(function(n){ var v=sectorAt(n,+k); if(v){ cnt[v.L]=(cnt[v.L]||0)+1; tot++; } }); });
+    var share=function(L){ return tot?Math.round(cnt[L]/tot*100):0; };
+    h+='<div class="read" style="background:#fff7d6;border-radius:8px;padding:6px 9px"><b>對照檢查：</b>這些突破日當天，你的 '+nm.length+' 個板塊裡，平均 <b>'+share('順風')+'%</b> 是順風、'+share('小心')+'% 小心、'+share('逆風')+'% 逆風、'+share('沒動靜')+'% 沒動靜。'+(share('順風')>=10&&G['順風'].length===0?' ⚠ 板塊其實有不少順風的時候，但你的 dna 突破幾乎都沒落在那種板塊——這可能是真的現象（有完整 pivot 的突破，多半出現在板塊休息或整理時，順風板塊裡的股票已經漲高、沒有新平台），也可能是比對出了問題，我再查。':'')+'</div>';
     h+=verdictOf(G,all,'A');
     h+=tbl('A1. 突破那天，板塊是順風／小心／逆風',[['全部突破（基準）',all],['板塊順風',G['順風']],['板塊小心',G['小心']],['板塊逆風',G['逆風']]],'「比大盤多」＝個股 20 天報酬減 SPY 同期。<b>差不到 1.5 個百分點、或次數不到 30，都當作「看不出差別」。</b>');
     var order=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中'];
-    h+='<details><summary>A2. 拆得更細：板塊的哪一種狀態（樣本會更少）</summary>'+tbl('',order.map(function(c){return ['板塊：'+c,GC[c]||[]];}),'')+'</details>';
+    h+='<details open><summary>A2. 拆得更細：板塊的哪一種狀態（樣本會更少）</summary>'+tbl('',order.map(function(c){return ['板塊：'+c,GC[c]||[]];}),'')+'</details>';
     var PG={full:[],miss1:[],miss2:[],low:[]}, PGL={};
     withSec.forEach(function(x){ var g=x.e.g||'low'; var L=x.b.L==='沒動靜'?'小心':x.b.L; var o={r:x.r.r,ex:x.r.ex,dd:x.r.dd}; (PG[g]=PG[g]||[]).push(o); (PGL[g+'|'+L]=PGL[g+'|'+L]||[]).push(o); });
     var gn={full:'DNA 六關全過',miss1:'DNA 差一關',miss2:'DNA 差兩關',low:'DNA 過關更少'};
