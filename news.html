@@ -85,6 +85,18 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 .rd-row .sy{font-weight:700;color:#1a202c;margin-right:6px}
 .rd-none{padding:12px 14px;font-size:12.5px;color:#718096}
 .rd-ck{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:13px}
+.sc-chips{display:flex;flex-wrap:wrap;gap:7px}
+.sc-chip{border:2px solid #c8d0dc;background:#fff;border-radius:11px;padding:8px 11px;font-size:13px;font-weight:700;color:#12385e;cursor:pointer;line-height:1.3;text-align:center;min-width:92px;font-family:inherit}
+.sc-chip small{display:block;font-size:10.5px;font-weight:400;color:#718096}
+.sc-chip.done{background:#e3f6e8;border-color:#2e9e5b;color:#1a6b3a}.sc-chip.done small{color:#2e7d4f}
+.sc-chip.warn{background:#fff3d6;border-color:#d99a1c;color:#7a5200}
+.sc-chip.stale{background:#eef2f7;border-color:#aeb8c6;color:#5a6b7d}
+.sc-chip.run{background:#e6f0fa;border-color:#0066bb;color:#0066bb}
+.sc-chip:disabled{opacity:.6}
+table.sc-t{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:6px}
+table.sc-t th,table.sc-t td{padding:5px 6px;border-bottom:1px solid #dfe5ee;text-align:left;vertical-align:top}
+table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
+.sc-sub{font-size:11.5px;color:#4a5568;margin-top:2px;line-height:1.5}
 .rd-ck label{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #c8d0dc;border-radius:8px;padding:6px 10px}
 .sg{margin:10px 16px 0;border:1px solid #c8d0dc;border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
 .sh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#edf2f7;border-bottom:1px solid #c8d0dc;}
@@ -322,7 +334,7 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.1</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.2</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -390,6 +402,9 @@ header{position:sticky;top:0;background:rgba(240,244,248,0.97);backdrop-filter:b
       <button class="rb" id="rw" onclick="wgQuery(WG.active)">↻</button>
     </div>
   </div>
+  <div id="sc-ui" style="padding:12px 16px 0;"></div>
+  <div id="sc-res"></div>
+  <div id="sc-trk" style="padding:0 16px;"></div>
   <div id="wg-ui" style="padding:12px 16px 0;"></div>
   <div id="wc" style="margin-top:8px;">
     <div id="wres0" class="wres"></div><div id="wres1" class="wres"></div><div id="wres2" class="wres"></div><div id="wres3" class="wres"></div>
@@ -1215,6 +1230,7 @@ function wgRenderUI(){
     +'<button class="fb" onclick="wgQuery('+WG.active+')">查詢「'+esc2(b.n)+'」（只查這一盒，其他盒不受影響）</button>'
     +'</div>';
   document.querySelectorAll('.wres').forEach(function(el,i){ el.classList.toggle('on',i===WG.active); });
+  try{ scChips(); if(!window.VS_INIT){ window.VS_INIT=1; vsRender(); } }catch(e){}
   var rd=document.getElementById('rd-ui');
   if(rd){
     var nh=wgAll(RD.hold).length;
@@ -1426,7 +1442,7 @@ function kSvg(st,pos){
   return s+'</svg>';
 }
 
-function wgStock(t,st,news){
+function wgStock(t,st,news,pre){
   var h='<div class="wg-st"><div class="wg-st-h"><span class="sy">$'+t+'</span>';
   if(st && !st.err){
     var k=kBar(st);
@@ -1435,7 +1451,9 @@ function wgStock(t,st,news){
   }else{
     h+='<span class="pp">價格抓不到（'+esc2(st&&st.err||'未知')+'）</span></div>';
   }
-  if(news==null){ h+='<div class="rd-none">新聞抓取失敗</div>'; }
+  if(pre) h+=pre;
+  if(news===undefined){ h+='<div style="padding:8px 14px"><button class="tr-btn" onclick="scNews(this,\''+t+'\')">📰 抓這檔近 7 日新聞</button></div>'; }
+  else if(news==null){ h+='<div class="rd-none">新聞抓取失敗</div>'; }
   else if(!news.length){ h+='<div class="rd-none">近 7 日沒有新聞</div>'; }
   else{
     var first=news.slice(0,3).map(card).join(''), more=news.slice(3,6);
@@ -1499,6 +1517,275 @@ async function wgQuery(i){
   WG_BUSY=false; spn('rw',false);
 }
 
+
+/* ═══ v7.2（Jasmine 11/3）板塊一鍵查＋上漲爆量小總和＋自動追蹤＋今天新聞整合 ══════════════
+   ① 板塊名字直接排在畫面上，按一下就查那個板塊今天每檔的 K 棒與成交量，跑完變色（做法同 dna）
+   ② 掃完自動列出「今天上漲＋爆量」的股票，並把今天上漲的股票記進追蹤表；
+      之後按「更新後續報酬」，工具自己去抓 5／10／20 天後的結果，不用手動。
+      對照組＝同一批「上漲但量沒放大」的股票，這樣才看得出「爆量」本身有沒有多出什麼。
+   ⚠ 誠實界線：我先前用 10 年資料測過，單看「量」沒有明顯優勢；這裡是邊用邊累積自己的資料，
+     樣本不到 30 筆就不下結論。爆量門檻預設 20 日均量的 1.5 倍（跟 K 棒說明同一個定義），可改 2 倍／3 倍。
+   ③ 個股查詢：把過去 36 小時的新聞依標題關鍵字分類、並看同板塊是不是一起動。
+      不是讀懂全文，也不能確認因果。                                                    */
+var SC_DONE_K='sc_done_v1', SC_THR_K='sc_thr_v1', VS_LOG_K='vs_log_v1';
+var SC_BUSY=false, SC_RUNK=null, SC_LASTK=null;
+function scLoadDone(){ try{ return JSON.parse(localStorage.getItem(SC_DONE_K)||'{}')||{}; }catch(e){ return {}; } }
+function scThr(){ var v=0; try{ v=+localStorage.getItem(SC_THR_K); }catch(e){} return (v===2||v===3||v===1.5)?v:1.5; }
+function scSetThr(v){ try{ localStorage.setItem(SC_THR_K,String(v)); }catch(e){} scChips(); if(SC_LASTK&&SC_LAST) scPaint(); vsRender(); }
+function etNow(){
+  var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,weekday:'short'}).formatToParts(new Date()), o={};
+  p.forEach(function(x){ o[x.type]=x.value; });
+  return {date:o.year+'-'+o.month+'-'+o.day, mins:(+o.hour%24)*60+(+o.minute), dow:o.weekday};
+}
+function mktOpenNow(dateStr){ var n=etNow(); if(dateStr!==n.date||n.dow==='Sat'||n.dow==='Sun') return false; return n.mins>=570&&n.mins<965; }
+function scChips(){
+  var el=document.getElementById('sc-ui'); if(!el||typeof SECTORS==='undefined') return;
+  var D=scLoadDone(), latest=''; Object.keys(D).forEach(function(k){ if(D[k].d>latest) latest=D[k].d; });
+  var thr=scThr();
+  var chips=SECTORS.map(function(c){
+    var d=D[c.k], tot=wgAll(c.s).length, cls='sc-chip', sub='還沒查';
+    if(SC_RUNK===c.k){ cls+=' run'; sub='查詢中…'; }
+    else if(d&&d.d===latest){ cls+=(d.bad>0?' warn':' done'); sub=(d.bad>0?'⚠ ':'✓ ')+d.n+'／'+d.t+' 檔'; }
+    else if(d){ cls+=' stale'; sub='舊 '+d.d.slice(5); }
+    else sub=tot+' 檔';
+    return '<button class="'+cls+'" onclick="scRun(\''+c.k+'\')"'+(SC_BUSY?' disabled':'')+'>'+esc2(c.n)+'<small>'+sub+'</small></button>';
+  }).join('');
+  el.innerHTML='<div style="font-size:14px;font-weight:800;color:#12385e;margin-bottom:6px">🗂 板塊一鍵查：按一下，看這個板塊今天每檔的 K 棒、漲跌、成交量</div>'
+    +'<div class="wg-hint">綠色＝今天（最新資料日）已查完；灰色＝以前查過、今天還沒查；橘色＝有幾檔沒抓到。　爆量門檻：<select onchange="scSetThr(+this.value)" style="font-size:12px;padding:2px 4px">'
+    +[1.5,2,3].map(function(v){ return '<option value="'+v+'"'+(v===thr?' selected':'')+'>'+v+' 倍</option>'; }).join('')+'</select>（今天成交量 ÷ 近 20 天平均）</div>'
+    +'<div class="sc-chips">'+chips+'</div>';
+}
+var SC_LAST=null;
+async function scRun(k){
+  if(SC_BUSY||WG_BUSY) return;
+  var sc=SECTORS.filter(function(x){ return x.k===k; })[0]; if(!sc) return;
+  var list=wgAll(sc.s), out=document.getElementById('sc-res');
+  SC_BUSY=true; SC_RUNK=k; SC_LASTK=k; scChips();
+  try{
+    out.innerHTML='<div class="empty">查「'+esc2(sc.n)+'」價格與成交量 0/'+list.length+'…</div>';
+    var st=await yfMany(list,function(d,n){ out.innerHTML='<div class="empty">查「'+esc2(sc.n)+'」價格與成交量 '+d+'/'+n+'…</div>'; });
+    var ok=list.filter(function(t){ return st[t]&&!st[t].err; }), bad=list.length-ok.length, asof='';
+    ok.forEach(function(t){ if(st[t].date>asof) asof=st[t].date; });
+    var D=scLoadDone(); D[k]={d:asof,n:ok.length,t:list.length,bad:bad,at:Date.now()};
+    try{ localStorage.setItem(SC_DONE_K,JSON.stringify(D)); }catch(e){}
+    var open=mktOpenNow(asof), added=0, logOk=false;
+    if(!open && ok.length){ added=vsLogAdd(k,ok.map(function(t){ return st[t]; })); logOk=true; }
+    SC_LAST={k:k,sc:sc,list:list,st:st,ok:ok,bad:bad,asof:asof,open:open,added:added,logOk:logOk,news:{}};
+    scPaint();
+    /* 上漲＋爆量的股票自動抓新聞（最多 6 檔），回答「它發生了什麼事」*/
+    var thr=scThr(), hot=ok.filter(function(t){ return st[t].chg>0&&st[t].vr!=null&&st[t].vr>=thr; }).sort(function(a,b){ return st[b].vr-st[a].vr; }).slice(0,6);
+    if(KEY()&&hot.length){
+      var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+      for(var j=0;j<hot.length;j++){
+        if(SC_LAST.k!==k) break;
+        try{ var d=await apiR('/company-news?symbol='+hot[j]+'&from='+from+'&to='+to); SC_LAST.news[hot[j]]=Array.isArray(d)?d:[]; }catch(e){ SC_LAST.news[hot[j]]=null; }
+        scPaint(); await sleep2(450);
+      }
+    }
+  }catch(e){ out.innerHTML='<div class="err">❌ '+esc2(e.message)+'</div>'; }
+  SC_BUSY=false; SC_RUNK=null; scChips(); vsRender();
+}
+function scCp(s){ var r=(s.h!=null&&s.l!=null)?s.h-s.l:0; return r>0?(s.c-s.l)/r:null; }
+function scPaint(){
+  var R=SC_LAST, out=document.getElementById('sc-res'); if(!R||!out) return;
+  var st=R.st, thr=scThr(), ok=R.ok;
+  var ups=ok.filter(function(t){ return st[t].chg>0; });
+  var hot=ups.filter(function(t){ return st[t].vr!=null&&st[t].vr>=thr; }).sort(function(a,b){ return st[b].vr-st[a].vr; });
+  var dn=ok.filter(function(t){ return st[t].chg<0&&st[t].vr!=null&&st[t].vr>=thr; }).sort(function(a,b){ return st[b].vr-st[a].vr; });
+  var cpTxt=function(p){ return p==null?'—':(p>=0.75?'收在高檔':p<=0.25?'收在低檔':'收在中間'); };
+  var rows=hot.map(function(t){
+    var s=st[t], p=scCp(s), wick=(s.h!=null&&s.o!=null&&s.h>s.l)?((s.h-Math.max(s.o,s.c))/(s.h-s.l)):0, n=R.news[t];
+    var nw=(n===undefined)?'':(n===null?'<div class="sc-sub">新聞沒抓到</div>':(!n.length?'<div class="sc-sub">近 7 日沒有新聞（這種上漲多半不是消息驅動，可能是板塊連動或資金追逐）</div>':'<div class="sc-sub">📰 最新：'+esc2((n[0].headline||'').slice(0,90))+'（'+ago(n[0].datetime)+'，共 '+n.length+' 則）</div>'));
+    return '<tr><td><b>$'+t+'</b></td><td class="wg-up"><b>+'+s.chg.toFixed(1)+'%</b></td><td><b>'+s.vr.toFixed(1)+'×</b></td><td>'+cpTxt(p)+(wick>=0.5?'<br><span style="color:#c62828">上影線長：衝高被賣回</span>':'')+'</td><td>'+(s.dMA>=0?'站上':'跌破')+' 20 日線 '+Math.abs(s.dMA).toFixed(0)+'%'+nw+'</td></tr>';
+  }).join('');
+  var big=hot.length?('今天「上漲＋爆量」：'+hot.length+' 檔'):'今天這個板塊沒有「上漲＋爆量」的股票';
+  var head='<div style="margin:10px 16px 0;background:#f0f6fc;border:1px solid #b9d3ee;border-radius:10px;padding:11px 14px">'
+    +'<div style="font-size:15px;font-weight:800;color:#12385e">'+esc2(R.sc.n)+'：'+big+'</div>'
+    +'<div style="font-size:12.5px;color:#4a5568;margin-top:3px">資料日 '+R.asof+'；共 '+ok.length+' 檔，'+ups.length+' 檔上漲、'+(ok.length-ups.length)+' 檔下跌或持平。爆量＝今天成交量 ≥ 近 20 天平均的 '+thr+' 倍。'+(R.bad?' <span style="color:#c62828">⚠ '+R.bad+' 檔沒抓到</span>':'')+'</div>'
+    +(R.open?'<div style="font-size:12.5px;color:#c62828;margin-top:4px">⚠ 現在是美股盤中，今天的量還沒收完、數字會偏低，這次<b>不會記進追蹤</b>。收盤後再按一次。</div>':'')
+    +(rows?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>股票</th><th>漲幅</th><th>量是平均的</th><th>K 棒</th><th>位置／新聞</th></tr>'+rows+'</table></div>':'')
+    +(dn.length?'<div style="font-size:12.5px;color:#4a5568;margin-top:6px">另外「<b>下跌＋爆量</b>」：'+dn.map(function(t){ return '$'+t+'（'+st[t].chg.toFixed(1)+'%，'+st[t].vr.toFixed(1)+'×）'; }).join('、')+'。下跌時爆量，常是有人在賣出，先別當成買點。</div>':'')
+    +'<div style="font-size:12px;color:#718096;margin-top:6px;line-height:1.6"><b>怎麼讀：</b>上漲又爆量，代表今天有很多人搶著買，值得多看一眼；但「之後會不會繼續漲」不一定——我用 10 年資料測過，光看量沒有明顯優勢，所以這裡是<b>記錄與追蹤，不是買進訊號</b>。'
+    +(R.logOk?(R.added?' 已把今天 '+R.added+' 檔上漲股記進追蹤表（含爆量與沒爆量的，當對照）。':' 今天這些股票之前已經記過了。'):'')+'</div></div>';
+  var ord=ok.slice().sort(function(a,b){ var ha=hot.indexOf(a)>=0, hb=hot.indexOf(b)>=0; if(ha!==hb) return ha?-1:1; return st[b].chg-st[a].chg; });
+  var bads=R.list.filter(function(t){ return !(st[t]&&!st[t].err); });
+  out.innerHTML=head+'<div style="margin:8px 16px 0"><button class="tr-btn" onclick="document.querySelectorAll(\'#sc-res details\').forEach(function(d){d.open=false})">▲ 全部收起新聞</button></div>'
+    +ord.map(function(t){ return wgStock(t,st[t],R.news[t]); }).join('')
+    +(bads.length?'<div class="rd-none">沒抓到：'+bads.map(function(t){ return t+'（'+esc2((st[t]&&st[t].err)||'未知')+'）'; }).join('、')+'</div>':'')
+    +'<div style="height:12px"></div>';
+}
+/* 沒有自動抓新聞的卡片：按鈕才抓 */
+async function scNews(btn,t){
+  if(!KEY()){ btn.textContent='還沒有 Finnhub key（到「財報體檢」貼一次）'; return; }
+  btn.disabled=true; btn.textContent='抓新聞中…';
+  var to=new Date().toISOString().split('T')[0], from=new Date(Date.now()-7*86400000).toISOString().split('T')[0], news=null;
+  try{ var d=await apiR('/company-news?symbol='+t+'&from='+from+'&to='+to); news=Array.isArray(d)?d:[]; }catch(e){ news=null; }
+  var tmp=document.createElement('div'); tmp.innerHTML=wgStock(t,null,news);
+  var nw=tmp.querySelector('.wg-newsw')||tmp.querySelector('.rd-none');
+  var holder=btn.parentNode; holder.innerHTML=''; if(nw) holder.appendChild(nw);
+}
+
+/* ── 追蹤表：每個「上漲日」記一筆，之後自動補 5／10／20 天後的結果 ── */
+function vsLoad(){ try{ var a=JSON.parse(localStorage.getItem(VS_LOG_K)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function vsSave(a){
+  var s=JSON.stringify(a);
+  try{ localStorage.setItem(VS_LOG_K,s); return true; }catch(e){}
+  a=a.slice(-2500); try{ localStorage.setItem(VS_LOG_K,JSON.stringify(a)); return true; }catch(e2){ return false; }
+}
+function vsLogAdd(secK,stats){
+  var a=vsLoad(), have={}; a.forEach(function(x){ have[x.t+'|'+x.d]=1; });
+  var add=0;
+  stats.forEach(function(s){
+    if(!s||s.err||!(s.chg>0)||s.vr==null||!s.date) return;
+    var key=s.t+'|'+s.date; if(have[key]) return; have[key]=1;
+    var cp=scCp(s);
+    a.push({t:s.t,d:s.date,c:+s.c.toFixed(2),vr:+s.vr.toFixed(2),ch:+s.chg.toFixed(2),cp:cp==null?null:+cp.toFixed(2),s:secK}); add++;
+  });
+  if(add) vsSave(a);
+  return add;
+}
+var VS_H={}, VS_BUSY=false;
+async function vsHist(t){
+  if(VS_H[t]) return VS_H[t];
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=6mo';
+  var r=await fetch(MKT_PROXY+encodeURIComponent(base),{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json(), res=d.chart&&d.chart.result&&d.chart.result[0]; if(!res) throw new Error('沒有資料');
+  var ts=res.timestamp||[], q=res.indicators.quote[0], by={}, days=[];
+  for(var i=0;i<ts.length;i++){
+    if(q.close[i]==null) continue;
+    var dd=new Date(ts[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+    if(!(dd in by)) days.push(dd);
+    by[dd]={o:q.open[i],c:q.close[i]};
+  }
+  var H={d:days,o:days.map(function(x){ return by[x].o; }),c:days.map(function(x){ return by[x].c; })};
+  VS_H[t]=H; return H;
+}
+function vsRet(H,d,h){ /* 訊號日隔天開盤買、訊號日後第 h 個交易日收盤賣 */
+  var i=H.d.indexOf(d); if(i<0||i+h>=H.d.length) return null;
+  var e=H.o[i+1]; if(e==null||!(e>0)) e=H.c[i]; if(!(e>0)) return null;
+  return (H.c[i+h]/e-1)*100;
+}
+function vsPending(a){
+  var lim=Date.now()-7*86400000;
+  return a.filter(function(x){ return (x.r20==null) && new Date(x.d+'T12:00:00Z').getTime()<lim; });
+}
+async function vsUpdate(){
+  if(VS_BUSY) return; var a=vsLoad(), pend=vsPending(a), msg=document.getElementById('vs-msg');
+  if(!pend.length){ if(msg) msg.textContent='目前沒有可以更新的（至少要隔 7 天才有 5 天後的結果）。'; return; }
+  VS_BUSY=true; var tk=[]; pend.forEach(function(x){ if(tk.indexOf(x.t)<0) tk.push(x.t); });
+  var spy=null; try{ spy=await vsHist('SPY'); }catch(e){}
+  if(!spy){ if(msg) msg.textContent='抓不到大盤（SPY）資料，稍後再試。'; VS_BUSY=false; return; }
+  var fail=0;
+  for(var j=0;j<tk.length;j++){
+    if(msg) msg.textContent='更新中 '+(j+1)+'／'+tk.length+'（'+tk[j]+'）…';
+    var H=null; try{ H=await vsHist(tk[j]); }catch(e){ fail++; }
+    if(H){
+      a.forEach(function(x){
+        if(x.t!==tk[j]) return;
+        [5,10,20].forEach(function(h){
+          if(x['r'+h]!=null) return;
+          var r=vsRet(H,x.d,h), s=vsRet(spy,x.d,h);
+          if(r!=null&&s!=null){ x['r'+h]=+r.toFixed(2); x['x'+h]=+(r-s).toFixed(2); }
+        });
+      });
+    }
+    await sleep2(300);
+  }
+  vsSave(a); VS_BUSY=false; vsRender();
+  var m2=document.getElementById('vs-msg'); if(m2) m2.textContent='更新完成'+(fail?('（'+fail+' 檔沒抓到）'):'')+'。';
+}
+function vsMed(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){ return x-y; }); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function vsRender(){
+  var el=document.getElementById('sc-trk'); if(!el) return;
+  var old=document.getElementById('vs-det'), wasOpen=old?old.open:false;
+  var a=vsLoad(), thr=scThr(), pend=vsPending(a);
+  var S=a.filter(function(x){ return x.vr>=thr; }), C=a.filter(function(x){ return x.vr<1.2; });
+  var f=function(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; };
+  var cls=function(v){ return v==null?'':(v>=0?'wg-up':'wg-dn'); };
+  var tbl='', verdict='';
+  [5,10,20].forEach(function(h){
+    var rs=S.filter(function(x){ return x['r'+h]!=null; }), rc=C.filter(function(x){ return x['r'+h]!=null; });
+    var line=function(lab,r){ var m=vsMed(r.map(function(x){ return x['r'+h]; })), e=vsMed(r.map(function(x){ return x['x'+h]; })), w=r.length?Math.round(r.filter(function(x){ return x['r'+h]>0; }).length/r.length*100):null;
+      return '<tr><td>'+lab+'</td><td>'+r.length+'</td><td class="'+cls(m)+'">'+f(m)+'</td><td class="'+cls(e)+'">'+f(e)+'</td><td>'+(w==null?'—':w+'%')+'</td></tr>'; };
+    tbl+='<tr><td colspan="5" style="background:#f3f6fb;font-weight:800">'+h+' 個交易日後</td></tr>'+line('上漲＋爆量（≥'+thr+'倍）',rs)+line('上漲但量沒放大（對照）',rc);
+    if(h===10){
+      if(rs.length>=30&&rc.length>=30){
+        var d=vsMed(rs.map(function(x){ return x.x10; }))-vsMed(rc.map(function(x){ return x.x10; }));
+        verdict=Math.abs(d)<1.5?'目前看不出差別：爆量的股票 10 天後「比大盤多」的中位數，跟沒爆量的只差 '+Math.abs(d).toFixed(1)+' 個百分點（小於 1.5 就當沒差別）。'
+          :(d>0?'爆量的股票 10 天後比沒爆量的多 '+d.toFixed(1)+' 個百分點。':'爆量的股票 10 天後反而比沒爆量的少 '+Math.abs(d).toFixed(1)+' 個百分點。')+'但只是你這段時間累積的樣本，不是保證。';
+      }else{
+        verdict='樣本還不夠（爆量組 '+rs.length+' 筆、對照組 '+rc.length+' 筆；兩組都要有 30 筆以上、而且已經過了 10 個交易日才能比），<b>先不要下結論</b>，目前只是在記錄。';
+      }
+    }
+  });
+  var recent=a.slice(-400).filter(function(x){ return x.vr>=thr; }).sort(function(x,y){ return x.d<y.d?1:-1; }).slice(0,40);
+  var rtbl=recent.length?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>日期</th><th>股票</th><th>漲幅</th><th>量倍數</th><th>5天</th><th>10天</th><th>20天</th></tr>'+recent.map(function(x){
+    return '<tr><td>'+x.d.slice(5)+'</td><td><b>$'+x.t+'</b></td><td>+'+x.ch.toFixed(1)+'%</td><td>'+x.vr.toFixed(1)+'×</td><td class="'+cls(x.r5)+'">'+f(x.r5)+'</td><td class="'+cls(x.r10)+'">'+f(x.r10)+'</td><td class="'+cls(x.r20)+'">'+f(x.r20)+'</td></tr>'; }).join('')+'</table></div>':'';
+  el.innerHTML='<details id="vs-det" style="margin:10px 0 0;background:#fff;border:1px solid #c8d0dc;border-radius:10px;padding:8px 12px"'+(wasOpen?' open':'')+'>'
+    +'<summary style="cursor:pointer;font-weight:800;font-size:14px;color:#12385e">📈 上漲爆量追蹤表（自動記錄，共 '+a.length+' 筆；爆量組 '+S.length+' 筆）　'+(pend.length?'<span style="color:#b45309">有 '+pend.length+' 筆可以更新後續結果</span>':'')+'</summary>'
+    +'<div class="wg-hint" style="margin-top:6px">每次你按板塊「一鍵查」（收盤後），工具會把當天<b>上漲</b>的股票記一筆（爆量的、量沒放大的都記）。過幾天按下面的「更新後續結果」，它會自己去抓 5／10／20 天後的漲跌，並跟大盤（SPY）比。<b>隔天開盤價買進</b>算起。</div>'
+    +'<button class="fb" onclick="vsUpdate()">🔄 更新後續結果（'+pend.length+' 筆待更新）</button><div class="wg-hint" id="vs-msg" style="margin-top:4px"></div>'
+    +'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>組別</th><th>筆數</th><th>漲跌（中位數）</th><th>比大盤多（中位數）</th><th>賺錢比例</th></tr>'+tbl+'</table></div>'
+    +'<div style="margin-top:6px;padding:8px 10px;background:#f3f6fb;border-radius:8px;font-size:13px;line-height:1.7"><b>結論：</b>'+verdict+'</div>'
+    +'<div class="wg-hint" style="margin-top:6px">限制：只含你按過的板塊；名單是現在挑的熱門股（倖存者偏差，數字會偏好看）；這段期間是同一段行情；上漲日會彼此重疊（同一天很多檔一起漲），所以有效樣本比筆數少。</div>'
+    +(rtbl?'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#4a5568">最近的爆量紀錄（最多 40 筆）</summary>'+rtbl+'</details>':'')
+    +'</details>';
+}
+
+/* ── 個股查詢：今天新聞整合（依標題關鍵字分類，不是讀全文）＋同板塊有沒有一起動 ── */
+var NW_THEMES=[
+  ['財報／財測',/earnings|revenue|guidance|outlook|forecast|quarterly|fiscal|\beps\b|profit|results|\bq[1-4]\b/i],
+  ['增資／發股／債券',/offering|dilut|convertible|private placement|share sale|notes due|shelf|raises? \$[\d.]+ ?(m|b|million|billion)/i],
+  ['訂單／合作',/order|contract|partner|agreement|\bdeal\b|customer|award|collaborat|supply|design win|purchase|selected by/i],
+  ['併購／投資',/acqui|merger|buyout|takeover|\bstake\b|invests?\b|investment/i],
+  ['法規／法律／出口管制',/lawsuit|sued|class action|investigat|\bsec\b|probe|\bfda\b|approval|recall|tariff|export control|\bban\b|sanction/i],
+  ['分析師評等／目標價',/upgrade|downgrade|price target|analyst|rating|initiat|outperform|overweight|underweight|reiterat|raises? .* target|cuts? .* target/i],
+  ['管理層異動',/\bceo\b|\bcfo\b|appoint|resign|steps? down|names? .*(president|chief)|board of directors/i],
+  ['產品／技術',/launch|unveil|introduc|new product|platform|technology|silicon carbide|photonic|\bai\b|chip|system|wafer|test/i],
+  ['大盤／板塊連動',/stocks? (rally|surge|soar|jump|fall|drop|slide)|why .*(soar|jump|surge|plunge|skyrocket|rocket|tumble)|market|nasdaq|s&p|sector|semiconductor/i]
+];
+function nwTheme(n){
+  var t=(n.headline||'')+' '+((n.summary||'').slice(0,200));
+  for(var i=0;i<NW_THEMES.length;i++) if(NW_THEMES[i][1].test(t)) return NW_THEMES[i][0];
+  return '其他';
+}
+async function nwPeers(sym,st){
+  var secs=(typeof SECTORS!=='undefined'?SECTORS:[]).filter(function(c){ return wgAll(c.s).indexOf(sym)>=0; });
+  if(!secs.length) return '';
+  var out='';
+  for(var s=0;s<Math.min(secs.length,2);s++){
+    var c=secs[s], peers=wgAll(c.s).filter(function(t){ return t!==sym; });
+    var ps=await yfMany(peers);
+    var ok=peers.filter(function(t){ return ps[t]&&!ps[t].err; });
+    if(ok.length<4) continue;
+    var up=ok.filter(function(t){ return ps[t].chg>0; }).length, med=vsMed(ok.map(function(t){ return ps[t].chg; }));
+    var mine=(st&&!st.err)?st.chg:null, cmp='';
+    if(mine!=null){ var d=mine-med; cmp=Math.abs(d)<2?'它的漲跌跟板塊差不多，比較像<b>跟著整個板塊動</b>。':(d>0?'它比板塊平均<b>多漲 '+d.toFixed(1)+' 個百分點</b>，是這個板塊裡特別強的，原因更可能出在它自己（消息或資金）。':'它比板塊平均<b>少 '+Math.abs(d).toFixed(1)+' 個百分點</b>。'); }
+    out+='<div style="font-size:13px;line-height:1.7"><b>同板塊「'+esc2(c.n)+'」</b>（其他 '+ok.length+' 檔）：今天 '+up+' 檔上漲，中位數 '+(med>=0?'+':'')+med.toFixed(1)+'%。'+cmp+'</div>';
+  }
+  return out;
+}
+function nwDigest(news,st,peersHtml){
+  var now=Date.now()/1000, rec=(news||[]).filter(function(n){ return n.datetime&&now-n.datetime<=36*3600; });
+  var big=(st&&!st.err&&Math.abs(st.chg)>=8);
+  var h='<div style="margin:10px 14px 0;background:#fffbea;border:1px solid #ecd982;border-radius:10px;padding:10px 12px">'
+    +'<div style="font-size:14px;font-weight:800;color:#6b4e00;margin-bottom:4px">📰 今天的新聞整合（過去 36 小時）</div>';
+  if(news==null){ h+='<div style="font-size:13px">新聞這次沒抓到（可能是額度），過一會兒再按 ↻。</div>'; }
+  else if(!rec.length){
+    h+='<div style="font-size:13px;line-height:1.7">過去 36 小時<b>沒有收到任何新聞</b>'+(news.length?('（近 7 日有 '+news.length+' 則，最近一則是 '+ago(news[0].datetime)+'）'):'')+'。'
+      +(big?'<br>今天漲跌幅這麼大卻沒有新聞，常見原因是：整個板塊在動、有人在回補空單、或消息還沒被這個來源收錄。<b>請看下面同板塊有沒有一起動</b>，再自己到公司網站／券商看一下公告。':'')+'</div>';
+  }else{
+    var groups={}, order=[]; rec.forEach(function(n){ var t=nwTheme(n); if(!groups[t]){ groups[t]=[]; order.push(t); } groups[t].push(n); });
+    var pri=NW_THEMES.map(function(x){ return x[0]; }).concat(['其他']);
+    order.sort(function(a,b){ return pri.indexOf(a)-pri.indexOf(b); });
+    h+='<div style="font-size:13px;line-height:1.75">共 <b>'+rec.length+'</b> 則。集中在：'+order.map(function(t){ return '<b>'+t+'</b> '+groups[t].length+' 則'; }).join('、')+'。'
+      +(order[0]!=='其他'&&order[0]!=='大盤／板塊連動'?'<br>排在最前面的是「<b>'+order[0]+'</b>」，可能就是今天動的原因，<b>但我只是依標題的關鍵字分類，沒有讀全文，不能確認因果</b>——請點標題看原文。':'<br>標題沒有明確指向某一類消息（可能是題材連動）。<b>只是依關鍵字分類，不能確認因果</b>。')+'</div>'
+      +order.slice(0,5).map(function(t){ var n=groups[t].slice().sort(function(x,y){ return y.datetime-x.datetime; })[0];
+        return '<div style="margin-top:6px;font-size:11.5px;color:#6b4e00;font-weight:700">【'+t+'】'+groups[t].length+' 則，最新一則：</div>'+card(n); }).join('');
+  }
+  if(peersHtml) h+='<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #ecd982">'+peersHtml+'</div>';
+  return h+'</div>';
+}
 
 /* ═══ 個股即時情報（v6.2）═══════════════════════════════════════
    Jasmine 10/15：想要一個輸入區，打一檔股票就能快速看到相關新聞＋財報，
@@ -1592,7 +1879,9 @@ async function intelRun(sym){
     if(bad.length) fh=fh.replace(/<\/div>$/,'<div class="fnote fwarn">⚠ 這幾項沒抓到：'+bad.join('、')+'</div></div>');
     var _est=null; try{ var _c=cal&&cal.earningsCalendar&&cal.earningsCalendar[0]; if(_c&&_c.epsEstimate!=null) _est=Number(_c.epsEstimate); }catch(e){}
     document.getElementById('isum').innerHTML=intelSum(sym,st,news,R,sup,_est,m);
-    out.innerHTML=wgStock(sym,st,news)
+    var _peer=''; try{ out.innerHTML='<div class="empty">看同板塊今天有沒有一起動…</div>'; _peer=await nwPeers(sym,st); }catch(e){}
+    var _dg=''; try{ _dg=nwDigest(news,st,_peer); }catch(e){ _dg=''; }
+    out.innerHTML=wgStock(sym,st,news,_dg)
       +'<div style="margin:14px 16px 6px;font-size:12.5px;font-weight:800;color:#12385e;letter-spacing:.5px">📊 財報與公司體質（同「財報體檢」那張卡）</div>'+fh
       +'<div style="height:12px"></div>';
     intelHistAdd(sym);
