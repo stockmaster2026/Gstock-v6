@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.12</title>
+<title>板塊圖表總覽 v3.14</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.12</div>
+  <div class="logo">板塊<span>圖表</span> v3.14</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -653,8 +653,9 @@ function waveState(A){
     else if(give<0.7){ label='回檔中'; col='#c0600a'; tier='pull'; }
     else { label='大幅回吐'; col='#b3262e'; tier='bad'; }
     var pkTxt='最近一波的高點在 '+fd(A.dates[w.i1])+'（'+dayPk+' 個交易日前），累計漲了 '+fmtPct(w.gain*100,0)+'，之後整組回檔還不到 15%，所以尚未確認結束；';
-    if(tier==='pause') why=pkTxt+'吐回不到 3 成，<b>比較像暫停</b>，買盤沒有明顯撤退。';
-    else if(tier==='pull') why=pkTxt+'已吐回 '+Math.round(give*10)+' 成，<b>不像單純暫停</b>，要看之後能不能守住。';
+    var dropPct=Math.round((1-(1+w.gain*(1-give))/(1+w.gain))*100);
+    if(tier==='pause') why=pkTxt+'從最高點只往下退了約 '+dropPct+'%（這一波漲幅還守住 7 成以上），<b>比較像停下來喘口氣</b>，賣壓不大。';
+    else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
@@ -747,7 +748,7 @@ function plainRead(r3,r1,lead,st,longUp){
   if(tr==='go'){ LT='順風'; C='#1f6f3a'; sen='現在'+(/剛起步/.test(lb)?'剛開始動':'還在漲')+'，位置在高點附近，算順風。'; }
   else if(tr==='late'){ LT='小心'; C='#c0600a'; sen='強勢板塊的後段：站在高點附近，但這一波已經跑了 '+st.bars+' 個交易日、漲了 '+pctA(st.last.gain)+'，不是起漲位置；追的話要小、要快。'+(a1<0?' 最近 1 個月已轉弱。':''); }
   else if(tr==='pause'){ LT='小心'; C='#c0600a'; sen='停在高點附近整理（離高點 '+st.dayPk+' 天），'+(a1<0?'最近 1 個月跌了 '+pctA(r1)+'，':(a1>0?'最近 1 個月漲了 '+pctA(r1)+'，':''))+'還沒大幅吐回，也還沒再往上；等突破確認。'; }
-  else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(longUp?'漲的是前面那段，':'')+'勝算較低，多半避開。'; }
+  else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(a1<0?'最近 1 個月還在往下。':(a1>0?'最近 1 個月反彈了 '+pctA(r1)+'，但還沒走出新的一波（要從低點漲滿 15% 才算）。':'最近 1 個月沒什麼動，在低檔橫著。'))+(longUp?'漲的是前面那段，':'')+(a1>0?'勝算較低，先觀察、不急著做。':'勝算較低，多半避開。'); }
   return '<div style="margin-bottom:3px"><span style="background:'+C+';color:#fff;font-weight:900;padding:2px 9px;border-radius:6px;font-size:14px">'+LT+'</span> <b style="color:'+C+';font-size:15.5px;margin-left:4px">'+lb+'</b></div>'+
     '<div style="font-size:14px;line-height:1.55;color:#223">'+sen+'</div>'+
     '<div style="font-size:12.5px;color:#667;margin-top:2px">'+(lead?lead+'；':'')+d3+'，'+d1+'｜離高點分 '+posScore(st.give)+'／100</div>';
@@ -771,7 +772,7 @@ function renderVerdict(){
   var gp=Math.round(st.give*100);
   h+='<div style="margin-top:8px;font-size:13px;font-weight:800">從最近一波高點吐回幾成（越短越強）</div>'+
     barsRow('吐回',gp,st.give<0.3?'#2a5fa5':(st.give<0.7?'#c0600a':'#b3262e'),'吐回約 '+Math.round(st.give*10)+' 成；離高點已 '+st.dayPk+' 個交易日');
-  h+='<div style="font-size:13px;line-height:1.6;color:#445;margin-top:4px">'+(st.give<0.3?'吐回不到 3 成：買盤沒有撤退，比較像暫停。':(st.give<0.7?'吐回 3～7 成：有一部分獲利被拿走了，要看之後能否守住。':(st.below?'已經跌破這一波的起漲點，整波都吐回去了。':'吐回超過 7 成：這一波幾乎被吃回去，等於漲勢失敗。')))+'</div>';
+  h+='<div style="font-size:13px;line-height:1.6;color:#445;margin-top:4px">'+(st.give<0.3?'吐回不到 3 成：只是從高點小退一下，賣壓不大，比較像停下來喘口氣。':(st.give<0.7?'吐回 3～7 成：這一波漲上去的幅度，已經被跌回去 3～7 成。意思是確實有人在賣，不是小小停一下；但還沒整個破壞。接下來守得住就算休息、繼續往下跌，這一波就算結束。':(st.below?'已經跌回這一波的起漲點以下，整波漲幅都被吃回去了。':'吐回超過 7 成：這一波漲幅幾乎被吃回去，等於漲勢失敗。')))+'</div>';
   h+='<div style="font-size:12px;color:#889;margin-top:6px">「15% 才算一波／位階天數／吐回 3、7 成」都是我訂的參考範圍，還沒用資料驗證，只拿來看大圖，不是買賣訊號。</div></div>';
   box.innerHTML=h;
 }
