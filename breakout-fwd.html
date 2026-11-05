@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>突破後走多遠 v0.1</title>
+<title>突破後走多遠 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,11 +36,11 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破後<span>走多遠</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">突破後<span>走多遠</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">問題：突破之後通常走多遠？該抱幾天？停損停利設多少？</div>
-    <div class="sub">你想知道：現在的波段是不是變短了、一比多少的賺賠比比較合理、行情不好時要不要縮短持有或停手。這一頁<b>只量測、不改任何工具</b>：① 突破後各天數的漲跌與期間最高／最深；② 各種停損停利×天數的平均賺賠（以「這檔平常一天的波動」為尺）；③ 依大盤、市場寬度、板塊燈號分開看差多少。每個結果都跟「任何一天進場」對照。</div>
+    <div class="sub">你想知道：現在的波段是不是變短了、一比多少的賺賠比比較合理、行情不好時要不要縮短持有或停手。這一頁<b>只量測、不改任何工具</b>：① 突破後各天數的漲跌與期間最高／最深；② 各種停損停利×天數的平均賺賠（以「這檔平常一天的波動」為尺）；③ 依大盤、市場寬度、板塊燈號分開看差多少。④ 同樣的進場換不同的賣法，看哪一種最能保住漲幅（含「漲了又吐光」的比例）；用 DNA 紀錄時，還會多看六關過幾關、突破量、收位。每個結果都跟「任何一天進場」對照。</div>
     <div class="prog" id="prog">準備中…</div>
     <div class="row">樣本來源：<select class="btn" id="selSrc"><option value="hi30">所有股票「收盤創 30 日新高」（樣本大）</option><option value="dna">你的 DNA 回測紀錄（貼近 pivot，筆數看你跑過幾檔）</option></select>
     <button class="btn go" id="btnGo" disabled onclick="start()">開始</button><button class="btn" onclick="var p=el('paste');p.style.display=p.style.display==='none'?'block':'none'">我要貼 dna 備份</button></div>
@@ -451,7 +451,7 @@ function bestAt(t,k){
   return best;
 }
 
-/* ═══ 突破後走多遠 v0.1 ═══
+/* ═══ 突破後走多遠 v0.2 ═══
    問題：突破（進場）之後，通常漲多遠、回檔多深、該抱幾天？停損停利設平常波動（ATR）的幾倍比較合理？
    行情不同（大盤強弱、市場寬度、板塊燈號）結果差多少？
    做法：進場＝突破日的「隔天開盤」；所有分組只用「突破當天以前」的資料；
@@ -476,7 +476,7 @@ var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
 function catL(A){ try{ return light(A.st); }catch(e){ return '沒動靜'; } }
 
 var SECS=[], T2S={}, LISTS={}, TLs={}, BREADTH=null, EV=[], BASE=[], CUT='', SRC='hi30';
-var RULE={H:3,sa:1.5,ta:3,cost:0.002}, GRIDSTAT={pos:0,beat:0,tot:0}, VERD=[];
+var RULE={H:3,sa:1.5,ta:3,cost:0.002,Hx:20}, GRIDSTAT={pos:0,beat:0,tot:0}, VERD=[], EXST=null;
 
 /* 到第 i 根為止的平常波動：過去 20 天平均真實波幅 ÷ 收盤（ATR%） */
 function atrPct(B,i){
@@ -563,7 +563,7 @@ function buildFromDna(recs){
     var ds=normDate(r.date); if(!ds){ skip++; return; }
     var i=-1; for(var q=B.d.length-1;q>=0;q--){ if(B.d[q]<=ds){ i=q; break; } } if(i<0||B.d[i]!==ds){ skip++; return; }
     var key=r.tk+'|'+ds; if(seen[key]) return; seen[key]=1;
-    var e=mkEv(r.tk,i); if(e) EV.push(e); else skip++;
+    var e=mkEv(r.tk,i); if(e){ e.g=r.g||null; e.vx=(r.vx!=null&&isFinite(r.vx))?+r.vx:null; e.cp=(r.cp!=null&&isFinite(r.cp))?+r.cp:null; EV.push(e); } else skip++;
   });
   return skip;
 }
@@ -626,7 +626,7 @@ function groupRows(key,names,getter){
   var H=RULE.H,sa=RULE.sa,ta=RULE.ta,cost=RULE.cost, out=[];
   names.forEach(function(nm){
     var sub=EV.filter(function(e){ return getter(e)===nm; }), sb=BASE.filter(function(e){ return getter(e)===nm; });
-    var s=simStat(sub,H,sa,ta,cost), b=simStat(sb,H,sa,ta,cost);
+    var s=simStat(sub,H,sa,ta,cost), b=simStat(sb.length?sb:BASE,H,sa,ta,cost);
     var s1=simStat(sub.filter(function(e){ return e.h===1; }),H,sa,ta,cost), s2=simStat(sub.filter(function(e){ return e.h===2; }),H,sa,ta,cost);
     var r5=sub.map(function(e){ return retN(e,5); }).filter(function(x){ return x!=null; });
     out.push({nm:nm,s:s,b:b,s1:s1,s2:s2,r5:med(r5)});
@@ -644,7 +644,7 @@ function verdictG(G){
   return {t:'<b>「'+hi.nm+'」比「'+lo.nm+'」好 '+d.toFixed(2)+'R，而且前半段、後半段都是這個方向</b>。值得再驗證，但只是這兩年的樣子，不是保證。',c:'#eef6ee;color:#1f6f3a'};
 }
 function gTable(G){
-  return '<div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>平均每筆</th><th>前半段</th><th>後半段</th><th>碰停損</th><th>第 5 天中位數</th><th>對照：任何一天</th></tr>'
+  return '<div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>平均每筆</th><th>前半段</th><th>後半段</th><th>碰停損</th><th>第 5 天中位數</th><th>對照：任何一天（同分組沒有對照時，用全部）</th></tr>'
    +G.map(function(g){ return '<tr><td><b>'+g.nm+'</b></td><td>'+g.s.n+'</td><td><b class="'+cls(g.s.avg)+'">'+rr(g.s.avg)+'</b></td><td>'+rr(g.s1.avg)+'<span class="sub">（'+g.s1.n+'）</span></td><td>'+rr(g.s2.avg)+'<span class="sub">（'+g.s2.n+'）</span></td><td>'+(g.s.stop==null?'—':Math.round(g.s.stop*100)+'%')+'</td><td class="'+cls(g.r5)+'">'+pc1(g.r5)+'</td><td>'+rr(g.b.avg)+'</td></tr>'; }).join('')+'</table></div>';
 }
 function tab3(){
@@ -656,6 +656,13 @@ function tab3(){
    ['D. 時間：前半段 vs 後半段（看穩不穩）',['前半段','後半段'],function(e){ return e.h===1?'前半段':'後半段'; }]];
   var h='<div class="box"><div class="h">③ 行情不同，結果差多少？（'+rule+'）</div>'+ruleSel()
    +'<div class="sub">每組把突破依「突破當天以前」的狀態分開。差距要 ≥ 0.15R、每組 ≥ 30 次、而且前後半段方向一致，我才說「有差別」（門檻是我訂的）。</div>';
+  if(SRC==='dna'){
+    var gm={full:'六關全過',miss1:'差一關',miss2:'差兩關',low:'過關更少'};
+    defs.push(['E. DNA 六關過幾關（越嚴格是不是越好？）',['六關全過','差一關','差兩關','過關更少'],function(e){ return e.g?gm[e.g]:null; }]);
+    var mv=med(EV.filter(function(e){ return e.vx!=null; }).map(function(e){ return e.vx; })), mc=med(EV.filter(function(e){ return e.cp!=null; }).map(function(e){ return e.cp; }));
+    if(mv!=null) defs.push(['F. 突破那天的量（以你這批紀錄的中間值 '+mv.toFixed(2)+' 倍為界）',['量大的一半','量小的一半'],function(e){ return e.vx==null?null:(e.vx>=mv?'量大的一半':'量小的一半'); }]);
+    if(mc!=null) defs.push(['G. 突破那天收在 K 棒的位置（以中間值為界）',['收得高的一半','收得低的一半'],function(e){ return e.cp==null?null:(e.cp>=mc?'收得高的一半':'收得低的一半'); }]);
+  }
   VERD=[];
   defs.forEach(function(d){ var G=groupRows(d[0],d[1],d[2]), V=(d[0].charAt(0)==='D')?null:verdictG(G); if(V) VERD.push({n:d[0],v:V});
     h+='<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">'+d[0]+'</div>'+(V?'<div class="verdict" style="background:'+V.c+'">'+V.t+'</div>':'')+gTable(G)+'</div>'; });
@@ -668,10 +675,80 @@ function renderSum(){
    +'<b>1. 走多遠：</b>突破後前 3 天，平均最高漲到 '+(p3.length?'+'+mean(p3.map(function(x){ return x.mfe*100; })).toFixed(1)+'%、平均會先跌到 '+mean(p3.map(function(x){ return x.mae*100; })).toFixed(1)+'%':'—')+'；第 10 天收盤的中位數 '+pc1(med(r10))+'（任何一天進場是 '+pc1(med(b10))+'）。<br>'
    +'<b>2. 一比多少：</b>'+G.tot+' 種「停損×停利×天數」裡，贏過「任何一天進場」的有 '+G.beat+' 種（'+(G.beat===0?'等於沒有，突破本身沒有額外優勢':(G.beat<G.tot/3?'只有少數，小心巧合':'不少，但要看分組穩不穩'))+'）。<br>'
    +'<b>3. 行情分組：</b>'+(VERD.length?VERD.map(function(x){ return '<br>　'+x.n.split('.')[0]+'．'+x.v.t.replace(/<\/?b>/g,''); }).join(''):'—')
+   +'<br><b>4. 怎麼賣：</b>'+(EXST&&EXST.length?(function(){ var R=EXST.filter(function(x){ return x.s.n>=30; }).sort(function(a,b){ return b.s.avg-a.s.avg; }); if(!R.length) return '—'; var b=R[0], w=R[R.length-1]; return '平均每筆最好的是「'+b.r.n+'」（'+rr(b.s.avg)+'，對照 '+rr(b.b.avg)+'），最差的是「'+w.r.n+'」（'+rr(w.s.avg)+'）；詳見 ④。'; })():'—')
    +'<br><span class="sub">以上是量測結果，不是買賣規則；下面每個表有細節與限制。</span></div></div>';
   el('sum').innerHTML=h;
 }
-function renderRules(){ var p=el('rules'); if(p) p.innerHTML=tab2()+tab3(); renderSum(); }
+
+/* ── ④ 出場規則比較：同樣的進場，換不同的出場 ── */
+function emaArr(B,k){ var key='e'+k; if(B[key]) return B[key]; var al=2/(k+1), out=new Array(B.c.length), p=null;
+  for(var i=0;i<B.c.length;i++){ p=(p==null)?B.c[i]:(B.c[i]-p)*al+p; out[i]=i>=k-1?p:null; } B[key]=out; return out; }
+function maVal(B,kind,j){ if(kind==='ma10') return B.ma10[j]; if(kind==='ma50') return B.ma50[j]; if(kind==='e21') return emaArr(B,21)[j]; return null; }
+/* 規則共同點：進場後先有初始停損（進場價 − sa×ATR）；停損碰到就出（跳空以開盤價）；最多抱 Hmax 天，到期收盤出。
+   「跌破均線」＝某天收盤在均線下，隔天開盤賣。移動停損／停損上移，從隔天開始生效。 */
+function simExit(e,rule,Hx,sa,cost){
+  var B=e.B,i=e.i,n=B.c.length,Hcap=rule.kind==='time'?rule.N:Hx; if(i+Hx>=n) return null;
+  var E=e.E,dist=e.a*E,stop=E-sa*dist,hh=E,half=false,r1=0,beOn=false,exitPx=null,exitDay=null,j,pk=-1;
+  for(var q=i+1;q<=i+Hx;q++){ var u=B.h[q]/E-1; if(u>pk) pk=u; }
+  for(j=i+1;j<=i+Hcap;j++){
+    var o=B.o[j],h=B.h[j],l=B.l[j],c=B.c[j];
+    if(j>i+1&&o<=stop){ exitPx=o; exitDay=j; break; }
+    if(l<=stop){ exitPx=stop; exitDay=j; break; }
+    if(rule.kind==='half'&&!half){ var t=E+rule.x*dist; if(h>=t){ r1=(Math.max(t,(j>i+1&&o>t)?o:t)/E-1); half=true; } }
+    if(rule.kind==='be'&&!beOn&&h>=E+rule.x*dist) beOn=true;
+    if(h>hh) hh=h;
+    if(half||beOn) stop=Math.max(stop,E);
+    if(rule.kind==='trail') stop=Math.max(stop,hh-rule.k*dist);
+    if(j===i+Hcap){ exitPx=c; exitDay=j; break; }
+    var useMa=(rule.kind==='ma')||(rule.kind==='half'&&half)||(rule.kind==='be'&&beOn);
+    if(useMa){ var m=maVal(B,rule.ma,j); if(m!=null&&c<m){ exitPx=B.o[j+1]; exitDay=j+1; break; } }
+  }
+  var r2=exitPx/E-1, ret=(rule.kind==='half'&&half)?0.5*r1+0.5*r2:r2; ret-=cost;
+  return {ret:ret,R:ret/(sa*e.a),days:exitDay-i,pk:pk};
+}
+function exitRules(Hx){ return [
+  {n:'固定抱 5 天',kind:'time',N:5},{n:'固定抱 10 天',kind:'time',N:10},{n:'固定抱滿 '+Hx+' 天',kind:'time',N:Hx},
+  {n:'收盤跌破 10 日線就賣',kind:'ma',ma:'ma10'},{n:'收盤跌破 21 日線（EMA）就賣',kind:'ma',ma:'e21'},{n:'收盤跌破 50 日線就賣',kind:'ma',ma:'ma50'},
+  {n:'移動停損：從最高點回落 2 倍波動就賣',kind:'trail',k:2},{n:'移動停損：從最高點回落 3 倍波動就賣',kind:'trail',k:3},
+  {n:'漲到 3 倍波動先賣一半，剩下跌破 10 日線再賣（停損上移到成本）',kind:'half',x:3,ma:'ma10'},
+  {n:'漲到 2 倍波動後停損上移到成本，之後跌破 10 日線再賣',kind:'be',x:2,ma:'ma10'}]; }
+function exitStat(evs,rule,Hx,sa,cost){
+  var rs=[],rets=[],days=[],big=0,gb=0,cap=[];
+  evs.forEach(function(e){ var s=simExit(e,rule,Hx,sa,cost); if(!s) return; rs.push(s.R); rets.push(s.ret*100); days.push(s.days);
+    if(s.pk>=2*e.a){ big++; if(s.ret<=0) gb++; cap.push(Math.max(-1,Math.min(1,s.ret/s.pk))); } });
+  var n=rs.length; return {n:n,avg:n?mean(rs):null,med:med(rets),win:n?rets.filter(function(x){ return x>0; }).length/n:null,days:mean(days),big:big,gb:big?gb/big:null,cap:cap.length?mean(cap):null};
+}
+function tab4(){
+  var Hx=RULE.Hx, sa=RULE.sa, cost=RULE.cost, rules=exitRules(Hx), rows='', R=[];
+  rules.forEach(function(r){
+    var s=exitStat(EV,r,Hx,sa,cost), b=exitStat(BASE,r,Hx,sa,cost), s1=exitStat(EV.filter(function(e){ return e.h===1; }),r,Hx,sa,cost), s2=exitStat(EV.filter(function(e){ return e.h===2; }),r,Hx,sa,cost);
+    R.push({r:r,s:s,b:b,s1:s1,s2:s2});
+    rows+='<tr><td style="white-space:normal;min-width:220px"><b>'+r.n+'</b></td><td>'+s.n+'</td><td><b class="'+cls(s.avg)+'">'+rr(s.avg)+'</b></td><td>'+rr(s1.avg)+' / '+rr(s2.avg)+'</td><td class="'+cls(s.med)+'">'+pc1(s.med)+'</td><td>'+(s.win==null?'—':Math.round(s.win*100)+'%')+'</td><td>'+(s.days==null?'—':s.days.toFixed(1))+'</td>'
+     +'<td>'+(s.gb==null?'—':Math.round(s.gb*100)+'%')+'<span class="sub">（'+s.big+' 筆）</span></td><td>'+(s.cap==null?'—':Math.round(s.cap*100)+'%')+'</td><td>'+rr(b.avg)+'</td></tr>';
+  });
+  EXST=R;
+  var o=function(arr,cur,fmt){ return arr.map(function(v){ return '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+fmt(v)+'</option>'; }).join(''); };
+  return '<div class="box"><div class="h">④ 出場規則比較：同樣的進場，怎麼賣最能保住漲幅？</div>'
+   +'<div class="sub">進場都一樣（突破隔天開盤），只換賣法。所有規則都有「初始停損」（停損 <select class="btn" onchange="RULE.sa=+this.value;renderRules()">'+o(GRID_S,sa,function(v){ return v+' 倍'; })+'）和「最多抱」<select class="btn" onchange="RULE.Hx=+this.value;renderRules()">'+o([20,40],Hx,function(v){ return v+' 天'; })+'。'
+   +'「收盤跌破均線就賣」＝收盤在線下，隔天開盤賣（假設你收盤後看、隔天早上賣）。「倍波動」＝這檔平常一天的波動幅度。'
+   +'<br><b>怎麼讀：</b>「平均每筆」是主要成績（1R＝停損距離）；「前／後半段」看穩不穩；「漲到過 2 倍波動的單子」是你在乎的那批——<b>「最後變虧損」＝漲了又吐光的比例</b>，「抓到最高漲幅的幾成」＝賣出價相對於期間最高點保住多少（100%＝賣在最高點）。對照＝任何一天進場、同樣賣法的平均每筆。</div>'
+   +'<div class="tw"><table class="t"><tr><th>賣法</th><th>次數</th><th>平均每筆</th><th>前半／後半</th><th>中位數報酬</th><th>賺錢比例</th><th>平均抱幾天</th><th>漲到過 2 倍波動的單子，最後變虧損</th><th>抓到最高漲幅的幾成</th><th>對照：任何一天</th></tr>'+rows+'</table></div>'
+   +'<div class="read" id="r4"></div></div>';
+}
+function read4(){
+  var R=(EXST||[]).filter(function(x){ return x.s.n>=30; }); if(!R.length){ el('r4').innerHTML=''; return; }
+  var best=R.slice().sort(function(a,b){ return b.s.avg-a.s.avg; })[0], worst=R.slice().sort(function(a,b){ return a.s.avg-b.s.avg; })[0];
+  var fixed=R.filter(function(x){ return x.r.kind==='time'; }), fbest=fixed.slice().sort(function(a,b){ return b.s.avg-a.s.avg; })[0];
+  var nb=R[0].s.big;
+  var gbMin=R.filter(function(x){ return x.s.gb!=null; }).sort(function(a,b){ return a.s.gb-b.s.gb; })[0];
+  var stable=(best.s1.avg>0&&best.s2.avg>0)?'前後半段都是正的':'但前後半段不一致，要小心';
+  var t='<b>白話：</b>平均每筆最高的是「'+best.r.n+'」（'+rr(best.s.avg)+'，對照 '+rr(best.b.avg)+'；'+stable+'），最差的是「'+worst.r.n+'」（'+rr(worst.s.avg)+'）。'
+   +(fbest?'固定天數的賣法裡最好的是「'+fbest.r.n+'」（'+rr(fbest.s.avg)+'）。':'')
+   +'<br>你在乎的「漲了又吐光」：有 '+nb+' 筆曾漲到 2 倍波動以上，其中最後變成虧損的比例，最低的是「'+(gbMin?gbMin.r.n:'—')+'」（'+(gbMin&&gbMin.s.gb!=null?Math.round(gbMin.s.gb*100)+'%':'—')+'）。<span class="sub">注意：賣得越早，這個比例自然越低，但也把後面的漲幅放掉了，要和「平均每筆」「抓到最高漲幅的幾成」一起看。</span>'
+   +'<br><b>提醒：</b>比較了 '+(EXST||[]).length+' 種賣法，領先的一兩種可能是巧合；看整體趨勢（例如「均線類」是不是整體比「固定天數」好），不要只看第一名。日線看不出盤中誰先到，移動停損與停損上移是保守估計。';
+  el('r4').innerHTML=t;
+}
+function renderRules(){ var p=el('rules'); if(p){ p.innerHTML=tab2()+tab3()+tab4(); read4(); } renderSum(); }
 function renderAll(){
   el('out').innerHTML='<div id="sum"></div>'+tab1()+'<div id="rules"></div>'; read1(); renderRules();
 }
