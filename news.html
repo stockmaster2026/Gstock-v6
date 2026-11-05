@@ -336,7 +336,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.7</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.8</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -405,6 +405,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
     </div>
   </div>
   <div id="sc-ui" style="padding:12px 16px 0;"></div>
+  <div id="ib-ui" style="padding:8px 16px 0;"></div>
   <div id="sc-tot"></div>
   <div id="sc-res"></div>
   <div id="sc-trk" style="padding:0 16px;"></div>
@@ -1233,7 +1234,7 @@ function wgRenderUI(){
     +'<button class="fb" onclick="wgQuery('+WG.active+')">查詢「'+esc2(b.n)+'」（只查這一盒，其他盒不受影響）</button>'
     +'</div>';
   document.querySelectorAll('.wres').forEach(function(el,i){ el.classList.toggle('on',i===WG.active); });
-  try{ scChips(); if(!window.VS_INIT){ window.VS_INIT=1; vsRender(); scTotal(); } }catch(e){}
+  try{ scChips(); if(!window.VS_INIT){ window.VS_INIT=1; vsRender(); scTotal(); ibRender(); } }catch(e){}
   var rd=document.getElementById('rd-ui');
   if(rd){
     var nh=wgAll(RD.hold).length;
@@ -1671,6 +1672,7 @@ function scTotal(){
     +'</div>';
 }
 function scRowSt(t){
+  if(IB_LAST){ var ib=IB_LAST.rows.filter(function(x){ return x.t===t; })[0]; if(ib) return {t:t,chg:ib.chg,c:ib.c,vr:ib.pace,fromHi:0,err:null}; }
   var R=scLoadRows(), ks=Object.keys(R);
   for(var i=0;i<ks.length;i++){ var rows=(R[ks[i]]&&R[ks[i]].rows)||[]; for(var j=0;j<rows.length;j++) if(rows[j].t===t){ var r=rows[j]; return {t:t,chg:r.ch,c:r.c,vr:r.vr,fromHi:r.fh==null?0:r.fh,err:null}; } }
   return null;
@@ -1776,6 +1778,85 @@ async function vsUpdate(){
   }
   vsSave(a); VS_BUSY=false; vsRender();
   var m2=document.getElementById('vs-msg'); if(m2) m2.textContent='更新完成'+(fail?('（'+fail+' 檔沒抓到）'):'')+'。';
+}
+
+
+/* ── v7.8：盤中爆量掃描 ──
+   做法：拿「今天到目前為止」的累積成交量，跟「過去 20 個完整交易日、同一個時間點」的累積量比。
+   這樣不用猜成交量的時間分布（開盤、收盤特別大），照這個速度，收盤時大約就是平均的這個倍數。 */
+var IB_BUSY=false, IB_LAST=null, IB_FMT=null;
+function ibEt(ts){
+  if(!IB_FMT) IB_FMT=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  var p=IB_FMT.formatToParts(new Date(ts*1000)), o={}; p.forEach(function(x){ o[x.type]=x.value; });
+  return {d:o.year+'-'+o.month+'-'+o.day, m:(+o.hour%24)*60+(+o.minute)};
+}
+async function ibFetch(t){
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=5m&range=1mo';
+  var r=await fetch(MKT_PROXY+encodeURIComponent(base),{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json(), res=d.chart&&d.chart.result&&d.chart.result[0]; if(!res||!res.timestamp) throw new Error('沒有資料');
+  var ts=res.timestamp, q=res.indicators.quote[0], by={}, days=[];
+  for(var i=0;i<ts.length;i++){
+    if(q.close[i]==null) continue;
+    var e=ibEt(ts[i]); if(e.m<570||e.m>=960) continue;
+    if(!by[e.d]){ by[e.d]=[]; days.push(e.d); }
+    by[e.d].push({m:e.m,v:q.volume[i]||0,c:q.close[i],h:q.high[i],l:q.low[i]});
+  }
+  days.sort(); if(days.length<8) throw new Error('資料不足');
+  var today=days[days.length-1], tb=by[today]; if(tb.length<3) throw new Error('今天資料太少');
+  var lastM=tb[tb.length-1].m, cur=0, hi=-1e18, lo=1e18;
+  tb.forEach(function(b){ if(b.m<lastM) cur+=b.v; if(b.h!=null&&b.h>hi) hi=b.h; if(b.l!=null&&b.l<lo) lo=b.l; });
+  var prior=days.slice(0,-1).filter(function(x){ return by[x].length>=70; }).slice(-20), sum=0, cnt=0;
+  prior.forEach(function(x){ var c=0; by[x].forEach(function(b){ if(b.m<lastM) c+=b.v; }); if(c>0){ sum+=c; cnt++; } });
+  if(cnt<10) throw new Error('可比較的天數不足');
+  var allPrior=days.slice(0,-1), pb=by[allPrior[allPrior.length-1]], pc=pb[pb.length-1].c, lc=tb[tb.length-1].c;
+  var cp=(hi>lo)?(lc-lo)/(hi-lo):null;
+  return {t:t,date:today,asofM:lastM,pace:cur/(sum/cnt),chg:(lc/pc-1)*100,c:lc,cp:cp,n:cnt,cur:cur};
+}
+function ibHM(m){ var h=Math.floor(m/60), mm=m%60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+function ibRender(){
+  var el=document.getElementById('ib-ui'); if(!el) return;
+  var thr=scThr(), n=etNow(), openNow=mktOpenNow(n.date);
+  var head='<div style="background:#eef7ff;border:2px solid #7fb3e6;border-radius:12px;padding:11px 14px">'
+    +'<div style="font-size:15.5px;font-weight:800;color:#0b3d6e">⚡ 盤中爆量掃描（只在美股交易時間有用）</div>'
+    +'<div style="font-size:12.5px;color:#26496b;margin-top:3px;line-height:1.65">把「今天到現在的累積成交量」，跟過去 20 個完整交易日<b>同一個時間點</b>的累積量比。照這個速度，收盤時大約就是平均的這個倍數。<br>美股盤中＝美西 6:30～13:00。<b>建議開盤 30 分鐘後（美西 7:00 以後）再看</b>，太早量比會亂跳。</div>'
+    +'<div style="margin-top:6px"><button class="fb" onclick="ibRun()"'+((IB_BUSY||SC_BUSY||WG_BUSY)?' disabled':'')+'>⚡ 掃描全部 '+SECTORS_UNIQ().length+' 檔（約 1～2 分鐘）</button>　爆量門檻：'+thr+' 倍（跟上面同一個設定）</div>'
+    +'<div class="wg-hint" id="ib-msg" style="margin-top:4px">'+(openNow?'':'現在不是美股盤中，按下去也不會掃描。收盤後請看下面的「今天全部板塊上漲＋爆量總表」。')+'</div>';
+  var body='';
+  var R=IB_LAST;
+  if(R){
+    var rows=R.rows.filter(function(x){ return x.chg>0&&x.pace>=thr; }).sort(function(a,b){ return b.pace-a.pace; });
+    var cpTxt=function(p){ return p==null?'—':(p>=0.75?'高檔':p<=0.25?'低檔':'中間'); };
+    body='<div style="margin-top:8px;font-size:13px;line-height:1.7"><b>掃描時間 '+R.at+'</b>　資料到美東 '+ibHM(R.asofM)+'（美西 '+ibHM(R.asofM-180)+'）'+(R.lag!=null?'，落後現在約 <b>'+R.lag+' 分鐘</b>':'')+'；共掃 '+R.rows.length+' 檔'+(R.bad?'，'+R.bad+' 檔沒抓到':'')+'。<b>目前「上漲＋量比 ≥ '+thr+' 倍」：'+rows.length+' 檔</b></div>'
+      +(rows.length?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>股票</th><th>板塊</th><th>目前漲幅</th><th>量比</th><th>K 棒位置</th><th>新聞整合</th></tr>'+rows.map(function(x){
+        return '<tr><td><b>$'+x.t+'</b></td><td>'+x.secs.map(esc2).join('、')+'</td><td class="wg-up"><b>+'+x.chg.toFixed(1)+'%</b></td><td><b>'+x.pace.toFixed(1)+'×</b></td><td>'+cpTxt(x.cp)+'</td><td><button class="tr-btn" onclick="scRowNews(this,\''+x.t+'\')" style="padding:4px 9px;font-size:12px;white-space:nowrap">📰 看整合</button></td></tr>'; }).join('')+'</table></div>'
+        :'<div class="rd-none">目前沒有「上漲＋爆量」的股票。</div>')
+      +'<div style="font-size:12px;color:#4a5568;margin-top:6px;line-height:1.65"><b>怎麼讀：</b>「量比 3.0×」＝到現在為止的成交量，是過去 20 天同一時間的 3 倍；照這個速度收盤時大約是平均的 3 倍（假設剩下的時間跟平常一樣）。「K 棒位置」＝目前價格在今天高低區間的位置，高檔代表買方撐著，低檔代表漲上去又被打下來。<br><b>注意：</b>這只是整理「現在正在發生什麼」，<b>不是買進訊號</b>（我的 10 年回測看不出單靠爆量有優勢）。盤中的量會變，收盤時可能不再爆量；盤中不會記進追蹤表。若當天是提早收盤日（感恩節隔天等），數字不準。</div>';
+  }
+  el.innerHTML=head+body+'</div>';
+}
+function SECTORS_UNIQ(){
+  var seen={}, out=[]; (typeof SECTORS!=='undefined'?SECTORS:[]).forEach(function(c){ wgAll(c.s).forEach(function(t){ if(!seen[t]){ seen[t]=1; out.push(t); } }); }); return out;
+}
+async function ibRun(){
+  if(IB_BUSY||SC_BUSY||WG_BUSY) return;
+  var n=etNow(), msg=function(t){ var e=document.getElementById('ib-msg'); if(e) e.innerHTML=t; };
+  if(!mktOpenNow(n.date)){ msg('現在不是美股盤中，所以沒有掃描。收盤後請看下面的總表。'); return; }
+  if(n.mins<585){ msg('開盤才 '+(n.mins-570)+' 分鐘，量比太不穩，請等到美東 9:45（美西 6:45）以後，最好 10:00 以後。'); return; }
+  IB_BUSY=true; var list=SECTORS_UNIQ(), rows=[], bad=0, done=0; ibRender();
+  for(var j=0;j<list.length;j+=6){
+    await Promise.all(list.slice(j,j+6).map(async function(t){
+      try{ rows.push(await ibFetch(t)); }catch(e){ bad++; }
+      done++; msg('掃描中 '+done+'／'+list.length+'…');
+    }));
+  }
+  var secOf={}; SECTORS.forEach(function(c){ wgAll(c.s).forEach(function(t){ (secOf[t]=secOf[t]||[]).push(c.n); }); });
+  rows.forEach(function(x){ x.secs=secOf[x.t]||[]; });
+  var asof=0; rows.forEach(function(x){ if(x.date===n.date&&x.asofM>asof) asof=x.asofM; });
+  rows=rows.filter(function(x){ return x.date===n.date; });
+  var nn=etNow(), lag=asof?Math.max(0,nn.mins-asof):null;
+  IB_LAST={rows:rows,bad:bad,asofM:asof,lag:lag,at:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})};
+  IB_BUSY=false; ibRender();
+  if(!rows.length) msg('沒有拿到今天的盤中資料（可能 Yahoo 還沒更新）。');
 }
 
 /* ── v7.5：自動模式、新聞標註、備份 ── */
