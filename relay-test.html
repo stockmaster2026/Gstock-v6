@@ -12,7 +12,7 @@ body{margin:0;background:#fffbea;font-family:-apple-system,"PingFang TC","Noto S
 .warn{margin-top:10px;padding:9px 11px;background:#fff4e5;border:1px solid #f0c27a;border-radius:8px;font-size:13px;line-height:1.7}
 select{font-size:14px}
 </style></head><body>
-<div class="top"><a href="charts.html">← 板塊圖表</a><b>接棒測試 v0.2</b></div>
+<div class="top"><a href="charts.html">← 板塊圖表</a><b>接棒測試 v0.3</b></div>
 <div class="wrap">
 <div class="card" style="background:#fffdf3"><div style="font-weight:900;font-size:15px">這一頁在看什麼</div>
 <div style="font-size:13.5px;line-height:1.7;margin-top:4px">板塊每漲一波，股票會分批起漲（第一棒、第二棒…）。這裡回頭看：<b>第一棒起漲時「還沒動」的股票，後來有多少真的接棒？</b>有顏色的＝後來接棒（顏色＝第幾棒，後面的 +% 是那一波漲幅），灰色＝這一波沒有跟上。這是測試頁，不是買賣訊號。</div></div>
@@ -261,7 +261,7 @@ function prep(B){
   return B;
 }
 
-/* ═══ 接棒測試 v0.2 ═══
+/* ═══ 接棒測試 v0.3 ═══
    問題：某一波裡，第一棒（或第二棒）起漲時「還沒動」的股票，後來有多少真的接棒？
    規則：「還沒動」只用當天以前的價格判斷（不偷看後來）；「接棒」才用事後結果標色。
    波／棒的定義與 charts.html 完全相同（整組平均漲 15% 算一波；起點相隔 5 日內算同一棒）。 */
@@ -315,9 +315,14 @@ function analyzeSector(list,X){
         if(run>=X){ moved++; return; }
         if(r&&!r.none&&r.gain>=WAVE_TH&&r.cl<=i){ earlier++; return; }
         var out=-1; if(r&&!r.none&&r.gain>=WAVE_TH&&r.cl>i) out=r.cl;
-        var bi0=x.B.map[dates[Ti]];
-        cands.push({t:x.t,run:run,out:out,gain:(r&&!r.none)?r.gain:0,f:featuresAt(x.B,bi0,idx,Ti)});
+        var bi0=x.B.map[dates[Ti]], f=featuresAt(x.B,bi0,idx,Ti), fwd=null, sc=null;
+        var be=x.B.map[dates[Math.min(dates.length-1,w.i1+5)]];
+        if(bi0!=null&&be!=null&&be>bi0&&x.B.c[bi0]>0){ var pk=0; for(var q=bi0;q<=be;q++) if(x.B.c[q]>pk) pk=x.B.c[q]; fwd=pk/x.B.c[bi0]-1; if(f.atr>0) sc=fwd/f.atr; }
+        cands.push({t:x.t,run:run,out:out,gain:(r&&!r.none)?r.gain:0,f:f,fwd:fwd,sc:sc,o2:null});
       });
+      /* 波動調整後的「接棒」：這個名單裡，往後的最大漲幅 ÷ 平常波動，排在前一半的算（不用固定 15%） */
+      var scs=cands.filter(function(c){ return c.sc!=null; }).sort(function(p,q){ return q.sc-p.sc; }), hh=Math.floor(scs.length/2);
+      scs.forEach(function(c,ix){ c.o2=ix<hh?1:0; });
       var relay=cands.filter(function(c){ return c.out>=0; }).length;
       w.steps.push({i:i,T:Ti,date:dates[Ti],cands:cands,moved:moved,earlier:earlier,relay:relay,next:cands.filter(function(c){ return c.out===i+1; }).length});
     }
@@ -331,7 +336,6 @@ var FEATS=[
  {k:'dMA50',n:'離 50 日線多遠',hi:'站在 50 日線上方越多'},
  {k:'dHi',n:'離一年高點多遠',hi:'越接近高點'},
  {k:'mom20',n:'近 20 天漲跌',hi:'近 20 天漲得越多'},
- {k:'rs20',n:'近 20 天比板塊強或弱',hi:'比板塊平均強越多'},
  {k:'run60',n:'近 60 天從低點漲了多少',hi:'已經漲得越多（越延伸）'},
  {k:'atr',n:'平常一天的波動幅度',hi:'波動越大'},
  {k:'volx',n:'近 5 天成交量 ÷ 近 50 天',hi:'最近量越大'},
@@ -349,17 +353,30 @@ function featuresAt(B,bi,idx,Ti){
   if(B.stg&&B.stg[bi]!=null&&B.stg[bi]>0) f.st2=(B.stg[bi]===2||B.stg[bi]===22)?1:0;
   return f;
 }
-/* 在同一個「時間點」的名單裡，把特徵高的一半和低的一半比，看接棒比例差多少 */
-function stepDiff(st,key,bin){
-  var a=st.cands.filter(function(c){ return c.f&&c.f[key]!=null; });
-  if(a.length<4) return null;
-  var relay=a.filter(function(c){ return c.out>=0; }).length; if(relay<1||relay>=a.length) return null;
+/* 在同一個「時間點」的名單裡，把特徵高的一半和低的一半比，看接棒比例差多少
+   mode: raw＝原本（接棒＝這一波漲 15% 以上）；strat＝先把名單依平常波動分成兩半，各半裡面再比；sc＝接棒改成「往後漲幅÷平常波動」排前一半 */
+function diffOn(arr,key,bin,oc,minN){
+  var a=arr.filter(function(c){ return c.f&&c.f[key]!=null; });
+  if(a.length<minN) return null;
+  var relay=a.filter(oc).length; if(relay<1||relay>=a.length) return null;
   var hi,lo;
   if(bin){ hi=a.filter(function(c){ return c.f[key]===1; }); lo=a.filter(function(c){ return c.f[key]===0; }); }
   else { var s=a.slice().sort(function(x,y){ return x.f[key]-y.f[key]; }), h=Math.floor(s.length/2); lo=s.slice(0,h); hi=s.slice(s.length-h); if(s[0].f[key]===s[s.length-1].f[key]) return null; }
   if(hi.length<1||lo.length<1) return null;
-  var r=function(g){ return g.filter(function(c){ return c.out>=0; }).length/g.length; };
-  return {diff:r(hi)-r(lo),date:st.date};
+  var r=function(g){ return g.filter(oc).length/g.length; };
+  return r(hi)-r(lo);
+}
+function stepDiff(st,key,bin,mode){
+  var d=null, oc=function(c){ return c.out>=0; };
+  if(mode==='sc'){ var b=st.cands.filter(function(c){ return c.o2!=null; }); d=diffOn(b,key,bin,function(c){ return c.o2===1; },4); }
+  else if(mode==='strat'){
+    if(key==='atr') return null;
+    var a=st.cands.filter(function(c){ return c.f&&c.f.atr!=null&&c.f[key]!=null; }).sort(function(p,q){ return p.f.atr-q.f.atr; });
+    if(a.length<6) return null; var h=Math.floor(a.length/2);
+    var ds=[diffOn(a.slice(0,h),key,bin,oc,3),diffOn(a.slice(h),key,bin,oc,3)].filter(function(x){ return x!=null; });
+    d=ds.length?ds.reduce(function(s,x){ return s+x; },0)/ds.length:null;
+  } else d=diffOn(st.cands,key,bin,oc,4);
+  return d==null?null:{diff:d,date:st.date};
 }
 function binP(pos,neg){ var n=pos+neg; if(n<1) return 1; var m=Math.min(pos,neg), p=0, lc=function(x){ var s=0; for(var i=2;i<=x;i++) s+=Math.log(i); return s; };
   for(var i=0;i<=m;i++) p+=Math.exp(lc(n)-lc(i)-lc(n-i)-n*Math.log(2)); return Math.min(1,2*p); }
@@ -368,30 +385,48 @@ function featStats(diffs){
   var m=n?diffs.reduce(function(s,x){ return s+x.diff; },0)/n:0;
   return {n:n,pos:pos,neg:neg,mean:m,p:binP(pos,neg)};
 }
+function passRule(S,S1,S2){ return S.n>=15&&S1.n>=6&&S2.n>=6&&S1.mean*S2.mean>0&&Math.abs(S1.mean)>=0.05&&Math.abs(S2.mean)>=0.05&&S.p<0.01&&Math.sign(S.mean)===Math.sign(S1.mean); }
 function featTable(res){
   var steps=[]; res.forEach(function(R){ if(!R.A) return; R.A.waves.forEach(function(w){ if(!w.confirmed||w.k<2) return; w.steps.forEach(function(st){ steps.push(st); }); }); });
   steps.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
   var half=Math.ceil(steps.length/2), A1=steps.slice(0,half), A2=steps.slice(half);
-  return FEATS.map(function(F){
+  function run(F,mode){
     var all=[],d1=[],d2=[];
-    steps.forEach(function(st){ var d=stepDiff(st,F.k,F.bin); if(d) all.push(d); });
-    A1.forEach(function(st){ var d=stepDiff(st,F.k,F.bin); if(d) d1.push(d); });
-    A2.forEach(function(st){ var d=stepDiff(st,F.k,F.bin); if(d) d2.push(d); });
+    steps.forEach(function(st){ var d=stepDiff(st,F.k,F.bin,mode); if(d) all.push(d); });
+    A1.forEach(function(st){ var d=stepDiff(st,F.k,F.bin,mode); if(d) d1.push(d); });
+    A2.forEach(function(st){ var d=stepDiff(st,F.k,F.bin,mode); if(d) d2.push(d); });
     var S=featStats(all), S1=featStats(d1), S2=featStats(d2);
-    var pass=S.n>=15&&S1.n>=6&&S2.n>=6&&S1.mean*S2.mean>0&&Math.abs(S1.mean)>=0.05&&Math.abs(S2.mean)>=0.05&&S.p<0.01&&Math.sign(S.mean)===Math.sign(S1.mean);
-    return {F:F,S:S,S1:S1,S2:S2,pass:pass,nSteps:steps.length};
+    return {S:S,S1:S1,S2:S2,pass:passRule(S,S1,S2)};
+  }
+  return FEATS.map(function(F){
+    var raw=run(F,'raw'), st=run(F,'strat'), sc=run(F,'sc'), v, col;
+    if(F.k==='atr'){
+      if(sc.pass&&sc.S.mean>0){ v='波動大的，真的比較會接棒（扣掉「本來就波動大」之後還在）'; col='#0d8a3f'; }
+      else if(raw.pass){ v='只是「15% 門檻對波動大的股票比較容易達到」，不算真的線索'; col='#b45309'; }
+      else { v='沒有穩定線索'; col='#667'; }
+    } else if(st.pass&&sc.pass){ v='控制波動後仍有線索'; col='#0d8a3f'; }
+    else if(st.pass||sc.pass){ v='只有一種算法有線索，半信半疑'; col='#b45309'; }
+    else if(raw.pass){ v='原本的線索消失了，多半是波動的影子'; col='#b45309'; }
+    else { v='沒有穩定線索'; col='#667'; }
+    return {F:F,raw:raw,st:st,sc:sc,v:v,col:col,nSteps:steps.length};
   });
 }
 function featHtml(res){
   var T=featTable(res), pp=function(x){ return (x>=0?'+':'')+Math.round(x*100); };
-  var pass=T.filter(function(x){ return x.pass; });
-  var h='<div class="card"><div style="font-size:16px;font-weight:900">② 起漲前，哪些特徵分得出「會接棒」和「不會接棒」？</div>'
-   +'<div style="font-size:13.5px;line-height:1.7;margin-top:4px">做法：每個「還沒動」名單（同一個時間點）裡，把某個特徵<b>高的一半</b>和<b>低的一半</b>比，看接棒比例差幾個百分點。特徵只用<b>當天以前</b>的價格與成交量。再把所有時間點按<b>日期分成前半、後半</b>：<b>兩半都往同一個方向、而且差距夠大，才算有線索</b>（避免只是剛好湊出來）。</div>'
-   +'<div class="tw"><table class="t"><tr><th>特徵</th><th>「高」的意思</th><th>全部：高的那半比低的那半，接棒比例差</th><th>高的比較好的次數／比較差的次數</th><th>前半</th><th>後半</th><th>判定</th></tr>'
-   +T.map(function(x){ return '<tr><td><b>'+x.F.n+'</b></td><td>'+x.F.hi+'</td><td><b>'+(x.S.n?pp(x.S.mean)+' 個百分點':'—')+'</b>（'+x.S.n+' 個名單）</td><td>'+x.S.pos+' ／ '+x.S.neg+'</td><td>'+(x.S1.n?pp(x.S1.mean):'—')+'</td><td>'+(x.S2.n?pp(x.S2.mean):'—')+'</td><td>'+(x.pass?'<b style="color:#0d8a3f">有線索</b>':'<span style="color:#667">沒有穩定線索</span>')+'</td></tr>'; }).join('')+'</table></div>';
-  h+='<div class="read"><b>白話：</b>'+(T[0]&&T[0].nSteps?'共 '+T[0].nSteps+' 個時間點的名單。':'')+(pass.length?'有 <b>'+pass.length+'</b> 個特徵在前後兩半都往同一個方向：'+pass.map(function(x){ var up=x.S.mean>0; return '<b>'+x.F.n+'</b>（'+x.F.hi+'的那半，接棒比例'+(up?'比較高':'比較低')+'約 '+Math.abs(Math.round(x.S.mean*100))+' 個百分點）'; }).join('；')+'。<br>但我同時測了 '+T.length+' 個特徵，其中一兩個純粹是巧合通過的機會不是零，所以<b>這只能算「值得再驗證的線索」，不是結論</b>。'
-   :'<b>沒有任何一個特徵，在前後兩半都穩定地分出「接棒」和「沒接棒」。</b>也就是說，光看這幾個價格與成交量的特徵，還挑不出名單裡哪幾檔比較會接棒；「還沒動」的名單目前只能當觀察名單。')+'</div>'
-   +'<div class="warn"><b>怎麼讀上面的表：</b>「接棒比例差 +10 個百分點」＝高的那半比低的那半，接棒比例多 10%（例如 70% 對 60%）。「高的比較好的次數／比較差的次數」＝在多少個名單裡高的那半接棒比例較高／較低（打平的不算）。前面幾個特徵（離 50 日線、離高點、近 20 天漲跌、相對板塊強弱）彼此高度相關，它們同時有線索時，其實是<b>同一條線索重複出現</b>，不要當成好幾個獨立證據。這些名單在同一天、同一個板塊裡彼此不獨立，所以實際可信度比次數看起來低。門檻（差距至少 5 個百分點、機率小於 1%）也是我訂的。</div></div>';
+  var cell=function(R,withN){ return R.S.n?'<b>'+pp(R.S.mean)+'</b>（前 '+(R.S1.n?pp(R.S1.mean):'—')+'／後 '+(R.S2.n?pp(R.S2.mean):'—')+'；'+R.S.n+' 個名單）':'—'; };
+  var good=T.filter(function(x){ return x.F.k!=='atr'&&x.st.pass&&x.sc.pass; }), half=T.filter(function(x){ return x.F.k!=='atr'&&(x.st.pass!==x.sc.pass); }), gone=T.filter(function(x){ return x.F.k!=='atr'&&!x.st.pass&&!x.sc.pass&&x.raw.pass; });
+  var atr=T.filter(function(x){ return x.F.k==='atr'; })[0];
+  var h='<div class="card"><div style="font-size:16px;font-weight:900">② 起漲前，哪些特徵分得出「會接棒」和「不會接棒」？（v0.3：控制波動）</div>'
+   +'<div style="font-size:13.5px;line-height:1.7;margin-top:4px">v0.2 的疑點：「接棒」是看這一波有沒有漲 15%，<b>波動大的股票本來就比較容易漲到 15%</b>，所以表面的線索可能只是波動大小。這一版用兩種方式把波動拿掉再測一次：<br><b>① 控制波動：</b>每個名單先依「平常一天的波動」分成大、小兩半，在<b>每一半裡面</b>再比特徵高低（等於只拿波動差不多的股票互相比）。<br><b>② 波動調整後的結果：</b>不再用固定 15%，改成「往後的最大漲幅 ÷ 它平常的波動」，名單裡排前一半的算接棒（波動大的股票不再佔便宜）。<br>判定規則和 v0.2 一樣：所有時間點按日期分前半、後半，<b>兩半同方向、差距夠大、機率夠小</b>才算過。已拿掉「近 20 天比板塊強弱」，因為它跟「近 20 天漲跌」在同一個名單裡數字完全一樣（重複計算）。</div>'
+   +'<div class="tw"><table class="t"><tr><th>特徵</th><th>「高」的意思</th><th>v0.2 原本：接棒比例差（個百分點）</th><th>① 控制波動後</th><th>② 波動調整後的結果</th><th>判定</th></tr>'
+   +T.map(function(x){ return '<tr><td><b>'+x.F.n+'</b></td><td>'+x.F.hi+'</td><td>'+cell(x.raw)+'</td><td>'+(x.F.k==='atr'?'（不適用）':cell(x.st))+'</td><td>'+cell(x.sc)+'</td><td style="white-space:normal;min-width:190px"><b style="color:'+x.col+'">'+x.v+'</b></td></tr>'; }).join('')+'</table></div>';
+  h+='<div class="read"><b>白話：</b>'+(T[0]&&T[0].nSteps?'共 '+T[0].nSteps+' 個時間點的名單。':'')
+   +(good.length?'<b>控制波動後仍然站得住：</b>'+good.map(function(x){ var up=x.sc.S.mean>0; return '<b>'+x.F.n+'</b>（'+x.F.hi+'的那半，接棒比例'+(up?'比較高':'比較低')+'）'; }).join('；')+'。':'<b>沒有任何一個位置／動能特徵，在兩種控制波動的算法下都穩定過關。</b>')
+   +(half.length?'<br>只有一種算法過關（半信半疑）：'+half.map(function(x){ return x.F.n; }).join('、')+'。':'')
+   +(gone.length?'<br>v0.2 看到、現在<b>消失</b>的：'+gone.map(function(x){ return x.F.n; }).join('、')+'（多半是波動的影子）。':'')
+   +(atr?'<br><b>波動本身：</b>'+atr.v+'。':'')
+   +'<br>'+(good.length?'但這仍只是「值得再驗證的線索」，不是結論：我同時測了 '+T.length+' 個特徵、兩種算法，有一兩個純粹巧合通過的機會不是零。':'結論：光看這幾個價格與成交量特徵，<b>還挑不出名單裡哪幾檔比較會接棒</b>；「還沒動」的名單目前只能當觀察名單。')+'</div>'
+   +'<div class="warn"><b>怎麼讀上面的表：</b>「+10」＝特徵高的那半比低的那半，接棒比例多 10 個百分點（例如 70% 對 60%）；括號裡「前／後」是把時間點按日期分成前半、後半各自算的結果，兩半不同方向就不可信。①的名單數比較少，因為每個名單要先切成兩半、每半都要有人接棒也有人沒接棒才算得出來。<br><b>仍然有的限制：</b>門檻（至少 5 個百分點、機率小於 1%）、「前一半算接棒」都是我訂的；名單是你現在存的成分股（倖存者偏差）；只有兩年資料；同一天同一板塊的股票彼此不獨立，實際可信度比次數看起來低；「÷ 波動」的算法本身會稍微偏向波動小的股票，所以波動這一列只看「有沒有仍然偏向波動大」；波動只用「過去 20 天平均日內高低幅度」一種量法，沒有控制其他可能的干擾（例如市值、板塊本身的強弱）。</div></div>';
   return h;
 }
 
