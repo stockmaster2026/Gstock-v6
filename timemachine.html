@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.21</title>
+<title>板塊時光機 v1.22</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.21</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.22</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -97,6 +97,11 @@ var SECTORS_DEFAULT=[
   //   投行與資管（GS／MS／BLK／KKR／BX／APO）、支付（V／MA／AXP）、交易所與評等資料（CME／SPGI）、
   //   加密相關（COIN／HOOD）。依 IBD「營收從哪來」的原則該再切細，先放一組、看過走勢再決定。
   {id:'finance',   icon:'🏦', name:'金融',       etf:'XLF',  tickers:['JPM','GS','MS','BLK','KKR','BX','SCHW','COIN','HOOD','V','ARCC','APO','SYF','ALLY','AXP','COF','MA','CME','SPGI','BAC']},
+  // ═══ 新增：防禦型個股（民生消費／醫療／公用事業）═══════════════════════════
+  //   Jasmine 11/5：美股大跌、科技承壓時，資金可能跑去民生消費（COST、KO…），但 radar／charts 名單裡沒有這類 —— 看不到就等於不知道。
+  //   名單與 RRG 的「防禦型個股」同一份，唯一差別：NEE 不放（它已在「AI電力散熱」，一檔只放一個板塊）→ 15 檔。
+  //   ⚠ 這一組內部不是同一門生意（民生消費／藥廠／公用事業／餐飲），先放一組、看過走勢再決定要不要切細；MCD 嚴格說是餐飲。名單未逐檔重新查證。
+  {id:'defensive', icon:'🛡️', name:'防禦型個股', etf:'XLP',  tickers:['COST','WMT','PG','KO','PEP','CL','MDLZ','PM','MCD','JNJ','ABT','MRK','DUK','SO','WM']},
   {id:'custom',    icon:'⭐', name:'自訂',       etf:null,   tickers:[]},
 ];
 
