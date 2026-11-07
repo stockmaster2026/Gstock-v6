@@ -451,11 +451,85 @@ function bestAt(t,k){
   return best;
 }
 
+function el(id){return document.getElementById(id);}
+function pc1(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function mean(a){ if(!a.length) return null; var s=0; a.forEach(function(x){s+=x;}); return s/a.length; }
+var SECS=[], T2S={}, LISTS={};
+function catOf(st){
+  if(!st) return '沒動靜';
+  var l=st.label;
+  if(l.indexOf('剛起步')===0) return '剛起步';
+  if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
+  if(l.indexOf('進行中')>=0) return '進行中';
+  if(l.indexOf('高點附近')===0) return '暫停';
+  if(l.indexOf('回檔中')===0) return '回檔中';
+  if(l.indexOf('大幅回吐')===0) return '大幅回吐';
+  if(l.indexOf('休息中')===0) return '休息中';
+  return '沒動靜';
+}
+function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause') return '小心'; return '逆風'; }
+var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
+// ── 板塊在某一天的狀態（只用那天以前的資料）──
+var SC={};
+function sectorAt(name,k){
+  var key=name+'|'+k; if(SC[key]!==undefined) return SC[key];
+  var S=BARS['SPY'], save=S, v=null;
+  BARS['SPY']={d:S.d.slice(0,k+1)};
+  try{ var A=analyzeWaves(LISTS[name],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){ v=null; }
+  BARS['SPY']=save; SC[key]=v; return v;
+}
+function normDate(x){ // dna 存的日期可能是 26/08/03、2026-08-03、2026/8/3 ... 統一成 2026-08-03
+  var m=String(x).match(/(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null;
+  var y=m[1].length===2?'20'+m[1]:m[1]; return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2); }
+function kOfDate(ds){ var S=BARS['SPY'], k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; } return k; }
+function bestAt(t,k){
+  var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
+  return best;
+}
+
+function el(id){return document.getElementById(id);}
+function pc1(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function mean(a){ if(!a.length) return null; var s=0; a.forEach(function(x){s+=x;}); return s/a.length; }
+var SECS=[], T2S={}, LISTS={};
+function catOf(st){
+  if(!st) return '沒動靜';
+  var l=st.label;
+  if(l.indexOf('剛起步')===0) return '剛起步';
+  if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
+  if(l.indexOf('進行中')>=0) return '進行中';
+  if(l.indexOf('高點附近')===0) return '暫停';
+  if(l.indexOf('回檔中')===0) return '回檔中';
+  if(l.indexOf('大幅回吐')===0) return '大幅回吐';
+  if(l.indexOf('休息中')===0) return '休息中';
+  return '沒動靜';
+}
+function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause') return '小心'; return '逆風'; }
+var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
+// ── 板塊在某一天的狀態（只用那天以前的資料）──
+var SC={};
+function sectorAt(name,k){
+  var key=name+'|'+k; if(SC[key]!==undefined) return SC[key];
+  var S=BARS['SPY'], save=S, v=null;
+  BARS['SPY']={d:S.d.slice(0,k+1)};
+  try{ var A=analyzeWaves(LISTS[name],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){ v=null; }
+  BARS['SPY']=save; SC[key]=v; return v;
+}
+function normDate(x){ // dna 存的日期可能是 26/08/03、2026-08-03、2026/8/3 ... 統一成 2026-08-03
+  var m=String(x).match(/(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null;
+  var y=m[1].length===2?'20'+m[1]:m[1]; return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2); }
+function kOfDate(ds){ var S=BARS['SPY'], k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; } return k; }
+function bestAt(t,k){
+  var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
+  return best;
+}
+
 function el(id){ return document.getElementById(id); }
 function mean(a){ if(!a.length) return null; var s=0; a.forEach(function(x){ s+=x; }); return s/a.length; }
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){ return x-y; }); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 var SECS=[], T2S={}, LISTS={};
-/* ═══ 交叉對照測試 v0.2 ═══
+/* ═══ 交叉對照測試 v0.3 ═══
    問題：charts／時光機（板塊自己的位階）、雷達（這一組有沒有跑贏大盤）、DNA（個股訊號）看的角度不同，
         疊在一起時，哪一層有用？誰先翻、誰晚翻？假訊號有多少？
    做法：所有層級都只用「那一天以前」的資料重算；結果用「之後 20 天板塊比大盤多漲多少」、「DNA 訊號之後的 R」衡量。
@@ -751,7 +825,7 @@ function partC(){
    +'<tr><td><b>雷達：這一組有跑贏大盤（3 檔以上成形）</b></td>'+OFFS.map(function(o){ return '<td>'+onTxt(r.off[o].r)+'</td>'; }).join('')+'<td>'+onTxt(r.rAll)+'</td></tr>'
    +'<tr><td><b>charts／時光機：標成「順風」（剛起步／進行中）</b></td>'+OFFS.map(function(o){ return '<td>'+onTxt(r.off[o].c)+'</td>'; }).join('')+'<td>'+onTxt(r.cAll)+'</td></tr></table></div>'
    +'<div class="tw"><table class="t"><tr><th>另外兩個參考</th><th>結果</th></tr>'
-   +'<tr><td>DNA：該板塊在這一波低點前 10 天～後 60 天內的第一筆訊號</td><td>'+(EVS.length?qTxt(quart(r.dna)):'—（這次沒有載入 DNA 樣本）')+'</td></tr>'
+   +'<tr><td>'+(SRC==='dna'?'DNA':'30 日新高')+'：該板塊在這一波低點前 10 天～後 60 天內的第一筆個股訊號<span class="sub">（板塊成分股多，任何時候都容易有股票創新高，這一列沒有扣掉平常會出現的比例，不能當領先證據）</span></td><td>'+(EVS.length?qTxt(quart(r.dna)):'—（這次沒有載入個股樣本）')+'</td></tr>'
    +'<tr><td>板塊自己漲滿 15%（charts 能認定一波的最早時間）</td><td>'+qTxt(quart(r.confirm))+'<span class="sub">　※定義造成：一定在低點之後。</span></td></tr></table></div>';
   h+='<div style="font-weight:900;margin-top:12px">假訊號：每次「剛開始亮燈」之後 40 天，板塊指數最高有沒有漲到 ≥10%？</div>'
    +'<div class="tw"><table class="t"><tr><th>情況</th><th>之後 40 天最高漲 ≥10% 的比例</th></tr>'
@@ -802,6 +876,99 @@ function partB(){
    +verdictBox(Vd,'假設 D：雷達有跑贏大盤時的訊號，比沒跑贏時的好。');
   h+='</div>'; return h;
 }
+
+/* ═══ ⑥ 早期苗頭：哪一個指標最早亮？假訊號多少？亮了之後板塊內個股突破有沒有比較好？ ═══ */
+var ETYPES=[['thrust','廣度翻多：板塊內站上 50 日線的股票比例，10 天內從 ≤40% 衝到 ≥60%（越多股票一起往上）'],
+ ['cross50','板塊指數（等權平均）站上自己的 50 日線（之前已在線下 ≥10 天）'],
+ ['rsup','板塊相對大盤的強度線站上它的 20 日平均（之前已在下面 ≥10 天）'],
+ ['radar','雷達：這一組開始跑贏大盤（3 檔以上成形）'],
+ ['charts','charts／時光機：剛標成「順風」']];
+var EA={}, WAVES=[];
+function buildEarly(){
+  var S=BARS['SPY'], n=S.d.length; EA={}; WAVES=[];
+  ETYPES.forEach(function(t){ EA[t[0]]=[]; });
+  Object.keys(LISTS).forEach(function(nm){
+    var idx=IDX[nm], L=LISTS[nm], brd=new Array(n), ma=new Array(n), rsv=new Array(n), rsm=new Array(n), k, j, s=0;
+    for(k=0;k<n;k++){ s+=idx[k]; if(k>=50) s-=idx[k-50]; ma[k]=k>=49?s/50:null; rsv[k]=idx[k]/S.c[k]; }
+    s=0; for(k=0;k<n;k++){ s+=rsv[k]; if(k>=20) s-=rsv[k-20]; rsm[k]=k>=19?s/20:null; }
+    for(k=0;k<n;k++){ var c=0,m=0; L.forEach(function(x){ var B=x.B, i=B.map[S.d[k]]; if(i!=null&&B.ma50[i]!=null){ m++; if(B.c[i]>B.ma50[i]) c++; } }); brd[k]=m>=3?c/m:null; }
+    var on={thrust:[],cross50:[],rsup:[],radar:[]};
+    for(k=0;k<n;k++){
+      var a=false,b=false,d=false;
+      if(k>=70){
+        if(brd[k]!=null&&brd[k]>=0.6){ var mn=1; for(j=k-10;j<=k;j++){ if(brd[j]!=null&&brd[j]<mn) mn=brd[j]; } a=(mn<=0.4); }
+        if(ma[k]!=null&&idx[k]>ma[k]){ var cb=0; for(j=k-15;j<k;j++){ if(ma[j]!=null&&idx[j]<ma[j]) cb++; } b=(cb>=10); }
+        if(rsm[k]!=null&&rsv[k]>rsm[k]){ var cr=0; for(j=k-15;j<k;j++){ if(rsm[j]!=null&&rsv[j]<rsm[j]) cr++; } d=(cr>=10); }
+      }
+      on.thrust[k]=a; on.cross50[k]=b; on.rsup[k]=d; on.radar[k]=(k>=70&&!!ACT[nm][k]);
+    }
+    ['thrust','cross50','rsup','radar'].forEach(function(t){
+      for(k=70;k<n;k++){ if(on[t][k]){ var q=false; for(j=k-5;j<k;j++){ if(on[t][j]){ q=true; break; } } if(!q) EA[t].push({sec:nm,k:k}); } }
+    });
+    var pg=false; ST[nm].forEach(function(st){ var go=(st.tier==='go'); if(go&&!pg&&st.k>=70) EA.charts.push({sec:nm,k:st.k}); pg=go; });
+    zigzag(idx,WAVE_TH).forEach(function(l){ if(l.up&&idx[l.i1]/idx[l.i0]-1>=WAVE_TH&&l.i0>=70&&l.i0<=n-21) WAVES.push({sec:nm,low:l.i0}); });
+  });
+}
+function fwdOfEv(ev){
+  var S=BARS['SPY'], n=S.d.length, idx=IDX[ev.sec], k=ev.k; if(k+FW>=n) return null;
+  var ex=((idx[k+FW]/idx[k])-(S.c[k+FW]/S.c[k]))*100, H=40, mx=null;
+  if(k+H<n){ mx=-1; for(var j=1;j<=H;j++){ var r=idx[k+j]/idx[k]-1; if(r>mx) mx=r; } }
+  return {ex:ex, big:(mx==null?null:mx>=0.10), up:(BARS['SPY'].ma50[k]!=null&&S.c[k]>BARS['SPY'].ma50[k])};
+}
+function summEarly(list){
+  var f=list.map(fwdOfEv).filter(function(x){ return x; }), ex=f.map(function(x){ return x.ex; });
+  var srt=list.filter(function(e){ return e.k+FW<BARS['SPY'].d.length; }).sort(function(a,b){ return a.sec<b.sec?-1:(a.sec>b.sec?1:a.k-b.k); }), ep=0, pv=null;
+  srt.forEach(function(e){ if(!pv||pv.sec!==e.sec||e.k-pv.k>=20) ep++; pv=e; });
+  var bg=f.filter(function(x){ return x.big!=null; }), up=f.filter(function(x){ return x.up; }), dn=f.filter(function(x){ return !x.up; });
+  return {n:list.length,nf:f.length,ep:ep,mean:mean(ex),hit:ex.length?ex.filter(function(v){ return v>0; }).length/ex.length:null,
+    big:bg.length?bg.filter(function(x){ return x.big; }).length/bg.length:null,nb:bg.length,
+    mu:up.length?mean(up.map(function(x){ return x.ex; })):null,nu:up.length,md:dn.length?mean(dn.map(function(x){ return x.ex; })):null,nd:dn.length};
+}
+function earlyBase(){
+  var S=BARS['SPY'], n=S.d.length, L=[]; Object.keys(LISTS).forEach(function(nm){ for(var k=70;k<n-1;k+=STEP) L.push({sec:nm,k:k}); }); return L;
+}
+function waveMatch(list){
+  /* 精確度：亮燈後（前 20～後 60 天）真的出現板塊低點的比例；召回：每一波低點前 20～後 60 天有沒有亮過 */
+  var by={}; list.forEach(function(e){ (by[e.sec]=by[e.sec]||[]).push(e.k); });
+  var lows={}; WAVES.forEach(function(w){ (lows[w.sec]=lows[w.sec]||[]).push(w.low); });
+  var hitE=0; list.forEach(function(e){ if((lows[e.sec]||[]).some(function(lw){ return e.k>=lw-20&&e.k<=lw+60; })) hitE++; });
+  var offs=[], got=0; WAVES.forEach(function(w){ var best=null; (by[w.sec]||[]).forEach(function(k){ if(k>=w.low-20&&k<=w.low+60&&(best==null||k<best)) best=k; }); if(best!=null){ got++; offs.push(best-w.low); } });
+  return {prec:list.length?hitE/list.length:null,np:list.length,rec:WAVES.length?got/WAVES.length:null,nw:WAVES.length,off:quart(offs)};
+}
+function partE(){
+  var base=earlyBase(), bS=summEarly(base), bM=waveMatch(base);
+  var h='<div class="box"><div class="h">⑥ 早期苗頭：哪個指標最早亮？亮了之後，板塊內的個股突破有沒有比較好？</div>'
+   +'<div class="sub">這一區回答你的想法：「先在板塊層看到早期苗頭（例如你說的資安三週前：板塊裡的個股多多少少都開始往上），再去看板塊內的個股」。除了雷達和 charts，我加了三個常見的板塊層指標當候選：<b>廣度</b>（有多少股票站上 50 日線，IBD／Weinstein 都看這個）、<b>板塊指數站上 50 日線</b>、<b>相對大盤強度線翻上</b>。每個指標都只用「那一天以前」的資料。「任何一天」是對照基準。</div>';
+  var rows='';
+  var rowOf=function(label,sm,wm){ return '<tr><td><b>'+label+'</b></td><td>'+sm.n+'<span class="sub">（獨立 '+sm.ep+'）</span></td><td class="'+cl(sm.mean)+'">'+pp(sm.mean)+'</td><td>'+p0(sm.hit)+'</td><td>'+p0(sm.big)+'</td><td>'+pp(sm.mu)+'<span class="sub">（'+sm.nu+'）</span></td><td>'+pp(sm.md)+'<span class="sub">（'+sm.nd+'）</span></td><td>'+p0(wm.prec)+'</td><td>'+p0(wm.rec)+'</td><td>'+(wm.off?('中位 '+(wm.off.m>=0?'+':'')+Math.round(wm.off.m)+' 天（'+Math.round(wm.off.q1)+'～'+Math.round(wm.off.q3)+'）'):'—')+'</td></tr>'; };
+  var S={}, M={};
+  ETYPES.forEach(function(t){ S[t[0]]=summEarly(EA[t[0]]); M[t[0]]=waveMatch(EA[t[0]]); rows+=rowOf(t[1],S[t[0]],M[t[0]]); });
+  rows+=rowOf('任何一天（對照，每 5 天一個點）',bS,bM);
+  h+='<div class="tw"><table class="t"><tr><th>早期苗頭候選</th><th>亮燈次數</th><th>之後 20 天板塊比大盤多漲</th><th>贏過大盤的比例</th><th>之後 40 天最高漲 ≥10%</th><th>大盤在 50 日線上時</th><th>大盤在 50 日線下時</th><th>精確度</th><th>召回</th><th>相對板塊低點第幾天亮燈</th></tr>'+rows+'</table></div>'
+   +'<div class="read"><b>白話：</b>「精確度」＝亮燈後的 80 天窗口（低點前 20～後 60 天）裡真的有一個 ≥15% 的板塊低點的比例，要跟「任何一天」比；高很多才表示亮燈不是亂亮。「召回」＝70 波上升波裡，有多少波在低點前 20～後 60 天內亮過。最後一欄負數＝在低點之前就亮了（才算前瞻）。「大盤在 50 日線上／下」是你說的「這個月大盤震盪、資金輪動快」的檢查：如果下方（大盤弱）時的結果明顯比上方差，就表示環境改變會讓這些燈變得不穩。</div>';
+  /* 連到個股 */
+  var withTxt='';
+  if(EVS.length){
+    var idxEv={}; ETYPES.forEach(function(t){ var by={}; EA[t[0]].forEach(function(e){ (by[e.sec]=by[e.sec]||[]).push(e.k); }); idxEv[t[0]]=by; });
+    var rowsB='', VB={}, VB2={};
+    ETYPES.forEach(function(t){
+      var W=EVS.filter(function(e){ return e.sec&&(idxEv[t[0]][e.sec]||[]).some(function(k){ return k<=e.k&&e.k-k<=20; }); }), N=EVS.filter(function(e){ return e.sec&&!(idxEv[t[0]][e.sec]||[]).some(function(k){ return k<=e.k&&e.k-k<=20; }); });
+      rowsB+=rowB(t[1].split('：')[0]+'亮燈後 20 天內的個股訊號',W)+rowB(t[1].split('：')[0]+'沒亮燈時的個股訊號',N); VB[t[0]]=cmpB(W,N); VB2[t[0]]=cmpB(W.filter(function(e){ return e.spyUp; }),N.filter(function(e){ return e.spyUp; }));
+    });
+    SUMV.e2=VB; SUMV.e3=VB2;
+    withTxt='<div style="font-weight:900;margin-top:12px">亮燈後 20 天內，這個板塊裡的個股訊號（'+(SRC==='dna'?'你的 DNA 紀錄':'收盤創 30 日新高')+'），之後抱 10 天的結果</div>'+tableB(rowsB)
+     +'<div class="sub">⚠ 亮燈多半集中在大盤強的時候，所以「亮燈後比較好」可能只是大盤環境的功勞，不是這盞燈的。下面每個指標各給兩個判定：直接比，以及只比「大盤在 50 日線上」的訊號（控制大盤環境）。</div>'
+     +ETYPES.map(function(t){ return verdictBox(VB[t[0]],'假設：'+t[1].split('：')[0]+'亮燈後 20 天內的個股訊號，比沒亮燈時好。')+verdictBox(VB2[t[0]],'　同一假設，只比大盤在 50 日線上的訊號：'); }).join('');
+  }
+  h+=withTxt;
+  /* 目前亮燈的板塊 */
+  var n=BARS['SPY'].d.length, cur='';
+  ETYPES.forEach(function(t){ var L=EA[t[0]].filter(function(e){ return e.k>=n-10; }).map(function(e){ return e.sec+'（'+BARS['SPY'].d[e.k].slice(5)+'）'; }); cur+='<tr><td><b>'+t[1].split('：')[0]+'</b></td><td>'+(L.length?L.join('、'):'最近 10 個交易日沒有')+'</td></tr>'; });
+  h+='<div style="font-weight:900;margin-top:12px">最近 10 個交易日新亮燈的板塊（想從板塊找標的，先看這裡）</div><div class="tw"><table class="t"><tr><th>指標</th><th>新亮燈的板塊（亮燈日）</th></tr>'+cur+'</table></div><div class="sub">這只是「現在有哪些燈剛亮」，不是買進建議；上面表格才是這些燈過去可不可靠。</div>';
+  SUMV.e={S:S,M:M,bS:bS,bM:bM};
+  h+='</div>'; return h;
+}
+
 function caseBox(){
   var inp=el('cases')?el('cases').value:'QLYS GH SPGI ABNB', tk=inp.toUpperCase().split(/[^A-Z0-9.\-]+/).filter(function(x){ return x; });
   var rows='';
@@ -833,13 +1000,13 @@ function summary(){
    +'<br><b>3. 雷達的天數（1～5、6～20、超過 20）有意義嗎？</b>'+t(A3)+'。'
    +'<br><b>4. 雷達、charts 誰先亮？</b>看第②區：低點前後那盞燈亮著的比例，跟「平常任何一天」比。亮燈後 40 天真的漲 ≥10%：雷達 '+(C?p0(C.rra):'—')+'、charts '+(C?p0(C.rch):'—')+'、任何一天 '+(C?p0(C.rb):'—')+'。'
    +(B?'<br><b>5. DNA 訊號：</b>板塊順風 vs 逆風 '+t(B.Va)+'；拿掉跳空的單子後 '+t(B.Va2)+'；雷達有 vs 沒跑贏 '+t(B.Vd)+'；板塊已漲很多 vs 才漲一點 '+t(B.Vg)+'。贏的單子裡含跳空的比例 '+p0(B.gwg)+'。':'')
-   +'<br><span class="sub">「有差別」的門檻（板塊層：每組獨立事件 ≥8、差 ≥2pp、前後半段一致；個股層：每組 ≥30 筆、差 ≥0.15R、前後半段一致）是我訂的。看到「樣本不足」或「看不出差別」，意思是這份資料回答不了，不是「沒有關係」。</span></div></div>';
+   +(SUMV.e?'<br><b>6. 早期苗頭（第⑥區）：</b>看第⑥區表格——哪個指標亮燈後板塊之後 20 天比大盤多漲、精確度比「任何一天」高多少、亮燈後板塊內個股訊號是否比較好（含控制大盤環境）。':'')+'<br><span class="sub">「有差別」的門檻（板塊層：每組獨立事件 ≥8、差 ≥2pp、前後半段一致；個股層：每組 ≥30 筆、差 ≥0.15R、前後半段一致）是我訂的。看到「樣本不足」或「看不出差別」，意思是這份資料回答不了，不是「沒有關係」。</span></div></div>';
   return h;
 }
 function renderAll(skip){
   var tk=['QLYS','GH','SPGI','ABNB'].join(' ');
   var names=Object.keys(LISTS);
-  var h='<div id="sum"></div>'+partA()+partC()+partB()
+  var h='<div id="sum"></div>'+partA()+partC()+(function(){ buildEarly(); return ''; })()+partB()+partE()
    +'<div class="box"><div class="h">④ 案例：你提到的幾檔，訊號當天各層怎麼說</div><div class="sub">輸入代號（空格隔開）。只列出在這個樣本裡有訊號的日期；沒有就會寫沒有。</div>'
    +'<div class="row"><input id="cases" class="btn" style="font-weight:600;width:260px" value="'+tk+'" oninput="refreshCases()"></div><div id="caseOut"></div></div>'
    +'<div class="box"><div class="h">⑤ 某個板塊逐 5 天的樣子（例如看金融 3/12 前後）</div><div class="row"><select class="btn" id="tlSel" onchange="refreshTL()">'+names.map(function(n){ return '<option'+(n==='金融'?' selected':'')+'>'+n+'</option>'; }).join('')+'</select></div><div id="tlOut"></div></div>'
