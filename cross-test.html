@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>交叉對照測試 v0.2</title>
+<title>交叉對照測試 v0.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">交叉<span>對照測試</span> v0.2</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">交叉<span>對照測試</span> v0.3</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">問題：板塊自己的位階、雷達的跑贏大盤、DNA 訊號——疊在一起，哪一層真的有用？誰先翻、誰晚翻？</div>
@@ -414,6 +414,43 @@ function waveState(A){
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
+function el(id){return document.getElementById(id);}
+function pc1(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function mean(a){ if(!a.length) return null; var s=0; a.forEach(function(x){s+=x;}); return s/a.length; }
+var SECS=[], T2S={}, LISTS={};
+function catOf(st){
+  if(!st) return '沒動靜';
+  var l=st.label;
+  if(l.indexOf('剛起步')===0) return '剛起步';
+  if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
+  if(l.indexOf('進行中')>=0) return '進行中';
+  if(l.indexOf('高點附近')===0) return '暫停';
+  if(l.indexOf('回檔中')===0) return '回檔中';
+  if(l.indexOf('大幅回吐')===0) return '大幅回吐';
+  if(l.indexOf('休息中')===0) return '休息中';
+  return '沒動靜';
+}
+function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause') return '小心'; return '逆風'; }
+var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
+// ── 板塊在某一天的狀態（只用那天以前的資料）──
+var SC={};
+function sectorAt(name,k){
+  var key=name+'|'+k; if(SC[key]!==undefined) return SC[key];
+  var S=BARS['SPY'], save=S, v=null;
+  BARS['SPY']={d:S.d.slice(0,k+1)};
+  try{ var A=analyzeWaves(LISTS[name],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){ v=null; }
+  BARS['SPY']=save; SC[key]=v; return v;
+}
+function normDate(x){ // dna 存的日期可能是 26/08/03、2026-08-03、2026/8/3 ... 統一成 2026-08-03
+  var m=String(x).match(/(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m) return null;
+  var y=m[1].length===2?'20'+m[1]:m[1]; return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2); }
+function kOfDate(ds){ var S=BARS['SPY'], k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; } return k; }
+function bestAt(t,k){
+  var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
+  return best;
+}
+
 function el(id){return document.getElementById(id);}
 function pc1(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
