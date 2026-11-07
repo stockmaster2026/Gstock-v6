@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>交叉對照測試 v0.1</title>
+<title>交叉對照測試 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,13 +36,13 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">交叉<span>對照測試</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">交叉<span>對照測試</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">問題：板塊自己的位階、雷達的跑贏大盤、DNA 訊號——疊在一起，哪一層真的有用？誰先翻、誰晚翻？</div>
     <div class="sub">這一頁<b>只量測、不改任何工具</b>。每一層都只用「那一天以前」的資料重算（不偷看之後）；結果用「之後 20 天板塊比大盤多漲多少」和「DNA 訊號之後抱 10 天的 R」衡量。假設都在看結果之前寫好，有「前半段／後半段」檢查，樣本不夠會直接說不夠。第一次載入價格要一兩分鐘；算位階再要十幾秒到一分鐘。</div>
     <div class="prog" id="prog">準備中…</div>
-    <div class="row">樣本來源：<select class="btn" id="selSrc"><option value="dna">你的 DNA 回測紀錄（貼近你實際會進場的點，筆數較少）</option><option value="hi30">所有股票「收盤創 30 日新高」（樣本大）</option></select>
+    <div class="row">樣本來源：<select class="btn" id="selSrc"><option value="dna">你的 DNA 回測紀錄（貼近你實際會進場的點，筆數較少）</option><option value="hi30">所有股票「收盤創 30 日新高」（樣本大）</option><option value="dna">你的 DNA 回測紀錄（貼近 pivot，筆數看你跑過幾檔）</option></select>
     <button class="btn go" id="btnGo" disabled onclick="start()">開始</button><button class="btn" onclick="var p=el('paste');p.style.display=p.style.display==='none'?'block':'none'">我要貼 dna 備份</button></div>
     <textarea id="paste" placeholder="（選填，只有選 DNA 紀錄時用）貼上 dna 的「💾 複製備份」文字" style="width:100%;height:60px;font-size:13px;border:2px solid #e0cc70;border-radius:8px;padding:6px;display:none"></textarea>
   </div>
@@ -455,7 +455,7 @@ function el(id){ return document.getElementById(id); }
 function mean(a){ if(!a.length) return null; var s=0; a.forEach(function(x){ s+=x; }); return s/a.length; }
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){ return x-y; }); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 var SECS=[], T2S={}, LISTS={};
-/* ═══ 交叉對照測試 v0.1 ═══
+/* ═══ 交叉對照測試 v0.2 ═══
    問題：charts／時光機（板塊自己的位階）、雷達（這一組有沒有跑贏大盤）、DNA（個股訊號）看的角度不同，
         疊在一起時，哪一層有用？誰先翻、誰晚翻？假訊號有多少？
    做法：所有層級都只用「那一天以前」的資料重算；結果用「之後 20 天板塊比大盤多漲多少」、「DNA 訊號之後的 R」衡量。
@@ -583,7 +583,7 @@ function cmpA(LA,LB){
   var a=gsA(LA), b=gsA(LB);
   if(a.ep<8||b.ep<8) return {k:'few',t:'樣本不足（獨立事件 '+a.ep+' 對 '+b.ep+'，每組至少要 8）',a:a,b:b};
   var d=a.mean-b.mean;
-  var okh=(a.n1>=10&&a.n2>=10&&b.n1>=10&&b.n2>=10), d1=okh?a.m1-b.m1:null, d2=okh?a.m2-b.m2:null;
+  var okh=(a.n1>=20&&a.n2>=20&&b.n1>=20&&b.n2>=20), d1=okh?a.m1-b.m1:null, d2=okh?a.m2-b.m2:null;
   if(Math.abs(d)>=2 && okh && d1*d2>0 && Math.abs(d1)>=1 && Math.abs(d2)>=1) return {k:'yes',t:'有差別：前者平均比後者'+(d>0?'多':'少')+' '+Math.abs(d).toFixed(1)+'pp，前後半段方向一致',a:a,b:b,d:d};
   if(Math.abs(d)>=2) return {k:'weak',t:'平均差 '+pp(d)+'，但前後半段不一致或樣本不夠，不能說有差別',a:a,b:b,d:d};
   return {k:'no',t:'看不出差別（平均只差 '+pp(d)+'）',a:a,b:b,d:d};
@@ -600,25 +600,25 @@ function verdictBox(V,title){ return '<div class="verdict" style="background:'+V
 /* ── 領先／落後：誰先翻、誰晚翻、假訊號多少 ── */
 function quart(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){ return x-y; }), q=function(p){ var i=(s.length-1)*p, lo=Math.floor(i), hi=Math.ceil(i); return s[lo]+(s[hi]-s[lo])*(i-lo); }; return {n:s.length,q1:q(.25),m:q(.5),q3:q(.75)}; }
 function leadLag(){
-  var S=BARS['SPY'], n=S.d.length, res={radar:[],chartsGo:[],confirm:[],dna:[],waves:0,order:{rFirst:0,cFirst:0,tie:0,both:0}};
+  var S=BARS['SPY'], n=S.d.length, OFFS=[-20,-10,0,10,20];
+  var res={waves:0,confirm:[],dna:[],off:{},rAll:[0,0],cAll:[0,0]};
+  OFFS.forEach(function(o){ res.off[o]={r:[0,0],c:[0,0]}; });
   var dnaBy={}; EVS.forEach(function(e){ (dnaBy[e.sec]=dnaBy[e.sec]||[]).push(e.k); });
   Object.keys(LISTS).forEach(function(nm){
     var idx=IDX[nm], legs=zigzag(idx,WAVE_TH);
+    for(var k0=K0;k0<n;k0++){ res.rAll[0]++; if(ACT[nm][k0]) res.rAll[1]++; }
+    ST[nm].forEach(function(s){ res.cAll[0]++; if(s.tier==='go') res.cAll[1]++; });
     legs.forEach(function(l){
-      if(!l.up||l.i0<70) return; var low=l.i0; if(idx[l.i1]/idx[low]-1<WAVE_TH) return;
+      if(!l.up) return; var low=l.i0; if(idx[l.i1]/idx[low]-1<WAVE_TH) return;
+      if(low<K0+20||low>n-21) return;
       res.waves++;
+      OFFS.forEach(function(o){ var k=low+o; res.off[o].r[0]++; if(ACT[nm][k]) res.off[o].r[1]++; var s=stAt(nm,k); if(s){ res.off[o].c[0]++; if(s.tier==='go') res.off[o].c[1]++; } });
       var tc=null; for(var k=low+1;k<n;k++){ if(idx[k]>=idx[low]*(1+WAVE_TH)){ tc=k; break; } }
       if(tc!=null) res.confirm.push(tc-low);
-      var tr=null; for(var k2=Math.max(50,low-20);k2<=Math.min(n-1,low+60);k2++){ if(ACT[nm][k2]){ tr=k2; break; } }
-      if(tr!=null) res.radar.push(tr-low);
-      var tg=null; (ST[nm]||[]).forEach(function(s){ if(tg==null&&s.k>=low&&s.k<=low+120&&s.tier==='go') tg=s.k; });
-      if(tg!=null) res.chartsGo.push(tg-low);
-      if(tr!=null&&tg!=null){ res.order.both++; if(tr<tg) res.order.rFirst++; else if(tr>tg) res.order.cFirst++; else res.order.tie++; }
       var td=null; (dnaBy[nm]||[]).forEach(function(k3){ if(k3>=low-10&&k3<=low+60&&(td==null||k3<td)) td=k3; });
       if(td!=null) res.dna.push(td-low);
     });
   });
-  /* 假訊號：每一次「開始亮燈」之後 40 天，板塊指數有沒有最高漲 ≥10%（跟任何一天比） */
   var H=40, TH=0.10, ok=function(idx,k){ if(k+H>=n) return null; var mx=-1; for(var j=1;j<=H;j++){ var r=idx[k+j]/idx[k]-1; if(r>mx) mx=r; } return mx>=TH; };
   var base={n:0,y:0}, ra={n:0,y:0}, ch={n:0,y:0};
   Object.keys(LISTS).forEach(function(nm){
@@ -702,7 +702,7 @@ function gsB(L){
 function cmpB(LA,LB){
   var a=gsB(LA), b=gsB(LB);
   if(a.n<30||b.n<30) return {k:'few',t:'樣本不足（'+a.n+' 筆對 '+b.n+' 筆，每組至少要 30）',a:a,b:b};
-  var d=a.avg-b.avg, okh=(a.n1>=10&&a.n2>=10&&b.n1>=10&&b.n2>=10), d1=okh?a.a1-b.a1:null, d2=okh?a.a2-b.a2:null;
+  var d=a.avg-b.avg, okh=(a.n1>=20&&a.n2>=20&&b.n1>=20&&b.n2>=20), d1=okh?a.a1-b.a1:null, d2=okh?a.a2-b.a2:null;
   if(Math.abs(d)>=0.15&&okh&&d1*d2>0) return {k:'yes',t:'有差別：前者平均比後者'+(d>0?'多':'少')+' '+Math.abs(d).toFixed(2)+'R，前後半段方向一致',a:a,b:b,d:d};
   if(Math.abs(d)>=0.15) return {k:'weak',t:'平均差 '+rr(d)+'，但前後半段不一致或樣本不夠，不能說有差別',a:a,b:b,d:d};
   return {k:'no',t:'看不出差別（平均只差 '+rr(d)+'）',a:a,b:b,d:d};
@@ -742,27 +742,25 @@ function partA(){
    +verdictBox(V3,'假設 3（雷達的天數有沒有意義）：剛成形（1～5 天）、6～20 天、超過 20 天，三種的結果有差。');
   h+='</div>'; return h;
 }
+function onTxt(g){ return g[0]?(p0(g[1]/g[0])+'<span class="sub">（'+g[1]+'／'+g[0]+'）</span>'):'—'; }
 function partC(){
-  var r=leadLag(), h='<div class="box"><div class="h">② 誰先翻、誰晚翻、假訊號多少（你提的「有的前瞻、有的反映現況、有的落後」）</div>'
-   +'<div class="sub">用整段資料找出板塊指數「從低點漲 15% 以上」的上升波，共 '+r.waves+' 波（事後才找得出來）；再看各層是在相對於那個低點的第幾個交易日亮燈。負數＝在低點之前就亮了。</div>'
-   +'<div class="tw"><table class="t"><tr><th>哪一層</th><th>相對於板塊最低點，第幾個交易日亮燈</th></tr>'
-   +'<tr><td><b>雷達：開始跑贏大盤（3 檔以上成形）</b></td><td>'+qTxt(quart(r.radar))+'</td></tr>'
-   +'<tr><td><b>DNA：該板塊第一筆訊號</b></td><td>'+(EVS.length?qTxt(quart(r.dna)):'—（這次沒有載入 DNA 樣本）')+'</td></tr>'
-   +'<tr><td><b>charts／時光機：標成「剛起步／進行中」</b></td><td>'+qTxt(quart(r.chartsGo))+'</td></tr>'
-   +'<tr><td><b>板塊自己漲滿 15%（charts 能認定一波的最早時間）</b></td><td>'+qTxt(quart(r.confirm))+'<span class="sub">　※這一列是定義造成的：一定在低點之後。</span></td></tr></table></div>';
-  if(r.order.both) h+='<div class="read">同一波裡，雷達先於 charts 標「剛起步／進行中」的有 <b>'+r.order.rFirst+'</b> 波、charts 先的 <b>'+r.order.cFirst+'</b> 波、同一天 '+r.order.tie+' 波（共 '+r.order.both+' 波）。</div>';
+  var r=leadLag(), OFFS=[-20,-10,0,10,20];
+  var h='<div class="box"><div class="h">② 燈什麼時候亮？假訊號多少？（你提的「有的前瞻、有的反映現況、有的落後」）</div>'
+   +'<div class="sub">用整段資料找出板塊指數「從低點漲 15% 以上」的上升波，共 '+r.waves+' 波（事後才找得出來）。對每一波，看「低點前後第幾天」那盞燈是不是亮著，跟「平常任何一天亮著的比例」比。<b>如果某盞燈真的是前瞻的，低點之前它亮著的比例，會明顯高過平常；如果只是反映現況，要到低點之後才高；如果比例跟平常差不多，就表示這盞燈跟低點沒關係。</b></div>'
+   +'<div class="tw"><table class="t"><tr><th>哪一盞燈</th>'+OFFS.map(function(o){ return '<th>低點'+(o===0?'當天':(o<0?'前 '+(-o)+' 天':'後 '+o+' 天'))+'</th>'; }).join('')+'<th>平常任何一天</th></tr>'
+   +'<tr><td><b>雷達：這一組有跑贏大盤（3 檔以上成形）</b></td>'+OFFS.map(function(o){ return '<td>'+onTxt(r.off[o].r)+'</td>'; }).join('')+'<td>'+onTxt(r.rAll)+'</td></tr>'
+   +'<tr><td><b>charts／時光機：標成「順風」（剛起步／進行中）</b></td>'+OFFS.map(function(o){ return '<td>'+onTxt(r.off[o].c)+'</td>'; }).join('')+'<td>'+onTxt(r.cAll)+'</td></tr></table></div>'
+   +'<div class="tw"><table class="t"><tr><th>另外兩個參考</th><th>結果</th></tr>'
+   +'<tr><td>DNA：該板塊在這一波低點前 10 天～後 60 天內的第一筆訊號</td><td>'+(EVS.length?qTxt(quart(r.dna)):'—（這次沒有載入 DNA 樣本）')+'</td></tr>'
+   +'<tr><td>板塊自己漲滿 15%（charts 能認定一波的最早時間）</td><td>'+qTxt(quart(r.confirm))+'<span class="sub">　※定義造成：一定在低點之後。</span></td></tr></table></div>';
   h+='<div style="font-weight:900;margin-top:12px">假訊號：每次「剛開始亮燈」之後 40 天，板塊指數最高有沒有漲到 ≥10%？</div>'
    +'<div class="tw"><table class="t"><tr><th>情況</th><th>之後 40 天最高漲 ≥10% 的比例</th></tr>'
    +'<tr><td>任何一天（對照）</td><td>'+rateTxt(r.base)+'</td></tr>'
    +'<tr><td><b>雷達：剛開始跑贏（前 3 天都沒成形）</b></td><td>'+rateTxt(r.ra)+'</td></tr>'
-   +'<tr><td><b>charts：剛標成剛起步／進行中</b></td><td>'+rateTxt(r.ch)+'</td></tr></table></div>';
-  var d1=quart(r.radar), d2=quart(r.chartsGo), rb=r.base.n?r.base.y/r.base.n:0, rra=r.ra.n?r.ra.y/r.ra.n:0, rch=r.ch.n?r.ch.y/r.ch.n:0;
-  var line='';
-  if(d1&&d2){ line+=(d1.m<d2.m?'雷達中位數比 charts 早 '+Math.round(d2.m-d1.m)+' 個交易日亮燈，':(d1.m>d2.m?'雷達中位數比 charts 晚 '+Math.round(d1.m-d2.m)+' 個交易日亮燈，':'雷達與 charts 中位數同一天亮燈，')); }
-  line+='雷達亮燈後 40 天有 '+p0(rra)+' 真的漲 ≥10%（任何一天是 '+p0(rb)+'），charts 亮燈後是 '+p0(rch)+'。';
-  h+='<div class="read"><b>白話：</b>'+line+'要比的是「亮燈後的比例」跟「任何一天」差多少；如果差不多，就表示那盞燈單獨看沒有額外資訊。'
-   +'<span class="sub">（獨立事件數看括號；成功門檻 10%／40 天是我訂的。）</span></div>';
-  SUMV.c={r:r,d1:d1,d2:d2,rb:rb,rra:rra,rch:rch};
+   +'<tr><td><b>charts：剛標成順風（剛起步／進行中）</b></td><td>'+rateTxt(r.ch)+'</td></tr></table></div>';
+  var rb=r.base.n?r.base.y/r.base.n:0, rra=r.ra.n?r.ra.y/r.ra.n:0, rch=r.ch.n?r.ch.y/r.ch.n:0;
+  h+='<div class="read"><b>白話：</b>亮燈後 40 天真的漲 ≥10%：雷達 '+p0(rra)+'、charts '+p0(rch)+'、任何一天 '+p0(rb)+'。要比的是「亮燈後」跟「任何一天」差多少；差不多，就表示那盞燈單獨看沒有額外資訊。<span class="sub">（門檻 10%／40 天是我訂的；這兩年多頭，「任何一天」本來就高。）</span></div>';
+  SUMV.c={r:r,rb:rb,rra:rra,rch:rch};
   h+='</div>'; return h;
 }
 function partB(){
@@ -833,8 +831,7 @@ function summary(){
    +'<b>1. 板塊自己的燈號有用嗎？</b>順風 vs 逆風之後 20 天：'+t(A1)+'。'+(A1?'（'+A1.t+'）':'')
    +'<br><b>2. 雷達已跑贏、板塊自己還逆風那一格，結果比兩層都強的差嗎？</b>'+t(A2)+'。'+(A2?'（'+A2.t+'）':'')
    +'<br><b>3. 雷達的天數（1～5、6～20、超過 20）有意義嗎？</b>'+t(A3)+'。'
-   +'<br><b>4. 誰先翻？</b>'+(C&&C.d1&&C.d2?(C.d1.m<C.d2.m?'雷達比 charts 早約 '+Math.round(C.d2.m-C.d1.m)+' 個交易日亮燈（中位數）。':(C.d1.m>C.d2.m?'雷達沒有比 charts 早（中位數晚 '+Math.round(C.d1.m-C.d2.m)+' 個交易日）。':'兩者同一天（中位數）。')):'資料不足。')
-   +(C?' 亮燈後 40 天真的漲 ≥10%：雷達 '+p0(C.rra)+'、charts '+p0(C.rch)+'、任何一天 '+p0(C.rb)+'。':'')
+   +'<br><b>4. 雷達、charts 誰先亮？</b>看第②區：低點前後那盞燈亮著的比例，跟「平常任何一天」比。亮燈後 40 天真的漲 ≥10%：雷達 '+(C?p0(C.rra):'—')+'、charts '+(C?p0(C.rch):'—')+'、任何一天 '+(C?p0(C.rb):'—')+'。'
    +(B?'<br><b>5. DNA 訊號：</b>板塊順風 vs 逆風 '+t(B.Va)+'；拿掉跳空的單子後 '+t(B.Va2)+'；雷達有 vs 沒跑贏 '+t(B.Vd)+'；板塊已漲很多 vs 才漲一點 '+t(B.Vg)+'。贏的單子裡含跳空的比例 '+p0(B.gwg)+'。':'')
    +'<br><span class="sub">「有差別」的門檻（板塊層：每組獨立事件 ≥8、差 ≥2pp、前後半段一致；個股層：每組 ≥30 筆、差 ≥0.15R、前後半段一致）是我訂的。看到「樣本不足」或「看不出差別」，意思是這份資料回答不了，不是「沒有關係」。</span></div></div>';
   return h;
