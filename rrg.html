@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.13.0</title>
+<title>RRG 板塊輪動圖 v2.14.0</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.13.0 · 每個分數都附一份收合的解讀</div>
+<div class="sub">v2.14.0 · 板塊＝整組等權平均（不再用一檔代表股）· RS 先平滑再比較</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -293,14 +293,14 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 <div class="sector-table" id="sector-table" style="display:none;">
 <div class="sector-row header">
-<div id="table-col1">板塊 / 代表股</div>
+<div id="table-col1">板塊 / 組成</div>
 <div style="text-align:right">RS</div>
 <div style="text-align:right">動能</div>
 <div style="text-align:center">象限</div>
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.13.0 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.14.0 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -330,17 +330,31 @@ window.onerror = function(msg, src, line, col, err) {
   //   · 兩軸都以 100 為中心                     → 有
   //   · tail length 純裝飾                      → 座標與文字都不讀 trailDays（見 trendOf）
   // 標準化一律用「到當天為止」的後視窗口 → 沒有 lookahead，歷史點不會被事後改寫。
-  var LR_WIN    = 63;    // 對數 RS 的均線長度（官方要求 ≥50；舊版只有 10，這是 ① 的病根）
-  var MOM_SPAN  = 10;    // RS-Ratio 的變化跨距
-  var NORM_WIN  = 252;   // 標準化窗口（一年）
-  var NORM_MIN  = 40;    // 標準化最少需要的點數
+  // === v2.14.0 引擎修正（2026-11-07 審查後）===
+  //   審查發現 v2.7～v2.13 的三個問題：
+  //   ① RS 沒先平滑：直接拿「今天」的對數 RS 減 63 日均值，單日跳動會原封不動衝進 RS-Ratio，
+  //      象限因此容易亂跳。公開的 RRG 重現版本（de Kempenaer 說明＋各家實作）都是「先平滑 RS 再標準化」。
+  //      現在先做 SM_WIN 根加權移動平均（WMA，權重 1..n），再拿平滑後的值減 LR_WIN 根均值。
+  //   ② 週線模式沿用日線的 63／10／252 根 —— 單位是「週」就變成 63 週≈15 個月，週線 RRG 慢到沒意義。
+  //      現在窗口按週期分開：日線 63 日（一季）；週線 13 週（也是一季）。所以「比自己 3 個月均值」的文字兩種模式都成立。
+  //   ③ 總覽用「一檔代表股」代表整個板塊 —— 見 loadOverview。
+  //   ⚠ 專業版 JdK RS-Ratio 的公式不公開，這裡不是「逐行等於專業版」，只是結構對齊公開描述：
+  //      相對強度 → 平滑 → 以自己的歷史為尺度標準化 → 100 為中心；動能＝RS-Ratio 變化的標準化版本。
+  //      SM_WIN／LR_WIN 等數字是我訂的，不是專業版的。要驗證接近程度，需要拿專業版的真實數值來對。
+  //   動能軸的標準化沿用 v2.7 的「兩軸標準差比」增益（上限 4），一律用到當天為止的後視窗口，沒有 lookahead。
+  var LR_WIN, MOM_SPAN, NORM_WIN, NORM_MIN, SM_WIN, WARMUP;
   var MOM_GAIN_MAX = 4;  // 動能軸增益上限（防止平滑序列除以趨近 0 的標準差而爆掉）
   var AXIS_CLAMP = 40;   // 兩軸最多離中心 40 點，圖才讀得動
-  var WARMUP    = LR_WIN + NORM_MIN + MOM_SPAN;  // 113：第一個可用點之前要吃掉的長度
   var rrgInterval = localStorage.getItem('rrg_interval') || '1d';
+  function applyEngineParams(){
+    if(rrgInterval==='1wk'){ SM_WIN=3;  LR_WIN=13; MOM_SPAN=4;  NORM_WIN=104; NORM_MIN=20; }
+    else                   { SM_WIN=10; LR_WIN=63; MOM_SPAN=10; NORM_WIN=252; NORM_MIN=40; }
+    WARMUP = SM_WIN + LR_WIN + NORM_MIN + MOM_SPAN;
+  }
+  applyEngineParams();
   function unitLabel(){ return rrgInterval === '1wk' ? '週' : '天'; }
-  function getCacheKeyOverview(){ return 'rrg_overview_v27_' + rrgInterval; }
-  function getCacheKeyDeep(){ return 'rrg_deepscan_v27_' + rrgInterval; }
+  function getCacheKeyOverview(){ return 'rrg_overview_v28_' + rrgInterval; }
+  function getCacheKeyDeep(){ return 'rrg_deepscan_v28_' + rrgInterval; }
   // v2.7.0：一季的長度要看 interval。舊版固定 63，在週線模式下等於 63 週 × 4 = 5 年，
   // 卻仍然標成「IBD 12 個月 RS」—— 數字對不上標籤。週線一季 = 13 根。
   function ibdQuarterLen(){ return rrgInterval==='1wk' ? 13 : 63; }
@@ -352,7 +366,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   會被直接拿來跟 v2.7.x 的數值（RS 攤到 95~135）相減 ——
   //   跑出 AXTI「+68.8」這種數字，那幾乎全是公式換代造成的，不是市場變化。
   //   只要換公式就要把這個字串往上跳，跨代的比較一律不顯示。
-  var ENGINE_VER = '2.7';
+  var ENGINE_VER = '2.14';
   var SNAPSHOT_LIMIT = 20;
   // v2.7.1：把妳自己的 Worker 放第一順位。
   //   dna.html 一直用它而且是通的，rrg.html 卻只靠三個公用 proxy
@@ -385,13 +399,6 @@ window.onerror = function(msg, src, line, col, err) {
     // v2.10.0 新增：傳統大類股 ETF（SPDR 11 大類）。只用來看「資金有沒有從成長股轉去防禦／傳統類股」，
     //   etf:true ＝ 不進「個股排名」（排名是個股對個股，混進 ETF 會失真）。
     {name:'傳統類股 ETF',etf:true,stocks:'XLP XLU XLV XLE XLI XLY XLF XLB XLRE XLC XLK'.split(' ')}
-  ];
-  var OVERVIEW_REPRESENTATIVES = [
-    {name:'資安',ticker:'CRWD'},{name:'軟體 SaaS',ticker:'NOW'},{name:'AI 晶片',ticker:'NVDA'},
-    {name:'半導體設備',ticker:'AMAT'},{name:'光通訊',ticker:'COHR'},{name:'記憶體與儲存',ticker:'MU'},
-    {name:'AI 電力散熱（發電端）',ticker:'VST'},{name:'AI 電力設備（含散熱）',ticker:'VRT'},{name:'太空與國防',ticker:'RKLB'},{name:'生技與醫材',ticker:'LLY'},
-    {name:'金融',ticker:'JPM'},{name:'量子運算',ticker:'IONQ'},{name:'七巨頭',ticker:'MSFT'},
-    {name:'防禦型個股',ticker:'COST'}
   ];
   var currentMode = 'overview';
   var currentBenchmark = 'SPY';
@@ -808,6 +815,13 @@ window.onerror = function(msg, src, line, col, err) {
              gate:+gate.toFixed(2), covered:100, imputed:imputed };
   }
 
+  // 加權移動平均：arr[i-n+1..i]，權重 1..n（最新最重）。範圍不足或有 null 回 null。
+  function wmaAt(arr, i, n) {
+    if (i-n+1 < 0) return null;
+    var s=0, w=0;
+    for(var k=0;k<n;k++){ var v=arr[i-n+1+k]; if(v===null||!isFinite(v)) return null; s+=v*(k+1); w+=(k+1); }
+    return s/w;
+  }
   function calculateRRG(sectorCloses, spyCloses, secVols) {
     var N=Math.min(sectorCloses.length, spyCloses.length);
     if (N<WARMUP+2) return { ratios:[], moms:[] };
@@ -826,10 +840,13 @@ window.onerror = function(msg, src, line, col, err) {
     //    對一條以固定速率上升的 RS 線，「偏離長均線」≈ 斜率 × (窗口/2)，
     //    窗口 10 的放大倍數只有 ~4.5，窗口 63 是 ~31 —— 前者分不出強弱，後者分得出。
     //    取 log 讓它與股價水準無關，上下對稱，4 元和 400 元的股票可以放同一張圖。
+    // v2.14.0：先平滑（WMA）。平滑後的值 sm[j] 才拿去跟自己 LR_WIN 根均值比。
+    var sm=[];
+    for(var si=0;si<N;si++) sm.push(wmaAt(lr,si,SM_WIN));
     var dev=[];
     for(var j=0;j<N;j++){
-      var m=winMean(lr,j,LR_WIN);
-      dev.push((m===null||lr[j]===null)?null:(lr[j]-m));
+      var m=winMean(sm,j,LR_WIN);
+      dev.push((m===null||sm[j]===null)?null:(sm[j]-m));
     }
     var ratioAll=[];
     for(var p=0;p<N;p++){
@@ -1328,29 +1345,78 @@ window.onerror = function(msg, src, line, col, err) {
     else info.innerHTML='已選 <strong>'+selected.length+' 個板塊</strong>，共 <strong>'+(totalStocks-1)+' 檔股票</strong> + SPY 基準<br>預估時間：約 <strong>'+estSec+' 秒</strong>';
   }
 
+  // v2.14.0：板塊 = 整組成分股的「等權平均指數」，不再用一檔代表股。
+  //   舊版（v2.13.0 以前）每個板塊只抓一檔：資安=CRWD、太空與國防=RKLB、七巨頭=MSFT、防禦型=COST。
+  //   那張圖講的其實是那一檔股票，不是板塊。RRG 原本的用法就是「板塊（ETF／指數）對大盤」。
+  //   做法跟 charts.html 的板塊指數同一種：以大盤（SPY）的交易日為準，每天取「當天與前一天都有收盤價」
+  //   的成分股，算日報酬的簡單平均，連乘成指數。
+  //   ⚠ 限制：用的是「現在這份名單」往回算（名單當時可能不同，倖存者偏差）；至少要 3 檔抓得到才算；
+  //      抓不到的股票會被略過並在畫面上標出來。
+  function buildSectorIndex(tickers, pxMap, spyPx) {
+    var dates=spyPx.dates, n=dates.length, maps=[], used=[];
+    for(var t=0;t<tickers.length;t++){
+      var px=pxMap[tickers[t]];
+      if(!px||!px.dates) continue;
+      var m={};
+      for(var i=0;i<px.dates.length;i++) m[dayKey(px.dates[i])]=px.closes[i];
+      maps.push(m); used.push(tickers[t]);
+    }
+    if(maps.length<3) return null;
+    var idx=[100];
+    for(var d=1;d<n;d++){
+      var kc=dayKey(dates[d]), kp=dayKey(dates[d-1]), sum=0, cnt=0;
+      for(var q=0;q<maps.length;q++){
+        var a=maps[q][kc], b=maps[q][kp];
+        if(a>0&&b>0){ sum+=a/b-1; cnt++; }
+      }
+      idx.push(idx[d-1]*(1+(cnt?sum/cnt:0)));
+    }
+    return { closes:idx, bench:spyPx.closes, used:used };
+  }
   function loadOverview(forceRefresh) {
     focusedTicker=null;
     hideAllResults();
     var cached=forceRefresh?null:loadCache(getCacheKeyOverview());
     if (cached){ renderResults(cached.data, cached.timestamp,'overview'); return; }
+    var secList=getSectorList().filter(function(x){ return !x.etf; });
+    var uniq=[], seen={};
+    secList.forEach(function(sec){ sec.stocks.forEach(function(tk){ tk=String(tk||'').toUpperCase().trim(); if(tk&&!seen[tk]){ seen[tk]=1; uniq.push(tk); } }); });
     setStatus('正在抓取 '+currentBenchmark+' 基準資料...');
     fetchPrice(currentBenchmark).then(function(spyPx){
-      var data={mode:'overview',sectors:[],benchmark:currentBenchmark};
-      function fetchNext(i){
-        if (i>=OVERVIEW_REPRESENTATIVES.length){ saveCache(getCacheKeyOverview(),data); renderResults(data,Date.now(),'overview'); return; }
-        var s=OVERVIEW_REPRESENTATIVES[i];
-        setStatus('抓取 '+s.name+' ('+s.ticker+')... '+(i+1)+'/'+OVERVIEW_REPRESENTATIVES.length);
-        fetchPrice(s.ticker).then(function(px){
-          var AL=alignSeries(px, spyPx);
-          var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
-          var ibdRS=calculateIBDRS(AL.sec, AL.bench);
-          if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:'insufficient'});
-          else data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',sectorName:s.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
-          sleep(300).then(function(){ fetchNext(i+1); });
-        }).catch(function(e){ data.sectors.push({name:s.name,ticker:s.ticker,color:SECTOR_COLORS[s.name]||'#888',error:e.message}); sleep(300).then(function(){ fetchNext(i+1); }); });
+      if(!spyPx.dates) throw new Error('基準資料沒有日期，無法把成分股對齊成板塊指數');
+      var pxMap={}, failed=[], done=0, nextI=0, t0=Date.now(), CONC=3;
+      function progress(){
+        var left=uniq.length-done, eta=done>0?Math.round((Date.now()-t0)/done*left/1000):Math.round(left*0.6);
+        setStatus('抓取成分股 '+done+'/'+uniq.length
+          +' <span style="color:var(--dim)">（還要約 '+Math.floor(eta/60)+' 分 '+(eta%60)+' 秒；板塊要用整組算，比以前只抓一檔久，抓完 4 小時內讀快取）</span>'
+          +'<div style="margin-top:8px;height:5px;background:#1b2233;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+((done/uniq.length)*100).toFixed(1)+'%;background:#00d4a8"></div></div>');
       }
-      fetchNext(0);
-    }).catch(function(e){ setStatus('<div class="error">❌ 無法抓取 '+currentBenchmark+'：'+e.message+'<br>上面每個 P 後面就是各代理的真正死因：HTTP_xxx＝網路／代理問題，bars_xx＝抓到的資料太短</div>'); });
+      function worker(){
+        if(nextI>=uniq.length) return Promise.resolve();
+        var tk=uniq[nextI++];
+        return fetchPrice(tk).then(function(px){ pxMap[tk]=px; })
+          .catch(function(){ failed.push(tk); })
+          .then(function(){ done++; progress(); return sleep(200); })
+          .then(worker);
+      }
+      progress();
+      var ws=[]; for(var c=0;c<CONC;c++) ws.push(worker());
+      return Promise.all(ws).then(function(){
+        var data={mode:'overview',sectors:[],benchmark:currentBenchmark,failed:failed};
+        secList.forEach(function(sec){
+          var col=SECTOR_COLORS[sec.name]||'#888';
+          var tks=sec.stocks.map(function(x){ return String(x||'').toUpperCase().trim(); }).filter(Boolean);
+          var ix=buildSectorIndex(tks, pxMap, spyPx);
+          if(!ix){ data.sectors.push({name:sec.name,ticker:sec.name,members:0,color:col,error:'insufficient'}); return; }
+          var rrg=calculateRRG(ix.closes, ix.bench, null);
+          var ibdRS=calculateIBDRS(ix.closes, ix.bench);
+          if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:sec.name,ticker:sec.name,members:ix.used.length,color:col,error:'insufficient'});
+          else data.sectors.push({name:sec.name,ticker:sec.name,members:ix.used.length,of:tks.length,color:col,sectorName:sec.name,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+        });
+        saveCache(getCacheKeyOverview(),data);
+        renderResults(data,Date.now(),'overview');
+      });
+    }).catch(function(e){ setStatus('<div class="error">❌ 載入板塊總覽失敗：'+e.message+'<br>上面每個 P 後面就是各代理的真正死因：HTTP_xxx＝網路／代理問題，bars_xx＝抓到的資料太短</div>'); });
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1368,7 +1434,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   3. 排名高≠可以進場。進場點要價格、pivot、停損，RRG 三個都看不到 ——
   //      跟 v2.7.3 定的界線一致：這個檔案只描述位置與方向，不下動作。
   // ══════════════════════════════════════════════════════════════════════════
-  function getCacheKeyRank(){ return 'rrg_ranking_v29_' + rrgInterval + '_' + currentBenchmark; }
+  function getCacheKeyRank(){ return 'rrg_ranking_v30_' + rrgInterval + '_' + currentBenchmark; }
   function buildRankUniverse() {
     var list=getSectorList(), seen={}, out=[];
     for(var i=0;i<list.length;i++){
@@ -1706,8 +1772,8 @@ window.onerror = function(msg, src, line, col, err) {
     renderChart(data, mode);
     renderNarrative(data, mode);
     renderTable(data, mode);
-    document.getElementById('timestamp').textContent='更新於 '+new Date(ts).toLocaleString('zh-TW')+' · vs '+(data.benchmark||currentBenchmark);
-    var col1=mode==='deepscan'?'股票 / 板塊':mode==='quickquery'?'個股 / vs '+(data.benchmark||currentBenchmark):'板塊 / 代表股';
+    document.getElementById('timestamp').textContent='更新於 '+new Date(ts).toLocaleString('zh-TW')+' · vs '+(data.benchmark||currentBenchmark)+(data.failed&&data.failed.length?' · ⚠ '+data.failed.length+' 檔抓不到已略過：'+data.failed.slice(0,8).join('、')+(data.failed.length>8?'…':''):'');
+    var col1=mode==='deepscan'?'股票 / 板塊':mode==='quickquery'?'個股 / vs '+(data.benchmark||currentBenchmark):'板塊 / 組成';
     document.getElementById('table-col1').textContent=col1;
     document.getElementById('status').style.display='none';
     document.getElementById('chart-wrap').style.display='block';
@@ -2096,7 +2162,7 @@ window.onerror = function(msg, src, line, col, err) {
     } else if (q.key==='improving'){ summary='🌱 從落後爬回來，位置在改善'; summaryColor='#4ea5ff'; }
     else if (q.key==='weakening'){ summary='⚠ 動能已經轉弱'; summaryColor='#f7c948'; }
     else if (q.key==='lagging'){ summary='↘ 落後區：RS 與動能都在 100 之下'; summaryColor='#ef476f'; }
-    var sectorTag=s.sectorName?'<span style="color:var(--dim);font-size:0.78rem">（'+s.sectorName+'）</span>':'';
+    var sectorTag=(s.sectorName&&s.sectorName!==s.name)?'<span style="color:var(--dim);font-size:0.78rem">（'+s.sectorName+'）</span>':'';
     var html='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
     html+='<div><strong style="color:'+s.color+';font-size:1.1rem">'+focusedTicker+'</strong>'+sectorTag+'</div>';
     html+='<button onclick="window.__rrgClearFocus()" style="background:transparent;color:var(--dim);border:1px solid var(--line);padding:4px 10px;border-radius:6px;font-size:0.75rem;">✕ 取消聚焦</button>';
@@ -3021,7 +3087,7 @@ window.onerror = function(msg, src, line, col, err) {
       var row=document.createElement('div');
       row.className='sector-row';
       var displayName=mode==='deepscan'?s.ticker:s.name;
-      var displaySub=mode==='deepscan'?(s.sectorName||''):(s.ticker||'');
+      var displaySub=mode==='deepscan'?(s.sectorName||''):(mode==='overview'&&s.members?(s.members+(s.of&&s.of>s.members?'／'+s.of:'')+' 檔等權平均'):(s.ticker||''));
       if (s.error){
         row.innerHTML='<div><span class="sector-name" style="color:'+s.color+'">'+displayName+'</span><span class="sector-ticker">'+displaySub+'</span></div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-num" style="color:#ef476f;font-size:0.72rem">×</div><div class="sector-tag" style="background:rgba(239,71,111,0.12);color:#ef476f">無資料</div>';
       } else {
@@ -3188,6 +3254,7 @@ window.onerror = function(msg, src, line, col, err) {
       var newItv=this.getAttribute('data-itv');
       if (newItv===rrgInterval) return;
       rrgInterval=newItv;
+      applyEngineParams();
       localStorage.setItem('rrg_interval', newItv);
       applyIntervalUI();
       var cw=document.getElementById('chart-wrap'); if (cw) cw.style.display='none';
