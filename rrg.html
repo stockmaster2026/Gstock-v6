@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.14.2</title>
+<title>RRG 板塊輪動圖 v2.14.3</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.14.2 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
+<div class="sub">v2.14.3 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.14.2 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.14.3 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -354,7 +354,7 @@ window.onerror = function(msg, src, line, col, err) {
   applyEngineParams();
   function unitLabel(){ return rrgInterval === '1wk' ? '週' : '天'; }
   function getCacheKeyOverview(){ return 'rrg_overview_v29_' + rrgInterval; }
-  function getCacheKeyDeep(){ return 'rrg_deepscan_v28_' + rrgInterval; }
+  function getCacheKeyDeep(){ return 'rrg_deepscan_v29_' + rrgInterval; }
   // v2.7.0：一季的長度要看 interval。舊版固定 63，在週線模式下等於 63 週 × 4 = 5 年，
   // 卻仍然標成「IBD 12 個月 RS」—— 數字對不上標籤。週線一季 = 13 根。
   function ibdQuarterLen(){ return rrgInterval==='1wk' ? 13 : 63; }
@@ -1379,6 +1379,13 @@ window.onerror = function(msg, src, line, col, err) {
     }
     return { closes:idx, bench:spyPx.closes, used:used, stocks:stocks };
   }
+  function buildCheck(secArr, benchArr) {
+    function retN(arr,k){ var L=arr.length-1; return (L-k>=0&&arr[L-k]>0)?(arr[L]/arr[L-k]-1)*100:null; }
+    var keepSM=SM_WIN; SM_WIN=1; var raw=calculateRRG(secArr, benchArr, null); SM_WIN=keepSM;
+    return { idx:{d5:retN(secArr,5),d10:retN(secArr,10),d20:retN(secArr,20),d60:retN(secArr,60)},
+             spy:{d5:retN(benchArr,5),d10:retN(benchArr,10),d20:retN(benchArr,20),d60:retN(benchArr,60)},
+             raw:(raw.ratios.length&&raw.moms.length)?{ratio:raw.ratios[raw.ratios.length-1],mom:raw.moms[raw.moms.length-1]}:null };
+  }
   function loadOverview(forceRefresh) {
     focusedTicker=null;
     hideAllResults();
@@ -1416,7 +1423,7 @@ window.onerror = function(msg, src, line, col, err) {
           if(!ix){ data.sectors.push({name:sec.name,ticker:sec.name,members:0,color:col,error:'insufficient'}); return; }
           var rrg=calculateRRG(ix.closes, ix.bench, null);
           var ibdRS=calculateIBDRS(ix.closes, ix.bench);
-          // v2.14.2 資料檢查：板塊／大盤近期實際漲跌，以及「不平滑」的 RS／動能（對照平滑有沒有造成落後）
+          // v2.14.3 資料檢查：板塊／大盤近期實際漲跌，以及「不平滑」的 RS／動能（對照平滑有沒有造成落後）
           var keepSM=SM_WIN; SM_WIN=1; var rawRRG=calculateRRG(ix.closes, ix.bench, null); SM_WIN=keepSM;
           function retN(arr,k){ var L=arr.length-1; return (L-k>=0&&arr[L-k]>0)?(arr[L]/arr[L-k]-1)*100:null; }
           var check={ idx:{d5:retN(ix.closes,5),d10:retN(ix.closes,10),d20:retN(ix.closes,20),d60:retN(ix.closes,60)},
@@ -1730,7 +1737,7 @@ window.onerror = function(msg, src, line, col, err) {
           var rrg=calculateRRG(AL.sec, AL.bench, AL.vols);
           var ibdRS=calculateIBDRS(AL.sec, AL.bench);
           if (rrg.ratios.length===0||rrg.moms.length===0) data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:'insufficient'});
-          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS});
+          else data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,ratios:rrg.ratios,moms:rrg.moms,buf:rrg.buf,rank:rrg.rank,rsPart:rrg.rsPart,absPart:rrg.absPart,shapePart:rrg.shapePart,defense:rrg.defense,volPart:rrg.volPart,current:{ratio:rrg.ratios[rrg.ratios.length-1],mom:rrg.moms[rrg.moms.length-1]},ibdRS:ibdRS,check:buildCheck(AL.sec,AL.bench)});
           sleep(500).then(function(){ fetchNext(i+1); });
         }).catch(function(e){ data.sectors.push({name:s.ticker,ticker:s.ticker,color:s.color,sectorName:s.sectorName,error:e.message}); sleep(500).then(function(){ fetchNext(i+1); }); });
       }
@@ -2211,16 +2218,17 @@ window.onerror = function(msg, src, line, col, err) {
     html+='<div style="display:flex;justify-content:space-between;padding:6px 8px;background:rgba(255,255,255,0.02);border-radius:6px;">';
     html+='<span>動能：<span style="color:'+(s.current.mom>=100?'#00d4a8':'#ef476f')+';font-family:monospace;font-weight:700">'+s.current.mom.toFixed(1)+'</span></span>';
     html+='<span style="color:var(--dim);font-size:0.78rem">'+momDesc+'</span></div></div>';
-    if (s.check&&lastRenderMode==='overview'){
+    if (s.check&&(lastRenderMode==='overview'||lastRenderMode==='deepscan')){
+      var isDeep=(lastRenderMode==='deepscan');
       var ck=s.check;
       function pc(v){ return v===null||v===undefined?'—':((v>=0?'+':'')+v.toFixed(1)+'%'); }
       function cc(v){ return v===null||v===undefined?'var(--dim)':(v>=0?'#00d4a8':'#ef476f'); }
-      html+='<details open style="margin-top:10px;padding:10px;border:1px solid var(--accent);border-radius:8px;background:rgba(255,209,102,0.05);"><summary style="cursor:pointer;font-size:0.86rem;color:var(--accent);font-weight:700;">🔍 資料檢查：這個板塊實際漲跌多少（可收合）</summary>';
-      html+='<div style="font-size:0.74rem;color:var(--dim);line-height:1.7;margin:8px 0">RRG 的 RS 是「相對大盤、而且跟自己過去 3 個月比」，所以<b>板塊在跌也可能排領先（大盤跌更多，或它前 3 個月更弱）</b>，板塊在漲也可能排落後（大盤漲更多，或它前 3 個月更強）。下面是實際漲跌，用來對照 TradingView。</div>';
+      html+='<details open style="margin-top:10px;padding:10px;border:1px solid var(--accent);border-radius:8px;background:rgba(255,209,102,0.05);"><summary style="cursor:pointer;font-size:0.86rem;color:var(--accent);font-weight:700;">🔍 資料檢查：'+(isDeep?'這檔股票':'這個板塊')+'實際漲跌多少（可收合）</summary>';
+      html+='<div style="font-size:0.74rem;color:var(--dim);line-height:1.7;margin:8px 0">RRG 的 RS 是「相對大盤、而且跟自己過去 3 個月比」，所以<b>在跌也可能排領先（大盤跌更多，或它前 3 個月更弱）</b>，在漲也可能排落後（大盤漲更多，或它前 3 個月更強）。下面是實際漲跌，用來對照 TradingView。</div>';
       html+='<table style="width:100%;font-size:0.78rem;border-collapse:collapse"><tr style="color:var(--dim)"><td></td><td>5 日</td><td>10 日</td><td>20 日</td><td>60 日</td></tr>';
-      [['這個板塊（等權平均）',ck.idx],['大盤 '+(lastRenderData&&lastRenderData.benchmark||'SPY'),ck.spy]].forEach(function(r){
+      [[isDeep?'這檔股票':'這個板塊（等權平均）',ck.idx],['大盤 '+(lastRenderData&&lastRenderData.benchmark||'SPY'),ck.spy]].forEach(function(r){
         html+='<tr><td style="padding:3px 0">'+r[0]+'</td>'; ['d5','d10','d20','d60'].forEach(function(k){ html+='<td style="color:'+cc(r[1][k])+';font-family:monospace">'+pc(r[1][k])+'</td>'; }); html+='</tr>'; });
-      html+='<tr><td style="padding:3px 0">板塊 − 大盤</td>'; ['d5','d10','d20','d60'].forEach(function(k){ var df=(ck.idx[k]!==null&&ck.spy[k]!==null)?ck.idx[k]-ck.spy[k]:null; html+='<td style="color:'+cc(df)+';font-family:monospace;font-weight:700">'+pc(df)+'</td>'; }); html+='</tr></table>';
+      html+='<tr><td style="padding:3px 0">'+(isDeep?'這檔':'板塊')+' − 大盤</td>'; ['d5','d10','d20','d60'].forEach(function(k){ var df=(ck.idx[k]!==null&&ck.spy[k]!==null)?ck.idx[k]-ck.spy[k]:null; html+='<td style="color:'+cc(df)+';font-family:monospace;font-weight:700">'+pc(df)+'</td>'; }); html+='</tr></table>';
       if (ck.raw){ html+='<div style="font-size:0.76rem;line-height:1.7;margin-top:8px">目前 RS／動能：<b>'+s.current.ratio.toFixed(1)+' ／ '+s.current.mom.toFixed(1)+'</b>（有平滑）；不平滑算出來是 <b>'+ck.raw.ratio.toFixed(1)+' ／ '+ck.raw.mom.toFixed(1)+'</b>。兩者象限相同＝平滑沒有改變結論；不同＝平滑讓判斷慢了幾天。</div>'; }
       var st=(ck.stocks||[]).filter(function(x){return x.r20!==null;}).sort(function(a,b){return b.r20-a.r20;});
       if (st.length){ html+='<div style="font-size:0.76rem;color:var(--dim);margin:10px 0 4px">組內個股近 20 日漲跌（由高到低；5 日在括號）：</div><div style="font-size:0.76rem;line-height:1.9">';
