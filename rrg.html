@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.14.3</title>
+<title>RRG 板塊輪動圖 v2.14.4</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.14.3 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
+<div class="sub">v2.14.4 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.14.3 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.14.4 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -348,13 +348,13 @@ window.onerror = function(msg, src, line, col, err) {
   var rrgInterval = localStorage.getItem('rrg_interval') || '1d';
   function applyEngineParams(){
     if(rrgInterval==='1wk'){ SM_WIN=3;  LR_WIN=13; MOM_SPAN=4;  NORM_WIN=104; NORM_MIN=20; }
-    else                   { SM_WIN=10; LR_WIN=63; MOM_SPAN=10; NORM_WIN=252; NORM_MIN=40; }
+    else                   { SM_WIN=5; LR_WIN=63; MOM_SPAN=10; NORM_WIN=252; NORM_MIN=40; }
     WARMUP = SM_WIN + LR_WIN + NORM_MIN + MOM_SPAN;
   }
   applyEngineParams();
   function unitLabel(){ return rrgInterval === '1wk' ? '週' : '天'; }
-  function getCacheKeyOverview(){ return 'rrg_overview_v29_' + rrgInterval; }
-  function getCacheKeyDeep(){ return 'rrg_deepscan_v29_' + rrgInterval; }
+  function getCacheKeyOverview(){ return 'rrg_overview_v30_' + rrgInterval; }
+  function getCacheKeyDeep(){ return 'rrg_deepscan_v30_' + rrgInterval; }
   // v2.7.0：一季的長度要看 interval。舊版固定 63，在週線模式下等於 63 週 × 4 = 5 年，
   // 卻仍然標成「IBD 12 個月 RS」—— 數字對不上標籤。週線一季 = 13 根。
   function ibdQuarterLen(){ return rrgInterval==='1wk' ? 13 : 63; }
@@ -1423,7 +1423,7 @@ window.onerror = function(msg, src, line, col, err) {
           if(!ix){ data.sectors.push({name:sec.name,ticker:sec.name,members:0,color:col,error:'insufficient'}); return; }
           var rrg=calculateRRG(ix.closes, ix.bench, null);
           var ibdRS=calculateIBDRS(ix.closes, ix.bench);
-          // v2.14.3 資料檢查：板塊／大盤近期實際漲跌，以及「不平滑」的 RS／動能（對照平滑有沒有造成落後）
+          // v2.14.4 資料檢查：板塊／大盤近期實際漲跌，以及「不平滑」的 RS／動能（對照平滑有沒有造成落後）
           var keepSM=SM_WIN; SM_WIN=1; var rawRRG=calculateRRG(ix.closes, ix.bench, null); SM_WIN=keepSM;
           function retN(arr,k){ var L=arr.length-1; return (L-k>=0&&arr[L-k]>0)?(arr[L]/arr[L-k]-1)*100:null; }
           var check={ idx:{d5:retN(ix.closes,5),d10:retN(ix.closes,10),d20:retN(ix.closes,20),d60:retN(ix.closes,60)},
@@ -1454,7 +1454,7 @@ window.onerror = function(msg, src, line, col, err) {
   //   3. 排名高≠可以進場。進場點要價格、pivot、停損，RRG 三個都看不到 ——
   //      跟 v2.7.3 定的界線一致：這個檔案只描述位置與方向，不下動作。
   // ══════════════════════════════════════════════════════════════════════════
-  function getCacheKeyRank(){ return 'rrg_ranking_v30_' + rrgInterval + '_' + currentBenchmark; }
+  function getCacheKeyRank(){ return 'rrg_ranking_v31_' + rrgInterval + '_' + currentBenchmark; }
   function buildRankUniverse() {
     var list=getSectorList(), seen={}, out=[];
     for(var i=0;i<list.length;i++){
