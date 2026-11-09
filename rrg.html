@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RRG 板塊輪動圖 v2.14.8</title>
+<title>RRG 板塊輪動圖 v2.14.9</title>
 <style>
 :root {--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--leading:#00d4a8;--weakening:#f7c948;--lagging:#ef476f;--improving:#4ea5ff;--accent:#ffd166;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -196,7 +196,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 <body>
 <header>
 <h1>RRG 板塊輪動圖</h1>
-<div class="sub">v2.14.8 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
+<div class="sub">v2.14.9 · 板塊＝整組等權平均 · 點板塊名稱可看「資料檢查」（實際漲跌）</div>
 </header>
 <div id="js-check">⏳ 等待 JavaScript 初始化...</div>
 <div id="js-error"></div>
@@ -300,7 +300,7 @@ footer{text-align:center;color:var(--dim);font-size:0.7rem;padding:20px 0;}
 </div>
 </div>
 <div id="ranking-results" style="display:none;"></div>
-<footer>RRG v2.14.8 · Yahoo Finance API · 不構成投資建議</footer>
+<footer>RRG v2.14.9 · Yahoo Finance API · 不構成投資建議</footer>
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var errDiv = document.getElementById('js-error');
@@ -2185,10 +2185,12 @@ window.onerror = function(msg, src, line, col, err) {
     else if (s.current.ratio>=95) rsDesc='比自己 3 個月均值低 '+Math.abs(rsPct)+'%';
     else rsDesc='比自己 3 個月均值低 '+Math.abs(rsPct)+'%（正在掉隊）';
     var momDesc='';
-    if (s.current.mom>=105) momDesc='還在加速變強 🔥';
-    else if (s.current.mom>=100) momDesc='還在變強';
-    else if (s.current.mom>=95) momDesc='開始減速';
-    else momDesc='正在弱化 ⚠';
+    // v2.14.9：動能＝「近 10 天 RS 是上升還是下降」，不是「動能強不強」。
+    // 以前寫「還在變強」，會跟下面「朝走弱（動能在衰退）」互相矛盾，現在兩邊都講同一件事：RS 的方向。
+    if (s.current.mom>=105) momDesc='近 10 天 RS 明顯上升 🔥';
+    else if (s.current.mom>=100) momDesc='近 10 天 RS 還在上升（速度可能已變慢）';
+    else if (s.current.mom>=95) momDesc='近 10 天 RS 小幅下降';
+    else momDesc='近 10 天 RS 明顯下降 ⚠';
     var summary='',summaryColor='var(--dim)';
     var ratio=s.current.ratio,mom=s.current.mom;
     if (q.key==='leading'){
@@ -2215,7 +2217,7 @@ window.onerror = function(msg, src, line, col, err) {
       var dirArrow=FT.arrow, dirText='', dirColor='#9ca3af';
       if (FT.strength==='flat'){ dirArrow='⏸'; dirText='原地震盪（無明顯方向）'; dirColor='#9ca3af'; }
       else if (FT.arrow==='↗'){ dirText='朝領先深處（最強訊號）'; dirColor='#00d4a8'; }
-      else if (FT.arrow==='↘'){ dirText='朝走弱（動能在衰退）'; dirColor='#f7c948'; }
+      else if (FT.arrow==='↘'){ dirText='朝走弱（最近這段走向偏下）'; dirColor='#f7c948'; }
       else if (FT.arrow==='↖'){ dirText='朝改善中（V 型反轉訊號）'; dirColor='#4ea5ff'; }
       else { dirText='朝落後（RS 與動能雙弱）'; dirColor='#ef476f'; }
       var rsSign=dRS>=0?'+':'', momSign=dMom>=0?'+':'';
@@ -2350,6 +2352,10 @@ window.onerror = function(msg, src, line, col, err) {
       if (prev){ txt='⏱️ '+(ed?ed+' 進入「':'在「')+nm(cur)+'」，已 <strong>'+days+'</strong> '+u+'（前一個位置：'+nm(prev)+'）'; }
       else { txt='⏱️ 在「'+nm(cur)+'」已超過 '+days+' '+u; }
       if (days<=3) txt+=' —— 剛換過來，還不穩，多看幾天';
+      // v2.14.9 領先停留天數參考（來自 dwell.html，日線、約 18 個月、2255 次事件；只是統計參考，不是買賣訊號）
+      if (cur==='leading' && rrgInterval!=='1wk'){
+        txt+='<br><span style="color:var(--dim)">📊 統計參考：新進領先一般待約 10 個交易日（常見 4～15 天）；已待滿 8 天的通常還會再待約 5 天。'+(days>15?'你已經超過常見範圍，要特別看 K 線位置與停損。':(days>10?'你已經超過一般的中位數。':''))+'</span>';
+      }
       html+='<div style="margin-top:12px;padding:8px;background:rgba(255,209,102,0.08);border-radius:6px;font-size:0.78rem;color:var(--accent);">'+txt+'</div>';
     })();
     if (s.sectorName&&lastRenderMode==='deepscan'){
@@ -2358,7 +2364,7 @@ window.onerror = function(msg, src, line, col, err) {
         var alignmentTip='',alignmentColor='var(--text)';
         var stockQ=q.key,sectorQ=sectorStatus.quadrant.key;
         if (stockQ==='leading'&&sectorQ==='leading'){ alignmentTip='⭐⭐ 個股強 + 板塊強 = 雙確認'; alignmentColor='var(--leading)'; }
-        else if (stockQ==='leading'&&sectorQ!=='leading'){ alignmentTip='⚠️ 個股強但板塊弱 = 孤雁難飛'; alignmentColor='var(--weakening)'; }
+        else if (stockQ==='leading'&&sectorQ!=='leading'){ alignmentTip='⚠️ 個股強但板塊沒跟上（統計上這對個股能待多久影響很小，仍以 K 線為準）'; alignmentColor='var(--weakening)'; }
         else if (stockQ==='improving'&&(sectorQ==='leading'||sectorQ==='improving')){ alignmentTip='🌱 起漲股 + 板塊配合 = 進場好時機'; alignmentColor='var(--improving)'; }
         else if (stockQ==='improving'&&sectorQ==='lagging'){ alignmentTip='⚠️ 起漲股但板塊還弱 = 等板塊確認'; alignmentColor='var(--weakening)'; }
         html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);">';
