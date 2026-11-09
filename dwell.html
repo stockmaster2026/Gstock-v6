@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.1</title>
+<title>領先停留天數 v0.2</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -20,14 +20,13 @@ table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;bor
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
 ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.1</h1>
+<h1>⏱ 領先停留天數 v0.2</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
-<script>
-// ===== dwell.html 邏輯 =====
-var VER='v0.1';
+<script>// ===== dwell.html 邏輯 =====
+var VER='v0.2';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -268,6 +267,8 @@ function analyzeTicker(secC, benchC, dates){
   var off=secC.length-n, lead=[], i;
   for(i=0;i<n;i++) lead.push(R[i]!=null&&M[i]!=null&&R[i]>=100&&M[i]>=100);
   function rel(idx,k){ var a=off+idx; if(a+k>=secC.length) return null; return ((secC[a+k]/secC[a])-(benchC[a+k]/benchC[a]))*100; }
+  function absr(idx,k){ var a=off+idx; if(a+k>=secC.length) return null; return (secC[a+k]/secC[a]-1)*100; }
+  var DS=[1,3,5,8];
   function scan(tol){ // tol：離開領先連續幾根以上才算真的離開（strict=1）
     var ev=[], j=1;
     while(j<n){
@@ -276,15 +277,17 @@ function analyzeTicker(secC, benchC, dates){
         while(k<n){ if(lead[k]){ last=k; gap=0; } else { gap++; if(gap>=tol) break; } k++; }
         var ongoing=(k>=n);
         var stay=ongoing?(n-start):(last-start+1);
-        ev.push({start:start,stay:stay,ongoing:ongoing,date:dates[off+start],r5:rel(start,5),r10:rel(start,10),r20:rel(start,20)});
+        var fw={}; DS.forEach(function(d){ if(n-start>=d && stay>=d){ var ix=start+d-1; fw[d]={a5:absr(ix,5),r5:rel(ix,5),a10:absr(ix,10),r10:rel(ix,10)}; } });
+        ev.push({start:start,stay:stay,ongoing:ongoing,date:dates[off+start],r5:rel(start,5),r10:rel(start,10),r20:rel(start,20),fw:fw});
         j=Math.max(k,last+1);
       } else j++;
     }
     return ev;
   }
-  var base5=[],base10=[],base20=[]; for(i=0;i<n;i++){ var a5=rel(i,5),a10=rel(i,10),a20=rel(i,20); if(a5!=null) base5.push(a5); if(a10!=null) base10.push(a10); if(a20!=null) base20.push(a20); }
+  var base5=[],base10=[],base20=[],baseA5=[],baseA10=[]; for(i=0;i<n;i++){ var a5=rel(i,5),a10=rel(i,10),a20=rel(i,20),x5=absr(i,5),x10=absr(i,10); if(a5!=null) base5.push(a5); if(a10!=null) base10.push(a10); if(a20!=null) base20.push(a20); if(x5!=null) baseA5.push(x5); if(x10!=null) baseA10.push(x10); }
+  var leadMap={}; for(i=0;i<n;i++) leadMap[dayKey(dates[off+i])]=lead[i];
   var cur=null; if(lead[n-1]){ var s=n-1; while(s>0&&lead[s-1]) s--; cur={days:n-s, since:dates[off+s]}; }
-  return {strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20}, cur:cur, bars:n, first:dates[off], last:dates[off+n-1]};
+  return {strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20,a5:baseA5,a10:baseA10}, leadMap:leadMap, cur:cur, bars:n, first:dates[off], last:dates[off+n-1]};
 }
 var RES=null;
 function sectorsOf(){ return getSectorList().filter(function(x){return !x.etf;}); }
@@ -298,9 +301,19 @@ async function run(){
   var spy; try{ spy=await fetchPrice('SPY'); }catch(e){ setStatus('❌ 抓不到 SPY：'+e.message); el('go').disabled=false; return; }
   if(!spy.dates){ setStatus('❌ 大盤沒有日期資料'); el('go').disabled=false; return; }
   var per={}, failed=[], done=0, next=0, t0=Date.now();
-  async function worker(){ while(next<uniq.length){ var t=uniq[next++]; try{ var px=await fetchPrice(t); if(!px.dates) throw new Error('no_dates'); var al=alignPair(px,spy); if(al.sec.length<WARMUP+30) throw new Error('too_short'); per[t]=analyzeTicker(al.sec,al.bench,al.dates); if(!per[t]) throw new Error('no_rrg'); }catch(e){ failed.push(t); } done++; var left=uniq.length-done, eta=Math.round((Date.now()-t0)/done*left/1000); setStatus('分析 '+done+'/'+uniq.length+' 檔（還要約 '+Math.floor(eta/60)+' 分 '+(eta%60)+' 秒）'); await sleep(200); } }
+  async function worker(){ while(next<uniq.length){ var t=uniq[next++]; try{ var px=await fetchPrice(t); if(!px.dates) throw new Error('no_dates'); var al=alignPair(px,spy); if(al.sec.length<WARMUP+30) throw new Error('too_short'); per[t]=analyzeTicker(al.sec,al.bench,al.dates); if(!per[t]) throw new Error('no_rrg'); var mp={}; for(var q=0;q<al.dates.length;q++) mp[dayKey(al.dates[q])]=al.sec[q]; per[t].map=mp; }catch(e){ failed.push(t); } done++; var left=uniq.length-done, eta=Math.round((Date.now()-t0)/done*left/1000); setStatus('分析 '+done+'/'+uniq.length+' 檔（還要約 '+Math.floor(eta/60)+' 分 '+(eta%60)+' 秒）'); await sleep(200); } }
   await Promise.all([worker(),worker(),worker()]);
-  RES={per:per,tkSec:tkSec,secs:secs,failed:failed,ts:Date.now()};
+  var secIdx={};
+  secs.forEach(function(sc){
+    var mem=sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return per[t];});
+    if(mem.length<3) return;
+    var idx=[100], D=spy.dates, d, q;
+    for(d=1;d<D.length;d++){ var kc=dayKey(D[d]), kp=dayKey(D[d-1]), sum=0, cnt=0;
+      for(q=0;q<mem.length;q++){ var m=per[mem[q]].map, x=m[kc], y=m[kp]; if(x>0&&y>0){ sum+=x/y-1; cnt++; } }
+      idx.push(idx[d-1]*(1+(cnt>=3?sum/cnt:0))); }
+    var r=analyzeTicker(idx, spy.closes, D); if(r) secIdx[sc.name]=r;
+  });
+  RES={per:per,tkSec:tkSec,secs:secs,secIdx:secIdx,failed:failed,ts:Date.now()};
   setStatus('完成 · '+Object.keys(per).length+' 檔'+(failed.length?' · ⚠ '+failed.length+' 檔抓不到已略過：'+failed.slice(0,10).join('、'):''));
   render(); el('go').disabled=false;
 }
@@ -351,6 +364,30 @@ function render(){
   h+='<div class="card"><div class="hd">⑤ 進入領先後，比大盤多漲多少？（中位數）</div><table><tr class="th"><td>進入後</td><td>進入領先那天起算</td><td>隨便一天起算</td><td>差距</td><td>事件數</td></tr>'
     +row('5 天',e5,b5)+row('10 天',e10,b10)+row('20 天',e20,b20)+'</table>'
     +'<div class="sub dim">白話：「差距」是正的，代表剛進領先的那天買，之後比隨便一天買好；接近 0 或負的，代表領先這個標籤本身沒有加分。這裡只看相對大盤，不含停損、不含你的 Stage 判斷。</div></div>';
+  // ⑥ 第幾天買
+  var DSL=[1,3,5,8], fr={};
+  DSL.forEach(function(d){ fr[d]={r5:[],a5:[],r10:[],a10:[]}; });
+  all.forEach(function(e){ DSL.forEach(function(d){ var f=e.fw&&e.fw[d]; if(!f) return; if(f.r5!=null)fr[d].r5.push(f.r5); if(f.a5!=null)fr[d].a5.push(f.a5); if(f.r10!=null)fr[d].r10.push(f.r10); if(f.a10!=null)fr[d].a10.push(f.a10); }); });
+  var bA5=[],bA10=[]; Object.keys(per).forEach(function(t){ bA5=bA5.concat(per[t].base.a5); bA10=bA10.concat(per[t].base.a10); });
+  function sg(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+  h+='<div class="card"><div class="hd">⑥ 在領先的「第幾天」買？（之後 5／10 天；絕對漲跌＝你的買進價盈虧，相對＝減掉大盤）</div><table><tr class="th"><td>在領先第幾天買</td><td>之後 5 天 絕對</td><td>5 天 相對大盤</td><td>之後 10 天 絕對</td><td>10 天 相對大盤</td><td>事件數</td></tr>';
+  DSL.forEach(function(d){ h+='<tr><td>第 '+d+' 天</td><td>'+sg(med(fr[d].a5))+'</td><td>'+sg(med(fr[d].r5))+'</td><td>'+sg(med(fr[d].a10))+'</td><td>'+sg(med(fr[d].r10))+'</td><td>'+fr[d].r5.length+'</td></tr>'; });
+  h+='<tr class="few"><td>隨便一天（基準）</td><td>'+sg(med(bA5))+'</td><td>'+sg(med(b5))+'</td><td>'+sg(med(bA10))+'</td><td>'+sg(med(b10))+'</td><td>—</td></tr></table>'
+    +'<div class="sub dim">白話：如果「第 8 天」的數字比「第 1 天」明顯差，就支持「待越久越危險、不要追在末端」；如果差不多，代表單看天數分不出來，還是要看 K 線位置。只算「到那天還在領先」的事件。</div></div>';
+  // ⑦ 整個板塊
+  var SI=RES.secIdx||{};
+  h+='<div class="card"><div class="hd">⑦ 整個板塊（成分股等權平均指數）進入領先後，待多久？</div><table><tr class="th"><td>板塊</td><td>中位數</td><td>範圍</td><td>事件數</td><td>現在</td></tr>';
+  var srows=Object.keys(SI).map(function(sn){ var s=stat(SI[sn][key]); return {sn:sn,s:s,cur:SI[sn].cur}; }).filter(function(r){return r.s.n>0||r.cur;}).sort(function(x,y){return (y.s.med||0)-(x.s.med||0);});
+  srows.forEach(function(r){ var few=r.s.n<8; h+='<tr'+(few?' class="few"':'')+'><td>'+r.sn+'</td><td>'+(r.s.med==null?'—':'<b>'+r.s.med+'</b> 天')+'</td><td>'+(r.s.q1==null?'—':r.s.q1+'～'+r.s.q3+' 天')+'</td><td>'+r.s.n+(few?' ⚠少':'')+'</td><td>'+(r.cur?'領先第 '+r.cur.days+' 天':'不在領先')+'</td></tr>'; });
+  h+='</table><div class="sub dim">白話：這是「整個板塊」的 RRG 位置，跟上面「每一檔股票自己」是兩回事。板塊是一群股票輪流接棒，通常會比單一檔待得久。事件不到 8 次的只能當線索。</div></div>';
+  // ⑧ 個股進領先時，它的板塊是不是也在領先
+  var gL=[],gN=[]; 
+  Object.keys(per).forEach(function(t){ var sn=(RES.tkSec[t]||[])[0]; var si=SI[sn]; if(!si) return; per[t][key].forEach(function(e){ if(e.ongoing) return; var L=si.leadMap[dayKey(e.date)]; if(L===true) gL.push(e); else if(L===false) gN.push(e); }); });
+  var sL=stat(gL), sN=stat(gN);
+  h+='<div class="card"><div class="hd">⑧ 個股進領先那天，它的板塊是不是也在領先？</div><table><tr class="th"><td></td><td>停留中位數</td><td>3 天內離開</td><td>撐過 10 天</td><td>事件數</td></tr>'
+    +'<tr><td>板塊也在領先（雙強）</td><td><b>'+(sL.med==null?'—':sL.med+' 天')+'</b></td><td>'+pp(sL.le3)+'</td><td>'+pp(sL.ge10)+'</td><td>'+sL.n+'</td></tr>'
+    +'<tr><td>板塊不在領先（孤雁）</td><td><b>'+(sN.med==null?'—':sN.med+' 天')+'</b></td><td>'+pp(sN.le3)+'</td><td>'+pp(sN.ge10)+'</td><td>'+sN.n+'</td></tr></table>'
+    +'<div class="sub dim">白話：兩列差很多，代表「板塊有沒有跟著強」會影響個股能撐多久；差不多就代表這條線索沒用，可以不管。一檔屬於多個板塊時只看第一個。</div></div>';
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul>'
     +'<li>資料只有約 '+Math.round(Object.values(per)[0].bars/21)+' 個月，而且最近幾天 AI 板塊大跌、資金轉去防禦股，是很特殊的一段行情。停留天數可能反映這段行情，不是股票本身的特性。</li>'
     +'<li>用的是「現在的」板塊名單往回看，沒有包含已經下市或被踢出名單的股票（倖存者偏差）。</li>'
