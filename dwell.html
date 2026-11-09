@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.8</title>
+<title>領先停留天數 v0.9</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,15 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 .bar{flex:1;background:#0d1220;border-radius:4px;height:14px}.bar i{display:block;height:14px;background:var(--lead);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;border-bottom:1px solid var(--line)}tr.th td{color:var(--dim)}tr.few td{color:var(--dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
-.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
+.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.8</h1>
+<h1>⏱ 領先停留天數 v0.9</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>// ===== dwell.html 邏輯 =====
-var VER='v0.8';
+var VER='v0.9';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -642,7 +642,7 @@ function todayCard(all,key){
   var T='<span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.8</span>';
   if(!secs.length) return '<div class="card big"><div class="hd">⑯ '+T+' 今天的重點</div><div class="sub">現在沒有任何板塊整體在 RRG 領先區。</div></div>';
   secs.sort(function(a,b){return a.days-b.days;});
-  var calls={sectors:[],stocks:[]}, h='<div class="card big"><div class="hd">⑯ '+T+' 今天的重點：套用統計後，現在各板塊可能處在什麼狀況（資料到 '+fmtD(last)+'）</div>';
+  var calls={sectors:[],stocks:[],cand:[]}, h='<div class="card big"><div class="hd">⑯ '+T+' 今天的重點：套用統計後，現在各板塊可能處在什麼狀況（資料到 '+fmtD(last)+'）</div>';
   var heads=[];
   var blocks='';
   secs.forEach(function(r){
@@ -678,13 +678,17 @@ function todayCard(all,key){
       +(n?'<div class="chips">'+r.on.map(function(o){ var rr=remStat(all,o.d); return '<span class="chip '+(o.d>10?'over':'ok')+'" title="'+(rr?'已待 '+o.d+' 天的，歷史上一般還會再待約 '+rr.med+' 天':'')+'"><b>'+o.t+'</b> 第 '+o.d+' 天 · <span style="color:'+(o.pk?POSCOL[o.pk]:'#8a96b3')+'">'+(o.pk?POSNAME[o.pk]:'—')+'</span></span>'; }).join('')+'</div>':'')
       +'</div>';
     heads.push({sn:r.sn,days:r.days,tag:tag,stage:stage,cand:cand.length});
+    cand.forEach(function(o){ calls.cand.push({t:o.t,sn:r.sn,N:o.d,c0:o.c0}); });
     calls.sectors.push({sn:r.sn,N:r.days,tag:tag,pOn:pOn,mem:r.mem,R:r.rs?r.rs.med:null,p5:r.rs?r.rs.p5:null});
     r.on.forEach(function(o){ var rr=remStat(all,o.d); calls.stocks.push({t:o.t,sn:r.sn,N:o.d,pk:o.pk,c0:o.c0,R:rr?rr.med:null,p5:rr?rr.p5:null}); });
   });
   var order=heads.filter(function(x){return x.stage==='new';}).concat(heads.filter(function(x){return x.stage==='mid'||x.stage==='late';})).concat(heads.filter(function(x){return x.stage==='over'||x.stage==='na';}));
   h+='<div style="margin:6px 0;padding:10px 12px;background:rgba(0,212,168,.08);border-radius:8px;font-size:.9rem;line-height:1.7"><b>一句話：</b>現在有 '+secs.length+' 個板塊整體在領先——'+heads.map(function(x){return x.sn+'（第 '+x.days+' 天，'+x.tag+'）';}).join('、')+'。依統計的輕重緩急：'+order.map(function(x,i){ return (i+1)+'. '+x.sn+(x.stage==='new'?'（最值得先看，剛亮燈、成分股還在跟上）':(x.stage==='over'?'（已成熟，新買要保守）':'（還在一般範圍，靠個股 K 線挑）')); }).join('；')+'。這是套用我們統計的推論，不是百分之百，買不買還是要對你的 K 線。</div>';
+  (function(){ var by={}; calls.cand.forEach(function(c){ (by[c.sn]=by[c.sn]||[]).push(c); });
+    var lines=secs.map(function(r){ var a=by[r.sn]||[]; return '<div><b>'+r.sn+'</b>（領先第 '+r.days+' 天）：'+(a.length?a.map(function(c){return '<b style="color:#00d4a8">'+c.t+'</b>（第 '+c.N+' 天）';}).join('、'):'<span class="dim">沒有（沒有同時符合「已待 ≤8 天」又「Stage 2 低位」的）</span>')+'</div>'; }).join('');
+    h+='<div style="margin:8px 0;padding:10px 12px;border:1px solid #00d4a855;background:rgba(0,212,168,.06);border-radius:8px;font-size:.88rem;line-height:1.7"><b>🎯 今天的候選名單（符合：板塊在領先、個股已待 ≤8 天、K 線在 Stage 2 低位）</b>'+lines+'<div class="sub dim">這份名單會跟著判斷一起存檔，之後 ⑰ 會追蹤它們後來的表現，並跟「其他領先中的股票」比較，看這個篩法到底有沒有用。這是統計篩出來的研究名單，不是買進建議。</div></div>'; })();
   h+=blocks;
-  var saved=false; if(key==='strict'){ saved=saveCall({asof:lastKey,asofTs:last,key:key,sectors:calls.sectors,stocks:calls.stocks}); }
+  var saved=false; if(key==='strict'){ saved=saveCall({asof:lastKey,asofTs:last,key:key,sectors:calls.sectors,stocks:calls.stocks,cand:calls.cand}); }
   h+='<div class="sub dim">'+(key==='strict'?(saved?'✅ 這份判斷已存在你這個瀏覽器裡（資料日 '+fmtD(last)+'），之後有新資料再按「開始分析」，⑰ 會自動對照對不對。':'⚠ 這份判斷沒存成功（瀏覽器可能封鎖儲存），⑰ 就沒辦法自動對照。'):'目前是「連續 3 天以上才算結束」模式，這份判斷不會存檔；切回「掉出領先 1 天就算」才會存。')+' 所有分段（剛亮燈≤3 天、已待超過 10 天、拉開很遠等）都是我定的，沒驗證過；資料約 18 個月，行情特殊。</div></div>';
   return h;
 }
@@ -697,7 +701,8 @@ function verifyCard(all,key){
   var head='<div class="card"><div class="hd">⑰ '+T+' 上次的判斷對不對？（自動對照以前存的 ⑯）</div>';
   if(!old.length){
     var mine=snaps.filter(function(s){return s.asof===lastKey;});
-    return head+'<div class="sub">'+(mine.length?'目前只有今天（資料到 '+fmtD(last)+'）這一份判斷。':'還沒有存過判斷。')+'等有新的交易日資料後（建議至少隔 3～5 個交易日、之後每週一次）再按「開始分析」，這裡就會自動拿「當時的判斷」對照「後來實際發生什麼」，不用你自己記。</div><div class="sub dim">判斷存在你這個瀏覽器（不是雲端），清除網站資料就會不見。</div></div>';
+    var candNote=''; if(mine.length&&mine[0].cand&&mine[0].cand.length){ candNote='<div class="sub">已記錄的候選名單（'+fmtD(mine[0].asofTs)+'）：<b>'+mine[0].cand.map(function(c){return c.t+'（'+c.sn+'）';}).join('、')+'</b>。等新資料出來，這裡會追蹤它們後來漲跌多少、還在不在領先。</div>'; }
+    return head+candNote+'<div class="sub">'+(mine.length?'目前只有今天（資料到 '+fmtD(last)+'）這一份判斷。':'還沒有存過判斷。')+'等有新的交易日資料後（建議至少隔 3～5 個交易日、之後每週一次）再按「開始分析」，這裡就會自動拿「當時的判斷」對照「後來實際發生什麼」，不用你自己記。</div><div class="sub dim">判斷存在你這個瀏覽器（不是雲端），清除網站資料就會不見。</div></div>';
   }
   var PGm=posGroups(all), h=head, st5=[], stR=[], priceG={low:[],mid:[],far:[],non:[]}, srows='';
   old.forEach(function(sn){
@@ -719,6 +724,24 @@ function verifyCard(all,key){
   });
   function rate(a){ return a.length?Math.round(a.filter(function(x){return x.hit;}).length/a.length*100):null; }
   var avgP=st5.length?Math.round(st5.reduce(function(s,x){return s+x.p;},0)/st5.length*100):null;
+  // 候選名單追蹤
+  (function(){
+    var C=[], O=[], rows='';
+    old.forEach(function(sn){
+      var spy0=RES.spyMap[sn.asof], spy1=RES.spyMap[lastKey], spyRet=(spy0>0&&spy1>0)?(spy1/spy0-1)*100:null;
+      var cs={}; (sn.cand&&sn.cand.length?sn.cand:sn.stocks.filter(function(c){return c.pk==='low'&&c.N<=8;})).forEach(function(c){ cs[c.t]=1; });
+      sn.stocks.forEach(function(c){ var P=RES.per[c.t]; if(!P||!(c.c0>0)) return; var now=P.map[lastKey]; if(!(now>0)) return; var ret=(now/c.c0-1)*100, rs=remainingSince(P,sn.asof); if(!rs) return;
+        var o={t:c.t,sn:c.sn,N:c.N,ret:ret,rel:(spyRet==null?null:ret-spyRet),on:!!P.cur,rem:rs.rem,ongoing:rs.ongoing,el:rs.elapsed,asofTs:sn.asofTs};
+        if(cs[c.t]) { C.push(o); rows+='<tr><td>'+fmtD(sn.asofTs)+'</td><td><b>'+c.t+'</b>（'+c.sn+'）</td><td>第 '+c.N+' 天</td><td><b>'+sgn(ret)+'</b></td><td>'+sgn(o.rel)+'</td><td>'+(o.on?'還在領先（已連續 '+P.cur.days+' 天）':'已離開領先（當時之後再待 '+rs.rem+' 天）')+'</td></tr>'; } else O.push(o); });
+    });
+    function sum(a){ if(!a.length) return {n:0}; var up=a.filter(function(x){return x.ret>0;}).length/a.length, beat=a.filter(function(x){return x.rel!=null&&x.rel>0;}).length/a.length, on=a.filter(function(x){return x.on;}).length/a.length; return {n:a.length,med:med(a.map(function(x){return x.ret;})),medRel:med(a.filter(function(x){return x.rel!=null;}).map(function(x){return x.rel;})),up:up,beat:beat,on:on,p10:pct(a.map(function(x){return x.ret;}),0.1)}; }
+    var sc=sum(C), so=sum(O);
+    function rr(lbl,s){ return '<tr><td>'+lbl+'</td><td>'+s.n+'</td><td><b>'+(s.n?sgn(s.med):'—')+'</b></td><td>'+(s.n?sgn(s.medRel):'—')+'</td><td>'+(s.n?pp(s.up):'—')+'</td><td>'+(s.n?pp(s.beat):'—')+'</td><td>'+(s.n?sgn(s.p10):'—')+'</td><td>'+(s.n?pp(s.on):'—')+'</td></tr>'; }
+    h+='<div style="margin:8px 0;padding:10px 12px;border:1px solid #00d4a855;border-radius:8px"><div style="font-weight:800;margin-bottom:6px">🎯 候選名單追蹤：當時挑的候選，後來表現比「其他領先中的股票」好嗎？</div>'
+     +'<div style="overflow-x:auto"><table><tr class="th"><td>組別</td><td>檔數</td><td>到現在中位數漲跌</td><td>相對大盤</td><td>漲的比例</td><td>贏大盤的比例</td><td>最差 1 成</td><td>現在還在領先</td></tr>'+rr('候選（板塊領先＋≤8 天＋Stage 2 低位）',sc)+rr('其他領先中的股票（對照組）',so)+'</table></div>'
+     +(rows?'<div style="overflow-x:auto;margin-top:6px"><table><tr class="th"><td>當時日期</td><td>候選</td><td>當時</td><td>到現在漲跌</td><td>相對大盤</td><td>現在</td></tr>'+rows+'</table></div>':'')
+     +'<div class="sub dim">白話：「漲的比例」和「贏大盤的比例」就是這個篩法的準確率。候選如果明顯比對照組好（例如漲的比例高、最差 1 成比較淺），代表這個篩法有用；差不多，就代表只看這些條件分不出好壞。檔數很少時（不到 30 檔）只能當線索，要累積幾次才有意義。漲跌是從當時收盤到最新收盤，經過的天數不同。</div></div>';
+  })();
   h+='<div class="sub">白話：下面拿「當時存下的判斷」去對照「後來實際發生什麼」。判斷對不對，要看很多檔的平均，不要看單一檔。</div>';
   h+='<table><tr class="th"><td>個股判斷</td><td>當時預測</td><td>實際</td><td>樣本</td></tr>'
    +'<tr><td>「至少再待 5 天」</td><td>平均 '+(avgP==null?'—':avgP+'%')+' 會做到</td><td><b>'+(rate(st5)==null?'—':rate(st5)+'%')+'</b> 做到</td><td>'+st5.length+'</td></tr>'
