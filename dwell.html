@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.5</title>
+<title>領先停留天數 v0.6</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,15 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 .bar{flex:1;background:#0d1220;border-radius:4px;height:14px}.bar i{display:block;height:14px;background:var(--lead);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;border-bottom:1px solid var(--line)}tr.th td{color:var(--dim)}tr.few td{color:var(--dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
-.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
+.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.5</h1>
+<h1>⏱ 領先停留天數 v0.6</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>// ===== dwell.html 邏輯 =====
-var VER='v0.5';
+var VER='v0.6';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -317,7 +317,8 @@ async function run(){
       idx.push(idx[d-1]*(1+(cnt>=3?sum/cnt:0))); }
     var r=analyzeTicker(idx, spy.closes, D); if(r) secIdx[sc.name]=r;
   });
-  RES={per:per,tkSec:tkSec,secs:secs,secIdx:secIdx,failed:failed,ts:Date.now()};
+  var spyMap={}; for(var zi=0;zi<spy.dates.length;zi++) spyMap[dayKey(spy.dates[zi])]=spy.closes[zi];
+  RES={spyMap:spyMap,per:per,tkSec:tkSec,secs:secs,secIdx:secIdx,failed:failed,ts:Date.now()};
   setStatus('完成 · '+Object.keys(per).length+' 檔'+(failed.length?' · ⚠ '+failed.length+' 檔抓不到已略過：'+failed.slice(0,10).join('、'):''));
   render(); el('go').disabled=false;
 }
@@ -410,6 +411,7 @@ function render(){
   h+=posCard(all);
   h+=remCard(all);
   h+=breadthCard(key);
+  h+=leaderCard(key);
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul>'
     +'<li>資料只有約 '+Math.round(Object.values(per)[0].bars/21)+' 個月，而且最近幾天 AI 板塊大跌、資金轉去防禦股，是很特殊的一段行情。停留天數可能反映這段行情，不是股票本身的特性。</li>'
     +'<li>用的是「現在的」板塊名單往回看，沒有包含已經下市或被踢出名單的股票（倖存者偏差）。</li>'
@@ -552,6 +554,47 @@ function breadthCard(key){
   return '<div class="card"><div class="hd">⑭ '+NEWTAG+' 板塊整體進入領先的那幾天，成分股有多少比例跟著進入？（驗證「強勢板塊大多數個股都有機會」）</div>'
     +'<div class="sub"><b>自動判讀：</b>'+v+'</div><div style="overflow-x:auto">'+tb+'</div>'
     +'<div class="sub dim">白話：板塊（成分股等權指數）進入 RRG 領先那天算起的 6 個交易日內，成分股裡「有任何一天在領先」的比例，跟「隨便一天起算 6 天」做對照。比例越高、越比基準高，代表板塊強的時候越多股票一起強。注意：成分股本來就常在領先，所以基準本身不低；板塊是由成分股平均出來的，成分股一起強，板塊自然也強，這個比較有一部分是定義造成的，只能當線索，不是因果。判讀用的「差 15／5 個百分點」是我訂的，沒驗證過。事件不到 8 次的只能當線索。</div></div>';
+}
+
+
+// ⑮ 龍頭（板塊內過去最強的前 3 名）會不會比其他股票早進、之後表現較好
+function leaderCard(key){
+  if(!RES||!RES.secIdx||!RES.spyMap) return '';
+  var G={L:{n:0,already:0,soon:0,none:0,a10:[],r10:[]},O:{n:0,already:0,soon:0,none:0,a10:[],r10:[]}}, perSec=[], evCount=0;
+  Object.keys(RES.secIdx).forEach(function(sn){
+    var si=RES.secIdx[sn], sc=RES.secs.filter(function(s){return s.name===sn;})[0]; if(!sc) return;
+    var mem=sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return RES.per[t];});
+    if(mem.length<6) return;
+    var D=si.dts, ps={L:{n:0,ok:0},O:{n:0,ok:0}}, any=false;
+    si[key].forEach(function(e){
+      var s=e.start; if(s<65||s+10>=D.length) return;
+      var kS=dayKey(D[s]), k5=dayKey(D[s-5]), k65=dayKey(D[s-65]), k10=dayKey(D[s+10]);
+      var spy5=RES.spyMap[k5], spy65=RES.spyMap[k65], spyS=RES.spyMap[kS], spy10=RES.spyMap[k10];
+      if(!(spy5>0&&spy65>0&&spyS>0&&spy10>0)) return;
+      var rk=[]; mem.forEach(function(t){ var m=RES.per[t].map, c5=m[k5], c65=m[k65]; if(c5>0&&c65>0) rk.push({t:t,r:(c5/c65)/(spy5/spy65)}); });
+      if(rk.length<6) return; rk.sort(function(a,b){return b.r-a.r;}); any=true; evCount++;
+      rk.forEach(function(o,idx){
+        var g=(idx<3)?'L':'O', P=RES.per[o.t], lm=P.leadMap, m=P.map, st;
+        if(lm[kS]===true) st='already'; else { st='none'; for(var k=1;k<=5;k++){ if(lm[dayKey(D[s+k])]===true){ st='soon'; break; } } }
+        var G1=G[g]; G1.n++; G1[st]++; ps[g].n++; if(st!=='none') ps[g].ok++;
+        var c0=m[kS], c10=m[k10]; if(c0>0&&c10>0){ G1.a10.push((c10/c0-1)*100); G1.r10.push(((c10/c0)-(spy10/spyS))*100); }
+      });
+    });
+    if(any&&ps.L.n) perSec.push({sn:sn,L:ps.L.ok/ps.L.n,O:ps.O.n?ps.O.ok/ps.O.n:null,n:ps.L.n/3});
+  });
+  if(!G.L.n) return '';
+  function row(lbl,g){ var neg=g.a10.length?g.a10.filter(function(x){return x<0;}).length/g.a10.length:null;
+    return '<tr><td>'+lbl+'</td><td>'+g.n+'</td><td>'+pp(g.already/g.n)+'</td><td>'+pp(g.soon/g.n)+'</td><td><b>'+pp((g.already+g.soon)/g.n)+'</b></td><td>'+sgn(med(g.a10))+'</td><td>'+sgn(med(g.r10))+'</td><td>'+pp(neg)+'</td></tr>'; }
+  var tb='<table><tr class="th"><td></td><td>人次</td><td>板塊進入那天已在領先</td><td>之後 5 天內才進入</td><td>6 天內有領先過（合計）</td><td>從那天起 10 天 中位數</td><td>10 天 相對大盤</td><td>10 天 虧損的比例</td></tr>'+row('龍頭（過去最強的前 3 名）',G.L)+row('其他成分股',G.O)+'</table>';
+  var pl=(G.L.already+G.L.soon)/G.L.n, po=(G.O.already+G.O.soon)/G.O.n, ml=med(G.L.a10), mo=med(G.O.a10), v1, v2;
+  if(pl-po>=0.10) v1='龍頭確實比較容易跟上：6 天內有領先過的比例 '+pp(pl)+'，其他股票 '+pp(po)+'。'; else if(po-pl>=0.10) v1='反過來，龍頭沒有比較容易跟上（'+pp(pl)+'，其他股票 '+pp(po)+'）。'; else v1='龍頭跟其他股票跟上的比例差不多（'+pp(pl)+' 對 '+pp(po)+'），看不出龍頭特別早進入。';
+  if(ml!=null&&mo!=null){ if(ml-mo>=0.5) v2=' 板塊進入領先那天起算 10 天，龍頭中位數 '+sgn(ml)+'，其他 '+sgn(mo)+'，龍頭較好。'; else if(mo-ml>=0.5) v2=' 板塊進入領先那天起算 10 天，龍頭中位數 '+sgn(ml)+'，其他 '+sgn(mo)+'，龍頭反而較差。'; else v2=' 板塊進入領先那天起算 10 天，龍頭 '+sgn(ml)+'、其他 '+sgn(mo)+'，差不多，看不出龍頭之後表現比較好。'; } else v2='';
+  perSec.sort(function(a,b){return (b.L-(b.O||0))-(a.L-(a.O||0));});
+  var tb2='<table><tr class="th"><td>板塊</td><td>板塊進入次數</td><td>龍頭 6 天內有領先過</td><td>其他股票</td></tr>'+perSec.map(function(r){ var few=r.n<8; return '<tr'+(few?' class="few"':'')+'><td>'+r.sn+'</td><td>'+Math.round(r.n)+(few?' ⚠少':'')+'</td><td><b>'+pp(r.L)+'</b></td><td>'+pp(r.O)+'</td></tr>'; }).join('')+'</table>';
+  return '<div class="card"><div class="hd">⑮ '+NEWTAG.replace('v0.5','v0.6')+' 板塊進入領先時，龍頭（前 3 名）會不會比其他股票早進、之後表現較好？</div>'
+    +'<div class="sub"><b>自動判讀：</b>'+v1+v2+'</div><div style="overflow-x:auto">'+tb+'</div>'
+    +'<details style="margin-top:8px"><summary class="sub dim">分板塊看（點開／收合）</summary><div style="overflow-x:auto">'+tb2+'</div></details>'
+    +'<div class="sub dim">白話：「龍頭」＝板塊進入領先的前 5 天，往回看 60 個交易日，漲得比大盤多最多的前 3 名（只用當時就知道的資料，沒有事後諸葛）。看兩件事：龍頭是不是比較早亮（那天已經在領先，或 5 天內進入），以及從板塊亮燈那天買、10 天後誰比較好。注意：龍頭本來就是最強的幾檔，所以很容易已經在領先，這有一部分是定義造成的；「前 3 名」「60 天」「差 10 個百分點／0.5 個百分點」都是我訂的，沒驗證過。事件之間不獨立，只能當線索。</div></div>';
 }
 
 function initTimeline(){
