@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.4</title>
+<title>領先停留天數 v0.5</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,15 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 .bar{flex:1;background:#0d1220;border-radius:4px;height:14px}.bar i{display:block;height:14px;background:var(--lead);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;border-bottom:1px solid var(--line)}tr.th td{color:var(--dim)}tr.few td{color:var(--dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
-.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
+.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.4</h1>
+<h1>⏱ 領先停留天數 v0.5</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>// ===== dwell.html 邏輯 =====
-var VER='v0.4';
+var VER='v0.5';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -407,6 +407,9 @@ function render(){
   // ⑩ 接棒時間線
   h+='<div class="card"><div class="hd">⑩ 接棒時間線（每一列＝一檔股票，綠色＝那天在 RRG 領先）</div><div class="ctl" style="margin:6px 0"><select id="tlSec"></select><select id="tlWin"><option value="60">最近 60 個交易日</option><option value="90">最近 90 天</option><option value="120" selected>最近 120 天</option><option value="180">最近 180 天</option></select></div><div id="tlOut"></div></div>';
   h+=pathCard(all,key);
+  h+=posCard(all);
+  h+=remCard(all);
+  h+=breadthCard(key);
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul>'
     +'<li>資料只有約 '+Math.round(Object.values(per)[0].bars/21)+' 個月，而且最近幾天 AI 板塊大跌、資金轉去防禦股，是很特殊的一段行情。停留天數可能反映這段行情，不是股票本身的特性。</li>'
     +'<li>用的是「現在的」板塊名單往回看，沒有包含已經下市或被踢出名單的股票（倖存者偏差）。</li>'
@@ -451,6 +454,106 @@ function pathCard(all,key){
    +'<div class="sub"><b>自動判讀：</b>'+verdict+'</div>'+svg+lg+'<div style="overflow-x:auto;margin-top:8px">'+tb+'</div>'
    +'<div class="sub dim">白話：每條線是「在進入領先那天收盤價買進，之後每一天的累積漲跌，取所有事件的中位數」。「第 1 天」就是進入那天的收盤，所以一定是 0。黃線（全部）才是你真的買得到的樣子。綠線、紅線是事後才知道的分類（進場那天你不可能知道它會不會撐到第 8 天），而且「掉出領先」本身就是因為價格走弱，所以紅線往下、綠線往上有一部分是定義造成的，不能當成預測。它們只是用來檢查：綠線如果特別好，代表「第 8 天買看起來沒差」可能只是因為留下來的本來就是比較強的，不是回測支撐。判讀門檻（回落 ≥0.5 個百分點、再回升 ≥0.3 個百分點）是我訂的，沒驗證過；這份資料只有約 18 個月、事件彼此不獨立，所以只能當線索。</div></div>';
 }
+
+// ===== v0.5 新增：⑫⑬⑭ =====
+function sgn(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+var NEWTAG='<span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.5</span>';
+function lineSvg(grp,K,markDay){
+  var x0=44,x1=690,y0=14,y1=236;
+  var lo=0,hi=0; grp.forEach(function(g){ g.m.forEach(function(v){ if(v!=null){ if(v<lo)lo=v; if(v>hi)hi=v; } }); }); lo=Math.floor(lo-0.5); hi=Math.ceil(hi+0.5);
+  function X(k){ return x0+(x1-x0)*k/(K-1); } function Y(v){ return y1-(y1-y0)*(v-lo)/(hi-lo); }
+  var svg='<svg viewBox="0 0 720 280" style="width:100%;max-width:760px;display:block;margin:8px 0">';
+  for(var t=Math.ceil(lo);t<=hi;t++){ svg+='<line x1="'+x0+'" x2="'+x1+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="'+(t===0?'#6b7a99':'#232c45')+'" stroke-width="'+(t===0?1.4:1)+'"/><text x="'+(x0-6)+'" y="'+(Y(t)+4)+'" fill="#8a96b3" font-size="11" text-anchor="end">'+(t>0?'+':'')+t+'%</text>'; }
+  [1,3,5,8,10,15,21].forEach(function(d){ if(d<=K) svg+='<text x="'+X(d-1)+'" y="258" fill="#8a96b3" font-size="11" text-anchor="middle">第'+d+'天</text>'; });
+  if(markDay){ var xm=X(markDay-1); svg+='<line x1="'+xm+'" x2="'+xm+'" y1="'+y0+'" y2="'+y1+'" stroke="#ffb454" stroke-dasharray="3 4" stroke-width="1"/>'; }
+  grp.forEach(function(g){ var d='',pen=false; g.m.forEach(function(v,k){ if(v==null){pen=false;return;} d+=(pen?'L':'M')+X(k).toFixed(1)+' '+Y(v).toFixed(1)+' '; pen=true; }); svg+='<path d="'+d+'" fill="none" stroke="'+g.c+'" stroke-width="2.4" stroke-dasharray="'+g.d+'"/>'; });
+  return svg+'</svg>';
+}
+// ⑫ 依進入位置分組的每日走勢
+function posCard(all){
+  var evs=all.filter(function(e){return e.pos&&e.pa;});
+  var st2=evs.filter(function(e){return e.pos.st2;}), ex=st2.map(function(e){return e.pos.ext50;}), c1=pct(ex,1/3), c2=pct(ex,2/3);
+  if(c1==null) return '';
+  var grp=[
+    {n:'低位 Stage 2（離 50 日線 ≤ '+c1.toFixed(1)+'%）',c:'#00d4a8',d:'',f:function(e){return e.pos.st2&&e.pos.ext50<=c1;}},
+    {n:'中段 Stage 2（'+c1.toFixed(1)+'～'+c2.toFixed(1)+'%）',c:'#4da3ff',d:'6 4',f:function(e){return e.pos.st2&&e.pos.ext50>c1&&e.pos.ext50<=c2;}},
+    {n:'拉開很遠的 Stage 2（> '+c2.toFixed(1)+'%）',c:'#ff9f43',d:'2 3',f:function(e){return e.pos.st2&&e.pos.ext50>c2;}},
+    {n:'不在 Stage 2',c:'#ff6b6b',d:'10 3 2 3',f:function(e){return !e.pos.st2;}}];
+  var K=21;
+  grp.forEach(function(g){ var ev=evs.filter(g.f); g.cnt=ev.length; g.m=[];
+    for(var k=0;k<K;k++){ var va=[]; ev.forEach(function(e){ if(e.pa[k]!=null) va.push(e.pa[k]); }); g.m.push(va.length>=20?med(va):null); }
+    var v10=ev.map(function(e){return e.pa[9];}).filter(function(x){return x!=null;});
+    var known=ev.filter(function(e){return e.stay>=8||!e.ongoing;});
+    g.drop=known.length?known.filter(function(e){return e.stay<8;}).length/known.length:null;
+    g.med10=med(v10); g.p10=pct(v10,0.1); g.neg=v10.length?v10.filter(function(x){return x<0;}).length/v10.length:null; });
+  var svg=lineSvg(grp,K,8);
+  var lg='<div class="sub" style="display:flex;flex-wrap:wrap;gap:14px">'+grp.map(function(g){ return '<span><span style="color:'+g.c+';font-weight:800">'+(g.d?'╌╌':'━━')+'</span> '+g.n+'</span>'; }).join('')+'</div>';
+  var tb='<table><tr class="th"><td>進入領先時的位置</td><td>事件數</td><td>7 天內就掉出領先</td><td>第 10 天 中位數</td><td>第 10 天 虧損的比例</td><td>第 10 天 最差 1 成</td><td>第 21 天 中位數</td></tr>';
+  grp.forEach(function(g){ tb+='<tr><td>'+g.n+'</td><td>'+g.cnt+'</td><td><b>'+pp(g.drop)+'</b></td><td>'+sgn(g.med10)+'</td><td>'+pp(g.neg)+'</td><td>'+sgn(g.p10)+'</td><td>'+sgn(g.m[20])+'</td></tr>'; });
+  tb+='</table>';
+  var lowG=grp[0], farG=grp[2], v;
+  if(lowG.drop==null||farG.drop==null) v='資料不足。';
+  else if(farG.drop-lowG.drop>=0.05) v='低位的輸家（7 天內掉出）比例比拉開很遠的少：'+pp(lowG.drop)+' 對 '+pp(farG.drop)+'。這支持「只買低位」可以篩掉一部分輸家。';
+  else if(lowG.drop-farG.drop>=0.05) v='反過來：低位的輸家比例（'+pp(lowG.drop)+'）反而比拉開很遠的（'+pp(farG.drop)+'）多，這份資料不支持「低位比較安全」。';
+  else v='低位（'+pp(lowG.drop)+'）和拉開很遠（'+pp(farG.drop)+'）的輸家比例差不多，位置分不出輸家。';
+  return '<div class="card"><div class="hd">⑫ '+NEWTAG+' 進入領先那天股價在哪個位置，之後的走勢差多少？（K 線位置能不能篩掉輸家）</div>'
+    +'<div class="sub"><b>自動判讀：</b>'+v+'</div>'+svg+lg+'<div style="overflow-x:auto;margin-top:8px">'+tb+'</div>'
+    +'<div class="sub dim">白話：跟 ⑪ 一樣，是進入那天收盤買進之後每天累積漲跌的中位數，只是依進入時的位置分成四組。重點看兩件事：「7 天內就掉出領先」的比例（越低代表輸家越少），和「第 10 天最差 1 成」（越不負代表壞情況越淺）。Stage 2 是我簡化的（站上 150 日線、150 日線往上），三等分的切點由資料自己決定。判讀用的「差 5 個百分點」是我訂的，沒驗證過。事件彼此不獨立，只能當線索。</div></div>';
+}
+// Kaplan-Meier：已撐 N 天的事件，還會再撐幾天（還在領先中的算「還沒結束」，不丟掉也不當成已結束）
+function kmSurv(durs,fin){
+  var pts=[],i; for(i=0;i<durs.length;i++) pts.push({t:durs[i],f:fin[i]});
+  pts.sort(function(a,b){return a.t-b.t;});
+  var nAt=pts.length, S=1, steps=[], j=0;
+  while(j<pts.length){ var t=pts[j].t, d=0, c=0; while(j<pts.length&&pts[j].t===t){ if(pts[j].f) d++; else c++; j++; } if(d>0){ S*=(1-d/nAt); steps.push({t:t,S:S}); } nAt-=(d+c); }
+  return function(t){ var v=1; for(var q=0;q<steps.length;q++){ if(steps[q].t<=t) v=steps[q].S; else break; } return v; }; // P(再撐天數 > t)
+}
+function remCard(all){
+  var Ns=[1,3,5,8,10,15], rows=[];
+  Ns.forEach(function(N){
+    var evs=all.filter(function(e){return e.stay>=N;}); if(evs.length<30){ rows.push({N:N,n:evs.length}); return; }
+    var durs=evs.map(function(e){return e.stay-N;}), fin=evs.map(function(e){return !e.ongoing;});
+    var S=kmSurv(durs,fin), med=null; for(var t=0;t<=60;t++){ if(S(t)<=0.5){ med=t; break; } }
+    rows.push({N:N,n:evs.length,med:med,p3:S(2),p5:S(4),p10:S(9)});
+  });
+  var tb='<table><tr class="th"><td>已經待了</td><td>這樣的事件數</td><td>之後「還會再待」的中位數</td><td>至少再待 3 天</td><td>至少再待 5 天</td><td>至少再待 10 天</td></tr>';
+  rows.forEach(function(r){ if(r.med===undefined&&r.n<30){ tb+='<tr class="few"><td>第 '+r.N+' 天</td><td>'+r.n+'</td><td colspan="4">事件太少</td></tr>'; return; }
+    tb+='<tr><td>第 <b>'+r.N+'</b> 天</td><td>'+r.n+'</td><td><b>'+(r.med==null?'> 60':r.med)+'</b> 天</td><td>'+pp(r.p3)+'</td><td>'+pp(r.p5)+'</td><td>'+pp(r.p10)+'</td></tr>'; });
+  tb+='</table>';
+  var r8=rows.filter(function(r){return r.N===8;})[0], txt='';
+  if(r8&&r8.med!==undefined&&r8.n>=30) txt='已經待滿 8 天的，中位數還會再待約 <b>'+(r8.med==null?'60 以上':r8.med)+'</b> 天，至少再待 5 天的機會是 '+pp(r8.p5)+'。';
+  return '<div class="card"><div class="hd">⑬ '+NEWTAG+' 已經待了 N 天的，通常還會再待幾天？（回答「第 8、9 天才買」）</div>'
+    +'<div class="sub"><b>白話結論：</b>'+txt+'</div><div style="overflow-x:auto">'+tb+'</div>'
+    +'<div class="sub dim">白話：這跟「整體中位數 10 天」不一樣——那是從進入那天算起；這裡是「已經撐過 N 天」之後還剩多久。還在領先中的事件，不當成已結束（用 Kaplan-Meier 方法處理，避免把還在領先的低估），所以數字比單純把已結束的事件拿來算要可靠。這只是停留天數，不是股價會不會繼續漲，買不買還是要看 K 線位置。</div></div>';
+}
+// ⑭ 強勢板塊時，成分股有多少比例跟著進入
+function breadthCard(key){
+  if(!RES||!RES.secIdx) return '';
+  var rows=[], pool=[], poolBase=[];
+  Object.keys(RES.secIdx).forEach(function(sn){
+    var si=RES.secIdx[sn], sc=RES.secs.filter(function(s){return s.name===sn;})[0]; if(!sc) return;
+    var mem=sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return RES.per[t];});
+    if(mem.length<5) return;
+    var D=si.dts, W=5, part=[], d, q, k;
+    for(d=0;d+W<D.length;d++){ var c=0; for(q=0;q<mem.length;q++){ var lm=RES.per[mem[q]].leadMap, on=false; for(k=0;k<=W;k++){ if(lm[dayKey(D[d+k])]===true){ on=true; break; } } if(on) c++; } part.push(c/mem.length); }
+    var evs=si[key].filter(function(e){return e.start<part.length;});
+    if(!evs.length) return;
+    var sh=evs.map(function(e){return part[e.start];});
+    rows.push({sn:sn,n:sh.length,med:med(sh),half:sh.filter(function(x){return x>=0.5;}).length/sh.length,base:med(part),m:mem.length});
+    pool=pool.concat(sh); poolBase=poolBase.concat(part);
+  });
+  if(!rows.length) return '';
+  rows.sort(function(a,b){return b.med-a.med;});
+  var tb='<table><tr class="th"><td>板塊</td><td>成分股數</td><td>板塊進入領先的次數</td><td>那 6 天內，有領先過的成分股（中位數）</td><td>超過一半都有跟上</td><td>隨便一天（基準）</td></tr>';
+  rows.forEach(function(r){ var few=r.n<8; tb+='<tr'+(few?' class="few"':'')+'><td>'+r.sn+'</td><td>'+r.m+'</td><td>'+r.n+(few?' ⚠少':'')+'</td><td><b>'+pp(r.med)+'</b></td><td>'+pp(r.half)+'</td><td>'+pp(r.base)+'</td></tr>'; });
+  tb+='<tr><td><b>全部合計</b></td><td></td><td>'+pool.length+'</td><td><b>'+pp(med(pool))+'</b></td><td>'+pp(pool.filter(function(x){return x>=0.5;}).length/pool.length)+'</td><td>'+pp(med(poolBase))+'</td></tr></table>';
+  var diff=med(pool)-med(poolBase);
+  var v=diff>=0.15?'整個板塊進入領先的時候，成分股明顯比平常更多跟著領先（中位數 '+pp(med(pool))+'，平常只有 '+pp(med(poolBase))+'）。這支持「強勢板塊大多數個股都有機會進去」。':(diff>=0.05?'板塊進入領先時，跟著領先的成分股比平常多一些（'+pp(med(pool))+' 對 '+pp(med(poolBase))+'），但差距不大。':'板塊進入領先時，跟著領先的成分股比例跟平常差不多，這份資料看不出「板塊強就會帶動個股」。');
+  return '<div class="card"><div class="hd">⑭ '+NEWTAG+' 板塊整體進入領先的那幾天，成分股有多少比例跟著進入？（驗證「強勢板塊大多數個股都有機會」）</div>'
+    +'<div class="sub"><b>自動判讀：</b>'+v+'</div><div style="overflow-x:auto">'+tb+'</div>'
+    +'<div class="sub dim">白話：板塊（成分股等權指數）進入 RRG 領先那天算起的 6 個交易日內，成分股裡「有任何一天在領先」的比例，跟「隨便一天起算 6 天」做對照。比例越高、越比基準高，代表板塊強的時候越多股票一起強。注意：成分股本來就常在領先，所以基準本身不低；板塊是由成分股平均出來的，成分股一起強，板塊自然也強，這個比較有一部分是定義造成的，只能當線索，不是因果。判讀用的「差 15／5 個百分點」是我訂的，沒驗證過。事件不到 8 次的只能當線索。</div></div>';
+}
+
 function initTimeline(){
   var sel=el('tlSec'); if(!sel||!RES) return;
   var names=Object.keys(RES.secIdx||{}); sel.innerHTML=names.map(function(n){return '<option>'+n+'</option>';}).join('');
