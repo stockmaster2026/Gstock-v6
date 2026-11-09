@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.6</title>
+<title>領先停留天數 v0.7</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,15 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 .bar{flex:1;background:#0d1220;border-radius:4px;height:14px}.bar i{display:block;height:14px;background:var(--lead);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;border-bottom:1px solid var(--line)}tr.th td{color:var(--dim)}tr.few td{color:var(--dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
-.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
+.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.6</h1>
+<h1>⏱ 領先停留天數 v0.7</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>// ===== dwell.html 邏輯 =====
-var VER='v0.6';
+var VER='v0.7';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -289,9 +289,10 @@ function analyzeTicker(secC, benchC, dates){
     return ev;
   }
   var base5=[],base10=[],base20=[],baseA5=[],baseA10=[]; for(i=0;i<n;i++){ var a5=rel(i,5),a10=rel(i,10),a20=rel(i,20),x5=absr(i,5),x10=absr(i,10); if(a5!=null) base5.push(a5); if(a10!=null) base10.push(a10); if(a20!=null) base20.push(a20); if(x5!=null) baseA5.push(x5); if(x10!=null) baseA10.push(x10); }
+  var nowPos=null; (function(){ var ia=secC.length-1, c0=secC[ia], s50=smaAt(ia,50), s150=smaAt(ia,150), s150p=smaAt(ia-20,150); if(s50&&s150&&s150p) nowPos={ext50:(c0/s50-1)*100, st2:(c0>s150&&s150>s150p)}; })();
   var leadMap={}; for(i=0;i<n;i++) leadMap[dayKey(dates[off+i])]=lead[i];
   var cur=null; if(lead[n-1]){ var s=n-1; while(s>0&&lead[s-1]) s--; cur={days:n-s, since:dates[off+s]}; }
-  return {strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20,a5:baseA5,a10:baseA10}, leadMap:leadMap, lead:lead, dts:dates.slice(off), cur:cur, bars:n, first:dates[off], last:dates[off+n-1]};
+  return {strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20,a5:baseA5,a10:baseA10}, leadMap:leadMap, lead:lead, dts:dates.slice(off), cur:cur, now:nowPos, bars:n, first:dates[off], last:dates[off+n-1]};
 }
 var RES=null;
 function sectorsOf(){ return getSectorList().filter(function(x){return !x.etf;}); }
@@ -346,6 +347,7 @@ function render(){
     +'<div class="sub dim">事件 '+S.n+' 次（已結束）＋ '+S.ongoing+' 次還在領先中（不算進停留天數）· 資料期間 '+fmtD(first)+' ～ '+fmtD(last)+' · 定義：'+modeTxt+'</div>'; }
   else h+='<div class="sub">沒有已結束的事件。</div>';
   h+='</div>';
+  h+=todayCard(all,key);
   // 分布
   var bk=[['1 天',1,1],['2–3 天',2,3],['4–5 天',4,5],['6–10 天',6,10],['11–20 天',11,20],['21 天以上',21,9999]];
   h+='<div class="card"><div class="hd">② 停留天數分布（每一格＝有多少次事件）</div>';
@@ -595,6 +597,53 @@ function leaderCard(key){
     +'<div class="sub"><b>自動判讀：</b>'+v1+v2+'</div><div style="overflow-x:auto">'+tb+'</div>'
     +'<details style="margin-top:8px"><summary class="sub dim">分板塊看（點開／收合）</summary><div style="overflow-x:auto">'+tb2+'</div></details>'
     +'<div class="sub dim">白話：「龍頭」＝板塊進入領先的前 5 天，往回看 60 個交易日，漲得比大盤多最多的前 3 名（只用當時就知道的資料，沒有事後諸葛）。看兩件事：龍頭是不是比較早亮（那天已經在領先，或 5 天內進入），以及從板塊亮燈那天買、10 天後誰比較好。注意：龍頭本來就是最強的幾檔，所以很容易已經在領先，這有一部分是定義造成的；「前 3 名」「60 天」「差 10 個百分點／0.5 個百分點」都是我訂的，沒驗證過。事件之間不獨立，只能當線索。</div></div>';
+}
+
+
+// ⑯ 今天的重點：把前面的統計套到「現在」的狀態
+function remMedian(all,N){
+  var evs=all.filter(function(e){return e.stay>=N;}); if(evs.length<30) return null;
+  var S=kmSurv(evs.map(function(e){return e.stay-N;}),evs.map(function(e){return !e.ongoing;}));
+  for(var t=0;t<=60;t++){ if(S(t)<=0.5) return t; } return 60;
+}
+function todayCard(all,key){
+  if(!RES||!RES.secIdx) return '';
+  var evs=all.filter(function(e){return e.pos;}), st2=evs.filter(function(e){return e.pos.st2;}), ex=st2.map(function(e){return e.pos.ext50;}), c1=pct(ex,1/3), c2=pct(ex,2/3);
+  function posTag(n){ if(!n) return {t:'—',c:'#8a96b3'}; if(!n.st2) return {t:'不在 Stage 2',c:'#ff6b6b'}; if(c1==null) return {t:'Stage 2',c:'#8a96b3'};
+    if(n.ext50<=c1) return {t:'Stage 2 低位',c:'#00d4a8'}; if(n.ext50<=c2) return {t:'Stage 2 中段',c:'#4da3ff'}; return {t:'Stage 2 拉開很遠',c:'#ff9f43'}; }
+  var secs=[], last=null;
+  Object.keys(RES.per).forEach(function(t){ var l=RES.per[t].last; if(last==null||l>last) last=l; });
+  Object.keys(RES.secIdx).forEach(function(sn){
+    var si=RES.secIdx[sn]; if(!si.cur) return;
+    var sc=RES.secs.filter(function(s){return s.name===sn;})[0]; if(!sc) return;
+    var mem=sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return RES.per[t];});
+    var on=mem.filter(function(t){return RES.per[t].cur;}).map(function(t){ return {t:t,d:RES.per[t].cur.days,pos:posTag(RES.per[t].now)}; }).sort(function(a,b){return a.d-b.d;});
+    var s=stat(si[key]); secs.push({sn:sn,days:si.cur.days,st:s,mem:mem.length,on:on});
+  });
+  if(!secs.length) return '<div class="card big"><div class="hd">⑯ <span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.7</span> 今天的重點</div><div class="sub">現在沒有任何板塊整體在 RRG 領先區。</div></div>';
+  secs.sort(function(a,b){return a.days-b.days;});
+  var h='<div class="card big"><div class="hd">⑯ <span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.7</span> 今天的重點：現在有哪些板塊在領先？該怎麼用前面的統計看（資料到 '+fmtD(last)+'）</div>';
+  h+='<div class="sub">白話：下面每一個板塊，都是「整個板塊（成分股等權指數）現在在 RRG 領先區」。先看它已經亮了幾天、跟它自己的歷史比是早還是晚，再看成分股裡有哪些在領先、K 線位置在哪。</div>';
+  secs.forEach(function(r){
+    var m=r.st.med, q1=r.st.q1, q3=r.st.q3, few=r.st.n<8, tag, col;
+    if(r.days<=3){ tag='剛亮燈'; col='#00d4a8'; }
+    else if(m!=null&&r.days<=m){ tag='中段（還在一般範圍內）'; col='#4da3ff'; }
+    else if(q3!=null&&r.days<=q3){ tag='偏後段（超過中位數，但還在常見範圍內）'; col='#ffb454'; }
+    else if(q3!=null){ tag='已超過常見範圍'; col='#ff6b6b'; } else { tag='資料不足'; col='#8a96b3'; }
+    var pct1=r.mem?Math.round(r.on.length/r.mem*100):0;
+    h+='<div style="border:1px solid '+col+'55;border-left:4px solid '+col+';border-radius:8px;padding:10px 12px;margin:10px 0">';
+    h+='<div style="font-weight:800;font-size:1.02rem">'+r.sn+' <span style="color:'+col+'">· 領先第 '+r.days+' 天 · '+tag+'</span></div>';
+    h+='<div class="sub">這個板塊過去進入領先後，中位數待 <b>'+(m==null?'—':m)+'</b> 天'+(q1!=null?'（常見 '+q1+'～'+q3+' 天）':'')+'，只有 '+r.st.n+' 次可參考'+(few?' <b>⚠ 次數少，只能當線索</b>':'')+'。成分股 '+r.mem+' 檔中，現在有 <b>'+r.on.length+'</b> 檔在領先（'+pct1+'%）。</div>';
+    if(r.on.length){ h+='<div class="chips">'+r.on.map(function(o){ var rm=remMedian(all,o.d); return '<span class="chip '+(o.d>10?'over':'ok')+'" title="'+(rm==null?'':'已待 '+o.d+' 天的，一般還會再待約 '+rm+' 天')+'"><b>'+o.t+'</b> 第 '+o.d+' 天 · <span style="color:'+o.pos.c+'">'+o.pos.t+'</span></span>'; }).join('')+'</div>'; }
+    h+='</div>';
+  });
+  h+='<div class="sub"><b>怎麼用（都是前面統計的結論）：</b></div><ul>'
+   +'<li><b>剛亮燈的板塊：</b>成分股通常在一週內陸續跟上（板塊亮燈時，平常 4 成的成分股在領先，亮燈後 6 天內變成約 6 成），所以可以開始盯裡面還沒動、K 線在低位的股票。但亮燈那天隨便買一檔，10 天後只有約一半賺，不是買點。</li>'
+   +'<li><b>已經超過常見範圍的板塊：</b>不代表馬上結束（待越久不是會一路下滑，已待 8 天的通常還會再待約 5 天），但整體領先比較成熟，新買要更依賴個股 K 線位置與停損。</li>'
+   +'<li><b>個股的顏色標籤：</b>綠＝Stage 2 低位（離 50 日線近），統計上最差的情況比較淺；橘＝拉開很遠，中位數在這 18 個月最高但壞情況也最深；紅＝不在 Stage 2，統計上最弱。這是我簡化的 Stage 2，買之前仍要看你自己的 K 線。</li>'
+   +'<li><b>橘框的個股：</b>已經待超過 10 天（整體中位數），把滑鼠停在上面（或長按）會看到「已待這麼久的通常還會再待幾天」。</li></ul>'
+   +'<div class="sub dim">這是統計參考，不是買賣訊號。資料約 18 個月，行情特殊；板塊歷史停留次數不到 8 次的只能當線索。</div></div>';
+  return h;
 }
 
 function initTimeline(){
