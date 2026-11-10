@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>跌深反彈研究 v0.1</title>
+<style>
+:root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:14px;max-width:900px;margin:0 auto}
+h1{font-size:1.3rem;margin:6px 0 4px}.sub{font-size:.8rem;line-height:1.7;margin-top:6px}.dim{color:var(--dim)}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
+button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:11px 16px;border-radius:10px;font-size:.9rem;font-family:inherit}
+button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:var(--accent)}button:disabled{opacity:.4}
+#status{font-size:.8rem;color:var(--dim);margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card.big{border-color:var(--lead)}.card.warn{border-color:var(--warn)}
+.hd{font-weight:700;font-size:.9rem;color:var(--accent);margin-bottom:8px}
+.verdict{font-size:1.1rem;line-height:1.6}.verdict b{color:var(--lead)}
+table{width:100%;border-collapse:collapse;font-size:.78rem}td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}tr.th td{color:var(--dim)}
+ul{margin-left:18px;font-size:.8rem;line-height:1.8}
+</style></head><body>
+<h1>📉➡📈 跌深反彈研究 v0.1</h1>
+<div class="sub dim">問題：股票先跌了一大段、RRG 剛從弱勢轉到「改善」，之後通常會彈多少？最差會跌多少？用的是 rrg.html、dwell.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次。這是參考用的統計，不是買賣訊號，也不是目標價預測。</div>
+<div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button></div>
+<div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
+<script>
+var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
+var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
+var rrgInterval='1d';
+function scoreRsLevel(){return null;}function scoreAbsTrend(){return null;}function scoreShape(){return null;}function scoreVolume(){return null;}function rankScore(){return null;}function defenseEvents(){return null;}
+  function winMean(arr, i, n) {
+    if (i-n+1 < 0) return null;
+    var s=0;
+    for(var k=i-n+1;k<=i;k++){ var v=arr[k]; if(v===null||!isFinite(v)) return null; s+=v; }
+    return s/n;
+  }
+  // arr[0..i] 裡最後 maxN 個非 null 值的標準差（後視窗口，不含未來）
+  function trailStd(arr, i, maxN, minN) {
+    var v=[];
+    for(var k=i;k>=0&&v.length<maxN;k--){ var x=arr[k]; if(x!==null&&isFinite(x)) v.push(x); }
+    if (v.length<minN) return null;
+    var m=0; for(var a=0;a<v.length;a++) m+=v[a]; m/=v.length;
+    var s2=0; for(var b=0;b<v.length;b++){ var d=v[b]-m; s2+=d*d; }
+    var sd=Math.sqrt(s2/(v.length-1));
+    return (isFinite(sd)&&sd>0)?sd:null;
+  }
+
+  function clampAxis(v) {
+    if(!isFinite(v)) return 100;
+    if(v>100+AXIS_CLAMP) return 100+AXIS_CLAMP;
+    if(v<100-AXIS_CLAMP) return 100-AXIS_CLAMP;
+    return v;
+  }
+
+  var BUF_FRAC=0.30, BUF_MIN=0.30, BUF_MAX=3.0;
+  function axisSd(arr) {
+    if(!arr||arr.length<10) return 1;
+    var m=0,n=arr.length;
+    for(var i=0;i<n;i++) m+=arr[i]; m/=n;
+    var s2=0; for(var j=0;j<n;j++){ var d=arr[j]-m; s2+=d*d; }
+    var sd=Math.sqrt(s2/(n-1));
+    return (isFinite(sd)&&sd>0)?sd:1;
+  }
+  function bufOf(sd) { return Math.min(Math.max(sd*BUF_FRAC, BUF_MIN), BUF_MAX); }
+  function wmaAt(arr, i, n) {
+    if (i-n+1 < 0) return null;
+    var s=0, w=0;
+    for(var k=0;k<n;k++){ var v=arr[i-n+1+k]; if(v===null||!isFinite(v)) return null; s+=v*(k+1); w+=(k+1); }
+    return s/w;
+  }
+  function calculateRRG(sectorCloses, spyCloses, secVols) {
+    var N=Math.min(sectorCloses.length, spyCloses.length);
+    if (N<WARMUP+2) return { ratios:[], moms:[] };
+
+    // ① 對數相對強度線。取 log 的用意：斜率就是「每天贏幾 %」，與股價絕對水準無關，
+    //    所以 4 元的股票和 400 元的股票放在同一張圖上才有可比性。
+    var lr=[];
+    for(var i=0;i<N;i++){
+      var sp=sectorCloses[i], bp=spyCloses[i];
+      if(!(sp>0)||!(bp>0)){ lr.push(null); continue; }
+      lr.push(Math.log(sp/bp)*100);
+    }
+
+    // ② RS-Ratio = 對數 RS 線偏離自己 63 根均線的幅度（單位：%），以 100 為中心。
+    //    形式跟舊版同源，差別只在窗口 10 → 63，但差別是決定性的：
+    //    對一條以固定速率上升的 RS 線，「偏離長均線」≈ 斜率 × (窗口/2)，
+    //    窗口 10 的放大倍數只有 ~4.5，窗口 63 是 ~31 —— 前者分不出強弱，後者分得出。
+    //    取 log 讓它與股價水準無關，上下對稱，4 元和 400 元的股票可以放同一張圖。
+    // v2.14.0：先平滑（WMA）。平滑後的值 sm[j] 才拿去跟自己 LR_WIN 根均值比。
+    var sm=[];
+    for(var si=0;si<N;si++) sm.push(wmaAt(lr,si,SM_WIN));
+    var dev=[];
+    for(var j=0;j<N;j++){
+      var m=winMean(sm,j,LR_WIN);
+      dev.push((m===null||sm[j]===null)?null:(sm[j]-m));
+    }
+    var ratioAll=[];
+    for(var p=0;p<N;p++){
+      ratioAll.push(dev[p]===null?null:clampAxis(100+dev[p]));
+    }
+
+    // ③ RS-Momentum = RS-Ratio 的變化量（官方：是 RS-Ratio 的 ROC，
+    //    不是價格動能、也不是原始 RS 線的動能），再做 normalize —— 舊版缺掉這一步。
+    //    normalize 用「兩軸標準差比」當增益，讓 x/y 尺度相同，圖上的 45 度線才有意義。
+    //    增益設上限：平滑序列的 momRaw 本身趨近 0，乘上有限增益仍然趨近 0，不會爆。
+    var momRaw=[];
+    for(var q=0;q<N;q++){
+      var a=dev[q], b=(q-MOM_SPAN>=0)?dev[q-MOM_SPAN]:null;
+      momRaw.push((a===null||b===null)?null:(a-b));
+    }
+    var momAll=[];
+    for(var t=0;t<N;t++){
+      var mr=momRaw[t];
+      if(mr===null){ momAll.push(null); continue; }
+      var sdR=trailStd(dev,t,NORM_WIN,NORM_MIN);
+      var sdM=trailStd(momRaw,t,NORM_WIN,NORM_MIN);
+      var gain=1;
+      if(sdR!==null&&sdM!==null) gain=Math.min(sdR/sdM, MOM_GAIN_MAX);
+      momAll.push(clampAxis(100+mr*gain));
+    }
+
+    // ④ 只輸出兩軸同時有值的點，並保持 ratios[i] 與 moms[i] 成對（下游全部依賴這個前提）
+    var ratios=[], moms=[];
+    for(var z=0;z<N;z++){
+      if(ratioAll[z]===null||momAll[z]===null) continue;
+      ratios.push(ratioAll[z]); moms.push(momAll[z]);
+    }
+
+    // ⑤ 這一檔自己的「邊界死區」。舊版是固定 ±1.0，但 RS-Ratio 的實際全幅只有 5.8，
+    //    ±1.0 就吃掉 78% 的日子；而波動大的股票又等於沒有死區 —— 不是尺度無關的。
+    //    改成按這一檔自己的振幅抓比例，讓死區在每一檔身上代表同樣的「幾乎沒動」。
+    var sdR=axisSd(ratios), sdM=axisSd(moms);
+    var buf={ r:bufOf(sdR), m:bufOf(sdM), sdR:sdR, sdM:sdM };
+
+    // ⑥ 排名分數（v2.8）。RRG 的角色是排序，所以這裡一併算出來。
+    var _rsNow = ratios.length ? ratios[ratios.length-1] : null;
+    var sRs    = scoreRsLevel(_rsNow);
+    var sAbs   = scoreAbsTrend(sectorCloses);
+    var sShape = scoreShape(lr);
+    var sVol   = scoreVolume(secVols);
+    var rank = rankScore({ rs:sRs,
+                           abs:(sAbs?sAbs.score:null),
+                           shape:(sShape?sShape.score:null),
+                           vol:(sVol?sVol.score:null) });
+    return { ratios:ratios, moms:moms, buf:buf,
+             rank:rank, rsPart:sRs, absPart:sAbs, shapePart:sShape, volPart:sVol,
+             defense: defenseEvents(sectorCloses, secVols) };
+  }
+
+
+var STORAGE_KEY_RADAR='rrg_sectors_v2';
+  var BUILTIN_WATCHLIST = [
+    {name:'資安',stocks:'CRWD PANW ZS S FTNT NET OKTA RBRK TENB QLYS CHKP SAIL CVLT VRNS FFIV AKAM GEN'.split(' ')},
+    {name:'軟體 SaaS',stocks:'NOW CRM DDOG SNOW MDB TEAM HUBS WDAY ADBE INTU PLTR ORCL DT ESTC NTNX GTLB VEEV SNPS'.split(' ')},
+    {name:'AI 晶片',stocks:'NVDA AVGO AMD TSM ARM MPWR INTC QCOM SITM LSCC TSEM GFS ASX'.split(' ')},
+    {name:'半導體設備',stocks:'ASML AMAT LRCX KLAC AEHR TER ONTO KLIC CAMT ENTG MKSI FORM NVMI ACMR'.split(' ')},
+    {name:'光通訊',stocks:'COHR LITE AAOI AXTI GLW MRVL CIEN FN ANET POET ALAB CRDO MTSI VIAV CLS SMTC MXL APH'.split(' ')},
+    {name:'記憶體與儲存',stocks:'MU SNDK WDC STX NTAP P SMCI HPE DELL AMKR RMBS PENG SIMO'.split(' ')},
+    {name:'AI 電力散熱（發電端）',stocks:'OKLO CEG TLN SMR NNE VST NRG BWXT'.split(' ')},
+    {name:'AI 電力設備（含散熱）',stocks:'VRT BE GEV PWR ETN MOD NVT AAON POWL FIX STRL CW FLEX GNRC JCI'.split(' ')},
+    {name:'太空與國防',stocks:'RKLB LUNR ASTS PL KTOS AVAV LDOS RCAT LMT RTX RDW FLY KRMN VOYG VSAT ONDS AXON MRCY PLTR NOC GD LHX'.split(' ')},
+    {name:'生技與醫材',stocks:'LLY NVO ISRG TEM CRSP NTRA HIMS RXRX VKTX ALNY AMGN SYK MDT NTLA BEAM ARWR IONS VRTX GH ILMN MRNA ABBV'.split(' ')},
+    {name:'金融',stocks:'JPM GS MS BLK KKR BX SCHW COIN HOOD V ARCC APO SYF ALLY AXP COF MA CME SPGI BAC'.split(' ')},
+    {name:'量子運算',stocks:'IONQ RGTI QBTS QUBT LAES ARQQ'.split(' ')},
+    // v2.11.0 新增：防禦型個股（科技走弱時，資金常跑去的「大家天天用、不太受景氣影響」的大公司）。個股，會進個股排名。
+    //   日用品／零售：COST WMT PG KO PEP CL MDLZ PM MCD　醫療：JNJ ABT MRK　公用事業與必需服務：DUK SO NEE WM
+    {name:'其他成長股',stocks:'UBER DASH ABNB DUOL CAVA SHOP MELI SE NFLX CRCL AFRM SOFI NU TOST APP RDDT TTD DOCU CELH DKNG'.split(' ')},
+    {name:'防禦型個股',stocks:'COST WMT PG KO PEP CL MDLZ PM MCD JNJ ABT MRK DUK SO NEE WM'.split(' ')},
+    {name:'七巨頭',stocks:'AAPL MSFT GOOGL AMZN NVDA META TSLA'.split(' ')},
+    // v2.10.0 新增：傳統大類股 ETF（SPDR 11 大類）。只用來看「資金有沒有從成長股轉去防禦／傳統類股」，
+    //   etf:true ＝ 不進「個股排名」（排名是個股對個股，混進 ETF 會失真）。
+    {name:'傳統類股 ETF',etf:true,stocks:'XLP XLU XLV XLE XLI XLY XLF XLB XLRE XLC XLK'.split(' ')}
+  ];
+  function readRadarSectors() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY_RADAR);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(function(s){ if (s.tickers) return {name:s.name,stocks:s.tickers,etf:!!s.etf}; return s; }).filter(function(s){ return s && s.name && s.stocks && s.stocks.length>0; });
+      }
+      return null;
+    } catch(e) { return null; }
+  }
+  // v2.11.0：已存過名單的人，新加的內建組（防禦型個股）也要出現 —— 沒有就補在最後面。
+  var MERGE_BUILTIN = ['防禦型個股','其他成長股'];
+  function getSectorList() {
+    var fromRadar=readRadarSectors(); if(!fromRadar) return BUILTIN_WATCHLIST;
+    // v2.13.0：舊名單裡還是「AI 電力與散熱」一組的，自動換成拆開後的兩組（發電端／設備端）。已存的名單不會被其他改動影響。
+    if(fromRadar.some(function(x){return x.name==='AI 電力與散熱';})){
+      var _g=BUILTIN_WATCHLIST.filter(function(x){return x.name==='AI 電力散熱（發電端）';})[0];
+      var _e=BUILTIN_WATCHLIST.filter(function(x){return x.name==='AI 電力設備（含散熱）';})[0];
+      var _out=[];
+      fromRadar.forEach(function(x){ if(x.name==='AI 電力與散熱'){ if(_g)_out.push(_g); if(_e)_out.push(_e); } else _out.push(x); });
+      fromRadar=_out;
+    }
+    MERGE_BUILTIN.forEach(function(n){ if(!fromRadar.some(function(x){return x.name===n;})){ var b=BUILTIN_WATCHLIST.filter(function(x){return x.name===n;})[0]; if(b) fromRadar=fromRadar.concat([b]); } });
+    return fromRadar;
+  }
+
+var PROXIES=['https://gstock-proxy.cykjas.workers.dev/?url=','https://corsproxy.io/?key=00bcaf2a&url=','https://api.allorigins.win/raw?url=','https://api.codetabs.com/v1/proxy/?quest='];
+function buildYahooURL(t){ return 'https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?range=2y&interval=1d'; }
+  function tryProxy(proxyIndex, ticker, errs) {
+    errs = errs || [];
+    if (proxyIndex>=PROXIES.length) {
+      return Promise.reject(new Error('all_proxies_failed ｜ ' + errs.join('  /  ')));
+    }
+    var yahooUrl=buildYahooURL(ticker);
+    var proxiedUrl=PROXIES[proxyIndex]+encodeURIComponent(yahooUrl);
+    return fetch(proxiedUrl).then(function(r){ if(!r.ok) throw new Error('HTTP_'+r.status); return r.json(); })
+      .then(function(j){
+        if(!j.chart||!j.chart.result||j.chart.result.length===0) throw new Error('no_chart');
+        var result=j.chart.result[0];
+        if(!result.indicators||!result.indicators.quote||!result.indicators.quote[0].close) throw new Error('no_close');
+        var closes=result.indicators.quote[0].close;
+        // v2.7.1：timestamp 不再是硬性依賴。
+        //   v2.7.0 只要 result.timestamp 缺了，每一根都會被 continue 跳過 →
+        //   vc.length=0 → throw → 跳下一個 proxy → 三個都這樣 → 誤報成網路失敗。
+        //   缺日期就退回「按尾端 index 對齊」（＝ v2.6.6 的行為），只是少了日期校正。
+        var stamps=result.timestamp;
+        var noStamp=!stamps||!stamps.length;
+        // v2.8：一併收成交量。Medhat & Schmeling (RFS 2022, 1963-2018) 發現
+        //   一個月尺度的相對強度延續「只存在於高 turnover 的股票」
+        //   （高 turnover +1.37%/月 t=4.74；低 turnover 反轉 −1.41%/月 t=−7.13）。
+        //   量能不是裝飾，是決定訊號符號的條件變數。缺量不致命，只是那一項不計分。
+        var vols=(result.indicators.quote[0].volume)||[];
+        var vd=[], vc=[], vv=[];
+        for(var i=0;i<closes.length;i++){
+          if(closes[i]===null||isNaN(closes[i])) continue;
+          if(!noStamp){
+            var t=stamps[i];
+            if(t===null||t===undefined) continue;
+            vd.push(t);
+          }
+          vc.push(closes[i]);
+          var vol=vols[i];
+          vv.push((vol===null||vol===undefined||isNaN(vol))?null:vol);
+        }
+        if(vc.length<WARMUP+2) throw new Error('bars_'+vc.length+'_need_'+(WARMUP+2));
+        return { dates: noStamp ? null : vd.slice(-DAYS_NEEDED),
+                 closes: vc.slice(-DAYS_NEEDED),
+                 vols:   vv.slice(-DAYS_NEEDED) };
+      }).catch(function(e){
+        errs.push('P'+(proxyIndex+1)+'='+((e&&e.message)||e));
+        return tryProxy(proxyIndex+1, ticker, errs);
+      });
+  }
+  function fetchPrice(ticker) { return tryProxy(0, ticker, []); }
+
+function el(id){return document.getElementById(id);}
+function dayKey(ts){return Math.floor(ts/86400);}
+function alignPair(secPx,benchPx){
+  var map={},i; for(i=0;i<benchPx.dates.length;i++) map[dayKey(benchPx.dates[i])]=benchPx.closes[i];
+  var A=[],B=[],D=[]; for(i=0;i<secPx.dates.length;i++){ var v=map[dayKey(secPx.dates[i])]; if(v===undefined) continue; A.push(secPx.closes[i]); B.push(v); D.push(secPx.dates[i]); }
+  return {sec:A,bench:B,dates:D};
+}
+function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function pct(a,p){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var k=(a.length-1)*p, f=Math.floor(k), c=Math.ceil(k); return a[f]+(a[c]-a[f])*(k-f); }
+function fmtD(ts){ var d=new Date(ts*1000); return d.getUTCFullYear()+'/'+(d.getUTCMonth()+1)+'/'+d.getUTCDate(); }
+var VER='v0.1';
+var BINS=[{k:'ctl',n:'一般回檔（跌幅小於 15%，對照組）',lo:0,hi:0.15},{k:'a',n:'跌幅 15～30%',lo:0.15,hi:0.30},{k:'b',n:'跌幅 30～50%',lo:0.30,hi:0.50},{k:'c',n:'跌幅 50% 以上',lo:0.50,hi:9}];
+var STOPS=[0.05,0.08,0.10], LEVELS=[0.382,0.5,0.618], FWD=20;
+var RES=null;
+function sectorsOf(){ return getSectorList().filter(function(x){return !x.etf;}); }
+function setStatus(h){ el('status').innerHTML=h; }
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function sgn(v){ return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'; }
+function pp(v){return v==null?'—':Math.round(v*100)+'%';}
+function smaAt(C,a,k){ if(a-k+1<0) return null; var s=0; for(var q=a-k+1;q<=a;q++) s+=C[q]; return s/k; }
+function refWin(C,ia){ // 前 60 根的高點 H、低點 T（要先高後低才算「跌深」）
+  if(ia<59) return null; var H=-1,hi=-1,T=1e18,ti=-1; for(var z=ia-59;z<=ia;z++){ if(C[z]>H){H=C[z];hi=z;} if(C[z]<T){T=C[z];ti=z;} }
+  if(hi>=ti||H<=T) return null; return {H:H,T:T,hi:hi,ti:ti,D:1-T/H};
+}
+function analyzeOne(secC,benchC,dates){
+  var o=calculateRRG(secC,benchC,null), R=o.ratios, M=o.moms, n=R.length; if(!n) return null; var off=secC.length-n, N=secC.length, q=new Array(N), i;
+  for(i=0;i<n;i++){ q[off+i]=(R[i]==null||M[i]==null)?null:(R[i]>=100?(M[i]>=100?'L':'W'):(M[i]>=100?'I':'G')); }
+  var ev=[];
+  for(var j=off+1;j<N;j++){ if(q[j]==='I'&&q[j-1]==='G'){ var w=refWin(secC,j); if(!w) continue; var c0=secC[j], rN=(c0-w.T)/(w.H-w.T), e={ia:j,D:w.D,rN:rN,date:dates[j]};
+      var mx=-1e9,mn=1e9,k; var have=Math.min(FWD,N-1-j);
+      e.full=(j+FWD<N); e.has10=(j+10<N);
+      var mx5=-1e9,mx10=-1e9,mx20=-1e9,mn10=1e9,mn20=1e9;
+      for(k=1;k<=have;k++){ var c=secC[j+k]; if(k<=5&&c>mx5) mx5=c; if(k<=10){ if(c>mx10) mx10=c; if(c<mn10) mn10=c; } if(c>mx20) mx20=c; if(c<mn20) mn20=c; }
+      if(e.has10){ e.mfe10=(mx10/c0-1)*100; e.mae10=(mn10/c0-1)*100; e.r10=(secC[j+10]/c0-1)*100; }
+      if(e.full){ e.mfe20=(mx20/c0-1)*100; e.mae20=(mn20/c0-1)*100; e.r20=(secC[j+20]/c0-1)*100; e.rMax=(mx20-w.T)/(w.H-w.T);
+        e.stops=STOPS.map(function(s){ for(var m=1;m<=FWD;m++){ var r=secC[j+m]/c0-1; if(r>=2*s) return 'W'; if(r<=-s) return 'L'; } return 'N'; }); }
+      ev.push(e); } }
+  // 現在狀態
+  var now=null; if(q[N-1]==='I'){ var s=N-1; while(s>0&&q[s-1]==='I') s--; if(q[s-1]==='G'){ var w2=refWin(secC,s); if(w2){ var cn=secC[N-1]; var s150=smaAt(secC,N-1,150), s150p=smaAt(secC,N-1-20,150); now={days:N-s,D:w2.D,H:w2.H,T:w2.T,c:cn,rN:(cn-w2.T)/(w2.H-w2.T),st2:(s150&&s150p)?(cn>s150&&s150>s150p):null}; } } }
+  return {ev:ev,now:now,last:dates[N-1]};
+}
+async function run(){
+  el('go').disabled=true; el('out').innerHTML='';
+  var secs=sectorsOf(), tkSec={}, uniq=[];
+  secs.forEach(function(s){ s.stocks.forEach(function(t){ t=String(t||'').toUpperCase().trim(); if(!t) return; if(!tkSec[t]){ tkSec[t]=[]; uniq.push(t); } if(tkSec[t].indexOf(s.name)<0) tkSec[t].push(s.name); }); });
+  setStatus('抓大盤 SPY…'); var spy; try{ spy=await fetchPrice('SPY'); }catch(e){ setStatus('❌ 抓不到 SPY：'+e.message); el('go').disabled=false; return; }
+  if(!spy.dates){ setStatus('❌ 大盤沒有日期資料'); el('go').disabled=false; return; }
+  var per={}, failed=[], done=0, next=0, t0=Date.now();
+  async function worker(){ while(next<uniq.length){ var t=uniq[next++]; try{ var px=await fetchPrice(t); if(!px.dates) throw new Error('no_dates'); var al=alignPair(px,spy); if(al.sec.length<WARMUP+30) throw new Error('too_short'); per[t]=analyzeOne(al.sec,al.bench,al.dates); if(!per[t]) throw new Error('no_rrg'); }catch(e){ failed.push(t); } done++; var left=uniq.length-done, eta=Math.round((Date.now()-t0)/done*left/1000); setStatus('分析 '+done+'/'+uniq.length+' 檔（還要約 '+Math.floor(eta/60)+' 分 '+(eta%60)+' 秒）'); await sleep(200); } }
+  await Promise.all([worker(),worker(),worker()]);
+  RES={per:per,tkSec:tkSec,failed:failed};
+  setStatus('完成 · '+Object.keys(per).length+' 檔'+(failed.length?' · ⚠ '+failed.length+' 檔抓不到已略過：'+failed.slice(0,10).join('、'):''));
+  render(); el('go').disabled=false;
+}
+function binOf(D){ for(var i=0;i<BINS.length;i++){ if(D>=BINS[i].lo&&D<BINS[i].hi) return BINS[i]; } return BINS[BINS.length-1]; }
+function summarize(evs){
+  var f10=evs.filter(function(e){return e.has10;}), f20=evs.filter(function(e){return e.full;});
+  function m(a,f){ return med(a.map(f).filter(function(x){return x!=null;})); }
+  var lv=LEVELS.map(function(L){ var el2=f20.filter(function(e){return e.rN<L;}); return {n:el2.length,p:el2.length?el2.filter(function(e){return e.rMax>=L;}).length/el2.length:null}; });
+  var st=STOPS.map(function(s,i){ var n=f20.length, w=f20.filter(function(e){return e.stops[i]==='W';}).length, l=f20.filter(function(e){return e.stops[i]==='L';}).length; return {s:s,n:n,w:n?w/n:null,l:n?l/n:null,nn:n?(n-w-l)/n:null}; });
+  return {n:evs.length,n10:f10.length,n20:f20.length,D:m(evs,function(e){return e.D*100;}),rN:m(evs,function(e){return e.rN*100;}),mfe10:m(f10,function(e){return e.mfe10;}),mae10:m(f10,function(e){return e.mae10;}),r10:m(f10,function(e){return e.r10;}),mfe20:m(f20,function(e){return e.mfe20;}),mae20:m(f20,function(e){return e.mae20;}),r20:m(f20,function(e){return e.r20;}),w10:pct(f10.map(function(e){return e.mae10;}),0.1),w20:pct(f20.map(function(e){return e.mae20;}),0.1),up10:f10.length?f10.filter(function(e){return e.r10>0;}).length/f10.length:null,lv:lv,st:st};
+}
+function render(){
+  if(!RES) return; var all=[], per=RES.per, last=null;
+  Object.keys(per).forEach(function(t){ var P=per[t]; P.ev.forEach(function(e){ e.t=t; all.push(e); }); if(last==null||P.last>last) last=P.last; });
+  var G={}; BINS.forEach(function(b){ G[b.k]=summarize(all.filter(function(e){return binOf(e.D)===b;})); });
+  var deep=summarize(all.filter(function(e){return e.D>=0.30;})), h='';
+  // ① 結論
+  h+='<div class="card big"><div class="hd">① 一句話結論：股票先跌了一大段、RRG 剛從弱勢轉到改善，之後會彈多少？風險多大？</div>';
+  if(deep.n20>=30){
+    h+='<div class="verdict">跌幅 30% 以上的股票剛轉到改善，之後 20 天裡，<b>最高中位數只彈 '+sgn(deep.mfe20)+'</b>，但<b>中位數最差曾跌到 '+sgn(deep.mae20)+'</b>。</div>'
+     +'<div class="sub">白話：進場後 20 天內，賺的空間（最高彈到哪）跟賠的空間（最低跌到哪）差不多；而且每 10 檔就有 1 檔最差跌超過 <b>'+sgn(deep.w20)+'</b>。到第 20 天收盤，中位數 '+sgn(deep.r20)+'。</div>'
+     +'<div class="sub">回到「前面那段跌幅」的 38.2%／50%／61.8% 的機率，20 天內只有 '+pp(deep.lv[0].p)+'／'+pp(deep.lv[1].p)+'／'+pp(deep.lv[2].p)+'（只算進場時還沒到那個位置的）。所以「彈到某個價位」不能當成預期，只能當成「如果彈得好，可能會遇到壓力的地方」。</div>'; }
+  else h+='<div class="sub">符合條件的事件太少（不到 30 次），沒辦法下結論。</div>';
+  h+='<div class="sub dim">事件＝RRG 從弱勢轉進改善的那一天，而且那天前 60 個交易日是先高後低（有跌一段）。跌幅＝那段的高點到低點。資料到 '+fmtD(last)+'；事件共 '+all.length+' 次。</div></div>';
+  // ② 分組表
+  function row(b){ var s=G[b.k]; return '<tr><td>'+b.n+'</td><td>'+s.n+'</td><td>'+sgn(s.D==null?null:-s.D)+'</td><td>'+(s.rN==null?'—':Math.round(s.rN)+'%')+'</td><td><b>'+sgn(s.mfe20)+'</b></td><td><b>'+sgn(s.mae20)+'</b></td><td>'+sgn(s.r10)+'</td><td>'+sgn(s.r20)+'</td><td>'+sgn(s.w20)+'</td></tr>'; }
+  h+='<div class="card"><div class="hd">② 跌得越深，反彈越大嗎？（以進入改善那天的收盤價買進，往後看 20 天）</div><div style="overflow-x:auto"><table><tr class="th"><td>跌幅分組</td><td>事件數</td><td>跌幅中位數</td><td>進場時已彈回前跌幅的</td><td>20 天內最高彈（中位數）</td><td>20 天內最低跌（中位數）</td><td>10 天後</td><td>20 天後</td><td>最差 1 成（20 天內最低）</td></tr>'+BINS.map(row).join('')+'</table></div>'
+   +'<div class="sub dim">白話：「最高彈」和「最低跌」都是進場後 20 天內，收盤價離進場價最遠的那一天，用中位數看。兩個數字一起看：彈得多，但跌得也深，就是賠率不好。只看收盤價，沒看盤中，所以真正盤中的高低點會更極端。</div></div>';
+  // ③ 目標位
+  function lrow(b){ var s=G[b.k]; return '<tr><td>'+b.n+'</td>'+s.lv.map(function(l){ return '<td>'+pp(l.p)+(l.n?'<span class="dim">（'+l.n+'）</span>':'')+'</td>'; }).join('')+'</tr>'; }
+  h+='<div class="card"><div class="hd">③ 彈回前面跌幅的 38.2%／50%／61.8%（斐波那契回撤），20 天內有多少機率碰到？</div><div style="overflow-x:auto"><table><tr class="th"><td>跌幅分組</td><td>38.2%</td><td>50%</td><td>61.8%</td></tr>'+BINS.map(lrow).join('')+'</table></div>'
+   +'<div class="sub dim">白話：前面跌幅＝60 天內從高點跌到低點。括號是樣本數（只算進場時還沒到那個位置的事件）。這三個位置是很多人用的慣例，我沒有證據它們有特別意義；這張表只是告訴你「走到那裡的機率」。</div></div>';
+  // ④ 停損 / 目標
+  function srow(b){ var s=G[b.k]; return '<tr><td>'+b.n+'</td>'+s.st.map(function(x){ return '<td>賺 '+pp(x.w)+'／賠 '+pp(x.l)+'／都沒到 '+pp(x.nn)+'</td>'; }).join('')+'</tr>'; }
+  h+='<div class="card"><div class="hd">④ 設停損、賺賠比 2：1 的做法，20 天內結果如何？</div><div style="overflow-x:auto"><table><tr class="th"><td>跌幅分組</td>'+STOPS.map(function(s){return '<td>停損 '+Math.round(s*100)+'%／目標 '+Math.round(s*200)+'%</td>';}).join('')+'</tr>'+BINS.map(srow).join('')+'</table></div>'
+   +'<div class="sub dim">白話：進場後哪一個先碰到（用收盤價判斷）：「賺」＝先漲到目標，「賠」＝先跌到停損。賺賠比 2：1 時，只要「賺」的比例超過約 33%，長期就不賠；低於 33% 就是在虧。實際操作還有滑價、盤中跳空，會比這張表差一點。</div></div>';
+  // ⑤ 今天的名單
+  var list=[]; Object.keys(per).forEach(function(t){ var n=per[t].now; if(n&&n.D>=0.20&&n.days<=10) list.push({t:t,sn:(RES.tkSec[t]||[])[0]||'',n:n}); });
+  list.sort(function(a,b){return b.n.D-a.n.D;});
+  var rows=list.map(function(x){ var n=x.n, b=binOf(n.D), s=G[b.k], hit=function(L,i){ return n.rN<L?pp(s.lv[i].p):'已過'; };
+    return '<tr><td><b>'+x.t+'</b><div class="dim" style="font-size:.7rem">'+x.sn+'</div></td><td>第 '+n.days+' 天</td><td>'+sgn(-n.D*100)+'</td><td>'+Math.round(n.rN*100)+'%</td><td>'+n.c.toFixed(2)+'</td><td>'+(n.T+0.382*(n.H-n.T)).toFixed(2)+'（'+hit(0.382,0)+'）</td><td>'+(n.T+0.5*(n.H-n.T)).toFixed(2)+'（'+hit(0.5,1)+'）</td><td>'+(n.T+0.618*(n.H-n.T)).toFixed(2)+'（'+hit(0.618,2)+'）</td><td>'+sgn(s.w20)+'</td><td style="color:'+(n.st2?'#00d4a8':'#ff6b6b')+'">'+(n.st2==null?'—':(n.st2?'Stage 2':'不在 Stage 2'))+'</td></tr>'; }).join('');
+  h+='<div class="card"><div class="hd">⑤ 今天剛轉到改善、而且前面跌超過 20% 的股票（資料到 '+fmtD(last)+'）</div>'
+   +(list.length?'<div style="overflow-x:auto"><table><tr class="th"><td>股票</td><td>改善第幾天</td><td>前面跌幅</td><td>已彈回</td><td>現價</td><td>38.2% 價位（機率）</td><td>50% 價位（機率）</td><td>61.8% 價位（機率）</td><td>同組最差 1 成</td><td>K 線</td></tr>'+rows+'</table></div>':'<div class="sub">目前沒有符合的股票。</div>')
+   +'<div class="sub dim">白話：價位＝低點＋前面跌幅×比例，括號是這個跌幅組歷史上 20 天內碰到的機率；「已過」代表現價已經超過那個位置。這是歷史統計，不是目標價預測，也不是買進建議。「不在 Stage 2」的依你的規則本來就不買。</div></div>';
+  h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul><li>用的是現在的板塊名單往回看，一路跌下去、已經下市或被踢出的股票不在裡面（倖存者偏差），<b>反彈的數字很可能比實際好看</b>。</li>'
+   +'<li>資料只有約 '+Math.round(Object.values(per)[0].ev.length>=0?18:18)+' 個月，行情特殊；事件彼此不獨立（很多股票同一天一起轉）。</li>'
+   +'<li>只用收盤價，沒有盤中高低點，也沒有算滑價、股息；跌幅分組（15%、30%、50%）、停損比例、20 天都是我定的，沒驗證過。</li>'
+   +'<li>RRG 只用來定義「剛轉到改善」，引擎跟 rrg.html、dwell.html 相同（日線、平滑 5 天）。</li></ul></div>';
+  el('out').innerHTML=h;
+}
+window.addEventListener('DOMContentLoaded',function(){ el('go').addEventListener('click',run); });
+
+</script></body></html>
