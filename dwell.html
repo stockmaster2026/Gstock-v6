@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>領先停留天數 v0.9.1</title>
+<title>領先停留天數 v0.11</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,15 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 .bar{flex:1;background:#0d1220;border-radius:4px;height:14px}.bar i{display:block;height:14px;background:var(--lead);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}td{padding:5px 4px;border-bottom:1px solid var(--line)}tr.th td{color:var(--dim)}tr.few td{color:var(--dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:8px;font-size:.78rem;border:1px solid var(--line)}.chip.over{border-color:var(--accent);color:var(--accent)}
-.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
+.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:150px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}.tlrow{display:flex;align-items:center;gap:6px;margin:2px 0}.tk{width:58px;flex-shrink:0;font-size:.72rem}.nt{width:230px;flex-shrink:0;font-size:.68rem;color:var(--dim)}.cells{flex:1;display:flex;min-width:0}.cells i{flex:1;height:10px;margin-right:1px;font-style:normal}.cells.ax i{height:auto;font-size:.55rem;color:var(--dim);overflow:visible;white-space:nowrap}.tl{overflow-x:auto}ul{margin-left:18px;font-size:.78rem;line-height:1.8}
 </style></head><body>
-<h1>⏱ 領先停留天數 v0.9.1</h1>
+<h1>⏱ 領先停留天數 v0.11</h1>
 <div class="sub dim">問題：股票「進入 RRG 領先」之後，通常會待幾個交易日？用現在 rrg.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次進入領先。這是參考用的統計，不是買賣訊號。</div>
 <div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button>
 <select id="mode"><option value="strict">結束＝掉出領先 1 天就算</option><option value="tol">結束＝連續 3 天以上掉出才算</option></select></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>// ===== dwell.html 邏輯 =====
-var VER='v0.9.1';
+var VER='v0.11';
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
 var WARMUP=SM_WIN+LR_WIN+NORM_MIN+MOM_SPAN, DAYS_NEEDED=460;
 var rrgInterval='1d';
@@ -266,6 +266,8 @@ function analyzeTicker(secC, benchC, dates){
   var R=o.ratios, M=o.moms, n=R.length; if(!n) return null;
   var off=secC.length-n, lead=[], i;
   for(i=0;i<n;i++) lead.push(R[i]!=null&&M[i]!=null&&R[i]>=100&&M[i]>=100);
+  function ddAt(ia){ if(ia<59) return null; var mx=0; for(var z=ia-59;z<=ia;z++){ if(secC[z]>mx) mx=secC[z]; } return mx>0?(secC[ia]/mx-1)*100:null; }
+  var q=[]; for(i=0;i<n;i++){ q.push((R[i]==null||M[i]==null)?null:(R[i]>=100?(M[i]>=100?'L':'W'):(M[i]>=100?'I':'G'))); }
   function rel(idx,k){ var a=off+idx; if(a+k>=secC.length) return null; return ((secC[a+k]/secC[a])-(benchC[a+k]/benchC[a]))*100; }
   function absr(idx,k){ var a=off+idx; if(a+k>=secC.length) return null; return (secC[a+k]/secC[a]-1)*100; }
   var DS=[1,3,5,8];
@@ -288,11 +290,19 @@ function analyzeTicker(secC, benchC, dates){
     }
     return ev;
   }
+  function qscan(tg){ var ev=[], j=1, H=40;
+    while(j<n){ if(q[j]===tg&&q[j-1]!==tg&&q[j-1]!=null){ var start=j, k=j; while(k<n&&q[k]===tg) k++;
+        var out=null, d=null; if(tg==='I'||tg==='W'){ for(var m=start+1;m<Math.min(n,start+1+H);m++){ if(q[m]==='L'){out='L';d=m-start;break;} if(q[m]==='G'){out='G';d=m-start;break;} } }
+        ev.push({start:start,stay:k-start,ongoing:(k>=n),prev:q[j-1],rs0:R[start],date:dates[off+start],r5:rel(start,5),r10:rel(start,10),r20:rel(start,20),a10:absr(start,10),a20:absr(start,20),dd60:ddAt(off+start),out:out,d:d,full:(start+H<n)});
+        j=k; } else j++; }
+    return ev; }
+  var curl=[]; for(i=4;i<n;i++){ if(q[i]==='G'&&M[i]!=null&&M[i-1]!=null&&M[i-2]!=null&&M[i-3]!=null&&M[i-4]!=null&&M[i]>M[i-1]&&M[i-1]>M[i-2]&&M[i-2]>M[i-3]&&!(M[i-3]>M[i-4])){ var rch=false; for(var mm=i+1;mm<Math.min(n,i+11);mm++){ if(q[mm]==='I'||q[mm]==='L'){rch=true;break;} } curl.push({start:i,r5:rel(i,5),r10:rel(i,10),r20:rel(i,20),a10:absr(i,10),dd60:ddAt(off+i),reach:rch,full:(i+10<n)}); } }
+  var ev4={L:qscan('L'),W:qscan('W'),G:qscan('G'),I:qscan('I')};
   var base5=[],base10=[],base20=[],baseA5=[],baseA10=[]; for(i=0;i<n;i++){ var a5=rel(i,5),a10=rel(i,10),a20=rel(i,20),x5=absr(i,5),x10=absr(i,10); if(a5!=null) base5.push(a5); if(a10!=null) base10.push(a10); if(a20!=null) base20.push(a20); if(x5!=null) baseA5.push(x5); if(x10!=null) baseA10.push(x10); }
   var nowPos=null; (function(){ var ia=secC.length-1, c0=secC[ia], s50=smaAt(ia,50), s150=smaAt(ia,150), s150p=smaAt(ia-20,150); if(s50&&s150&&s150p) nowPos={ext50:(c0/s50-1)*100, st2:(c0>s150&&s150>s150p)}; })();
   var leadMap={}; for(i=0;i<n;i++) leadMap[dayKey(dates[off+i])]=lead[i];
   var cur=null; if(lead[n-1]){ var s=n-1; while(s>0&&lead[s-1]) s--; cur={days:n-s, since:dates[off+s]}; }
-  return {strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20,a5:baseA5,a10:baseA10}, leadMap:leadMap, lead:lead, dts:dates.slice(off), cur:cur, now:nowPos, bars:n, first:dates[off], last:dates[off+n-1]};
+  return {quad:q, ev4:ev4, curl:curl, nowDD:ddAt(secC.length-1), strict:scan(1), tol:scan(3), base:{b5:base5,b10:base10,b20:base20,a5:baseA5,a10:baseA10}, leadMap:leadMap, lead:lead, dts:dates.slice(off), cur:cur, now:nowPos, bars:n, first:dates[off], last:dates[off+n-1]};
 }
 var RES=null;
 function sectorsOf(){ return getSectorList().filter(function(x){return !x.etf;}); }
@@ -349,6 +359,7 @@ function render(){
   h+='</div>';
   h+=todayCard(all,key);
   h+=verifyCard(all,key);
+  h+=quadToday(all,key);
   // 分布
   var bk=[['1 天',1,1],['2–3 天',2,3],['4–5 天',4,5],['6–10 天',6,10],['11–20 天',11,20],['21 天以上',21,9999]];
   h+='<div class="card"><div class="hd">② 停留天數分布（每一格＝有多少次事件）</div>';
@@ -415,10 +426,15 @@ function render(){
   h+=remCard(all);
   h+=breadthCard(key);
   h+=leaderCard(key);
+  h+=quadCards();
+  h+=sectorLeadCard();
+  h+=reboundCard();
+  h+=curlCard();
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul>'
     +'<li>資料只有約 '+Math.round(Object.values(per)[0].bars/21)+' 個月，而且最近幾天 AI 板塊大跌、資金轉去防禦股，是很特殊的一段行情。停留天數可能反映這段行情，不是股票本身的特性。</li>'
     +'<li>用的是「現在的」板塊名單往回看，沒有包含已經下市或被踢出名單的股票（倖存者偏差）。</li>'
     +'<li>引擎跟 rrg.html v2.14.8 相同（日線、平滑 5 天），但所有分組、「3 天」「10 天」這些切點都是我定的，沒有驗證過。</li>'
+    +'<li>v0.10 的四個象限分析用的是同一套引擎（RS≥100、動能≥100 分象限），40 天、RS 三分組都是我定的；專業來源（StockCharts、de Kempenaer）沒有給象限停留天數的標準數字，所以我們的「領先中位數 10 天」只能自己驗證，沒辦法跟專業數字對照。</li>'
     +'<li>事件之間不獨立（同一天很多股票一起進領先），所以真正的有效樣本比事件數少。</li></ul></div>';
   el('out').innerHTML=h; initTimeline();
 }
@@ -626,6 +642,193 @@ function remainingSince(Plike,asofKey){
 function loadCalls(){ try{ var s=localStorage.getItem(STORE_KEY); return s?JSON.parse(s):[]; }catch(e){ return []; } }
 function saveCall(snap){ try{ var a=loadCalls().filter(function(x){return x.asof!==snap.asof;}); a.push(snap); a.sort(function(x,y){return x.asof-y.asof;}); while(a.length>12) a.shift(); localStorage.setItem(STORE_KEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
 
+// ===== v0.10 新增：四個象限（領先／轉弱／弱勢／改善）=====
+var QN={L:'領先',W:'轉弱',G:'弱勢',I:'改善'}, QC={L:'#00d4a8',W:'#ffb454',G:'#ff6b6b',I:'#4da3ff'};
+var TAG10='<span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.10</span>';
+function evsOfQuad(qk,includeSec){ // 所有個股（可含板塊平均線）在某象限的事件
+  var out=[]; if(!RES) return out;
+  Object.keys(RES.per).forEach(function(t){ var P=RES.per[t]; if(P.ev4&&P.ev4[qk]) P.ev4[qk].forEach(function(e){ out.push(e); }); });
+  if(includeSec&&RES.secIdx) Object.keys(RES.secIdx).forEach(function(sn){ var P=RES.secIdx[sn]; if(P.ev4&&P.ev4[qk]) P.ev4[qk].forEach(function(e){ out.push(e); }); });
+  return out;
+}
+function outcomeStat(evs){ // 進入後 40 天內：先到領先、先掉到弱勢、都沒有
+  var res=evs.filter(function(e){return e.out!=null||e.full;});
+  var toL=res.filter(function(e){return e.out==='L';}), toG=res.filter(function(e){return e.out==='G';});
+  return {n:res.length,pL:res.length?toL.length/res.length:null,pG:res.length?toG.length/res.length:null,pN:res.length?(res.length-toL.length-toG.length)/res.length:null,dL:med(toL.map(function(e){return e.d;}))};
+}
+function terciles(evs){ // 依進入當天的 RS 高低分三組
+  var v=evs.map(function(e){return e.rs0;}).filter(function(x){return x!=null;}); if(v.length<60) return null;
+  var c1=pct(v,1/3), c2=pct(v,2/3);
+  return [{n:'RS 最低一組',lo:Math.min.apply(null,v),hi:c1,f:function(e){return e.rs0<=c1;}},{n:'RS 中間一組',lo:c1,hi:c2,f:function(e){return e.rs0>c1&&e.rs0<=c2;}},{n:'RS 最高一組',lo:c2,hi:Math.max.apply(null,v),f:function(e){return e.rs0>c2;}}];
+}
+function quadCards(){
+  if(!RES) return '';
+  var b5=[],b10=[],b20=[]; Object.keys(RES.per).forEach(function(t){ var B=RES.per[t].base; b5=b5.concat(B.b5); b10=b10.concat(B.b10); b20=b20.concat(B.b20); });
+  var m5=med(b5), m10=med(b10), m20=med(b20), beat0=b10.length?b10.filter(function(x){return x>0;}).length/b10.length:null;
+  function dd(v,b){ return v==null||b==null?'—':((v-b>=0?'+':'')+(v-b).toFixed(1)+'pp'); }
+  var rows='', notes=[];
+  ['L','I','W','G'].forEach(function(qk){
+    var ev=evsOfQuad(qk,false), done=ev.filter(function(e){return !e.ongoing;}), st=done.map(function(e){return e.stay;});
+    var r5=ev.map(function(e){return e.r5;}).filter(function(x){return x!=null;}), r10=ev.map(function(e){return e.r10;}).filter(function(x){return x!=null;}), r20=ev.map(function(e){return e.r20;}).filter(function(x){return x!=null;});
+    var d10=(med(r10)!=null&&m10!=null)?med(r10)-m10:null, beat=r10.length?r10.filter(function(x){return x>0;}).length/r10.length:null;
+    var rd=d10==null?'資料不足':(d10>=0.5?'比隨便一天好一點':(d10<=-0.5?'比隨便一天差一點':'跟隨便一天差不多'));
+    rows+='<tr><td><b style="color:'+QC[qk]+'">'+QN[qk]+'</b></td><td>'+ev.length+'</td><td>'+(med(st)==null?'—':med(st))+' 天</td><td>'+dd(med(r5),m5)+'</td><td><b>'+dd(med(r10),m10)+'</b></td><td>'+dd(med(r20),m20)+'</td><td>'+pp(beat)+'</td><td>'+rd+'</td></tr>';
+    notes.push({qk:qk,d10:d10,beat:beat,n:r10.length});
+  });
+  var worst=notes.filter(function(x){return x.d10!=null;}).sort(function(a,b){return a.d10-b.d10;});
+  var verdict=worst.length?('進入後 10 天，相對大盤最好的是「'+QN[worst[worst.length-1].qk]+'」（比隨便一天'+(worst[worst.length-1].d10>=0?'多':'少')+' '+Math.abs(worst[worst.length-1].d10).toFixed(1)+' 個百分點），最差的是「'+QN[worst[0].qk]+'」（'+(worst[0].d10>=0?'多':'少')+' '+Math.abs(worst[0].d10).toFixed(1)+'）。'+((worst[worst.length-1].d10-worst[0].d10)<1.0?' 四個象限差距都不到 1 個百分點，<b>只看象限分不出好壞</b>。':' 差距有 1 個百分點以上，象限有一點參考價值，但仍要搭配你的 K 線。')):'資料不足。';
+  var h='<div class="card"><div class="hd">⑲ '+TAG10+' 四個象限放在一起比：進入後 5／10／20 天，比大盤多漲多少？</div>'
+   +'<div class="sub"><b>自動判讀：</b>'+verdict+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>象限</td><td>事件數</td><td>中位數停留</td><td>5 天（比隨便一天）</td><td>10 天</td><td>20 天</td><td>10 天贏大盤的比例</td><td>白話</td></tr>'+rows+'</table></div>'
+   +'<div class="sub dim">白話：每一列是「股票剛進入這個象限那天買，之後比大盤多漲多少」，再減掉「隨便一天買」的平均（隨便一天 10 天贏大盤的比例約 '+pp(beat0)+'）。+號代表比隨便買好，接近 0 就是這個象限本身沒有加分。這裡只看個股、相對大盤、不含停損。</div></div>';
+  return h+convCards();
+}
+function convCards(){
+  var h='';
+  // ⑳ 改善 → 領先？
+  var I=evsOfQuad('I',false), Ig=I.filter(function(e){return e.prev==='G';});
+  var secI=[]; Object.keys(RES.secIdx||{}).forEach(function(sn){ (RES.secIdx[sn].ev4&&RES.secIdx[sn].ev4.I||[]).forEach(function(e){ if(e.prev==='G') secI.push(e); }); });
+  var oI=outcomeStat(Ig), oS=outcomeStat(secI), tI=terciles(Ig.filter(function(e){return e.rs0!=null;}));
+  function orow(lbl,o){ return '<tr><td>'+lbl+'</td><td>'+o.n+'</td><td><b>'+pp(o.pL)+'</b></td><td>'+(o.dL==null?'—':'約 '+o.dL+' 天')+'</td><td>'+pp(o.pG)+'</td><td>'+pp(o.pN)+'</td></tr>'; }
+  var trows=''; if(tI) tI.forEach(function(g){ var o=outcomeStat(Ig.filter(g.f)); trows+=orow(g.n+'（進入時 RS '+g.lo.toFixed(1)+'～'+g.hi.toFixed(1)+'）',o); });
+  var readI='資料不足。'; if(oI.n>=30){ readI='個股從弱勢轉進改善後，<b>'+pp(oI.pL)+'</b> 會在 40 天內走到領先（中位數約 '+(oI.dL==null?'—':oI.dL)+' 天），<b>'+pp(oI.pG)+'</b> 先掉回弱勢，其餘 '+pp(oI.pN)+' 兩邊都沒到。';
+    if(tI){ var a=outcomeStat(Ig.filter(tI[0].f)), c=outcomeStat(Ig.filter(tI[2].f)); if(a.pL!=null&&c.pL!=null){ var df=c.pL-a.pL; readI+=' 進入時 RS 越接近 100（越高），走到領先的比例：'+pp(a.pL)+' → '+pp(c.pL)+'，'+(df>=0.1?'<b>RS 越高越容易走到領先</b>。':(df<=-0.1?'反而 RS 越低越容易走到領先。':'差別不大，看不出 RS 高低有影響。')); } }
+    readI+=' 改善只是「相對強弱的方向剛轉好，但整體還落後」，專業說法也是：弱勢→改善還不算趨勢反轉，改善→領先才是。'; }
+  h+='<div class="card"><div class="hd">⑳ '+TAG10+' 改善象限：進去之後，會變成領先嗎？要多久？</div><div class="sub"><b>自動判讀：</b>'+readI+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>誰（從弱勢轉進改善的）</td><td>事件數</td><td>40 天內走到領先</td><td>走到領先要幾天</td><td>先掉回弱勢</td><td>都沒到</td></tr>'+orow('全部個股',oI)+orow('板塊平均線',oS)+trows+'</table></div>'
+   +'<div class="sub dim">白話：「走到領先」是指進入改善後 40 個交易日內，先碰到領先象限；「先掉回弱勢」是先碰到弱勢象限；兩邊都沒碰到就算「都沒到」。還沒滿 40 天又還沒碰到的事件不算。RS 的三組分法是照事件本身平均分的，沒有驗證過。事件彼此不獨立。</div></div>';
+  // ㉑ 轉弱 → 回得來嗎？
+  var Wv=evsOfQuad('W',false).filter(function(e){return e.prev==='L';}), secW=[]; Object.keys(RES.secIdx||{}).forEach(function(sn){ (RES.secIdx[sn].ev4&&RES.secIdx[sn].ev4.W||[]).forEach(function(e){ if(e.prev==='L') secW.push(e); }); });
+  var oW=outcomeStat(Wv), oWs=outcomeStat(secW), tW=terciles(Wv.filter(function(e){return e.rs0!=null;})), wrows='';
+  if(tW) tW.forEach(function(g){ var o=outcomeStat(Wv.filter(g.f)); wrows+=orow(g.n+'（離開領先時 RS '+g.lo.toFixed(1)+'～'+g.hi.toFixed(1)+'）',o); });
+  var readW='資料不足。'; if(oW.n>=30){ readW='個股從領先掉進轉弱後，<b>'+pp(oW.pL)+'</b> 會在 40 天內「回到領先」（中位數約 '+(oW.dL==null?'—':oW.dL)+' 天），<b>'+pp(oW.pG)+'</b> 繼續掉到弱勢。';
+    if(tW){ var a2=outcomeStat(Wv.filter(tW[0].f)), c2=outcomeStat(Wv.filter(tW[2].f)); if(a2.pL!=null&&c2.pL!=null){ var d2=c2.pL-a2.pL; readW+=' 離開領先時 RS 越高，回到領先的比例：'+pp(a2.pL)+' → '+pp(c2.pL)+'，'+(d2>=0.1?'<b>支持專業說法（RS 越高，完整繞一圈回到領先的機率越高）</b>。':(d2<=-0.1?'跟專業說法相反。':'看不出明顯差別，這一點我們的資料沒有支持專業說法。')); } } }
+  h+='<div class="card"><div class="hd">㉑ '+TAG10+' 轉弱象限：掉出領先之後，還回得來嗎？（驗證專業說法）</div><div class="sub"><b>自動判讀：</b>'+readW+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>誰（從領先轉進轉弱的）</td><td>事件數</td><td>40 天內回到領先</td><td>回來要幾天</td><td>先掉到弱勢</td><td>都沒到</td></tr>'+orow('全部個股',oW)+orow('板塊平均線',oWs)+wrows+'</table></div>'
+   +'<div class="sub dim">白話：RRG 原創者 de Kempenaer 的說法是，從領先掉到轉弱時，RS 水準越高，越有機會「領先→轉弱→再回領先」完整走一圈（相對上升趨勢中的回檔）；掉到弱勢則是相對下降趨勢的延續。這裡用我們的資料檢查看看。他沒有給固定的停留天數，所以我們的「中位數 10 天」沒有專業數字可以直接對照，只能自己驗證。</div></div>';
+  return h;
+}
+// 現在各板塊在哪個象限
+function secNow(si){ if(!si||!si.quad) return null; var n=si.quad.length, q=si.quad[n-1]; if(!q) return null; var k=n-1; while(k>0&&si.quad[k-1]===q) k--; return {q:q,days:n-k,since:si.dts[k]}; }
+function imprList(all){ // 現在在改善象限的個股，及「候選」旗標
+  if(!RES) return []; var PG=posGroups(all), last=null; Object.keys(RES.per).forEach(function(t){ var l=RES.per[t].last; if(last==null||l>last) last=l; }); var lk=dayKey(last), out=[];
+  var dcut=rebuildDeepCut(); var secQ={}; Object.keys(RES.secIdx||{}).forEach(function(sn){ var s=secNow(RES.secIdx[sn]); if(s) secQ[sn]=s.q; });
+  Object.keys(RES.per).forEach(function(t){ var P=RES.per[t], s=secNow(P); if(!s||s.q!=='I') return; var pk=PG.key(P.now), sns=RES.tkSec[t]||[], secOk=sns.some(function(sn){return secQ[sn]==='I'||secQ[sn]==='L';});
+    out.push({t:t,sn:sns[0]||'',N:s.days,pk:pk,c0:P.map[lk],dd:P.nowDD,deep:(s.days<=5&&dcut!=null&&P.nowDD!=null&&P.nowDD<=dcut),cand:(s.days<=5&&pk==='low'&&secOk)}); });
+  return out;
+}
+function quadToday(all,key){
+  if(!RES||!RES.secIdx) return '';
+  var PG=posGroups(all), last=null; Object.keys(RES.per).forEach(function(t){ var l=RES.per[t].last; if(last==null||l>last) last=l; });
+  var Ig=evsOfQuad('I',false).filter(function(e){return e.prev==='G';}), oI=outcomeStat(Ig);
+  var Wl=evsOfQuad('W',false).filter(function(e){return e.prev==='L';}), oW=outcomeStat(Wl);
+  var Ge=evsOfQuad('G',false), b10=[]; Object.keys(RES.per).forEach(function(t){ b10=b10.concat(RES.per[t].base.b10); });
+  var g10=Ge.map(function(e){return e.r10;}).filter(function(x){return x!=null;}), gBeat=g10.length?g10.filter(function(x){return x>0;}).length/g10.length:null;
+  var by={L:[],W:[],G:[],I:[]}; Object.keys(RES.secIdx).forEach(function(sn){ var s=secNow(RES.secIdx[sn]); if(!s) return;
+    var sc=RES.secs.filter(function(x){return x.name===sn;})[0], cnt={L:0,W:0,G:0,I:0}, mm=0;
+    if(sc) sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return RES.per[t];}).forEach(function(t){ var z=secNow(RES.per[t]); if(z){ cnt[z.q]++; mm++; } });
+    by[s.q].push({sn:sn,days:s.days,cnt:cnt,mm:mm}); });
+  var lst=imprList(all), cand=lst.filter(function(x){return x.cand;});
+  function line(x){ return '<b>'+x.sn+'</b>（第 '+x.days+' 天；成分股 '+x.mm+' 檔：領先 '+x.cnt.L+'、轉弱 '+x.cnt.W+'、改善 '+x.cnt.I+'、弱勢 '+x.cnt.G+'）'; }
+  var h='<div class="card big"><div class="hd">⑱ '+TAG10+' 今天的另外三個象限：改善、轉弱、弱勢的板塊現在是什麼狀況？（資料到 '+fmtD(last)+'）</div>';
+  var secI=by.I.sort(function(a,b){return a.days-b.days;}), secW=by.W, secG=by.G, secL=by.L;
+  h+='<div class="sub" style="line-height:1.7"><b>一句話：</b>領先 '+secL.length+' 個、改善 '+secI.length+' 個、轉弱 '+secW.length+' 個、弱勢 '+secG.length+' 個（板塊平均線的位置）。</div>';
+  // 改善
+  h+='<div style="border:1px solid '+QC.I+'55;border-left:4px solid '+QC.I+';border-radius:8px;padding:10px 12px;margin:10px 0"><div style="font-weight:800;color:'+QC.I+'">📈 改善中的板塊（'+secI.length+'）：相對強弱的方向剛轉好，整體還落後</div>'
+   +(secI.length?'<div style="margin:6px 0;font-size:.85rem;line-height:1.7">'+secI.map(line).join('<br>')+'</div>':'<div class="sub">目前沒有板塊在改善。</div>')
+   +(oI.n>=30?'<div class="sub">📌 依統計：個股從弱勢轉進改善後，約 '+pp(oI.pL)+' 在 40 天內走到領先（中位數約 '+(oI.dL==null?'—':oI.dL)+' 天），'+pp(oI.pG)+' 先掉回弱勢。所以改善是「有機會」，不是「已經強」，大多數情況要等它走到領先、而且 K 線在 Stage 2 才算數。</div>':'')
+   +(secI.length?'<div class="sub">先行者（這個板塊裡已經在領先的）：<br>'+secI.map(function(x){ var L=leadersOf(x.sn); return '<b>'+x.sn+'</b>：'+(L.length?L.slice(0,10).map(function(o){return o.t+' 第'+o.age+'天';}).join('、')+(L.length>10?'…':'')+'（其中 '+L.filter(function(o){return o.age>10;}).length+' 檔已超過 10 天，已走一段）':'沒有'); }).join('<br>')+'</div>':'')
+   +(lst.length?'<div class="sub">現在在改善象限的個股共 '+lst.length+' 檔。<b>🎯 改善候選名單</b>（改善 ≤5 天、K 線 Stage 2 低位、所屬板塊在改善或領先）：'+(cand.length?cand.map(function(c){return '<b style="color:#4da3ff">'+c.t+'</b>（'+c.sn+'，第 '+c.N+' 天）';}).join('、'):'<span class="dim">沒有符合的</span>')+'。這份名單會一起存檔，⑰ 之後追蹤它們，並跟其他改善中的股票比。</div><div class="sub">🔄 <b>跌深反彈觀察</b>（改善 ≤5 天、離 60 日高點跌幅在歷史改善事件的最深 1/3 以內）：'+(lst.filter(function(x){return x.deep;}).length?lst.filter(function(x){return x.deep;}).map(function(c){return '<b style="color:#ff9f43">'+c.t+'</b>（'+c.sn+'，第 '+c.N+' 天，離高點 '+sgn(c.dd)+'）';}).join('、'):'<span class="dim">沒有</span>')+'。這些通常不在 Stage 2，依你的規則不買，這裡只是研究用，也會一起存檔追蹤。</div>':'')+'</div>';
+  // 轉弱
+  h+='<div style="border:1px solid '+QC.W+'55;border-left:4px solid '+QC.W+';border-radius:8px;padding:10px 12px;margin:10px 0"><div style="font-weight:800;color:'+QC.W+'">⚠ 轉弱中的板塊（'+secW.length+'）：還在強勢區，但方向開始往下</div>'
+   +(secW.length?'<div style="margin:6px 0;font-size:.85rem;line-height:1.7">'+secW.map(line).join('<br>')+'</div>':'<div class="sub">目前沒有板塊在轉弱。</div>')
+   +(oW.n>=30?'<div class="sub">📌 依統計：個股從領先掉進轉弱後，約 '+pp(oW.pL)+' 會在 40 天內回到領先（中位數約 '+(oW.dL==null?'—':oW.dL)+' 天），'+pp(oW.pG)+' 繼續掉到弱勢。持有的人這時候是「要看 K 線有沒有守住」的時候，不是自動要賣。</div>':'')+'</div>';
+  // 弱勢
+  h+='<div style="border:1px solid '+QC.G+'55;border-left:4px solid '+QC.G+';border-radius:8px;padding:10px 12px;margin:10px 0"><div style="font-weight:800;color:'+QC.G+'">🚫 弱勢的板塊（'+secG.length+'）：強度和方向都落後</div>'
+   +(secG.length?'<div style="margin:6px 0;font-size:.85rem;line-height:1.7">'+secG.map(line).join('<br>')+'</div>':'<div class="sub">目前沒有板塊在弱勢。</div>')
+   +(g10.length>=30?'<div class="sub">📌 依統計：個股剛進入弱勢那天買，之後 10 天贏大盤的比例是 '+pp(gBeat)+'（隨便一天約 '+pp(b10.length?b10.filter(function(x){return x>0;}).length/b10.length:null)+'）。'+(gBeat!=null&&gBeat<0.45?'確實偏差，可以不用花時間看。':'沒有差很多，<b>弱勢不等於會繼續差</b>，只能說沒有加分，要不要碰還是看 K 線。')+'</div>':'')+'</div>';
+  h+='<div class="sub dim">這一張只看板塊平均線所在的象限和歷史統計，是「現在的狀況」，不是買賣建議。象限分類與 5 天、40 天等切點都是我定的，沒驗證過；資料約 18 個月，行情特殊。</div></div>';
+  return h;
+}
+function imprTrack(old){ // ⑰ 裡追蹤改善候選
+  var snaps=old.filter(function(s){return s.impr&&s.impr.length;}); if(!snaps.length) return '';
+  var last=null; Object.keys(RES.per).forEach(function(t){ var l=RES.per[t].last; if(last==null||l>last) last=l; }); var lk=dayKey(last), C=[], O=[], D=[], rows='';
+  snaps.forEach(function(sn){ var spy0=RES.spyMap[sn.asof], spy1=RES.spyMap[lk], sr=(spy0>0&&spy1>0)?(spy1/spy0-1)*100:null;
+    sn.impr.forEach(function(c){ var P=RES.per[c.t]; if(!P||!(c.c0>0)) return; var now=P.map[lk]; if(!(now>0)) return; var ret=(now/c.c0-1)*100, z=secNow(P), o={t:c.t,sn:c.sn,N:c.N,deep:c.deep,ret:ret,rel:(sr==null?null:ret-sr),q:z?z.q:null};
+      if(c.cand){ C.push(o); rows+='<tr><td>'+fmtD(sn.asofTs)+'</td><td><b>'+c.t+'</b>（'+c.sn+'）</td><td>第 '+c.N+' 天</td><td><b>'+sgn(ret)+'</b></td><td>'+sgn(o.rel)+'</td><td>'+(z?QN[z.q]+'第 '+z.days+' 天':'—')+'</td></tr>'; } else if(c.deep) D.push(o); else O.push(o); }); });
+  function sum(a){ if(!a.length) return {n:0}; return {n:a.length,med:med(a.map(function(x){return x.ret;})),medRel:med(a.filter(function(x){return x.rel!=null;}).map(function(x){return x.rel;})),up:a.filter(function(x){return x.ret>0;}).length/a.length,beat:a.filter(function(x){return x.rel!=null&&x.rel>0;}).length/a.length,lead:a.filter(function(x){return x.q==='L';}).length/a.length,weak:a.filter(function(x){return x.q==='G';}).length/a.length}; }
+  var sc=sum(C), so=sum(O), sd=sum(D);
+  function rr(l,s){ return '<tr><td>'+l+'</td><td>'+s.n+'</td><td><b>'+(s.n?sgn(s.med):'—')+'</b></td><td>'+(s.n?sgn(s.medRel):'—')+'</td><td>'+(s.n?pp(s.up):'—')+'</td><td>'+(s.n?pp(s.beat):'—')+'</td><td>'+(s.n?pp(s.lead):'—')+'</td><td>'+(s.n?pp(s.weak):'—')+'</td></tr>'; }
+  return '<div style="margin:8px 0;padding:10px 12px;border:1px solid #4da3ff55;border-radius:8px"><div style="font-weight:800;margin-bottom:6px">📈 改善候選追蹤：當時挑的改善候選，後來比「其他改善中的股票」好嗎？</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>組別</td><td>檔數</td><td>到現在中位數漲跌</td><td>相對大盤</td><td>漲的比例</td><td>贏大盤的比例</td><td>現在已在領先</td><td>現在在弱勢</td></tr>'+rr('改善候選（改善 ≤5 天＋Stage 2 低位＋板塊改善／領先）',sc)+rr('跌深反彈觀察（改善 ≤5 天＋跌最深 1/3）',sd)+rr('其他改善中的股票（對照組）',so)+'</table></div>'
+   +(rows?'<div style="overflow-x:auto;margin-top:6px"><table><tr class="th"><td>當時日期</td><td>候選</td><td>當時</td><td>到現在漲跌</td><td>相對大盤</td><td>現在的象限</td></tr>'+rows+'</table></div>':'')
+   +'<div class="sub dim">白話：「現在已在領先」就是改善候選有沒有真的走到領先。檔數少時（不到 30 檔）只能當線索。</div></div>';
+}
+
+// ===== v0.11 新增：先行者測試、跌深反彈、反轉跡象 =====
+var TAG11='<span style="background:#ffd166;color:#10131f;border-radius:4px;padding:0 6px;font-size:.7rem">新 v0.11</span>';
+function ixOf(P){ if(!P._ix){ P._ix={}; for(var i=0;i<P.dts.length;i++) P._ix[dayKey(P.dts[i])]=i; } return P._ix; }
+function stAt(P,dk){ // 某天這檔股票在不在領先、已待幾天、之後還會再待幾天
+  var ix=ixOf(P)[dk]; if(ix===undefined||!P.lead) return null; var on=!!P.lead[ix]; if(!on) return {on:false,q:P.quad[ix]};
+  var a=0,k=ix; while(k>=0&&P.lead[k]){ a++; k--; } var r=0; k=ix+1; while(k<P.lead.length&&P.lead[k]){ r++; k++; }
+  return {on:true,age:a,rem:r,ongoing:(k>=P.lead.length),q:P.quad[ix]};
+}
+function medKM(durs,fin){ if(durs.length<15) return null; var S=kmSurv(durs,fin); for(var t=0;t<=60;t++){ if(S(t)<=0.5) return t; } return 60; }
+function membersOf(sn){ var sc=RES.secs.filter(function(s){return s.name===sn;})[0]; if(!sc) return []; return sc.stocks.map(function(t){return String(t||'').toUpperCase().trim();}).filter(function(t){return RES.per[t];}); }
+function sectorLeadCard(){
+  if(!RES||!RES.secIdx) return '';
+  var tot=0,on=0; Object.keys(RES.per).forEach(function(t){ var L=RES.per[t].lead; for(var i=0;i<L.length;i++){ tot++; if(L[i]) on++; } }); var base=tot?on/tot:null;
+  function collect(kind){ var rows=[], maxAges=[], oldD=[],oldF=[],yD=[],yF=[];
+    Object.keys(RES.secIdx).forEach(function(sn){ var si=RES.secIdx[sn], evs=(si.ev4&&si.ev4[kind==='I'?'I':'L'])||[], mem=membersOf(sn); if(mem.length<5) return;
+      evs.forEach(function(e){ if(kind==='I'&&e.prev!=='G') return; var dk=dayKey(e.date), n=0,l=0,ages=[],impr=0;
+        mem.forEach(function(t){ var s=stAt(RES.per[t],dk); if(!s) return; n++; if(s.on){ l++; ages.push(s.age); if(s.age>=10){ oldD.push(s.rem); oldF.push(!s.ongoing); } else if(s.age<=3){ yD.push(s.rem); yF.push(!s.ongoing); } } else if(s.q==='I') impr++; });
+        if(n<5) return; rows.push({share:l/n,imp:impr/n,old:ages.length?ages.filter(function(a){return a>=10;}).length/ages.length:null,medAge:med(ages)}); if(ages.length) maxAges.push(Math.max.apply(null,ages)); }); });
+    return {n:rows.length,share:med(rows.map(function(r){return r.share;})),imp:med(rows.map(function(r){return r.imp;})),old:med(rows.filter(function(r){return r.old!=null;}).map(function(r){return r.old;})),medAge:med(rows.filter(function(r){return r.medAge!=null;}).map(function(r){return r.medAge;})),maxAge:med(maxAges),remOld:medKM(oldD,oldF),nOld:oldD.length,remYoung:medKM(yD,yF),nYoung:yD.length}; }
+  var A=collect('I'), B=collect('L');
+  function row(lbl,x){ return '<tr><td>'+lbl+'</td><td>'+x.n+'</td><td><b>'+pp(x.share)+'</b></td><td>'+(x.maxAge==null?'—':'第 '+x.maxAge+' 天')+'</td><td>'+pp(x.old)+'</td><td>'+(x.remOld==null?'—':'約 '+x.remOld+' 天')+'（'+x.nOld+'）</td><td>'+(x.remYoung==null?'—':'約 '+x.remYoung+' 天')+'（'+x.nYoung+'）</td></tr>'; }
+  var v='資料不足。'; if(A.n>=10&&base!=null){ var d=A.share-base;
+    v='板塊平均線剛從弱勢轉進改善那天，成分股平均已有 <b>'+pp(A.share)+'</b> 在領先（隨便一天約 '+pp(base)+'），'+(d>=0.1?'<b>明顯比平常多，支持你的感覺：板塊還在改善時，已經有一批股票先在領先了</b>。':(d>=0.03?'比平常多一點。':'跟平常差不多，<b>看不出改善時有先行者</b>。'))
+     +' 這批先行者裡，已經待超過 10 天的占 '+pp(A.old)+'；最早的那一檔中位數已經待到第 '+(A.maxAge==null?'—':A.maxAge)+' 天。';
+    if(A.remOld!=null&&A.remYoung!=null) v+=' 之後還會再待：老兵（已待 ≥10 天）約 '+A.remOld+' 天，新兵（≤3 天）約 '+A.remYoung+' 天，'+(A.remOld+2<A.remYoung?'<b>老兵確實比較接近尾端</b>。':'老兵沒有明顯更短，<b>「第一棒已經是尾端」這一點資料沒有支持</b>。'); }
+  return '<div class="card"><div class="hd">㉒ '+TAG11+' 先行者測試：板塊進入改善／領先那天，成分股裡已經有誰在領先？走到哪了？</div><div class="sub"><b>自動判讀：</b>'+v+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>板塊平均線的事件</td><td>事件數</td><td>當天成分股已在領先（中位數）</td><td>最早的先行者已待</td><td>先行者裡已待 ≥10 天的占比</td><td>老兵之後還會再待（樣本）</td><td>新兵之後還會再待（樣本）</td></tr>'+row('剛從弱勢進入「改善」',A)+row('進入「領先」',B)+'</table></div>'
+   +'<div class="sub dim">白話：這是在驗證「板塊亮燈之前，最強的幾檔早就先漲了」。老兵／新兵是指那天已經在領先的股票，已待 ≥10 天或 ≤3 天，之後還會再待幾天（含還在領先中的，用存活分析處理）。板塊是平均線，成分股名單是現在的（倖存者偏差），事件彼此不獨立；10 天、3 天的切點是我定的。</div></div>';
+}
+function rebuildDeepCut(){ var dd=[]; Object.keys(RES.per).forEach(function(t){ (RES.per[t].ev4.I||[]).forEach(function(e){ if(e.prev==='G'&&e.dd60!=null) dd.push(e.dd60); }); }); return dd.length>=60?pct(dd,1/3):null; }
+function reboundCard(){
+  if(!RES) return '';
+  var I=evsOfQuad('I',false).filter(function(e){return e.prev==='G'&&e.dd60!=null;}); if(I.length<60) return '';
+  var b10=[],b20=[],a10=[]; Object.keys(RES.per).forEach(function(t){ var B=RES.per[t].base; b10=b10.concat(B.b10); b20=b20.concat(B.b20); a10=a10.concat(B.a10); });
+  var m10=med(b10), m20=med(b20), ma10=med(a10), dd=I.map(function(e){return e.dd60;}), c1=pct(dd,1/3), c2=pct(dd,2/3);
+  var G=[{n:'跌最深的一組',f:function(e){return e.dd60<=c1;}},{n:'中間一組',f:function(e){return e.dd60>c1&&e.dd60<=c2;}},{n:'跌最淺的一組',f:function(e){return e.dd60>c2;}}];
+  var rows='', res=[]; G.forEach(function(g){ var ev=I.filter(g.f), r10=ev.map(function(e){return e.r10;}).filter(function(x){return x!=null;}), r20=ev.map(function(e){return e.r20;}).filter(function(x){return x!=null;}), x10=ev.map(function(e){return e.a10;}).filter(function(x){return x!=null;}), x20=ev.map(function(e){return e.a20;}).filter(function(x){return x!=null;}), o=outcomeStat(ev), dds=ev.map(function(e){return e.dd60;});
+    var up=x10.length?x10.filter(function(x){return x>0;}).length/x10.length:null, p10=pct(x10,0.1);
+    res.push({d10:(med(r10)!=null&&m10!=null)?med(r10)-m10:null,up:up,pL:o.pL});
+    rows+='<tr><td>'+g.n+'（離 60 日高點 '+sgn(Math.min.apply(null,dds))+'～'+sgn(Math.max.apply(null,dds))+'）</td><td>'+ev.length+'</td><td><b>'+sgn(med(x10))+'</b></td><td>'+pp(up)+'</td><td>'+sgn(p10)+'</td><td>'+(med(r10)==null?'—':((med(r10)-m10>=0?'+':'')+(med(r10)-m10).toFixed(1)+'pp'))+'</td><td>'+(med(r20)==null?'—':((med(r20)-m20>=0?'+':'')+(med(r20)-m20).toFixed(1)+'pp'))+'</td><td>'+pp(o.pL)+'</td></tr>'; });
+  var dp=(res[0].d10!=null&&res[2].d10!=null)?res[0].d10-res[2].d10:null, v;
+  if(dp==null) v='資料不足。'; else if(dp>=1.0) v='<b>有「跌深反彈」的味道</b>：同樣是進入改善，跌最深的那組，10 天後比大盤多漲的幅度比跌最淺的那組多 '+dp.toFixed(1)+' 個百分點。'; else if(dp<=-1.0) v='<b>跌深的反而比較差</b>（比跌最淺的少 '+Math.abs(dp).toFixed(1)+' 個百分點）：從 RRG 看，跌很深才剛轉改善的，並沒有比較會反彈。'; else v='<b>跌多深沒有明顯差別</b>（兩組差 '+dp.toFixed(1)+' 個百分點）：改善象限本身看不出「跌越深反彈越大」。';
+  v+=' 另外，跌最深那組走到領先的比例是 '+pp(res[0].pL)+'，跌最淺那組是 '+pp(res[2].pL)+'。';
+  return '<div class="card"><div class="hd">㉓ '+TAG11+' 跌深反彈：股票先跌了一大段、RRG 剛轉到改善，會反彈得比較多嗎？</div><div class="sub"><b>自動判讀：</b>'+v+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>剛進入改善（從弱勢）時，離 60 日高點</td><td>事件數</td><td>10 天後中位數漲跌</td><td>10 天後漲的比例</td><td>最差 1 成</td><td>10 天比大盤（比隨便一天）</td><td>20 天比大盤</td><td>40 天內走到領先</td></tr>'+rows+'</table></div>'
+   +'<div class="sub dim">白話：隨便一天買，10 天後的中位數約 '+sgn(ma10)+'。這裡只看漲跌，不含停損；跌得深的股票通常不在 Stage 2，依你的規則本來就不買，這一格是拿來研究「RRG 能不能抓到反轉」，不是買進訊號。三組是依事件自己平均分的，沒有驗證過。</div></div>';
+}
+function curlCard(){
+  if(!RES) return '';
+  var C=[]; Object.keys(RES.per).forEach(function(t){ (RES.per[t].curl||[]).forEach(function(e){ C.push(e); }); }); if(C.length<60) return '';
+  var b10=[]; Object.keys(RES.per).forEach(function(t){ b10=b10.concat(RES.per[t].base.b10); }); var m10=med(b10), beat0=b10.length?b10.filter(function(x){return x>0;}).length/b10.length:null;
+  var r10=C.map(function(e){return e.r10;}).filter(function(x){return x!=null;}), full=C.filter(function(e){return e.full;}), reach=full.length?full.filter(function(e){return e.reach;}).length/full.length:null;
+  var I=evsOfQuad('I',false).filter(function(e){return e.prev==='G';}), ri=I.map(function(e){return e.r10;}).filter(function(x){return x!=null;});
+  var d=(med(r10)!=null&&m10!=null)?med(r10)-m10:null, beat=r10.length?r10.filter(function(x){return x>0;}).length/r10.length:null, di=(med(ri)!=null&&m10!=null)?med(ri)-m10:null;
+  var v=(d==null)?'資料不足。':('還在弱勢、但 RS 動能已經連升 3 天的股票（尾巴開始轉彎），之後 10 天比大盤<b>'+(d>=0?'多漲 ':'少漲 ')+Math.abs(d).toFixed(1)+' 個百分點</b>（以隨便一天為 0 比較），贏大盤的比例 '+pp(beat)+'；其中 <b>'+pp(reach)+'</b> 在 10 天內真的進到改善或領先。'+(Math.abs(d)<0.5?' 差距小於 0.5 個百分點，<b>光看尾巴轉彎，看不出有預告反彈的效果</b>。':(d>0?' 比隨便一天好一點，<b>尾巴轉彎有一點預告價值</b>。':' 比隨便一天差，<b>尾巴轉彎不是好訊號</b>。')));
+  return '<div class="card"><div class="hd">㉔ '+TAG11+' 反轉的早期跡象：還在弱勢區，但 RS 動能已經連續上升，之後怎麼樣？</div><div class="sub"><b>自動判讀：</b>'+v+'</div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>組別</td><td>事件數</td><td>10 天比大盤（中位數，減隨便一天）</td><td>10 天贏大盤的比例</td><td>10 天內進到改善／領先</td></tr>'
+   +'<tr><td>弱勢中動能連升 3 天（還沒進改善）</td><td>'+C.length+'</td><td><b>'+(d==null?'—':(d>=0?'+':'')+d.toFixed(1)+'pp')+'</b></td><td>'+pp(beat)+'</td><td>'+pp(reach)+'</td></tr>'
+   +'<tr><td>剛進入改善（動能已過 100）</td><td>'+I.length+'</td><td><b>'+(di==null?'—':(di>=0?'+':'')+di.toFixed(1)+'pp')+'</b></td><td>'+pp(ri.length?ri.filter(function(x){return x>0;}).length/ri.length:null)+'</td><td>—</td></tr>'
+   +'<tr><td>隨便一天</td><td>—</td><td>0.0pp</td><td>'+pp(beat0)+'</td><td>—</td></tr></table></div>'
+   +'<div class="sub dim">白話：RRG 的動能會比 RS 先轉，專業說法是「尾巴開始往上彎」就是早期跡象。這裡用最簡單的定義（弱勢象限、動能連續 3 天上升）去檢查，3 天是我定的，沒驗證過；不同定義結果可能不同。</div></div>';
+}
+function leadersOf(sn){ var out=[]; membersOf(sn).forEach(function(t){ var P=RES.per[t]; if(P.cur) out.push({t:t,age:P.cur.days}); }); out.sort(function(a,b){return b.age-a.age;}); return out; }
+
 function prevRun(si){ // 板塊這次亮燈之前，最近一次領先的結束日、中間掉出幾天、那次連續幾天
   if(!si||!si.cur||!si.lead) return null; var n=si.lead.length, s=n-si.cur.days, j=s-1; while(j>=0&&!si.lead[j]) j--; if(j<0) return {none:true};
   var gap=s-1-j, e=j, b=j; while(b>0&&si.lead[b-1]) b--; var recent=0; for(var k=Math.max(0,n-20);k<n;k++) if(si.lead[k]) recent++;
@@ -698,7 +901,7 @@ function todayCard(all,key){
     var lines=secs.map(function(r){ var a=by[r.sn]||[]; return '<div><b>'+r.sn+'</b>（領先第 '+r.days+' 天）：'+(a.length?a.map(function(c){return '<b style="color:#00d4a8">'+c.t+'</b>（第 '+c.N+' 天）';}).join('、'):'<span class="dim">沒有（沒有同時符合「已待 ≤8 天」又「Stage 2 低位」的）</span>')+'</div>'; }).join('');
     h+='<div style="margin:8px 0;padding:10px 12px;border:1px solid #00d4a855;background:rgba(0,212,168,.06);border-radius:8px;font-size:.88rem;line-height:1.7"><b>🎯 今天的候選名單（符合：板塊在領先、個股已待 ≤8 天、K 線在 Stage 2 低位）</b>'+lines+'<div class="sub dim">這份名單會跟著判斷一起存檔，之後 ⑰ 會追蹤它們後來的表現，並跟「其他領先中的股票」比較，看這個篩法到底有沒有用。這是統計篩出來的研究名單，不是買進建議。</div></div>'; })();
   h+=blocks;
-  var saved=false; if(key==='strict'){ saved=saveCall({asof:lastKey,asofTs:last,key:key,sectors:calls.sectors,stocks:calls.stocks,cand:calls.cand}); }
+  var saved=false; if(key==='strict'){ saved=saveCall({asof:lastKey,asofTs:last,key:key,sectors:calls.sectors,stocks:calls.stocks,cand:calls.cand,impr:imprList(all)}); }
   h+='<div class="sub dim">'+(key==='strict'?(saved?'✅ 這份判斷已存在你這個瀏覽器裡（資料日 '+fmtD(last)+'），之後有新資料再按「開始分析」，⑰ 會自動對照對不對。':'⚠ 這份判斷沒存成功（瀏覽器可能封鎖儲存），⑰ 就沒辦法自動對照。'):'目前是「連續 3 天以上才算結束」模式，這份判斷不會存檔；切回「掉出領先 1 天就算」才會存。')+' 所有分段（剛亮燈≤3 天、已待超過 10 天、拉開很遠等）都是我定的，沒驗證過；資料約 18 個月，行情特殊。</div></div>';
   return h;
 }
@@ -711,8 +914,9 @@ function verifyCard(all,key){
   var head='<div class="card"><div class="hd">⑰ '+T+' 上次的判斷對不對？（自動對照以前存的 ⑯）</div>';
   if(!old.length){
     var mine=snaps.filter(function(s){return s.asof===lastKey;});
+    var imprNote=''; if(mine.length&&mine[0].impr&&mine[0].impr.length){ var cc=mine[0].impr.filter(function(x){return x.cand;}); imprNote='<div class="sub">已記錄的改善候選名單：<b>'+(cc.length?cc.map(function(c){return c.t+'（'+c.sn+'）';}).join('、'):'沒有符合的')+'</b>（改善中的個股共 '+mine[0].impr.length+' 檔一起存了，當對照組）。</div>'; }
     var candNote=''; if(mine.length&&mine[0].cand&&mine[0].cand.length){ candNote='<div class="sub">已記錄的候選名單（'+fmtD(mine[0].asofTs)+'）：<b>'+mine[0].cand.map(function(c){return c.t+'（'+c.sn+'）';}).join('、')+'</b>。等新資料出來，這裡會追蹤它們後來漲跌多少、還在不在領先。</div>'; }
-    return head+candNote+'<div class="sub">'+(mine.length?'目前只有今天（資料到 '+fmtD(last)+'）這一份判斷。':'還沒有存過判斷。')+'等有新的交易日資料後（建議至少隔 3～5 個交易日、之後每週一次）再按「開始分析」，這裡就會自動拿「當時的判斷」對照「後來實際發生什麼」，不用你自己記。</div><div class="sub dim">判斷存在你這個瀏覽器（不是雲端），清除網站資料就會不見。</div></div>';
+    return head+candNote+imprNote+'<div class="sub">'+(mine.length?'目前只有今天（資料到 '+fmtD(last)+'）這一份判斷。':'還沒有存過判斷。')+'等有新的交易日資料後（建議至少隔 3～5 個交易日、之後每週一次）再按「開始分析」，這裡就會自動拿「當時的判斷」對照「後來實際發生什麼」，不用你自己記。</div><div class="sub dim">判斷存在你這個瀏覽器（不是雲端），清除網站資料就會不見。</div></div>';
   }
   var PGm=posGroups(all), h=head, st5=[], stR=[], priceG={low:[],mid:[],far:[],non:[]}, srows='';
   old.forEach(function(sn){
@@ -752,6 +956,7 @@ function verifyCard(all,key){
      +(rows?'<div style="overflow-x:auto;margin-top:6px"><table><tr class="th"><td>當時日期</td><td>候選</td><td>當時</td><td>到現在漲跌</td><td>相對大盤</td><td>現在</td></tr>'+rows+'</table></div>':'')
      +'<div class="sub dim">白話：「漲的比例」和「贏大盤的比例」就是這個篩法的準確率。候選如果明顯比對照組好（例如漲的比例高、最差 1 成比較淺），代表這個篩法有用；差不多，就代表只看這些條件分不出好壞。檔數很少時（不到 30 檔）只能當線索，要累積幾次才有意義。漲跌是從當時收盤到最新收盤，經過的天數不同。</div></div>';
   })();
+  h+=imprTrack(old);
   h+='<div class="sub">白話：下面拿「當時存下的判斷」去對照「後來實際發生什麼」。判斷對不對，要看很多檔的平均，不要看單一檔。</div>';
   h+='<table><tr class="th"><td>個股判斷</td><td>當時預測</td><td>實際</td><td>樣本</td></tr>'
    +'<tr><td>「至少再待 5 天」</td><td>平均 '+(avgP==null?'—':avgP+'%')+' 會做到</td><td><b>'+(rate(st5)==null?'—':rate(st5)+'%')+'</b> 做到</td><td>'+st5.length+'</td></tr>'
