@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.15</title>
+<title>板塊圖表總覽 v3.16</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.15</div>
+  <div class="logo">板塊<span>圖表</span> v3.16</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -663,6 +663,16 @@ function waveState(A){
     else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
+  // ═══ v3.16:【大跌中的反彈不能標「順風」】════════════════════════════════
+  // 儲存硬體 3 個月 -23%、1 個月 -24%，卻因為最近幾天彈了 15% 以上、高點就在這幾天，
+  // 被標成「順風 剛起步」。標籤只看最近一小波的位置、沒看這一波是出現在大跌之後。
+  // 修法：標成「順風」或「後段」的板塊，如果 3 個月或 1 個月跌超過 10%，改標「跌後反彈中」。
+  // ⚠ 10% 是我訂的參考值，沒用資料驗證。
+  var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
+  if((tier==='go'||tier==='late')&&((q3!=null&&q3<=-0.10)||(q1!=null&&q1<=-0.10))){
+    label='跌後反彈中'; col='#c0600a'; tier='bounce';
+    why='最近一小波的高點在最近幾天，但整組 3 個月 '+(q3==null?'—':fmtPct(q3*100,0))+'、1 個月 '+(q1==null?'—':fmtPct(q1*100,0))+'，這比較像大跌中的一段反彈，還沒走出新的上升趨勢。';
+  }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
@@ -751,6 +761,7 @@ function plainRead(r3,r1,lead,st,longUp){
   var lb=st.label, pc=Math.round(st.give*100), tr=st.tier, PW=(r3>=0.10?'過去強':'過去有漲'), sen, C, LT;
   var nowW=/^休息中/.test(lb)?'休息':(/^回檔中/.test(lb)?'回檔':'大幅回吐');
   if(tr==='go'){ LT='順風'; C='#1f6f3a'; sen='現在'+(/剛起步/.test(lb)?'剛開始動':'還在漲')+'，位置在高點附近，算順風。'; }
+  else if(tr==='bounce'){ LT='小心'; C='#c0600a'; sen='高點只是最近這一小段反彈的高點；'+d3+'，'+d1+'，整體還在跌勢裡，不是順風。先觀察，等它回升後守得住、走出新的一波再說。'; }
   else if(tr==='late'){ LT='小心'; C='#c0600a'; sen='強勢板塊的後段：站在高點附近，但這一波已經跑了 '+st.bars+' 個交易日、漲了 '+pctA(st.last.gain)+'，不是起漲位置；追的話要小、要快。'+(a1<0?' 最近 1 個月已轉弱。':''); }
   else if(tr==='pause'){ LT='小心'; C='#c0600a'; sen='停在高點附近整理（離高點 '+st.dayPk+' 天），'+(a1<0?'最近 1 個月跌了 '+pctA(r1)+'，':(a1>0?'最近 1 個月漲了 '+pctA(r1)+'，':''))+'還沒大幅吐回，也還沒再往上；等突破確認。'; }
   else { LT='逆風'; C='#b3262e'; sen=(longUp?PW:'過去沒特別強')+'，現在在'+nowW+'（離高點 '+st.dayPk+' 天、吐回 '+pc+'%）。'+(a1<0?'最近 1 個月還在往下。':(a1>0?'最近 1 個月反彈了 '+pctA(r1)+'，但還沒走出新的一波（要從低點漲滿 15% 才算）。':'最近 1 個月沒什麼動，在低檔橫著。'))+(longUp?'漲的是前面那段，':'')+(a1>0?'勝算較低，先觀察、不急著做。':'勝算較低，多半避開。'); }
