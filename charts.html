@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.16</title>
+<title>板塊圖表總覽 v3.17</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.16</div>
+  <div class="logo">板塊<span>圖表</span> v3.17</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -876,6 +876,36 @@ function renderCompareTable(){
   }
   return h+chk;
 }
+// ═══ v3.17:【跌後反彈中的板塊：列出代表個股的反彈價位對照】═══════════════
+// 板塊是平均線、沒有價位，所以改列「市值最大的前 5 檔」（程式自動選，不用手選）。
+// 每檔：最近 60 個交易日 高點→低點 跌了多少、現在已彈回幾成、回到跌幅 38.2／50／61.8% 的價位。
+// 機率＝rebound.html 2026/11/9 實跑結果（我們自己的個股資料，依「跌幅大小」分 4 組）：
+//   順序 [38.2%, 50%, 61.8%]。這是「歷史上 20 天內走到那裡的比例」，不是預測、不是目標價。
+// ⚠ 倖存者偏差會讓這些機率偏樂觀；跌幅分組是我定的；黃金分割位置本身沒有證據有特別意義。
+var FIB_HIT={lt15:[55,52,43],b15:[57,48,40],b30:[48,38,26],b50:[37,24,15]};
+function refWin60(C,ia){
+  if(ia<59) return null; var H=-1,hi=-1,T=1e18,ti=-1;
+  for(var z=ia-59;z<=ia;z++){ if(C[z]>H){H=C[z];hi=z;} if(C[z]<T){T=C[z];ti=z;} }
+  if(hi>=ti||H<=T) return null; return {H:H,T:T,hi:hi,ti:ti,D:1-T/H};
+}
+function bounceHtml(sec){
+  var arr=sec.tickers.filter(function(t){return BARS[t]&&BARS[t].c&&BARS[t].c.length>=70;});
+  arr.sort(function(a,b){ var A=coInfo(a),B=coInfo(b), x=(A&&A.mc!=null)?A.mc:-1, y=(B&&B.mc!=null)?B.mc:-1; return y-x; });
+  arr=arr.slice(0,5); if(!arr.length) return '';
+  var rows=arr.map(function(t){
+    var B=BARS[t], C=B.c, n=C.length, px=C[n-1], w=refWin60(C,n-1), c=coInfo(t), sz=c?sizeOf(c.mc):null;
+    var nm='<b>'+t+'</b>'+(sz?' <span class="szchip" style="background:'+sz.c+'">'+sz.l+'</span>':'');
+    var sc=B.stg?B.stg[n-1]:0, stTxt=(sc===2||sc===22)?'<span style="color:#1f6f3a;font-weight:800">Stage 2</span>':'<span style="color:#b3262e">不在 Stage 2</span>';
+    if(!w||w.D<0.15) return '<tr><td>'+nm+'</td><td colspan="5" style="color:#667">這檔最近 60 天沒有明顯的下跌'+(w?'（高點到低點只有 '+Math.round(w.D*100)+'%）':'')+'，不套用反彈對照。</td><td>'+stTxt+'</td></tr>';
+    var key=w.D<0.30?'b15':(w.D<0.50?'b30':'b50'), H=FIB_HIT[key], got=(px-w.T)/(w.H-w.T);
+    var lv=[0.382,0.5,0.618].map(function(r,k){ var L=w.T+(w.H-w.T)*r; return (px>=L)?'<span style="color:#667">'+fmtP(L)+'（已過）</span>':fmtP(L)+'（'+H[k]+'%）'; });
+    return '<tr><td>'+nm+'</td><td>-'+Math.round(w.D*100)+'%</td><td>'+(got<=0.005?'還沒開始彈':Math.round(got*100)+'%')+'</td><td>'+fmtP(px)+'</td><td>'+lv[0]+'</td><td>'+lv[1]+'</td><td>'+lv[2]+'</td><td>'+stTxt+'</td></tr>';
+  }).join('');
+  return '<div style="margin-top:8px;padding:8px 10px;background:#fbf3e4;border:1px solid #e8d3a6;border-radius:8px">'+
+    '<div style="font-weight:800;font-size:13.5px;margin-bottom:4px">反彈價位對照（這個板塊市值最大的 '+arr.length+' 檔，各自最近一波下跌）</div>'+
+    '<div style="overflow-x:auto"><table class="tlt" style="font-size:12.5px"><tr><th>股票</th><th>前面跌</th><th>已彈回</th><th>現價</th><th>38.2% 價位（機率）</th><th>50% 價位（機率）</th><th>61.8% 價位（機率）</th><th>K 線</th></tr>'+rows+'</table></div>'+
+    '<div style="font-size:12px;color:#667;line-height:1.55;margin-top:5px"><b>白話：</b>價位＝低點＋前面跌幅×比例；括號是歷史上跌幅差不多的股票，20 天內走到那個價位的比例（我們自己的個股資料）。「已過」＝現價已經超過。這是對照用，不是目標價預測，也不是買進建議；機率因倖存者偏差可能偏樂觀；黃金分割位置本身沒有證據有特別意義。「不在 Stage 2」的依你的規則本來就不買。</div></div>';
+}
 function renderCompare(){
   var R=[];
   SECS.forEach(function(s){
@@ -891,7 +921,7 @@ function renderCompare(){
   var o1=R.slice().sort(function(a,b){return (b.r1y||-9)-(a.r1y||-9);}), mx1=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r1y||0);}))||1;
   H+='<div class="sumbox"><div style="font-weight:900">① 過去 1 年，誰漲得最多？（中間細線＝0，往右漲、往左跌）</div>';
   var zs1=zList(o1.map(function(r){return r.r1y;})), vs1=o1.map(function(r){return (r.r1y||0)*100;}), lo1=Math.min(0,Math.min.apply(null,vs1)), hi1=Math.max(0,Math.max.apply(null,vs1));
-  o1.forEach(function(r,i){ H+=dRow(r.s.icon+' '+r.s.name,vs1[i],lo1,hi1,'1 年 '+fmtPct(vs1[i],0),'過去 3 個月：'+f(r.r3)+'｜最近 1 個月：'+f(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs1[i]),plainRead(r.r3,r.r1,'過去 1 年'+(r.r1y>=0?'漲了 ':'跌了 ')+pctA(r.r1y||0),r.A.st,(r.r1y>=0.05||r.r3>=0.05))); });
+  o1.forEach(function(r,i){ H+=dRow(r.s.icon+' '+r.s.name,vs1[i],lo1,hi1,'1 年 '+fmtPct(vs1[i],0),'過去 3 個月：'+f(r.r3)+'｜最近 1 個月：'+f(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs1[i]),plainRead(r.r3,r.r1,'過去 1 年'+(r.r1y>=0?'漲了 ':'跌了 ')+pctA(r.r1y||0),r.A.st,(r.r1y>=0.05||r.r3>=0.05))+((r.A.st&&r.A.st.tier==='bounce')?bounceHtml(r.s):'')); });
   H+=Z_NOTE;
   if(o1.length>=2){ var o1m=R.slice().sort(function(a,b){return (b.r1||-9)-(a.r1||-9);}); H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>過去 1 年最強是 '+o1[0].s.name+'（'+f(o1[0].r1y)+'），第二是 '+o1[1].s.name+'（'+f(o1[1].r1y)+'）；最近 1 個月最強的是 '+o1m[0].s.name+'（'+f(o1m[0].r1)+'）。1 年強、1 個月弱＝可能在休息或轉弱。</div>'; }
   H+='</div>';
