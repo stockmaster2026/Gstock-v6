@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>跌深反彈研究 v0.8</title>
+<title>跌深反彈研究 v0.9</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,7 +18,7 @@ input#tk{flex:1;min-width:200px;background:var(--card);color:var(--text);border:
 table{width:100%;border-collapse:collapse;font-size:.78rem}td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}tr.th td{color:var(--dim)}
 ul{margin-left:18px;font-size:.8rem;line-height:1.8}
 </style></head><body>
-<h1>📉➡📈 跌深反彈研究 v0.8</h1>
+<h1>📉➡📈 跌深反彈研究 v0.9</h1>
 <div class="sub dim">問題：股票先跌了一大段、RRG 剛從弱勢轉到「改善」，之後通常會彈多少？最差會跌多少？用的是 rrg.html、dwell.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次。這是參考用的統計，不是買賣訊號，也不是目標價預測。</div>
 <div class="ctl"><input id="tk" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="輸入股票代號，空白或逗號分開"><button id="lk">快速查詢（幾秒）</button></div>
 <div class="ctl"><button id="go">完整分析全部名單（約 2–3 分鐘）</button></div>
@@ -257,7 +257,7 @@ function alignPair(secPx,benchPx){
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 function pct(a,p){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var k=(a.length-1)*p, f=Math.floor(k), c=Math.ceil(k); return a[f]+(a[c]-a[f])*(k-f); }
 function fmtD(ts){ var d=new Date(ts*1000); return d.getUTCFullYear()+'/'+(d.getUTCMonth()+1)+'/'+d.getUTCDate(); }
-var VER='v0.8';
+var VER='v0.9';
 var WATCH_DEF='AXTI AAOI AEHR', FB={ctl:{p:[0.55,0.52,0.43],n20:255,w20:-10.9},a:{p:[0.57,0.48,0.40],n20:546,w20:-17.4},b:{p:[0.48,0.38,0.26],n20:501,w20:-21.5},c:{p:[0.37,0.24,0.15],n20:101,w20:-20.6}}, QN={L:'領先',W:'轉弱',G:'弱勢',I:'改善'};
 var BINS=[{k:'ctl',n:'一般回檔（跌幅小於 15%，對照組）',lo:0,hi:0.15},{k:'a',n:'跌幅 15～30%',lo:0.15,hi:0.30},{k:'b',n:'跌幅 30～50%',lo:0.30,hi:0.50},{k:'c',n:'跌幅 50% 以上',lo:0.50,hi:9}];
 var STOPS=[0.05,0.08,0.10], LEVELS=[0.382,0.5,0.618], FWD=20;
@@ -348,7 +348,7 @@ function watchCard(per,tks,getG,tkSec,src){
     for(kk=0;kk<3;kk++){ var Lp=w.T+(w.H-w.T)*LEVELS[kk]; if(px<Lp){ nxt=kk; break; } }
     for(kk=0;kk<3;kk++){ var Lq=w.T+(w.H-w.T)*LEVELS[kk]; seg.push(px>=Lq?'<span class="dim">'+LN[kk]+' 已過</span>':'<b style="color:var(--accent)">'+LN[kk]+' 約 '+pp(g.p[kk])+'</b>'); }
     var dn=(w.T/px-1)*100, rr='';
-    if(nxt>=0){ var tgt=w.T+(w.H-w.T)*LEVELS[nxt], upp=(tgt/px-1)*100, ratio=upp/Math.abs(dn); rr='往上到最近的 '+LN[nxt]+' 價位（'+tgt.toFixed(2)+'）要漲 <b>+'+upp.toFixed(0)+'%</b>，往下回到前面低點（'+w.T.toFixed(2)+'）要跌 <b>'+sgn(dn)+'</b>，賺賠比約 <b style="color:'+(ratio>=2?'var(--lead)':'#ff6b6b')+'">'+ratio.toFixed(1)+' : 1</b>（至少 2 : 1 才值得考慮）'+(ratio>=2?'。':'，<b style="color:#ff6b6b">賠率不好</b>。'); }
+    if(nxt>=0){ var tgt=w.T+(w.H-w.T)*LEVELS[nxt], upp=(tgt/px-1)*100, ratio=upp/Math.abs(dn); rr='往上到最近的 '+LN[nxt]+' 價位（'+tgt.toFixed(2)+'）要漲 <b>+'+upp.toFixed(0)+'%</b>，往下回到前面低點（'+w.T.toFixed(2)+'）要跌 <b>'+sgn(dn)+'</b>，賺賠比約 <b style="color:'+(ratio>=2?'var(--lead)':'#ff6b6b')+'">'+ratio.toFixed(1)+' : 1</b>'+(ratio>=2?'，<b style="color:var(--lead)">有達到 2 : 1 的最低標準</b>（但這只比較距離，沒有算機率）。':'，<b style="color:#ff6b6b">低於 2 : 1，賠率不好</b>。'); }
     else { var upH=(w.H/px-1)*100; rr='三個價位都已經過了，往上要看前面高點 '+w.H.toFixed(2)+'（<b>+'+upH.toFixed(0)+'%</b>），往下回到前面低點要跌 <b>'+sgn(dn)+'</b>。'; }
     h+='<div style="margin:8px 0;padding:10px 12px;border-left:4px solid var(--accent);background:#171d30;border-radius:6px;font-size:1.02rem;line-height:1.75">'
       +'<b>'+t+'</b> 屬於「<b>'+b.n+'</b>」這一類（歷史上約 '+g.n20+' 次）。<br>'
