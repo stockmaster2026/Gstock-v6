@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>跌深反彈研究 v0.2</title>
+<title>跌深反彈研究 v0.4</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -9,6 +9,7 @@ h1{font-size:1.3rem;margin:6px 0 4px}.sub{font-size:.8rem;line-height:1.7;margin
 .ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
 button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:11px 16px;border-radius:10px;font-size:.9rem;font-family:inherit}
 button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:var(--accent)}button:disabled{opacity:.4}
+input#tk{flex:1;min-width:200px;background:var(--card);color:var(--text);border:1px solid var(--line);padding:11px 12px;border-radius:10px;font-size:1rem;font-family:inherit}
 #status{font-size:.8rem;color:var(--dim);margin-bottom:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
 .card.big{border-color:var(--lead)}.card.warn{border-color:var(--warn)}
@@ -17,9 +18,10 @@ button#go{background:var(--accent);color:#1a1a1a;font-weight:700;border-color:va
 table{width:100%;border-collapse:collapse;font-size:.78rem}td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}tr.th td{color:var(--dim)}
 ul{margin-left:18px;font-size:.8rem;line-height:1.8}
 </style></head><body>
-<h1>📉➡📈 跌深反彈研究 v0.2</h1>
+<h1>📉➡📈 跌深反彈研究 v0.4</h1>
 <div class="sub dim">問題：股票先跌了一大段、RRG 剛從弱勢轉到「改善」，之後通常會彈多少？最差會跌多少？用的是 rrg.html、dwell.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次。這是參考用的統計，不是買賣訊號，也不是目標價預測。</div>
-<div class="ctl"><button id="go">開始分析（約 2–3 分鐘）</button></div>
+<div class="ctl"><input id="tk" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="輸入股票代號，空白或逗號分開"><button id="lk">快速查詢（幾秒）</button></div>
+<div class="ctl"><button id="go">完整分析全部名單（約 2–3 分鐘）</button></div>
 <div id="status">按「開始分析」會抓全部名單內個股兩年日線。</div><div id="out"></div>
 <script>
 var SM_WIN=5, LR_WIN=63, MOM_SPAN=10, NORM_WIN=252, NORM_MIN=40, MOM_GAIN_MAX=4, AXIS_CLAMP=40;
@@ -255,8 +257,8 @@ function alignPair(secPx,benchPx){
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 function pct(a,p){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var k=(a.length-1)*p, f=Math.floor(k), c=Math.ceil(k); return a[f]+(a[c]-a[f])*(k-f); }
 function fmtD(ts){ var d=new Date(ts*1000); return d.getUTCFullYear()+'/'+(d.getUTCMonth()+1)+'/'+d.getUTCDate(); }
-var VER='v0.2';
-var WATCH=['AXTI','AAOI','AEHR'], QN={L:'領先',W:'轉弱',G:'弱勢',I:'改善'};
+var VER='v0.4';
+var WATCH_DEF='AXTI AAOI AEHR', FB={ctl:{p:[0.55,0.52,0.43],n20:255,w20:-10.9},a:{p:[0.57,0.48,0.40],n20:546,w20:-17.4},b:{p:[0.48,0.38,0.26],n20:501,w20:-21.5},c:{p:[0.37,0.24,0.15],n20:101,w20:-20.6}}, QN={L:'領先',W:'轉弱',G:'弱勢',I:'改善'};
 var BINS=[{k:'ctl',n:'一般回檔（跌幅小於 15%，對照組）',lo:0,hi:0.15},{k:'a',n:'跌幅 15～30%',lo:0.15,hi:0.30},{k:'b',n:'跌幅 30～50%',lo:0.30,hi:0.50},{k:'c',n:'跌幅 50% 以上',lo:0.50,hi:9}];
 var STOPS=[0.05,0.08,0.10], LEVELS=[0.382,0.5,0.618], FWD=20;
 var RES=null;
@@ -310,25 +312,66 @@ function summarize(evs){
   return {n:evs.length,n10:f10.length,n20:f20.length,D:m(evs,function(e){return e.D*100;}),rN:m(evs,function(e){return e.rN*100;}),mfe10:m(f10,function(e){return e.mfe10;}),mae10:m(f10,function(e){return e.mae10;}),r10:m(f10,function(e){return e.r10;}),mfe20:m(f20,function(e){return e.mfe20;}),mae20:m(f20,function(e){return e.mae20;}),r20:m(f20,function(e){return e.r20;}),w10:pct(f10.map(function(e){return e.mae10;}),0.1),w20:pct(f20.map(function(e){return e.mae20;}),0.1),up10:f10.length?f10.filter(function(e){return e.r10>0;}).length/f10.length:null,lv:lv,st:st};
 }
 // ═══ v0.2:【我的關注】不管有沒有剛轉到改善，都列出這幾檔的反彈價位對照 ═══
-function watchCard(G,per){
-  var h='<div class="card big"><div class="hd">⓪ 我的關注：'+WATCH.join('、')+'（最近一波下跌的反彈價位對照）</div>';
-  WATCH.forEach(function(t){
-    var P=per[t]; if(!P){ h+='<div class="sub"><b>'+t+'</b>：這次沒抓到資料，略過。</div>'; return; }
+function parseTk(){ var v=(el('tk')&&el('tk').value)||WATCH_DEF; var a=v.toUpperCase().split(/[^A-Z0-9.\-]+/).filter(function(x){return x;}); var u=[]; a.forEach(function(x){ if(u.indexOf(x)<0) u.push(x); }); return u.slice(0,12); }
+function saveTk(a){ try{ localStorage.setItem('rebound_watch',a.join(' ')); }catch(e){} }
+function saveStats(G){ try{ var o={ts:Date.now()}; BINS.forEach(function(b){ var g=G[b.k]; o[b.k]={p:g.lv.map(function(x){return x.p;}),n20:g.n20,w20:g.w20}; }); localStorage.setItem('rebound_stats_v1',JSON.stringify(o)); }catch(e){} }
+function loadStats(){ try{ var o=JSON.parse(localStorage.getItem('rebound_stats_v1')||'null'); if(o){ var S={}, ok=false; BINS.forEach(function(b){ var g=o[b.k]; if(g&&g.p&&g.p[0]!=null&&g.p[1]!=null&&g.p[2]!=null&&g.w20!=null){ S[b.k]=g; ok=true; } else S[b.k]=FB[b.k]; }); if(ok) return {S:S,src:'上一次完整分析（'+new Date(o.ts).toLocaleDateString()+'）的結果'}; } }catch(e){} return {S:FB,src:'11/9 完整分析的結果（還沒有新的完整分析時用這份）'}; }
+async function lookup(){
+  var tks=parseTk(); if(!tks.length){ setStatus('請先輸入股票代號'); return; } saveTk(tks);
+  el('go').disabled=true; el('lk').disabled=true; setStatus('抓大盤 SPY…');
+  var spy; try{ spy=await fetchPrice('SPY'); }catch(e){ setStatus('❌ 抓不到 SPY：'+e.message); el('go').disabled=false; el('lk').disabled=false; return; }
+  var per={}, bad=[], i;
+  for(i=0;i<tks.length;i++){ var t=tks[i]; setStatus('分析 '+t+'（'+(i+1)+'/'+tks.length+'）…'); try{ var px=await fetchPrice(t); if(!px.dates) throw new Error('no_dates'); var al=alignPair(px,spy); if(al.sec.length<WARMUP+30) throw new Error('too_short'); per[t]=analyzeOne(al.sec,al.bench,al.dates); if(!per[t]) throw new Error('no_rrg'); }catch(e){ bad.push(t); } await sleep(150); }
+  var L=loadStats(), tkSec={}; sectorsOf().forEach(function(sc){ sc.stocks.forEach(function(x){ x=String(x||'').toUpperCase().trim(); if(!tkSec[x]) tkSec[x]=[]; tkSec[x].push(sc.name); }); });
+  RES=RES||{}; RES.tkSec=tkSec;
+  el('out').innerHTML=watchCard(per,tks,function(b){ return L.S[b.k]; },tkSec,L.src);
+  setStatus('完成（快速查詢）· '+Object.keys(per).length+' 檔'+(bad.length?' · ⚠ 抓不到：'+bad.join('、'):''));
+  el('go').disabled=false; el('lk').disabled=false;
+}
+function watchCard(per,tks,getG,tkSec,src){
+  var h='<div class="card big"><div class="hd">⓪ 我的關注：'+tks.join('、')+'（最近一波下跌的反彈價位對照）</div>';
+  tks.forEach(function(t){
+    var P=per[t]; if(!P){ h+='<div class="sub"><b>'+t+'</b>：這次沒抓到資料（代號打錯、剛上市太短，或網路問題），略過。</div>'; return; }
     var C=P.C, N=C.length, px=C[N-1], w=refWin(C,N-1), s150=smaAt(C,N-1,150), s150p=smaAt(C,N-1-20,150), s50=smaAt(C,N-1,50);
     var st2=(s150&&s150p)?(px>s150&&s150>s150p):null;
-    var secN=(RES.tkSec[t]||[])[0]||'';
+    var secN=(tkSec[t]||[])[0]||'';
     h+='<div style="border-top:1px solid var(--line);padding:8px 0"><div><b style="font-size:1.05rem">'+t+'</b> <span class="dim">'+secN+'</span>　現價 <b>'+px.toFixed(2)+'</b> <span class="dim">（資料到 '+fmtD(P.last)+'）</span></div>';
     h+='<div class="sub">RRG：目前在「'+QN[P.qNow]+'」第 '+P.qDays+' 天；K 線：'+(st2==null?'資料不足':(st2?'<b style="color:var(--lead)">Stage 2</b>':'<b style="color:#ff6b6b">不在 Stage 2</b>（依你的規則先不買）'))+(s50?'；離 50 日線 '+sgn((px/s50-1)*100):'')+'</div>';
     if(!w){ h+='<div class="sub dim">最近 60 個交易日的低點在高點之前（走勢向上或剛創高），沒有「先高後低」的一段下跌，不套用跌深反彈對照。</div></div>'; return; }
-    var b=binOf(w.D), g=G[b.k], got=(px-w.T)/(w.H-w.T);
+    var b=binOf(w.D), g=getG(b), got=(px-w.T)/(w.H-w.T);
     h+='<div class="sub">最近 60 天：高點 '+w.H.toFixed(2)+'（'+fmtD(P.dates[w.hi])+'）→ 低點 '+w.T.toFixed(2)+'（'+fmtD(P.dates[w.ti])+'），<b>跌了 '+Math.round(w.D*100)+'%</b>；現在已彈回這段跌幅的 <b>'+(got<=0.005?'0%（今天就在低點附近）':Math.round(got*100)+'%')+'</b>。</div>';
     if(w.D<0.15){ h+='<div class="sub dim">這一段跌幅不到 15%，不算「跌深」，下面價位只當參考。</div>'; }
-    var lv=LEVELS.map(function(L,k){ var P2=w.T+(w.H-w.T)*L; return (px>=P2)?'<td class="dim">'+P2.toFixed(2)+'（已過）</td>':'<td><b>'+P2.toFixed(2)+'</b>（約 '+pp(g.lv[k].p)+'，+'+((P2/px-1)*100).toFixed(0)+'%）</td>'; });
+    var lv=LEVELS.map(function(L,k){ var P2=w.T+(w.H-w.T)*L; return (px>=P2)?'<td class="dim">'+P2.toFixed(2)+'（已過）</td>':'<td><b>'+P2.toFixed(2)+'</b>（約 '+pp(g.p[k])+'，+'+((P2/px-1)*100).toFixed(0)+'%）</td>'; });
     h+='<div style="overflow-x:auto"><table><tr class="th"><td>38.2% 價位</td><td>50% 價位</td><td>61.8% 價位</td></tr><tr>'+lv.join('')+'</tr></table></div>';
     var worst=(g.w20==null)?null:px*(1+g.w20/100);
-    h+='<div class="sub dim">括號：歷史上「'+b.n+'」的股票，20 天內走到那個價位的比例（樣本 '+g.n20+' 次），+x% 是從現價還要漲多少。同組最差 1 成的情況，20 天內曾跌到 '+sgn(g.w20)+'（以現價推算約 '+(worst==null?'—':worst.toFixed(2))+'）。</div></div>';
+    h+='<div class="sub dim">括號：歷史上「'+b.n+'」的股票，20 天內走到那個價位的比例（樣本約 '+g.n20+' 次），+x% 是從現價還要漲多少。同組最差 1 成的情況，20 天內曾跌到 '+sgn(g.w20)+'（以現價推算約 '+(worst==null?'—':worst.toFixed(2))+'）。</div></div>';
   });
-  h+='<div class="sub dim">這是對照用，不是目標價預測，也不是買進建議。機率因倖存者偏差可能偏樂觀；Stage 2 是簡化版（站上 150 日線且 150 日線向上）。</div></div>';
+  h+='<div class="sub dim">機率用的是'+(src||'這次完整分析的結果')+'。這是對照用，不是目標價預測，也不是買進建議；機率因倖存者偏差可能偏樂觀；Stage 2 是簡化版（站上 150 日線且 150 日線向上）。</div></div>';
+  return h;
+}
+// ═══ v0.4:【自動累計 + 追蹤】每次完整分析，把「今天剛轉到改善、前面跌超過 20%」的名單存起來；
+// 下次再跑時，拿存下來的名單對照「後來實際怎麼走」。存在這個瀏覽器（localStorage），換裝置或清除資料就沒有。
+function loadSnaps(){ try{ var a=JSON.parse(localStorage.getItem('rebound_snaps_v1')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveSnap(list,ts){ try{ var a=loadSnaps().filter(function(x){return x.ts!==ts;}); a.push({ts:ts,items:list.map(function(x){ return {t:x.t,sn:x.sn,c:x.n.c,H:x.n.H,T:x.n.T,D:x.n.D,st2:x.n.st2}; })}); a.sort(function(x,y){return x.ts-y.ts;}); localStorage.setItem('rebound_snaps_v1',JSON.stringify(a.slice(-40))); }catch(e){} }
+function trackCard(per,lastTs){
+  var snaps=loadSnaps().filter(function(x){return x.ts<lastTs;}), rows=[], cum={n:0,up:0};
+  snaps.forEach(function(sn){
+    var R=[],MX=[],MN=[],h38=0,h50=0,h62=0,n=0,s2=0;
+    sn.items.forEach(function(it){ var P=per[it.t]; if(!P) return; var C=P.C,D=P.dates,N=C.length,i0=-1,z; for(z=0;z<N;z++){ if(D[z]<=sn.ts) i0=z; else break; } if(i0<0||i0>=N-1) return;
+      var mx=-1e9,mn=1e9; for(z=i0+1;z<N;z++){ if(C[z]>mx) mx=C[z]; if(C[z]<mn) mn=C[z]; }
+      n++; if(it.st2) s2++; R.push((C[N-1]/it.c-1)*100); MX.push((mx/it.c-1)*100); MN.push((mn/it.c-1)*100);
+      if(mx>=it.T+(it.H-it.T)*0.382) h38++; if(mx>=it.T+(it.H-it.T)*0.5) h50++; if(mx>=it.T+(it.H-it.T)*0.618) h62++; });
+    if(!n) return; var days=0; var any=per[Object.keys(per)[0]]; if(any){ var D0=any.dates; for(var q=0;q<D0.length;q++){ if(D0[q]>sn.ts) days++; } }
+    var up=R.filter(function(x){return x>0;}).length;
+    rows.push({ts:sn.ts,days:days,n:n,s2:s2,r:med(R),up:up/n,mx:med(MX),mn:med(MN),h38:h38/n,h50:h50/n,h62:h62/n});
+  });
+  var h='<div class="card"><div class="hd">⑥ 追蹤：之前存下來的名單，後來實際怎麼走？</div>';
+  if(!rows.length){ h+='<div class="sub">目前還沒有可對照的紀錄。這次分析的名單已存起來；下次（隔幾天）再按「完整分析」，這裡會列出它們後來的表現。</div></div>'; return h; }
+  var tot=rows.reduce(function(a,r){return a+r.n;},0);
+  h+='<div class="sub">每一列是某一天存下的名單（當天剛轉到改善、前面跌超過 20% 的股票），用存下那天的收盤價當進場價，看到現在。<b>只有 '+tot+' 檔次、經過的天數也短，只能當線索，不能下結論。</b></div>'
+   +'<div style="overflow-x:auto"><table><tr class="th"><td>存檔日</td><td>過了幾個交易日</td><td>檔數（其中 Stage 2）</td><td>到現在中位數</td><td>上漲的比例</td><td>期間最高中位數</td><td>期間最低中位數</td><td>走到 38.2%</td><td>走到 50%</td><td>走到 61.8%</td></tr>';
+  rows.forEach(function(r){ h+='<tr><td>'+fmtD(r.ts)+'</td><td>'+r.days+'</td><td>'+r.n+'（'+r.s2+'）</td><td><b>'+sgn(r.r)+'</b></td><td>'+Math.round(r.up*100)+'%</td><td>'+sgn(r.mx)+'</td><td>'+sgn(r.mn)+'</td><td>'+Math.round(r.h38*100)+'%</td><td>'+Math.round(r.h50*100)+'%</td><td>'+Math.round(r.h62*100)+'%</td></tr>'; });
+  h+='</table></div><div class="sub dim">白話：「期間最高／最低」是存檔後到現在，收盤價離進場價最高、最低的那一天（中位數）。拿來跟表②③比：表②說跌深的股票 20 天內最高約彈多少、最差約跌多少，看實際是不是接近。要累計到 20 個交易日以上、檔數夠多才有參考價值。</div></div>';
   return h;
 }
 function render(){
@@ -344,7 +387,7 @@ function render(){
      +'<div class="sub">回到「前面那段跌幅」的 38.2%／50%／61.8% 的機率，20 天內只有 '+pp(deep.lv[0].p)+'／'+pp(deep.lv[1].p)+'／'+pp(deep.lv[2].p)+'（只算進場時還沒到那個位置的）。所以「彈到某個價位」不能當成預期，只能當成「如果彈得好，可能會遇到壓力的地方」。</div>'; }
   else h+='<div class="sub">符合條件的事件太少（不到 30 次），沒辦法下結論。</div>';
   h+='<div class="sub dim">事件＝RRG 從弱勢轉進改善的那一天，而且那天前 60 個交易日是先高後低（有跌一段）。跌幅＝那段的高點到低點。資料到 '+fmtD(last)+'；事件共 '+all.length+' 次。</div></div>';
-  h+=watchCard(G,per);
+  h+=watchCard(per,parseTk(),function(b){ var g=G[b.k]; return {p:g.lv.map(function(x){return x.p;}),n20:g.n20,w20:g.w20}; },RES.tkSec,'這次完整分析的結果'); saveStats(G);
   // ② 分組表
   function row(b){ var s=G[b.k]; return '<tr><td>'+b.n+'</td><td>'+s.n+'</td><td>'+sgn(s.D==null?null:-s.D)+'</td><td>'+(s.rN==null?'—':Math.round(s.rN)+'%')+'</td><td><b>'+sgn(s.mfe20)+'</b></td><td><b>'+sgn(s.mae20)+'</b></td><td>'+sgn(s.r10)+'</td><td>'+sgn(s.r20)+'</td><td>'+sgn(s.w20)+'</td></tr>'; }
   h+='<div class="card"><div class="hd">② 跌得越深，反彈越大嗎？（以進入改善那天的收盤價買進，往後看 20 天）</div><div style="overflow-x:auto"><table><tr class="th"><td>跌幅分組</td><td>事件數</td><td>跌幅中位數</td><td>進場時已彈回前跌幅的</td><td>20 天內最高彈（中位數）</td><td>20 天內最低跌（中位數）</td><td>10 天後</td><td>20 天後</td><td>最差 1 成（20 天內最低）</td></tr>'+BINS.map(row).join('')+'</table></div>'
@@ -365,12 +408,13 @@ function render(){
   h+='<div class="card"><div class="hd">⑤ 今天剛轉到改善、而且前面跌超過 20% 的股票（資料到 '+fmtD(last)+'）</div>'
    +(list.length?'<div style="overflow-x:auto"><table><tr class="th"><td>股票</td><td>改善第幾天</td><td>前面跌幅</td><td>已彈回</td><td>現價</td><td>38.2% 價位（機率）</td><td>50% 價位（機率）</td><td>61.8% 價位（機率）</td><td>同組最差 1 成</td><td>K 線</td></tr>'+rows+'</table></div>':'<div class="sub">目前沒有符合的股票。</div>')
    +'<div class="sub dim">白話：價位＝低點＋前面跌幅×比例，括號是這個跌幅組歷史上 20 天內碰到的機率；「已過」代表現價已經超過那個位置。這是歷史統計，不是目標價預測，也不是買進建議。「不在 Stage 2」的依你的規則本來就不買。</div></div>';
+  h+=trackCard(per,last); saveSnap(list,last);
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul><li>用的是現在的板塊名單往回看，一路跌下去、已經下市或被踢出的股票不在裡面（倖存者偏差），<b>反彈的數字很可能比實際好看</b>。</li>'
    +'<li>資料只有約 '+Math.round(Object.values(per)[0].ev.length>=0?18:18)+' 個月，行情特殊；事件彼此不獨立（很多股票同一天一起轉）。</li>'
    +'<li>只用收盤價，沒有盤中高低點，也沒有算滑價、股息；跌幅分組（15%、30%、50%）、停損比例、20 天都是我定的，沒驗證過。</li>'
    +'<li>RRG 只用來定義「剛轉到改善」，引擎跟 rrg.html、dwell.html 相同（日線、平滑 5 天）。</li></ul></div>';
   el('out').innerHTML=h;
 }
-window.addEventListener('DOMContentLoaded',function(){ el('go').addEventListener('click',run); });
+window.addEventListener('DOMContentLoaded',function(){ el('go').addEventListener('click',run); el('lk').addEventListener('click',lookup); var tk=el('tk'); try{ var sv=localStorage.getItem('rebound_watch'); tk.value=sv||WATCH_DEF; }catch(e){ tk.value=WATCH_DEF; } tk.addEventListener('keydown',function(ev){ if(ev.key==='Enter') lookup(); }); });
 
 </script></body></html>
