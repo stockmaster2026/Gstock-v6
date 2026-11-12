@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.22</title>
+<title>板塊時光機 v1.24</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.22</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.24</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -521,9 +521,11 @@ function histCard(title,H,note){
   var strip=spark+'<div style="display:flex;height:60px;border-radius:6px;overflow:hidden;margin:6px 0 2px;background:#eee">'+segs.map(function(s){ var d=s.k1-s.k0+1, w=d/tot;
     var a0=ix(s.k0-1); if(a0==null) a0=ix(s.k0); var a1=ix(s.k1), ch=(a0&&a1)?a1/a0-1:null;
     var ar=ch==null?'':(ch>=0?'▲ ':'▼ ')+(ch>=0?'+':'')+Math.round(ch*100)+'%';
-    var ln=[]; if(w>=0.14) ln.push(s.c.replace('（偏後段）','·後段')); if(w>=0.09) ln.push(md(S.d[s.k0])+'–'+md(S.d[s.k1])); if(w>=0.035&&ar) ln.push('<span style="font-size:14px">'+ar+'</span>');
-    return '<div title="'+s.c+' '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+d+' 天）'+(ch!=null?' 板塊指數 '+(ch>=0?'+':'')+Math.round(ch*100)+'%':'')+'" style="flex:'+d+';background:'+CATC[s.c]+';color:#fff;font-size:11.5px;font-weight:800;line-height:1.3;text-align:center;overflow:hidden;white-space:nowrap;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.6)">'+ln.join('<br>')+'</div>'; }).join('')+'</div>';
-  var axis='<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#778"><span>'+md(S.d[H.k0])+'</span><span>'+md(S.d[H.k1])+'</span></div>';
+    // v1.23：字縮小；日期下面加「N 個交易日」；每一段都可以點（手機沒有滑鼠提示），點了在下面顯示完整資料
+    var tip=s.c+'｜'+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'｜'+d+' 個交易日'+(ch!=null?'｜板塊指數 '+(ch>=0?'+':'')+Math.round(ch*100)+'%':'');
+    var ln=[]; if(w>=0.12) ln.push('<span style="font-size:10.5px">'+s.c.replace('（偏後段）','·後段')+'</span>'); if(w>=0.075){ ln.push('<span style="font-size:9.5px;font-weight:700">'+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'</span>'); ln.push('<span style="font-size:9.5px;font-weight:700">'+d+' 個交易日</span>'); } if(w>=0.03&&ar) ln.push('<span style="font-size:12px">'+ar+'</span>');
+    return '<div data-tip="'+tip+'" onclick="var b=this.parentNode.parentNode.querySelector(\'.segInfo\'); if(b) b.textContent=this.getAttribute(\'data-tip\');" title="'+tip+'" style="cursor:pointer;flex:'+d+';background:'+CATC[s.c]+';color:#fff;font-size:10.5px;font-weight:800;line-height:1.3;text-align:center;overflow:hidden;white-space:nowrap;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.6)">'+ln.join('<br>')+'</div>'; }).join('')+'</div>';
+  var axis='<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#778"><span>'+md(S.d[H.k0])+'</span><span>'+md(S.d[H.k1])+'</span></div><div class="segInfo" style="margin:3px 0 2px;padding:4px 8px;background:#fff7d6;border-radius:6px;font-size:13px;font-weight:700;color:#553;min-height:22px">👆 點上面的色塊，這裡會顯示那一段的狀態、日期、交易日數和板塊漲跌</div>';
   var runs=[], cur=null;
   segs.forEach(function(s,i){ if(GOC[s.c]){ if(!cur){ cur={a:s.k0,b:s.k1,labs:[s.c],first:i===0}; runs.push(cur); } else { cur.b=s.k1; if(cur.labs[cur.labs.length-1]!==s.c) cur.labs.push(s.c); } } else cur=null; });
   var rng=function(a,b,f){ var best=null,bk=a; for(var k=a;k<=b;k++){ var v=ix(k); if(v==null) continue; if(best==null||f(v,best)){ best=v; bk=k; } } return {v:best,k:bk}; };
@@ -537,17 +539,26 @@ function histCard(title,H,note){
     if(!end&&hi.v){ var nr=runs[ri+1], rE=nr?nr.a-1:H.k1, rl=rng(r.b+1,rE,function(v,b){return v<b;}); if(rl.v&&rE>=r.b+1){ var dp=rl.v/hi.v-1, dd=rE-r.b; if(nr){ DEPTHS.push(dp); RDAYS.push(dd); } rt='<div style="margin-left:12px;color:#7a4a00">之後休息／回檔 <b>'+dd+'</b> 個交易日，最深跌到高點下 <b>'+pc(dp)+'</b>（'+md(S.d[rl.k])+'）'+(nr?'，然後下一輪才開始':'，到現在還沒走出新的一輪')+'</div>'; } }
     return '<div style="margin-top:3px">'+md(S.d[r.a])+(r.first?'（看到的最早一天，更早可能就已開始）':'')+' → '+(end?'到 '+md(S.d[r.b])+' 還在進行':md(S.d[r.b])+' 結束，之後轉成「'+nxt+'」')+'，共 <b>'+(r.b-r.a+1)+'</b> 個交易日（'+r.labs.join(' → ')+'）</div>'+g+rt; }).join(''):'<div>這段期間沒有出現「剛起步／進行中／暫停」的上漲階段。</div>';
   var sumTxt='';
-  if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息平均吐回到 <b>'+pc(mean(DEPTHS))+'</b>、約 <b>'+Math.round(mean(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
+  if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息的中位數：吐回到 <b>'+pc(med(DEPTHS))+'</b>、約 <b>'+Math.round(med(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
   return '<div style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+strip+axis+
     sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪：</b>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
 }
+function stayCard(A){
+  if(A.length<8) return '';
+  var order=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','沒動靜'], rows='';
+  order.forEach(function(c){ var ds=A.filter(function(x){return x.c===c;}).map(function(x){return x.d;}); if(ds.length<3) return;
+    var sh=ds.filter(function(d){return d<=5;}).length;
+    rows+='<tr><td style="padding:2px 6px;color:'+CATC[c]+';font-weight:800">'+c+'</td><td style="padding:2px 6px;text-align:right"><b>'+med(ds)+'</b> 天</td><td style="padding:2px 6px;text-align:right">'+Math.round(sh/ds.length*100)+'%</td><td style="padding:2px 6px;text-align:right;color:#778">'+ds.length+' 段</td></tr>'; });
+  if(!rows) return '';
+  return '<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:13.5px;line-height:1.55"><b>每種狀態通常停多久？</b>（下面這些板塊、已走完的色塊，不含最左最右兩段）<table style="border-collapse:collapse;margin:3px 0;font-size:13.5px"><tr style="color:#778;font-size:12px"><td></td><td style="padding:2px 6px">停留中位數</td><td style="padding:2px 6px">5 天內就換掉</td><td></td></tr>'+rows+'</table><div style="color:#556;font-size:12.5px">白話：「5 天內就換掉」的比例高，代表那種狀態很容易閃一下就過，色塊很窄時別太當真；中位數才是它「通常」停多久。這只是下面這些板塊這段期間的統計，不保證之後也一樣。</div></div>';
+}
 function histInto(box,items,k1,n,done){
-  var i=0, html=[];
+  var i=0, html=[], ALLSEGS=[];
   (function step(){
-    if(i>=items.length){ box.innerHTML=html.join(''); if(done) done(); return; }
+    if(i>=items.length){ box.innerHTML=stayCard(ALLSEGS)+html.join(''); if(done) done(); return; }
     box.innerHTML='<div class="sub">計算中 '+(i+1)+'／'+items.length+' …</div>'+html.join('');
-    setTimeout(function(){ var it=items[i]; html.push(histCard(it.title,histOf(it.x,k1,n),it.note)); i++; step(); },15);
+    setTimeout(function(){ var it=items[i], Hh=histOf(it.x,k1,n); Hh.segs.forEach(function(sg,j){ if(j>0&&j<Hh.segs.length-1) ALLSEGS.push({c:sg.c,d:sg.k1-sg.k0+1}); }); html.push(histCard(it.title,Hh,it.note)); i++; step(); },15);
   })();
 }
 var HIST_LEGEND='<div class="sub">每條是一個板塊（或一檔股票），從左到右是時間，顏色是當時的位階：<b style="color:#1f6f3a">綠＝順風</b>（剛起步／進行中）、<b style="color:#c0600a">橘＝小心</b>（偏後段／高點附近暫停）、<b style="color:#b3262e">紅褐＝逆風</b>（回檔／大幅回吐／休息中）、灰＝沒動靜。每一格上面寫：狀態、起訖日、板塊指數在那一段漲跌多少（▲漲／▼跌）。太窄的格子只寫百分比，點一下或停一下可看完整（太窄的連百分比也放不下）。少於 3 天的短暫變化會併進前一段。位階用的仍是我訂的 15% 等規則，沒有驗證。</div>';
