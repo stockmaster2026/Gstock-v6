@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.24</title>
+<title>板塊時光機 v1.26</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.24</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.26</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -513,12 +513,13 @@ function histOf(x,k1,n){
   for(var i=1;i<seg.length;){ if(seg[i].k1-seg[i].k0+1<3){ seg[i-1].k1=seg[i].k1; seg.splice(i,1); if(i<seg.length&&seg[i].c===seg[i-1].c){ seg[i-1].k1=seg[i].k1; seg.splice(i,1); } } else i++; }
   return {segs:seg,k0:k0,k1:k1,name:x.s.name};
 }
+function chipLeg(){ var ks=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','沒動靜']; return '<div style="display:flex;flex-wrap:wrap;gap:3px 9px;font-size:11.5px;color:#445;margin:2px 0 4px">'+ks.map(function(k){ return '<span style="white-space:nowrap"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:'+CATC[k]+';vertical-align:-1px;margin-right:3px"></span>'+k+'</span>'; }).join('')+'<span style="color:#778">（顏色＝位階狀態；漲跌看色塊裡的 ▲▼）</span></div>'; }
 function histCard(title,H,note){
   var IX=FULL[H.name]||[], ix=function(k){ var v=IX[k-OFF]; return v==null?null:v; };
   var S=SPYB, segs=H.segs, tot=H.k1-H.k0+1, last=segs[segs.length-1], lastDays=last.k1-last.k0+1;
   var spark=''; (function(){ var pts=[],mn=1e9,mx=-1e9; for(var k=H.k0;k<=H.k1;k++){ var v=ix(k); if(v==null) continue; pts.push([k,v]); if(v<mn)mn=v; if(v>mx)mx=v; } if(pts.length<5) return; var W=600,Hh=56; var xy=pts.map(function(q){ return ((q[0]-H.k0)/Math.max(1,tot-1)*W).toFixed(1)+','+(Hh-3-(q[1]-mn)/Math.max(1e-9,mx-mn)*(Hh-8)).toFixed(1); }).join(' ');
     spark='<svg viewBox="0 0 600 '+Hh+'" preserveAspectRatio="none" style="width:100%;height:56px;display:block;background:#faf7e6;border-radius:6px"><polyline fill="none" stroke="#334" stroke-width="1.8" points="'+xy+'"/></svg><div style="display:flex;justify-content:space-between;font-size:11.5px;color:#556"><span>板塊指數（起點=100）：最低 '+Math.round(mn/ix(H.k0)*100)+'</span><span>最高 '+Math.round(mx/ix(H.k0)*100)+'</span></div>'; })();
-  var strip=spark+'<div style="display:flex;height:60px;border-radius:6px;overflow:hidden;margin:6px 0 2px;background:#eee">'+segs.map(function(s){ var d=s.k1-s.k0+1, w=d/tot;
+  var strip=spark+'<div style="display:flex;height:92px;border-radius:6px;overflow:hidden;margin:6px 0 2px;background:#eee">'+segs.map(function(s){ var d=s.k1-s.k0+1, w=d/tot;
     var a0=ix(s.k0-1); if(a0==null) a0=ix(s.k0); var a1=ix(s.k1), ch=(a0&&a1)?a1/a0-1:null;
     var ar=ch==null?'':(ch>=0?'▲ ':'▼ ')+(ch>=0?'+':'')+Math.round(ch*100)+'%';
     // v1.23：字縮小；日期下面加「N 個交易日」；每一段都可以點（手機沒有滑鼠提示），點了在下面顯示完整資料
@@ -541,7 +542,7 @@ function histCard(title,H,note){
   var sumTxt='';
   if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息的中位數：吐回到 <b>'+pc(med(DEPTHS))+'</b>、約 <b>'+Math.round(med(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
-  return '<div style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+strip+axis+
+  return '<div style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+strip+axis+chipLeg()+
     sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪：</b>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
 }
 function stayCard(A){
