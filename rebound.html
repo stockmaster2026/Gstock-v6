@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>跌深反彈研究 v0.9</title>
+<title>跌深反彈研究 v0.10</title>
 <style>
 :root{--bg:#0a0e1a;--card:#131826;--line:#1f2942;--text:#e4e7f0;--dim:#6b7290;--lead:#00d4a8;--accent:#ffd166;--warn:#f7c948;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,7 +18,7 @@ input#tk{flex:1;min-width:200px;background:var(--card);color:var(--text);border:
 table{width:100%;border-collapse:collapse;font-size:.78rem}td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}tr.th td{color:var(--dim)}
 ul{margin-left:18px;font-size:.8rem;line-height:1.8}
 </style></head><body>
-<h1>📉➡📈 跌深反彈研究 v0.9</h1>
+<h1>📉➡📈 跌深反彈研究 v0.10</h1>
 <div class="sub dim">問題：股票先跌了一大段、RRG 剛從弱勢轉到「改善」，之後通常會彈多少？最差會跌多少？用的是 rrg.html、dwell.html 同一套引擎（日線、平滑 5 天）、同一份板塊名單，往回看每一次。這是參考用的統計，不是買賣訊號，也不是目標價預測。</div>
 <div class="ctl"><input id="tk" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="輸入股票代號，空白或逗號分開"><button id="lk">快速查詢（幾秒）</button></div>
 <div class="ctl"><button id="go">完整分析全部名單（約 2–3 分鐘）</button></div>
@@ -257,7 +257,7 @@ function alignPair(secPx,benchPx){
 function med(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 function pct(a,p){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var k=(a.length-1)*p, f=Math.floor(k), c=Math.ceil(k); return a[f]+(a[c]-a[f])*(k-f); }
 function fmtD(ts){ var d=new Date(ts*1000); return d.getUTCFullYear()+'/'+(d.getUTCMonth()+1)+'/'+d.getUTCDate(); }
-var VER='v0.9';
+var VER='v0.10';
 var WATCH_DEF='AXTI AAOI AEHR', FB={ctl:{p:[0.55,0.52,0.43],n20:255,w20:-10.9},a:{p:[0.57,0.48,0.40],n20:546,w20:-17.4},b:{p:[0.48,0.38,0.26],n20:501,w20:-21.5},c:{p:[0.37,0.24,0.15],n20:101,w20:-20.6}}, QN={L:'領先',W:'轉弱',G:'弱勢',I:'改善'};
 var BINS=[{k:'ctl',n:'一般回檔（跌幅小於 15%，對照組）',lo:0,hi:0.15},{k:'a',n:'跌幅 15～30%',lo:0.15,hi:0.30},{k:'b',n:'跌幅 30～50%',lo:0.30,hi:0.50},{k:'c',n:'跌幅 50% 以上',lo:0.50,hi:9}];
 var STOPS=[0.05,0.08,0.10], LEVELS=[0.382,0.5,0.618], FWD=20;
@@ -341,7 +341,7 @@ function watchCard(per,tks,getG,tkSec,src){
     if(!w){ h+='<div class="sub dim">最近 60 個交易日的低點在高點之前（走勢向上或剛創高），沒有「先高後低」的一段下跌，不套用跌深反彈對照。</div></div>'; return; }
     var b=binOf(w.D), g=getG(b), got=(px-w.T)/(w.H-w.T);
     h+='<div class="sub">最近 60 天：高點 '+w.H.toFixed(2)+'（'+fmtD(P.dates[w.hi])+'）→ 低點 '+w.T.toFixed(2)+'（'+fmtD(P.dates[w.ti])+'），<b>跌了 '+Math.round(w.D*100)+'%</b>；現在已彈回這段跌幅的 <b>'+(got<=0.005?'0%（今天就在低點附近）':Math.round(got*100)+'%')+'</b>。</div>';
-    var bs=bounceState(C,w); h+='<div class="sub">'+stBadge(bs)+' '+bs.txt+'</div>'; logItems.push({t:t,sn:secN,c:px,H:w.H,T:w.T,D:w.D,st2:st2,k:bs.k}); logTs=P.last;
+    var bs=bounceState(C,w); h+='<div class="sub">'+stBadge(bs)+' '+bs.txt+'</div>'; var sr=strengthR(C,w); h+='<div class="sub"><b>反彈力道</b> '+stBadge(sr)+' '+sr.txt+'</div>'; logItems.push({t:t,sn:secN,c:px,H:w.H,T:w.T,D:w.D,st2:st2,k:bs.k}); logTs=P.last;
     if(w.D<0.15){ h+='<div class="sub dim">這一段跌幅不到 15%，不算「跌深」，下面價位只當參考。</div>'; }
     // v0.8：每一檔加一段醒目的白話——「這類股票歷史上走到哪裡的比例」＋賠率
     var LN=['38.2%','50%','61.8%'], seg=[], nxt=-1, kk;
@@ -420,6 +420,19 @@ function bounceState(C,w){
   return m;
 }
 function bsCell(P){ if(!P||!P.C) return '—'; var w=refWin(P.C,P.C.length-1); if(!w) return '—'; return stBadge(bounceState(P.C,w)); }
+// ═══ v0.10:【反彈力道】這一波低點後最高收盤彈了多少％，對照 11/9 真實完整分析各跌幅級距「20 天內最大反彈」的中位數 ═══
+//   ≥1.3 倍＝偏強；0.7–1.3 倍＝正常；<0.7 倍＝偏弱（門檻我訂的、沒驗證）。跟 charts.html v3.20 同一套。
+var MEDB={ctl:2.9,a:6.5,b:11.6,c:18.1};
+function strengthR(C,w){
+  var N=C.length, mx=-1, i, k=binOf(w.D).k; for(i=w.ti;i<N;i++){ if(C[i]>mx) mx=C[i]; }
+  var up=(mx/w.T-1)*100, med=MEDB[k], r=up/med, days=N-1-w.ti, g,col,txt;
+  if(up<3) return {short:'還沒開始彈',col:'#8b93a8',txt:'低點後最高只彈 '+up.toFixed(1)+'%，談不上力道。'};
+  if(r>=1.3){ g='偏強'; col='#00d4a8'; txt='已彈 +'+up.toFixed(0)+'%（'+days+' 天），這個跌幅級距歷史上 20 天內最大反彈的中位數約 +'+med+'%，已經比一半以上的同類反彈更高。如果你手上有，可以開始留意獲利了結、把停利抬高；不代表一定要賣，統計沒有告訴我們超過之後的下一步。'; }
+  else if(r>=0.7){ g='正常'; col='#6aa7ff'; txt='已彈 +'+up.toFixed(0)+'%（'+days+' 天），跟歷史中位數 +'+med+'% 差不多，在典型範圍內。'; }
+  else { g='偏弱'; col='#ffb454'; txt='已彈 +'+up.toFixed(0)+'%（'+days+' 天），還不到歷史中位數 +'+med+'%。'; }
+  return {short:g,col:col,txt:txt};
+}
+function strCell(P){ if(!P||!P.C) return '—'; var w=refWin(P.C,P.C.length-1); if(!w) return '—'; var s=strengthR(P.C,w); return stBadge(s)+'<div class="dim" style="font-size:.7rem">'+s.txt.split('；')[0].split('。')[0]+'</div>'; }
 function stBadge(st){ return '<span style="background:'+st.col+';color:#0a0e1a;font-weight:800;padding:2px 9px;border-radius:6px;font-size:.85rem">'+st.short+'</span>'; }
 function render(){
   if(!RES) return; var all=[], per=RES.per, last=null;
@@ -451,10 +464,10 @@ function render(){
   var list=[]; Object.keys(per).forEach(function(t){ var n=per[t].now; if(n&&n.D>=0.20&&n.days<=10) list.push({t:t,sn:(RES.tkSec[t]||[])[0]||'',n:n}); });
   list.sort(function(a,b){return b.n.D-a.n.D;});
   var rows=list.map(function(x){ var n=x.n, b=binOf(n.D), s=G[b.k], hit=function(L,i){ return n.rN<L?pp(s.lv[i].p):'已過'; };
-    return '<tr><td><b>'+x.t+'</b><div class="dim" style="font-size:.7rem">'+x.sn+'</div></td><td>第 '+n.days+' 天</td><td>'+sgn(-n.D*100)+'</td><td>'+Math.round(n.rN*100)+'%</td><td>'+n.c.toFixed(2)+'</td><td>'+(n.T+0.382*(n.H-n.T)).toFixed(2)+'（'+hit(0.382,0)+'）</td><td>'+(n.T+0.5*(n.H-n.T)).toFixed(2)+'（'+hit(0.5,1)+'）</td><td>'+(n.T+0.618*(n.H-n.T)).toFixed(2)+'（'+hit(0.618,2)+'）</td><td>'+sgn(s.w20)+'</td><td>'+bsCell(per[x.t])+'</td><td style="color:'+(n.st2?'#00d4a8':'#ff6b6b')+'">'+(n.st2==null?'—':(n.st2?'Stage 2':'不在 Stage 2'))+'</td></tr>'; }).join('');
+    return '<tr><td><b>'+x.t+'</b><div class="dim" style="font-size:.7rem">'+x.sn+'</div></td><td>第 '+n.days+' 天</td><td>'+sgn(-n.D*100)+'</td><td>'+Math.round(n.rN*100)+'%</td><td>'+n.c.toFixed(2)+'</td><td>'+(n.T+0.382*(n.H-n.T)).toFixed(2)+'（'+hit(0.382,0)+'）</td><td>'+(n.T+0.5*(n.H-n.T)).toFixed(2)+'（'+hit(0.5,1)+'）</td><td>'+(n.T+0.618*(n.H-n.T)).toFixed(2)+'（'+hit(0.618,2)+'）</td><td>'+sgn(s.w20)+'</td><td>'+bsCell(per[x.t])+'</td><td>'+strCell(per[x.t])+'</td><td style="color:'+(n.st2?'#00d4a8':'#ff6b6b')+'">'+(n.st2==null?'—':(n.st2?'Stage 2':'不在 Stage 2'))+'</td></tr>'; }).join('');
   h+='<div class="card"><div class="hd">⑤ 今天剛轉到改善、而且前面跌超過 20% 的股票（資料到 '+fmtD(last)+'）</div>'
-   +(list.length?'<div style="overflow-x:auto"><table><tr class="th"><td>股票</td><td>改善第幾天</td><td>前面跌幅</td><td>已彈回</td><td>現價</td><td>38.2% 價位（機率）</td><td>50% 價位（機率）</td><td>61.8% 價位（機率）</td><td>同組最差 1 成</td><td>反彈狀態</td><td>K 線</td></tr>'+rows+'</table></div>':'<div class="sub">目前沒有符合的股票。</div>')
-   +'<div class="sub dim">白話：價位＝低點＋前面跌幅×比例，括號是這個跌幅組歷史上 20 天內碰到的機率；「已過」代表現價已經超過那個位置。這是歷史統計，不是目標價預測，也不是買進建議。「不在 Stage 2」的依你的規則本來就不買。<br><b>反彈狀態</b>：用低點之後的走勢分類（繼續反彈中／反彈停滯／反彈結束／還沒開始彈；彈回前面跌幅 6 成以上會加註「到壓力區」），規則是我訂的、沒驗證過；「結束」要等價格吐回去才看得出來，有落後。</div></div>';
+   +(list.length?'<div style="overflow-x:auto"><table><tr class="th"><td>股票</td><td>改善第幾天</td><td>前面跌幅</td><td>已彈回</td><td>現價</td><td>38.2% 價位（機率）</td><td>50% 價位（機率）</td><td>61.8% 價位（機率）</td><td>同組最差 1 成</td><td>反彈狀態</td><td>反彈力道</td><td>K 線</td></tr>'+rows+'</table></div>':'<div class="sub">目前沒有符合的股票。</div>')
+   +'<div class="sub dim">白話：價位＝低點＋前面跌幅×比例，括號是這個跌幅組歷史上 20 天內碰到的機率；「已過」代表現價已經超過那個位置。這是歷史統計，不是目標價預測，也不是買進建議。「不在 Stage 2」的依你的規則本來就不買。<br><b>反彈力道</b>：這一波從低點彈了多少，對照 11/9 真實分析同跌幅組「20 天內最大反彈」的中位數；偏強＝已比一半以上同類反彈更高，持有的人可留意獲利了結（不是賣出訊號）；中位數是「20 天內最大」不是整段終點；同板塊常一起漲，不是獨立證據；門檻我訂的。<br><b>反彈狀態</b>：用低點之後的走勢分類（繼續反彈中／反彈停滯／反彈結束／還沒開始彈；彈回前面跌幅 6 成以上會加註「到壓力區」），規則是我訂的、沒驗證過；「結束」要等價格吐回去才看得出來，有落後。</div></div>';
   h+=trackCard(per,last); saveSnap(list,last);
   h+='<div class="card warn"><div class="hd">⚠ 這份統計的限制</div><ul><li>用的是現在的板塊名單往回看，一路跌下去、已經下市或被踢出的股票不在裡面（倖存者偏差），<b>反彈的數字很可能比實際好看</b>。</li>'
    +'<li>資料只有約 '+Math.round(Object.values(per)[0].ev.length>=0?18:18)+' 個月，行情特殊；事件彼此不獨立（很多股票同一天一起轉）。</li>'
