@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.26</title>
+<title>板塊時光機 v1.27</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.26</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.27</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -564,6 +564,7 @@ function histInto(box,items,k1,n,done){
 }
 var HIST_LEGEND='<div class="sub">每條是一個板塊（或一檔股票），從左到右是時間，顏色是當時的位階：<b style="color:#1f6f3a">綠＝順風</b>（剛起步／進行中）、<b style="color:#c0600a">橘＝小心</b>（偏後段／高點附近暫停）、<b style="color:#b3262e">紅褐＝逆風</b>（回檔／大幅回吐／休息中）、灰＝沒動靜。每一格上面寫：狀態、起訖日、板塊指數在那一段漲跌多少（▲漲／▼跌）。太窄的格子只寫百分比，點一下或停一下可看完整（太窄的連百分比也放不下）。少於 3 天的短暫變化會併進前一段。位階用的仍是我訂的 15% 等規則，沒有驗證。</div>';
 function showHist(ds){
+  var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
   var k=kOf(ds), out=el('out');
   if(k<119){ out.innerHTML='<div class="box">這一天太早了，資料最早可看 <b>'+fd(SPYB.d[119])+'</b> 之後。</div>'; return; }
   var date=SPYB.d[k];
@@ -574,6 +575,7 @@ function showHist(ds){
   histInto(el('histBox'),items,k,HN());
 }
 function showDay(ds){
+  var dtE=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtE.max||SPYB.d[SPYB.d.length-1]; dtE.value=ds; }   // v1.27：日期欄被清空（按了「重設」）就自動用最新一天
   var S=SPYB, k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; }
   var out=el('out');
   if(k<119){ out.innerHTML='<div class="box">這一天太早了：位階要先累積約半年的價格才算得出來，資料最早可看 <b>'+fd(S.d[119])+'</b> 之後。</div>'; return; }
