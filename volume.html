@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>成交量雷達 v0.3</title>
+<title>成交量雷達 v0.4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.3</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.4</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">① 掃描：哪些股票的量跟自己比特別突出？</div>
@@ -441,7 +441,7 @@ function feat(B,i){
   var gapv=Math.abs(B.o[i]/c[i-1]-1), chg0=c[i]/c[i-1]-1;
   var md10=0, sv=0; for(var q=i-10;q<i;q++){ sv+=B.v[q]; if(c[q]<c[q-1]&&B.v[q]>md10) md10=B.v[q]; }
   var ext0=c[i]/m50-1;
-  return {gap:(gapv>=0.04||Math.abs(chg0)>=0.07), pp:(chg0>0&&B.v[i]>md10&&c[i]>=m50*0.97&&ext0<=0.15), dry:(sv/10/a50<=0.8), rv:B.v[i]/a50, chg:c[i]/c[i-1]-1, cp:rng>0?(c[i]-l[i])/rng:0.5, ext:c[i]/m50-1, nearHi:c[i]/hi-1, up60:c[i]/lo-1, top:top};
+  return {gap:(gapv>=0.04||Math.abs(chg0)>=0.07), pp:(chg0>0&&c[i]>B.o[i]&&rng>0&&(c[i]-l[i])/rng>=0.5&&B.v[i]>md10&&c[i]>=m50*0.97&&ext0<=0.15), dry:(sv/10/a50<=0.8), rv:B.v[i]/a50, chg:c[i]/c[i-1]-1, cp:rng>0?(c[i]-l[i])/rng:0.5, ext:c[i]/m50-1, nearHi:c[i]/hi-1, up60:c[i]/lo-1, top:top};
 }
 // 粗分：偏準備／偏出貨／看不出來（門檻是我訂的參考範圍，未驗證）
 function classify(f){
@@ -482,7 +482,7 @@ function scan(){
   var card=function(r){
     var f=r.f, B=r.B, L=r.sec?r.sec.L:{t:'不在任何板塊',c:'#99a'};
     return '<div class="card"><div style="font-size:17px;font-weight:900">'+r.t+' <span class="tag" style="background:'+KC[r.cl.k]+'">'+KN[r.cl.k]+'</span><span class="tag" style="background:'+L.c+'">板塊 '+L.t+'</span>'+(f.pp?'<span class="tag" style="background:#0066bb">口袋支點</span>':'')+(f.dry&&f.rv>=1.5?'<span class="tag" style="background:#0066bb">量縮後放量</span>':'')+'<span class="sub">　'+mdd(B.d[r.i])+(r.sec?'　'+r.sec.q.icon+' '+r.sec.q.name:'')+'</span></div>'+
-      '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b><b style="color:#0066bb">'+mdd(B.d[r.i])+' 當天</b>的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價那天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+(f.pp?'<div style="font-size:13px;color:#0066bb;margin-top:2px">口袋支點＝那天是上漲日，量比前 10 天裡「跌的那幾天」的最大量還大，而且股價離 50 日線不遠（在線上或最多低 3%、高不超過 15%）。意思是：買盤那天明顯壓過賣盤。這是 Gil Morales／Chris Kacher 的說法，我沒有用你的資料驗證過它有沒有用。</div>':'')+
+      '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b><b style="color:#0066bb">'+mdd(B.d[r.i])+' 當天</b>的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價那天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+(f.pp?'<div style="font-size:13px;color:#0066bb;margin-top:2px">口袋支點＝那天是上漲日、收紅 K、收在當天區間上半部（v0.4 起；以前只看比前日收盤上漲，會把跳空後被賣下來的也算進去），量比前 10 天裡「跌的那幾天」的最大量還大，而且股價離 50 日線不遠（在線上或最多低 3%、高不超過 15%）。意思是：買盤那天明顯壓過賣盤。這是 Gil Morales／Chris Kacher 的說法，我沒有用你的資料驗證過它有沒有用。</div>':'')+
       '<div class="sub">離 50 日線 '+pcs(f.ext)+'｜離 1 年高點 '+pcs(f.nearHi)+'｜從近 3 個月低點已漲 '+pcs(f.up60)+'</div></div>';
   };
   var sect=function(title,color,arr,note,open){ return '<div class="box"><div class="h" style="color:'+color+'">'+title+'（'+arr.length+' 檔）</div><div class="sub">'+note+'</div>'+(arr.length?(open?arr.map(card).join(''):'<details><summary>展開看</summary>'+arr.map(card).join('')+'</details>'):'<div class="sub" style="margin-top:6px">這次沒有。</div>')+'</div>'; };
@@ -593,7 +593,7 @@ async function runBt(){
     h+='<div class="read"><b>白話：</b>資料範圍 '+spanTxt+'。基準（隨便哪一天買）20 天中位數 '+pc1(base.med)+'、'+Math.round(base.win*100)+'% 的時候有賺、'+Math.round(base.stop*100)+'% 的時候 20 天內碰到 8% 停損。每一行都跟基準比：<b>差不到 1.5 個百分點、或次數不到 30，都當作「看不出差別」。</b></div>';
     h+=table('A. 量放大到幾倍，以及是不是財報／消息跳空',['量 <1 倍（量縮）','量 1～1.5 倍','量 1.5～2 倍','量 2～3 倍','量 ≥3 倍','放量(≥1.5倍)・跳空／消息型','放量(≥1.5倍)・一般日（非跳空）'],'');
     h+=table('B. 一般日放量（不含跳空）時，我分的「準備／出貨」準不準',['一般日放量・偏準備','一般日放量・偏出貨','一般日放量・看不出來'],'');
-    h+=table('C. 專家講的兩個具體條件',['口袋支點（非跳空）','量縮後放量（10日均量≤0.8倍，今天≥1.5倍，上漲收強）','口袋支點＋量縮後放量'],'<b>口袋支點</b>＝上漲日的量，大於前 10 天最大的下跌日量，且位置離 50 日線不遠。<b>量縮後放量</b>＝前 10 天量縮到 50 日均量 8 成以下，之後放量上漲收強。');
+    h+=table('C. 專家講的兩個具體條件',['口袋支點（非跳空）','量縮後放量（10日均量≤0.8倍，今天≥1.5倍，上漲收強）','口袋支點＋量縮後放量'],'<b>口袋支點</b>＝上漲日（收紅 K、收在當天區間上半部，v0.4 起）的量，大於前 10 天最大的下跌日量，且位置離 50 日線不遠。<b>量縮後放量</b>＝前 10 天量縮到 50 日均量 8 成以下，之後放量上漲收強。');
     var yrs={}; rows.forEach(function(x){ var m=x.g.match(/^Y(\d{4})\|/); if(m) yrs[m[1]]=1; });
     var yh='<tr><th>年份</th><th>隨便哪天（次數）</th><th>一般日放量≥2倍（次數）</th><th>偏準備（次數）</th></tr>';
     Object.keys(yrs).sort().forEach(function(y){ var a=stat('Y'+y+'|全部'), b=stat('Y'+y+'|放量2'), c=stat('Y'+y+'|準備'); var cell=function(s){ return s?'<span class="'+(s.med>=0?'pos':'neg')+'">'+pc1(s.med)+'</span>（'+s.n+'）':'—'; }; yh+='<tr><td><b>'+y+'</b></td><td>'+cell(a)+'</td><td>'+cell(b)+'</td><td>'+cell(c)+'</td></tr>'; });
