@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>整合篩選 v0.3</title>
+<title>整合篩選 v0.5</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.3</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.5</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div id="verdict" class="verdict" style="background:#fff7d6">準備中…</div>
@@ -46,6 +46,8 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
   </div>
   <div class="box"><div class="h">漏斗：每一層剩幾檔</div><div id="funnel"></div></div>
   <div class="box"><div class="h">入選</div><div id="picks"></div></div>
+  <div class="box"><div class="h">整合結論：今天的整體狀況</div><div id="concl"></div></div>
+  <div class="box"><div class="h">入選紀錄：每檔連續入選幾天、每天的收盤價</div><div id="hist"><div class="read">計算中…</div></div></div>
   <div class="box"><details><summary>差一關的（只卡在一層，值得盯）</summary><div id="near"></div></details></div>
   <div class="box"><details><summary>追蹤：過去快照的入選，之後表現如何</summary><div id="track"></div></details></div>
   <div class="box"><div class="sub" id="lim"></div></div>
@@ -458,14 +460,20 @@ function bestAt(t,k){
   var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
   return best;
 }
-// ═════ 整合篩選 v0.3 ═════
+// ═════ 整合篩選 v0.5 ═════
 var SNAPK='gstock_screen_snap_v1', FUND={}, ROWS=[], CTX={};
 function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return c==='&'?'&amp;':(c==='<'?'&lt;':(c==='>'?'&gt;':'&quot;'));}); }
 function avg(a){ return a.length?a.reduce(function(s,x){return s+x;},0)/a.length:null; }
 // 單一股票：四層判斷（只用最後一根以前的資料）
-function judge(t,k){
+function judge(t,k,noDna){
   var B=BARS[t], S=BARS['SPY']; if(!B||!B.c||B.c.length<160) return null;
-  var n=B.c.length, i=n-1, px=B.c[i], r={t:t,nm:B.nm||'',px:px,d:B.d[i]};
+  var n=B.c.length, kLast=S.d.length-1, i=n-1;
+  if(k==null) k=kLast;
+  if(k!==kLast){ // v0.5：回到過去某一天（k＝那天在 SPY 的位置），找這檔股票同一天的位置；只用那天以前的資料
+    i=-1; var dd=S.d[k]; for(var qq=n-1;qq>=0;qq--){ if(B.d[qq]===dd){ i=qq; break; } if(B.d[qq]<dd) break; }
+    if(i<160) return null;
+  }
+  var px=B.c[i], r={t:t,nm:B.nm||'',px:px,d:B.d[i],chg:(B.c[i-1]>0?px/B.c[i-1]-1:null)};
   // ① 板塊
   var sc=bestAt(t,k); r.sec=sc?sc.n:null; r.secL=sc?(sc.L==='沒動靜'?'小心':sc.L):null; r.secC=sc?sc.c:null;
   r.bnc=(r.secC==='跌後反彈'); r.L1=!!sc && r.secL!=='逆風' && !r.bnc;
@@ -485,14 +493,14 @@ function judge(t,k){
   var vj=bi>=0?bi:i, vs=0, c50=0; for(var q3=vj-50;q3<vj;q3++){ if(q3>=0&&B.v[q3]>0){ vs+=B.v[q3]; c50++; } }
   r.vx=c50>=30?(B.v[vj]/(vs/c50)):null; r.volOK=(r.vx!=null&&r.vx>=1.3);
   // ④ 63 日相對強度
-  var si=S.d.length-1;
-  if(n>64&&si>64){ r.rs=((B.c[i]/B.c[i-63])-(S.c[si]/S.c[si-63]))*100; } else r.rs=null;
+  var si=k;
+  if(i>63&&si>63){ r.rs=((B.c[i]/B.c[i-63])-(S.c[si]/S.c[si-63]))*100; } else r.rs=null;
   r.rsOK=(r.rs!=null&&r.rs>0);
   r.bonus=(r.volOK?1:0)+(r.rsOK?1:0);
   r.pass=r.L1&&r.L2;
   r.miss=[]; if(!r.L1) r.miss.push(r.bnc?'板塊在跌後反彈（回測很差）':'板塊逆風'); if(!r.stage2) r.miss.push(stg===22?'Stage 2 轉弱(2B)':'不在 Stage 2'); if(r.stage2&&!r.posOK) r.miss.push(r.pos);
   // dna 觀察簿裡這檔最近一筆（過幾關），純參考
-  try{ var a=JSON.parse(localStorage.getItem('dnaNearMiss_v1')||'[]'), m=null; a.forEach(function(e){ if(e&&e.tk===t&&(!m||e.date>m.date)) m=e; }); if(m) r.dna={pass:m.pass,date:m.date}; }catch(e){}
+  if(!noDna) try{ var a=JSON.parse(localStorage.getItem('dnaNearMiss_v1')||'[]'), m=null; a.forEach(function(e){ if(e&&e.tk===t&&(!m||e.date>m.date)) m=e; }); if(m) r.dna={pass:m.pass,date:m.date}; }catch(e){}
   return r;
 }
 function plain(r){
@@ -518,7 +526,7 @@ function fundRead(f){
   return '有成長但不算突出，低於常被引用的參考線。';
 }
 function card(r,showMiss){
-  var h='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-size:17px">'+esc(r.t)+'</b> <span class="sub">'+esc(r.nm)+'</span></div><div>'+(showMiss?'':'<span class="tag" style="background:'+(r.bonus===2?'#0d8a3f':(r.bonus===1?'#dd6600':'#778'))+'">加分 '+r.bonus+'/2</span>')+'</div></div>';
+  var h='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-size:17px">'+esc(r.t)+'</b> <span class="sub">'+esc(r.nm)+'</span><div style="font-size:14px;margin-top:2px"><b>收盤 $'+r.px.toFixed(2)+'</b> <span class="sub">（'+esc(r.d.slice(5).replace('-','/'))+(r.chg!=null?'，當天 <b style="color:'+(r.chg>=0?'#0d8a3f':'#c62828')+'">'+(r.chg>=0?'+':'')+(r.chg*100).toFixed(1)+'%</b>':'')+'）</span></div></div><div>'+((showMiss||!HIST||!HIST.info[r.t])?'':'<span class="tag" style="background:#2a5fa5">連續入選 '+Math.max(1,HIST.info[r.t].streak)+' 天</span>')+(showMiss?'':'<span class="tag" style="background:'+(r.bonus===2?'#0d8a3f':(r.bonus===1?'#dd6600':'#778'))+'">加分 '+r.bonus+'/2</span>')+'</div></div>';
   h+='<div style="margin:4px 0">'+chip(r.L1,'板塊')+chip(r.stage2,'Stage 2')+chip(r.posOK,r.pos)+chip(r.volOK,'量')+chip(r.rsOK,'比大盤強')+'</div>';
   h+='<div class="read" style="font-size:13.5px;margin-top:2px">'+(showMiss?'<b>卡在：'+r.miss.join('、')+'。</b> ':'')+plain(r)+((r.dna&&typeof r.dna.pass==='number')?' dna 觀察簿記過 '+r.dna.pass+' 關（'+esc(r.dna.date)+'）。':'')+'</div>'+fundHtml(r.t)+'</div>';
   return h;
@@ -535,7 +543,7 @@ function render(){
   var v='';
   if(picks.length) v='今天入選 '+picks.length+' 檔：'+picks.slice(0,8).map(function(r){return r.t+(r.bonus===2?'★':'');}).join('、')+(picks.length>8?'…':'')+'。（★＝量與強度都有）';
   else v='今天沒有入選。Stage 2 且板塊不是逆風的只有 '+a2.length+' 檔，其中位置合適的 0 檔。';
-  v+=' 大盤：SPY '+(CTX.m50?'在':'不在')+' 50 日線'+(CTX.m50?'上':'下')+'。';
+  v+=' 大盤：SPY '+(CTX.m50?'在 50 日線上':'跌破 50 日線（在線下）')+'。';
   v+='<div style="font-size:13.5px;font-weight:700;color:#b3262e;margin-top:6px">⚠ 這是「值得看一眼」的名單，不是買進訊號。回測（screen-test.html，13184 筆、2025/7～2026/10）：入選 20 天比大盤多 +0.5%，基準 −0.3%，差距小，而且前半年有效（+1.3%）、後半年無效（−1.0%）；大盤在 50 日線下（像現在）入選 +0.8%、隨便挑一檔 +1.1%，沒有比較好。入選裡「有量」那組後半年較好（+2.3%），但前半年不明顯。弱市裡入選的常是資金暫時躲進去的防守股。另外，板塊「順風」那天買的，20 天平均比大盤少 2.6%（65% 碰 8% 停損）、「剛起步」少 6.0%，所以板塊順風不等於現在可以買；板塊層的優勢也不穩定（板塊層回測）。</div>';
   el('verdict').innerHTML=v;
   el('lim').innerHTML='⚠ 這一頁的門檻（Stage 2、離前 30 日高 5% 內、突破後不超過 8%、量 1.3 倍、63 日強度）都是我訂的，沒驗證；回測只證明「DNA ≥5 關＋板塊不逆風」有一點幫助，且強市時沒有幫助。基本面是即時快照，沒有歷史，所以只記錄不當門檻；「常被引用的參考線」是 O’Neil 的 EPS 約 25% 等說法，我尚未逐一查原文核對。價格資料來自 Yahoo，可能晚一天。入選不等於買進，買進還要你看 K 線與 dna。';
@@ -548,12 +556,82 @@ function bottleneck(N,a1,a2,a3){
   if(m===d1) return ' 目前刷掉最多的是「板塊逆風」（'+d1+' 檔）。';
   return ' 目前刷掉最多的是「位置」（'+d3+' 檔在 Stage 2 但離買點太遠或已延伸）。';
 }
+// ── v0.5：近 N 個交易日的入選紀錄（回頭重算，不用靠你每天存快照）──
+// ⚠ 用「今天的板塊名單」和「今天的程式規則」回頭算，板塊狀態只用當天以前的資料（不偷看未來），但跟你當時畫面上實際看到的可能有小差異。
+var HIST=null, HDAYS=10;
+function buildHist(){
+  var S=BARS['SPY'], kL=S.d.length-1, ks=[]; for(var o=HDAYS-1;o>=0;o--) if(kL-o>=0) ks.push(kL-o);
+  var tk=Object.keys(T2S).filter(function(t){return BARS[t];}), res={};
+  tk.forEach(function(t){ res[t]=ks.map(function(k){ try{ var r=judge(t,k,true); return r?{pass:r.pass,px:r.px,bonus:r.bonus,miss:r.miss}:null; }catch(e){ return null; } }); });
+  var info={};
+  Object.keys(res).forEach(function(t){
+    var a=res[t], cnt=0, streak=0; a.forEach(function(x){ if(x&&x.pass) cnt++; });
+    for(var q=a.length-1;q>=0;q--){ if(a[q]&&a[q].pass) streak++; else break; }
+    var first=streak?a[a.length-streak]:null, last=a[a.length-1];
+    info[t]={cnt:cnt,streak:streak,since:(first&&last&&first.px>0)?(last.px/first.px-1)*100:null,firstPx:first?first.px:null};
+  });
+  HIST={dates:ks.map(function(k){return S.d[k];}),res:res,info:info};
+}
+function histHtml(){
+  if(!HIST) return '';
+  var ts=Object.keys(HIST.res).filter(function(t){ return HIST.info[t].cnt>0; });
+  ts.sort(function(a,b){ var A=HIST.info[a],B=HIST.info[b]; return B.streak-A.streak||B.cnt-A.cnt; });
+  var sel='<select class="btn" onchange="HDAYS=+this.value;runAll()">'+[5,10,20].map(function(v){return '<option value="'+v+'"'+(v===HDAYS?' selected':'')+'>近 '+v+' 個交易日</option>';}).join('')+'</select>';
+  if(!ts.length) return '<div class="row">'+sel+'</div><div class="read">這段期間沒有任何一檔入選過。</div>';
+  var head='<tr><th>股票</th><th>連續入選</th><th>入選以來</th>'+HIST.dates.map(function(d){return '<th>'+esc(d.slice(5).replace('-','/'))+'</th>';}).join('')+'</tr>';
+  var body=ts.map(function(t){
+    var I=HIST.info[t], a=HIST.res[t], out=I.streak===0, lastMiss=a[a.length-1]&&a[a.length-1].miss&&a[a.length-1].miss.length?a[a.length-1].miss.join('、'):'';
+    var cells=a.map(function(x){
+      if(!x) return '<td style="color:#aaa">—</td>';
+      return x.pass?'<td style="background:#e3f6e8;font-weight:800;color:#0d6b33">'+x.px.toFixed(2)+'</td>':'<td style="color:#999">'+x.px.toFixed(2)+'</td>';
+    }).join('');
+    return '<tr><td><b>'+esc(t)+'</b>'+(out?'<br><span style="font-size:11.5px;color:#b3262e;font-weight:700">已掉出'+(lastMiss?'：'+esc(lastMiss):'')+'</span>':'')+'</td>'
+      +'<td>'+(I.streak?'<b>'+I.streak+' 天</b>':'<span style="color:#b3262e">0</span>')+'<br><span style="font-size:11.5px;color:#667">共入選 '+I.cnt+' 天</span></td>'
+      +'<td>'+(I.since==null?'—':'<span class="'+(I.since>=0?'pos':'neg')+'">'+(I.since>=0?'+':'')+I.since.toFixed(1)+'%</span>')+'</td>'+cells+'</tr>';
+  }).join('');
+  var nIn=ts.filter(function(t){return HIST.info[t].streak>0;}).length;
+  return '<div class="row">'+sel+'</div>'
+   +'<div class="read"><b>怎麼看：</b>綠底粗體＝那天在入選名單裡（數字是當天收盤價），灰色＝那天沒入選。「連續入選」＝到今天為止連續幾天都在名單上；「入選以來」＝從這一波連續入選的第一天收盤價，到今天收盤價漲跌多少。紅字「已掉出」＝今天不在名單了，後面寫卡在哪一關。'
+   +'<br>近 '+HIST.dates.length+' 個交易日出現過 '+ts.length+' 檔，今天還在名單上的 '+nIn+' 檔。連續越久，代表這檔的條件比較穩、沒有被洗掉；<b>但我沒有證據說連續入選的之後比較會漲</b>，這張表是用來累積觀察，不是買進訊號。</div>'
+   +'<div class="tw"><table class="t">'+head+body+'</table></div>'
+   +'<div class="sub">⚠ 這是用今天的板塊名單和規則回頭重算的，板塊狀態只用當天以前的資料，但跟你當時實際看到的名單可能有小差異（例如你當時用的板塊名單不同）。</div>';
+}
+// ── v0.5：整合結論（用今天的數字自動寫，不是寫死的）──
+// ⚠ 這是我的讀法，沒有被驗證；顏色與分類規則是我訂的。
+function conclHtml(){
+  var N=ROWS.length, picks=ROWS.filter(function(r){return r.pass;});
+  var ok1=ROWS.filter(function(r){return r.L1;}).length, wind=ROWS.filter(function(r){return r.secL==='順風'&&!r.bnc;}).length;
+  var m50=CTX.m50, P=picks.length;
+  var secCnt={}; picks.forEach(function(r){ var k=r.sec||'—'; secCnt[k]=(secCnt[k]||0)+1; });
+  var secs=Object.keys(secCnt).sort(function(a,b){return secCnt[b]-secCnt[a];});
+  var nVol=picks.filter(function(r){return r.volOK;}).length, nRs=picks.filter(function(r){return r.rsOK;}).length;
+  var late=picks.some(function(r){ return (r.secC||'').indexOf('偏後段')>=0; });
+  var defn=secs.length&&secs.every(function(n){ return n.indexOf('防禦')>=0; });
+  var cls,head;
+  if(!P){ cls='y'; head='🟡 今天沒有入選，等'; }
+  else if(!m50&&secs.length<=2&&nVol*2<P){ cls='r'; head='🔴 大盤偏弱，名單是「'+(defn?'防禦股暫時撐著':'少數板塊撐著')+'」，先觀察、不急著進場'; }
+  else if(m50&&secs.length>=3&&nVol*2>=P){ cls='g'; head='🟢 環境支持：名單分散在多個板塊、而且多數有量，可以認真看 K 線'; }
+  else { cls='o'; head='🟠 訊號不一致，名單可以看，但不要因為上榜就當成可以買'; }
+  var col={g:['#f0fff4','#15803d','#16a34a'],o:['#fff4e8','#c2570c','#ea6a12'],r:['#fff1f1','#c81e1e','#d92d2d'],y:['#fffbeb','#9a5b00','#d98a00']}[cls];
+  var L=[];
+  L.push('<b>現況：</b>大盤 SPY '+(m50?'在 50 日線上':'跌破 50 日線（在線下）')+'；'+N+' 檔裡，板塊不是逆風（也不在跌後反彈）的只有 '+ok1+' 檔，板塊是「順風」的 '+wind+' 檔。入選 '+P+' 檔，來自 '+secs.length+' 個板塊'+(secs.length?'（'+secs.map(function(n){return esc(n)+' '+secCnt[n];}).join('、')+'）':'')+'；其中有量 '+nVol+' 檔、比大盤強 '+nRs+' 檔。');
+  if(P&&secs.length<=2) L.push('<b>白話：</b>入選的幾乎都擠在同一個板塊，彼此高度相關，<b>不是 '+P+' 個獨立的機會，更像一個機會看了 '+P+' 次</b>。'+(defn?'而且是防禦型板塊，這種板塊在大盤弱的時候通常跌得比較少，所以名單集中在這裡，常被解讀成「資金暫時停在比較穩的地方」。':''));
+  if(P&&nVol*2<P) L.push('<b>量不足：</b>多數入選股沒有放量，比較像「別的地方更弱、它們跌得少」，<b>不像有人積極搶著買</b>。');
+  if(late) L.push('<b>提醒：</b>這個板塊已經在「進行中偏後段」，領先走了一段時間，越後段越要小心它轉弱。');
+  L.push('<b>兩種可能（我不知道會是哪一種）：</b>① 大盤轉強 → 資金通常會離開防禦股，名單上的股票反而可能落後；② 大盤續弱 → 它們比較抗跌，但抗跌不等於會漲。所以現在是「等方向」，名單比較像觀察大盤轉折的溫度計。');
+  L.push('<b>怎麼知道這個狀態結束了：</b>看這三件事——SPY 站回 50 日線而且斜率轉平；「入選紀錄」裡連續入選天數開始中斷；其他板塊出現「順風」。');
+  L.push('<span style="color:#b3262e"><b>誠實界線：</b>回測沒有證明入選名單的表現比隨便挑好（大盤在 50 日線下時差不多），「連續入選久的比較強」「防禦股停留不會太久」也都沒被驗證。這段是我現在的讀法，之後用快照和入選紀錄對答案。</span>');
+  return '<div style="background:'+col[0]+';border-left:6px solid '+col[2]+';border-radius:8px;padding:11px 13px"><div style="font-size:17px;font-weight:800;color:'+col[1]+';line-height:1.6">'+head+'</div><div style="font-size:13.5px;line-height:1.85;margin-top:6px;color:#334">'+L.join('<br>')+'</div></div>';
+}
 function runAll(){
   var S=BARS['SPY'], k=S.d.length-1; SC={};
   var sma50=0; for(var q=k-49;q<=k;q++) sma50+=S.c[q]; sma50/=50; CTX.m50=S.c[k]>sma50;
   var tk=Object.keys(T2S).filter(function(t){return BARS[t];}); ROWS=[];
   tk.forEach(function(t){ try{ var r=judge(t,k); if(r) ROWS.push(r); }catch(e){} });
+  try{ buildHist(); }catch(e){ HIST=null; }
   render(); renderTrack();
+  if(el('hist')) el('hist').innerHTML=histHtml();
+  try{ if(el('concl')) el('concl').innerHTML=conclHtml(); }catch(e){ if(el('concl')) el('concl').innerHTML=''; }
 }
 // ── 快照（每天一份，之後追蹤入選股的表現）──
 function snapLoad(){ try{ return JSON.parse(localStorage.getItem(SNAPK)||'{}')||{}; }catch(e){ return {}; } }
