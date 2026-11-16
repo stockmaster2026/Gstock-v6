@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>整合篩選 v0.1</title>
+<title>整合篩選 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div id="verdict" class="verdict" style="background:#fff7d6">準備中…</div>
@@ -389,6 +389,7 @@ function analyzeWaves(list,noRows){
   return A;
 }
 // 位階判讀（門檻都是我自己訂的參考範圍，未經驗證）
+var OVR=true;
 function waveState(A){
   if(!A||!A.waves.length) return null;
   var NB=A.NB, w=A.waves[A.waves.length-1], main=A.waves[A.mainIdx], isMain=(A.waves.length-1===A.mainIdx);
@@ -414,6 +415,9 @@ function waveState(A){
     else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
+  // v0.2：「跌後反彈」修正（跟 charts v3.16／timemachine v1.28 一致；回測 180 筆被標成這類的，20 天比大盤少 7.7%，76% 碰停損。10% 是我訂的）
+  if(OVR){ var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
+    if((tier==='go'||tier==='late')&&((q3!=null&&q3<=-0.10)||(q1!=null&&q1<=-0.10))){ label='跌後反彈中'; col='#c0600a'; tier='bounce'; } }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
@@ -425,6 +429,7 @@ var SECS=[], T2S={}, LISTS={};
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
+  if(l.indexOf('跌後反彈')===0) return '跌後反彈';
   if(l.indexOf('剛起步')===0) return '剛起步';
   if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
   if(l.indexOf('進行中')>=0) return '進行中';
@@ -434,7 +439,7 @@ function catOf(st){
   if(l.indexOf('休息中')===0) return '休息中';
   return '沒動靜';
 }
-function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause') return '小心'; return '逆風'; }
+function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause'||t==='bounce') return '小心'; return '逆風'; }
 var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
 // ── 板塊在某一天的狀態（只用那天以前的資料）──
 var SC={};
@@ -453,7 +458,7 @@ function bestAt(t,k){
   var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
   return best;
 }
-// ═════ 整合篩選 v0.1 ═════
+// ═════ 整合篩選 v0.2 ═════
 var SNAPK='gstock_screen_snap_v1', FUND={}, ROWS=[], CTX={};
 function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return c==='&'?'&amp;':(c==='<'?'&lt;':(c==='>'?'&gt;':'&quot;'));}); }
 function avg(a){ return a.length?a.reduce(function(s,x){return s+x;},0)/a.length:null; }
@@ -531,7 +536,7 @@ function render(){
   if(picks.length) v='今天入選 '+picks.length+' 檔：'+picks.slice(0,8).map(function(r){return r.t+(r.bonus===2?'★':'');}).join('、')+(picks.length>8?'…':'')+'。（★＝量與強度都有）';
   else v='今天沒有入選。Stage 2 且板塊不是逆風的只有 '+a2.length+' 檔，其中位置合適的 0 檔。';
   v+=' 大盤：SPY '+(CTX.m50?'在':'不在')+' 50 日線'+(CTX.m50?'上':'下')+'。';
-  v+='<div style="font-size:13.5px;font-weight:700;color:#b3262e;margin-top:6px">⚠ 這是「值得看一眼」的名單，不是買進訊號，也不是確定的方向。這套規則本身還沒被回測證明有效（先到 screen-test.html 看結果）；弱市裡入選的常是資金暫時躲進去的防守股，不一定值得買。</div>';
+  v+='<div style="font-size:13.5px;font-weight:700;color:#b3262e;margin-top:6px">⚠ 這是「值得看一眼」的名單，不是買進訊號。回測（screen-test.html，13184 筆、2025/7～2026/10）：入選 20 天比大盤多 +0.5%，基準 −0.3%，差距小，而且前半年有效（+1.3%）、後半年無效（−1.0%）；大盤在 50 日線下（像現在）入選 +0.8%、隨便挑一檔 +1.1%，沒有比較好。入選裡「有量」那組後半年較好（+2.3%），但前半年不明顯。弱市裡入選的常是資金暫時躲進去的防守股。另外，板塊「順風」那天買的，20 天平均比大盤少 2.6%（65% 碰 8% 停損）、「剛起步」少 6.0%，所以板塊順風不等於現在可以買；板塊層的優勢也不穩定（板塊層回測）。</div>';
   el('verdict').innerHTML=v;
   el('lim').innerHTML='⚠ 這一頁的門檻（Stage 2、離前 30 日高 5% 內、突破後不超過 8%、量 1.3 倍、63 日強度）都是我訂的，沒驗證；回測只證明「DNA ≥5 關＋板塊不逆風」有一點幫助，且強市時沒有幫助。基本面是即時快照，沒有歷史，所以只記錄不當門檻；「常被引用的參考線」是 O’Neil 的 EPS 約 25% 等說法，我尚未逐一查原文核對。價格資料來自 Yahoo，可能晚一天。入選不等於買進，買進還要你看 K 線與 dna。';
 }
