@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊層回測 v0.1</title>
+<title>板塊層回測 v0.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,11 +36,11 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊層<span>回測</span> v0.1</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊層<span>回測</span> v0.2</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">板塊「不逆風」這一層，到底穩不穩？</div>
-    <div class="sub">screen 回測發現：大盤弱的時候，只看「板塊不逆風」就比隨便挑好很多，加了 Stage 2 反而變差。這頁檢查那是真的、還是剛好：分三段時間、逐月、拿掉單一板塊各看一次。只驗證，不改任何工具。</div>
+    <div class="sub">screen 回測發現：大盤弱的時候，只看「板塊不逆風」就比隨便挑好很多，加了 Stage 2 反而變差。v0.2 加了「跌後反彈」修正，並把有／沒有修正的結果並排比較。這頁檢查那是真的、還是剛好：分三段時間、逐月、拿掉單一板塊各看一次。只驗證，不改任何工具。</div>
     <div class="prog" id="prog">準備中…</div>
     <div class="row"><button class="btn go" id="btnT" disabled>開始回測</button></div>
     <div id="outT"></div>
@@ -385,6 +385,7 @@ function analyzeWaves(list,noRows){
   return A;
 }
 // 位階判讀（門檻都是我自己訂的參考範圍，未經驗證）
+var OVR=false;
 function waveState(A){
   if(!A||!A.waves.length) return null;
   var NB=A.NB, w=A.waves[A.waves.length-1], main=A.waves[A.mainIdx], isMain=(A.waves.length-1===A.mainIdx);
@@ -410,6 +411,9 @@ function waveState(A){
     else if(tier==='pull') why=pkTxt+'已經從最高點往下跌了約 '+dropPct+'%（這一波漲幅被吃回去 '+Math.round(give*10)+' 成），<b>不是小小停一下，是有一波賣壓</b>。還沒破壞，要看接下來守不守得住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
+  // v0.2：跟 charts v3.16／timemachine v1.28 一樣的「跌後反彈」修正（OVR 開關：回測時可以開／關比較；10% 是我訂的、沒驗證）
+  if(OVR){ var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
+    if((tier==='go'||tier==='late')&&((q3!=null&&q3<=-0.10)||(q1!=null&&q1<=-0.10))){ label='跌後反彈中'; col='#c0600a'; tier='bounce'; } }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
@@ -421,6 +425,7 @@ var SECS=[], T2S={}, LISTS={};
 function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
+  if(l.indexOf('跌後反彈')===0) return '跌後反彈';
   if(l.indexOf('剛起步')===0) return '剛起步';
   if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
   if(l.indexOf('進行中')>=0) return '進行中';
@@ -430,7 +435,7 @@ function catOf(st){
   if(l.indexOf('休息中')===0) return '休息中';
   return '沒動靜';
 }
-function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause') return '小心'; return '逆風'; }
+function light(st){ if(!st) return '沒動靜'; var t=st.tier; if(t==='go') return '順風'; if(t==='late'||t==='pause'||t==='bounce') return '小心'; return '逆風'; }
 var RK={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
 // ── 板塊在某一天的狀態（只用那天以前的資料）──
 var SC={};
@@ -458,27 +463,31 @@ function cellS(a){ var t=stat(a.map(function(x){return x.o;})); if(!t) return '<
 function exOf(a){ var t=stat(a.map(function(x){return x.o;})); return t?t.exm:null; }
 function table(title,rows){ var x='<div style="margin-top:10px;font-weight:900;font-size:15.5px">'+title+'</div><div class="tw"><table class="t"><tr><th>組</th><th>筆數</th><th>20天中位數</th><th>比大盤多</th><th>賺錢／碰停損8%</th></tr>'; rows.forEach(function(r){ x+='<tr><td><b>'+r[0]+'</b></td>'+cellS(r[1])+'</tr>'; }); return x+'</table></div>'; }
 function runS(){
-  var btn=el('btnT'); btn.disabled=true; var out=el('outT'); out.innerHTML='<div class="sub">計算板塊時間線與歷史掃描…（一兩分鐘）</div>';
+  var btn=el('btnT'); btn.disabled=true; var out=el('outT'); out.innerHTML='<div class="sub">計算板塊時間線（新舊兩種）與歷史掃描…（約 2～4 分鐘，請不要離開頁面）</div>';
   var S=BARS['SPY'], n0=S.d.length, TLs={};
   setTimeout(function(){
-    var save=S;
-    for(var k=119;k<n0;k+=5){ BARS['SPY']={d:S.d.slice(0,k+1)};
-      Object.keys(LISTS).forEach(function(nm){ var v=null; try{ var A=analyzeWaves(LISTS[nm],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){} (TLs[nm]=TLs[nm]||[]).push({d:S.d[k],v:v}); }); }
-    BARS['SPY']=save;
-    var at=function(t,date){ var best=null; (T2S[t]||[]).forEach(function(nm){ var a=TLs[nm]; if(!a) return; var v=null; for(var q=a.length-1;q>=0;q--){ if(a[q].d<=date){ v=a[q].v; break; } } if(!v) return; if(!best||RK[v.L]<RK[best.L]) best={L:v.L,c:v.c,n:nm}; }); return best; };
+    var buildTL=function(ovr){ OVR=ovr; var T={}; var save=S;
+      for(var k=119;k<n0;k+=5){ BARS['SPY']={d:S.d.slice(0,k+1)};
+        Object.keys(LISTS).forEach(function(nm){ var v=null; try{ var A=analyzeWaves(LISTS[nm],true); v={L:light(A.st),c:catOf(A.st)}; }catch(e){} (T[nm]=T[nm]||[]).push({d:S.d[k],v:v}); }); }
+      BARS['SPY']=save; OVR=false; return T; };
+    var TLn=buildTL(true), TLo=buildTL(false);
     var sma50=[], s=0; for(var q=0;q<n0;q++){ s+=S.c[q]; if(q>=50) s-=S.c[q-50]; sma50[q]=q>=49?s/50:null; }
     var uni=Object.keys(T2S).filter(function(t){return BARS[t]&&LISTS[(T2S[t]||[])[0]];});
-    var R=[];
-    uni.forEach(function(t){
-      var B=BARS[t], n=B.c.length;
-      for(var i=160;i+21<n;i+=5){
-        var sj=S.map[B.d[i]]; if(sj==null||sj+21>=n0||sma50[sj]==null) continue;
-        var e=B.o[i+1]; if(!(e>0)) continue;
-        var b=at(t,B.d[i]); if(!b) continue; var L=b.L==='沒動靜'?'小心':b.L;
-        var r20=B.c[i+20]/e-1, s20=S.c[sj+20]/S.o[sj+1]-1, mn=1e9; for(var k2=i+1;k2<=i+20;k2++) if(B.l[k2]<mn) mn=B.l[k2];
-        R.push({d:B.d[i],mk:(S.c[sj]>sma50[sj]?'up':'dn'),L:L,c:b.c,sec:b.n,o:{r:r20*100,ex:(r20-s20)*100,dd:(mn/e-1)*100}});
-      }
-    });
+    var mkR=function(TLs){
+      var at=function(t,date){ var best=null; (T2S[t]||[]).forEach(function(nm){ var a=TLs[nm]; if(!a) return; var v=null; for(var q=a.length-1;q>=0;q--){ if(a[q].d<=date){ v=a[q].v; break; } } if(!v) return; if(!best||RK[v.L]<RK[best.L]) best={L:v.L,c:v.c,n:nm}; }); return best; };
+      var R=[];
+      uni.forEach(function(t){
+        var B=BARS[t], n=B.c.length;
+        for(var i=160;i+21<n;i+=5){
+          var sj=S.map[B.d[i]]; if(sj==null||sj+21>=n0||sma50[sj]==null) continue;
+          var e=B.o[i+1]; if(!(e>0)) continue;
+          var b=at(t,B.d[i]); if(!b) continue; var L=b.L==='沒動靜'?'小心':b.L;
+          var r20=B.c[i+20]/e-1, s20=S.c[sj+20]/S.o[sj+1]-1, mn=1e9; for(var k2=i+1;k2<=i+20;k2++) if(B.l[k2]<mn) mn=B.l[k2];
+          R.push({d:B.d[i],mk:(S.c[sj]>sma50[sj]?'up':'dn'),L:L,c:b.c,sec:b.n,o:{r:r20*100,ex:(r20-s20)*100,dd:(mn/e-1)*100}});
+        }
+      });
+      return R; };
+    var R=mkR(TLn), R0=mkR(TLo);
     R.sort(function(a,b){return a.d<b.d?-1:1;});
     var ALL=function(){return true;}, DN=function(x){return x.mk==='dn';}, UP=function(x){return x.mk==='up';}, NH=function(x){return x.L!=='逆風';};
     var h='<div class="read">共 '+R.length+' 個「某檔某天」（'+(R[0]?R[0].d:'—')+' 到 '+(R.length?R[R.length-1].d:'—')+'），每檔每 5 個交易日一次；隔天開盤買、20 天後，比 SPY 同期。這頁只問一件事：<b>板塊狀態本身有沒有用，而且是不是穩定、不是靠少數幾次或少數板塊</b>。</div>';
@@ -486,6 +495,14 @@ function runS(){
     h+=table('1. 全部時期：板塊燈號',byL(ALL));
     h+=table('2. 大盤在 50 日線下（像現在）',byL(DN));
     h+=table('3. 大盤在 50 日線上',byL(UP));
+    // 新舊引擎對照
+    var cmpRows=function(f){ return ['順風','小心','逆風'].map(function(L){ var a=R0.filter(f).filter(function(x){return x.L===L;}), b=R.filter(f).filter(function(x){return x.L===L;}); var ea=exOf(a), eb=exOf(b); return '<td>'+L+'</td><td>'+a.length+'</td><td class="'+CL(ea)+'">'+pc1(ea)+'</td><td>'+b.length+'</td><td class="'+CL(eb)+'">'+pc1(eb)+'</td>'; }); };
+    var xc='<div style="margin-top:12px;font-weight:900;font-size:16px">★ 新舊對照：沒有「跌後反彈」修正 vs 有修正（比大盤多）</div><div class="tw"><table class="t"><tr><th>情況</th><th>燈號</th><th>舊 筆數</th><th>舊</th><th>新 筆數</th><th>新</th></tr>';
+    [['全部時期',ALL],['大盤在 50 日線下',DN],['大盤在 50 日線上',UP]].forEach(function(g){ cmpRows(g[1]).forEach(function(r,i){ xc+='<tr>'+(i===0?'<td rowspan="3"><b>'+g[0]+'</b></td>':'')+r+'</tr>'; }); });
+    xc+='</table></div>';
+    var bn=R.filter(function(x){return x.c==='跌後反彈';}), fs0=R0.filter(function(x){return x.c==='剛起步';}), fs1=R.filter(function(x){return x.c==='剛起步';});
+    xc+='<div class="read" style="font-size:14px">被改標成「跌後反彈」的有 <b>'+bn.length+'</b> 筆，比大盤多 <b class="'+CL(exOf(bn))+'">'+pc1(exOf(bn))+'</b>（這些原本會被標順風或偏後段）。「剛起步」：舊 '+fs0.length+' 筆 '+pc1(exOf(fs0))+' → 新 '+fs1.length+' 筆 '+pc1(exOf(fs1))+'。</div>';
+    h+=xc;
     // 4 三等分
     var t1=R.length?R[Math.floor(R.length/3)].d:'', t2=R.length?R[Math.floor(R.length*2/3)].d:'';
     var thirds=[['前段（'+(R[0]?R[0].d:'')+' ～ '+t1+'）',function(x){return x.d<t1;}],['中段（'+t1+' ～ '+t2+'）',function(x){return x.d>=t1&&x.d<t2;}],['後段（'+t2+' 之後）',function(x){return x.d>=t2;}]];
