@@ -531,6 +531,7 @@ function render(){
   if(picks.length) v='今天入選 '+picks.length+' 檔：'+picks.slice(0,8).map(function(r){return r.t+(r.bonus===2?'★':'');}).join('、')+(picks.length>8?'…':'')+'。（★＝量與強度都有）';
   else v='今天沒有入選。Stage 2 且板塊不是逆風的只有 '+a2.length+' 檔，其中位置合適的 0 檔。';
   v+=' 大盤：SPY '+(CTX.m50?'在':'不在')+' 50 日線'+(CTX.m50?'上':'下')+'。';
+  v+='<div style="font-size:13.5px;font-weight:700;color:#b3262e;margin-top:6px">⚠ 這是「值得看一眼」的名單，不是買進訊號，也不是確定的方向。這套規則本身還沒被回測證明有效（先到 screen-test.html 看結果）；弱市裡入選的常是資金暫時躲進去的防守股，不一定值得買。</div>';
   el('verdict').innerHTML=v;
   el('lim').innerHTML='⚠ 這一頁的門檻（Stage 2、離前 30 日高 5% 內、突破後不超過 8%、量 1.3 倍、63 日強度）都是我訂的，沒驗證；回測只證明「DNA ≥5 關＋板塊不逆風」有一點幫助，且強市時沒有幫助。基本面是即時快照，沒有歷史，所以只記錄不當門檻；「常被引用的參考線」是 O’Neil 的 EPS 約 25% 等說法，我尚未逐一查原文核對。價格資料來自 Yahoo，可能晚一天。入選不等於買進，買進還要你看 K 線與 dna。';
 }
