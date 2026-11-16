@@ -151,6 +151,12 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 .mkt-p .ph{font-size:12px;font-weight:700;color:#12385e;letter-spacing:1px;margin-bottom:7px;}
 .mkt-p .pq{font-weight:700;color:#12385e;}
 .mkt-p .pline{margin-bottom:9px;}
+.mkt-p .pv{margin:2px 0 14px;padding:11px 13px;border-radius:8px;border-left:6px solid;font-size:17px;font-weight:800;line-height:1.7;}
+.mkt-p .pv .pvs{display:block;font-size:13.5px;font-weight:500;margin-top:4px;line-height:1.8;color:#334;}
+.mkt-p .pv.g{background:#f0fff4;color:#15803d;border-color:#16a34a;}
+.mkt-p .pv.y{background:#fffbeb;color:#9a5b00;border-color:#d98a00;}
+.mkt-p .pv.o{background:#fff4e8;color:#c2570c;border-color:#ea6a12;}
+.mkt-p .pv.r{background:#fff1f1;color:#c81e1e;border-color:#d92d2d;}
 .mkt-p .pnow{margin-top:11px;padding:11px 13px;background:#eef4fb;border:1px solid #c5daf0;
   border-radius:9px;line-height:2.0;}
 .sec{margin:12px 16px 0;padding:15px 16px 16px;
@@ -336,7 +342,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.8</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.10</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1005,6 +1011,53 @@ function mktRender(rows, err){
                : (upSlope===0) ? '四條 50 日線<b>本身全部在下彎</b>'
                : upSlope+'/'+n+' 條 50 日線本身還在往上、'+dnSlope+' 條已經下彎';
 
+  /* 11/16 Jasmine 要求：斜率那一段要有「所以今天是反彈還是趨勢」的白話判讀（放大、上色）。
+     分類（我自己訂的，未回測）：價格在50日線上/下 × 50日線本身往上/下
+       上＋上＝趨勢向上　上＋下＝反彈（線還在下彎）　下＋上＝上升途中休息　下＋下＝下跌趨勢中 */
+  var cTrendUp=0,cBounce=0,cRest=0,cDown=0, steepI=-1, flatI=-1;
+  for(var k3=0;k3<rows.length;k3++){
+    var sl=rows[k3].slope; if(sl==null) continue;
+    var a5=!!rows[k3].a50, su=(sl>0);
+    if(a5&&su) cTrendUp++; else if(a5&&!su) cBounce++; else if(!a5&&su) cRest++; else cDown++;
+    if(!su){ if(steepI<0||sl<rows[steepI].slope) steepI=k3; if(flatI<0||sl>rows[flatI].slope) flatI=k3; }
+  }
+  var slopeCls, slopeHead, slopeSub;
+  if(cDown>=Math.ceil(n/2)){
+    slopeCls='r'; slopeHead='🔴 今天不是反彈，是「下跌趨勢中」';
+    slopeSub=cDown+'/'+n+' 個指數是「價格在 50 日線下面、50 日線本身還在下彎」—— 賣方還在主導，連中期成本線（50 日線）都在往下掉。'
+      +(steepI>=0?'下彎最陡的是 <b>'+MKT_LIST[steepI].n+'（'+rows[steepI].slope.toFixed(1)+'%）</b>':'')
+      +((flatI>=0&&flatI!==steepI)?'，最平緩的是 <b>'+MKT_LIST[flatI].n+'（'+rows[flatI].slope.toFixed(1)+'%）</b>':'')+'。<br>'
+      +'要先看到價格站回 50 日線、而且線的斜率轉平或回升，才算止跌；現在還沒有。';
+  }else if(cBounce>=Math.ceil(n/2)){
+    slopeCls='y'; slopeHead='🟡 今天比較像「反彈」，還不算趨勢';
+    slopeSub=cBounce+'/'+n+' 個指數價格已經回到 50 日線上面，但那條線本身還在下彎 —— 價格先彈上來，平均成本還沒跟上。<br>'
+      +'要等 50 日線斜率轉正，才能說是趨勢；在那之前追高的風險比較大。';
+  }else if(cRest>=Math.ceil(n/2)){
+    slopeCls='y'; slopeHead='🟡 今天像「上升途中的休息」';
+    slopeSub=cRest+'/'+n+' 個指數價格跌到 50 日線下面，但 50 日線本身還在往上 —— 短線在喘息，中期成本還在墊高。<br>'
+      +'只要斜率沒轉負，還不算趨勢壞掉；但要看價格多久站得回去。';
+  }else if(cTrendUp>=Math.ceil(n/2)){
+    slopeCls='g'; slopeHead='🟢 今天是「趨勢向上」';
+    slopeSub=cTrendUp+'/'+n+' 個指數價格在 50 日線上面、50 日線本身也在往上 —— 買方在主動抬價，這是順風的長相。';
+  }else{
+    slopeCls='y'; slopeHead='🟡 今天的斜率方向不一致';
+    slopeSub='四個指數的價格位置和 50 日線方向沒有明顯偏向哪一邊（趨勢向上 '+cTrendUp+'、反彈 '+cBounce+'、休息 '+cRest+'、下跌 '+cDown+'），先別下結論。';
+  }
+  var slopeBox='<div class="pv '+slopeCls+'">'+slopeHead+'<span class="pvs">'+slopeSub+'</span></div>';
+  /* 離一年高點的白話判讀（11/16 改：不只看平均，要看有幾個指數已進入修正；平均會把最深的藏起來） */
+  var nCorr=0, nBear=0, nHigh=0, corrNames=[];
+  for(var k4=0;k4<rows.length;k4++){
+    var fh=rows[k4].fromHi;
+    if(fh<=-20) nBear++; else if(fh<=-10){ nCorr++; corrNames.push(MKT_LIST[k4].n+'（'+fh.toFixed(1)+'%）'); } else if(fh>-5) nHigh++;
+  }
+  var nDeep=nCorr+nBear, hiCls, hiHead, hiSub;
+  if(nBear>0){ hiCls='r'; hiHead='🔴 已有指數跌到空頭等級的深度'; hiSub='有 '+nBear+' 個指數離一年高點超過 20%。'; }
+  else if(nDeep>=Math.ceil(n/2)){ hiCls='r'; hiHead='🔴 大盤整體已進入「修正」，不是小回檔'; hiSub=nDeep+'/'+n+' 個指數已經跌超過 10%：'+corrNames.join('、')+'。'; }
+  else if(nDeep>0){ hiCls='o'; hiHead='🟠 分化：有指數已進入修正，其他還在正常回檔'; hiSub=nDeep+'/'+n+' 個指數已跌超過 10%：'+corrNames.join('、')+'；其餘離高點不到 10%。'; }
+  else if(avgHi>-5){ hiCls='g'; hiHead='🟢 還在高檔區，沒有像樣的回檔'; hiSub='四個指數離一年高點都不到 10%，平均 '+avgHi.toFixed(1)+'%。'; }
+  else { hiCls='y'; hiHead='🟡 正常回檔的範圍'; hiSub='四個指數都在 −10% 以內，平均 '+avgHi.toFixed(1)+'%，一般算健康的喘息。'; }
+  var hiBox='<div class="pv '+hiCls+'">'+hiHead+'<span class="pvs">'+hiSub+'<br>平均 '+avgHi.toFixed(1)+'%，最深的是 '+MKT_LIST[worstI].n+'（'+rows[worstI].fromHi.toFixed(1)+'%）。這只告訴你「已經跌了多深」，不預測還會不會再跌。</span></div>';
+
   var conclude;
   if(ok200>=n && (n-ok50)>0 && upSlope>=Math.ceil(n/2)){
     conclude = '把這三句連起來：<b>價格短線跌破了近期成本，但長期成本線本身還在往上</b> —— '
@@ -1026,11 +1079,13 @@ function mktRender(rows, err){
      + '往下＝越晚進場的人買得越便宜 —— 賣的人在讓價求售。<br>'
      + '⚠ 為什麼要多看這一欄：價格可能剛從谷底彈上這條線之上，但線本身還在下彎 —— '
      + '那叫<b>反彈</b>，不叫趨勢。這跟 dna 判 Stage 2 是同一個道理。</div>'
+     + slopeBox
      + '<div class="pline"><span class="pq">「離一年高點」在講什麼？</span><br>'
      + '從過去一年最高價往下算，現在掉了幾 %。它量的是<b>這一波已經跌了多深</b>。<br>'
      + '0 ~ −5%＝還在高檔區　·　−5 ~ −10%＝正常回檔　·　'
      + '−10 ~ −20%＝修正（correction）　·　−20% 以上＝一般定義的空頭。<br>'
      + '⚠ 它<b>不預測</b>會不會再跌，只告訴你現在站在哪一格。</div>'
+     + hiBox
      + '<div class="pnow"><b>那今天是什麼狀況？</b><br>'
      + '四個指數平均離一年高點 <b>'+avgHi.toFixed(1)+'%</b>，最深的是'
      + MKT_LIST[worstI].n+'（'+rows[worstI].fromHi.toFixed(1)+'%）—— '+depth+'。<br>'
@@ -1542,9 +1597,22 @@ function etNow(){
   return {date:o.year+'-'+o.month+'-'+o.day, mins:(+o.hour%24)*60+(+o.minute), dow:o.weekday};
 }
 function mktOpenNow(dateStr){ var n=etNow(); if(dateStr!==n.date||n.dow==='Sat'||n.dow==='Sun') return false; return n.mins>=570&&n.mins<965; }
+/* 11/16：「今天」的定義。舊版把 localStorage 裡最新的一天當成今天，所以上次掃的 11/12 會一直掛著。
+   現在：應有的最新交易日＝美東今天（已開盤後）或上一個平日；資料日不是它、而且也不是「今天掃過」的，就不當今天的資料顯示。
+   （不含國定假日表；假日當天掃過的結果，用「掃描當天」放行。） */
+function expTradeDate(){
+  var n=etNow(), d=new Date(n.date+'T12:00:00Z');
+  if(n.dow==='Sat'||n.dow==='Sun'||n.mins<570){ do{ d.setUTCDate(d.getUTCDate()-1); }while(d.getUTCDay()===0||d.getUTCDay()===6); }
+  return d.toISOString().slice(0,10);
+}
+function etDateOf(ms){
+  var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(ms)), o={};
+  p.forEach(function(x){ o[x.type]=x.value; }); return o.year+'-'+o.month+'-'+o.day;
+}
+function scFresh(d,at){ var e=expTradeDate(); return d===e||(!!at&&at>=e); }
 function scChips(){
   var el=document.getElementById('sc-ui'); if(!el||typeof SECTORS==='undefined') return;
-  var D=scLoadDone(), latest=''; Object.keys(D).forEach(function(k){ if(D[k].d>latest) latest=D[k].d; });
+  var D=scLoadDone(), latest=''; Object.keys(D).forEach(function(k){ if(scFresh(D[k].d,D[k].at?etDateOf(D[k].at):null)&&D[k].d>latest) latest=D[k].d; });
   var thr=scThr();
   var chips=SECTORS.map(function(c){
     var d=D[c.k], tot=wgAll(c.s).length, cls='sc-chip', sub='還沒查';
@@ -1564,7 +1632,7 @@ var SC_VIEW='hot', SC_ROWS_K='sc_rows_v1';
 function scLoadRows(){ try{ return JSON.parse(localStorage.getItem(SC_ROWS_K)||'{}')||{}; }catch(e){ return {}; } }
 function scSaveRows(k,asof,open,st,ok){
   var R=scLoadRows();
-  R[k]={d:asof,open:!!open,rows:ok.map(function(t){ var s=st[t], cp=scCp(s); return {t:t,ch:+s.chg.toFixed(2),vr:s.vr==null?null:+s.vr.toFixed(2),cp:cp==null?null:+cp.toFixed(2),dm:+s.dMA.toFixed(1),fh:s.fromHi==null?null:+s.fromHi.toFixed(1),c:+s.c.toFixed(2)}; })};
+  R[k]={d:asof,at:etNow().date,open:!!open,rows:ok.map(function(t){ var s=st[t], cp=scCp(s); return {t:t,ch:+s.chg.toFixed(2),vr:s.vr==null?null:+s.vr.toFixed(2),cp:cp==null?null:+cp.toFixed(2),dm:+s.dMA.toFixed(1),fh:s.fromHi==null?null:+s.fromHi.toFixed(1),c:+s.c.toFixed(2)}; })};
   try{ localStorage.setItem(SC_ROWS_K,JSON.stringify(R)); }catch(e){}
 }
 function scSetView(v){ SC_VIEW=v; scPaint(); }
@@ -1647,8 +1715,8 @@ function scPaint(){
 /* 全部板塊爆量總表：把今天查過的各板塊合在一張表 */
 function scTotal(){
   var el=document.getElementById('sc-tot'); if(!el||typeof SECTORS==='undefined') return;
-  var R=scLoadRows(), thr=scThr(), latest='';
-  Object.keys(R).forEach(function(k){ if(R[k].d>latest) latest=R[k].d; });
+  var R=scLoadRows(), thr=scThr(), latest='', oldest='';
+  Object.keys(R).forEach(function(k){ if(R[k].d>oldest) oldest=R[k].d; if(scFresh(R[k].d,R[k].at)&&R[k].d>latest) latest=R[k].d; });
   var done=SECTORS.filter(function(c){ return R[c.k]&&R[c.k].d===latest; }), todo=SECTORS.filter(function(c){ return !(R[c.k]&&R[c.k].d===latest); });
   var map={}, dn={}, anyOpen=false;
   done.forEach(function(c){ if(R[c.k].open) anyOpen=true; R[c.k].rows.forEach(function(r){
@@ -1662,8 +1730,8 @@ function scTotal(){
   var body=up.map(function(x,i){ var r=x.r;
     return '<tr><td><b>$'+r.t+'</b></td><td>'+x.secs.map(esc2).join('、')+'</td><td class="wg-up"><b>+'+r.ch.toFixed(1)+'%</b></td><td><b>'+r.vr.toFixed(1)+'×</b></td><td>'+cpTxt(r.cp)+'</td><td>'+(r.dm>=0?'上':'下')+' '+Math.abs(r.dm).toFixed(0)+'%</td><td>'+(r.fh==null?'—':r.fh.toFixed(0)+'%')+'</td><td id="sct'+i+'"><button class="tr-btn" onclick="scRowNews(this,\''+r.t+'\')" style="padding:4px 9px;font-size:12px;white-space:nowrap">📰 看整合</button></td></tr>'; }).join('');
   el.innerHTML='<div style="margin:10px 16px 0;background:#fff8e6;border:2px solid #e6c46a;border-radius:12px;padding:11px 14px">'
-    +'<div style="font-size:15.5px;font-weight:800;color:#6b4e00">🔥 今天全部板塊「上漲＋爆量」總表：'+(done.length?up.length+' 檔':'還沒有資料')+'</div>'
-    +'<div style="font-size:12.5px;color:#5a4a1a;margin-top:3px;line-height:1.6">'+(done.length?'資料日 '+latest+'；已查 <b>'+done.length+'／'+SECTORS.length+'</b> 個板塊。爆量＝今天成交量 ≥ 近 20 天平均的 '+thr+' 倍。'+(todo.length?'<br>還沒查（不在表裡）：'+todo.map(function(c){ return esc2(c.n); }).join('、')+'。':'<br>全部板塊都查過了。')+(anyOpen?'<br><span style="color:#c62828">⚠ 有板塊是盤中查的，量還沒收完，數字偏低、也沒有記進追蹤。</span>':''):'按下面的按鈕，一次把所有板塊查完；或單獨按某個板塊，查完會自動加進這張表。')+'</div>'
+    +'<div style="font-size:15.5px;font-weight:800;color:#6b4e00">🔥 今天全部板塊「上漲＋爆量」總表：'+(done.length?up.length+' 檔':'還沒有今天的資料')+'</div>'
+    +'<div style="font-size:12.5px;color:#5a4a1a;margin-top:3px;line-height:1.6">'+(done.length?'資料日 '+latest+'；已查 <b>'+done.length+'／'+SECTORS.length+'</b> 個板塊。爆量＝今天成交量 ≥ 近 20 天平均的 '+thr+' 倍。'+(todo.length?'<br>還沒查（不在表裡）：'+todo.map(function(c){ return esc2(c.n); }).join('、')+'。':'<br>全部板塊都查過了。')+(anyOpen?'<br><span style="color:#c62828">⚠ 有板塊是盤中查的，量還沒收完，數字偏低、也沒有記進追蹤。</span>':''):(oldest?'<b style="color:#c62828">目前只有舊資料（'+oldest+'），不是今天的，所以不顯示。</b><br>':'')+'按下面的按鈕，一次把所有板塊查完；或單獨按某個板塊，查完會自動加進這張表。')+'</div>'
     +'<div style="margin-top:6px"><button class="fb" onclick="scRunAll()"'+(SC_BUSY?' disabled':'')+'>▶ 一次跑全部 '+SECTORS.length+' 個板塊（約 1～2 分鐘；只查價格與量，新聞按每列的 📰 才抓）</button><div class="wg-hint" id="sc-allmsg" style="margin-top:4px"></div></div>'
     +(done.length?(Object.keys(cnt).length?'<div style="font-size:12.5px;margin-top:4px"><b>分布：</b>'+Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; }).map(function(n){ return esc2(n)+' '+cnt[n]; }).join('　·　')+'　<span style="color:#718096">（同一檔在兩個板塊時，兩邊都算）</span></div>':'')
       +(up.length?'<div class="tw" style="overflow-x:auto"><table class="sc-t"><tr><th>股票</th><th>板塊</th><th>漲幅</th><th>量是平均的</th><th>K 棒收在</th><th>20 日線</th><th>離 52 週高</th><th>新聞整合</th></tr>'+body+'</table></div>':'<div class="rd-none">已查的板塊今天都沒有「上漲＋爆量」的股票。</div>')
