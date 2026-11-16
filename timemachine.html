@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.31</title>
+<title>板塊時光機 v1.33</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.31</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.33</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -651,10 +651,13 @@ function drawCycle2(lists,ks,M,S,k){
   var pkJ=0; strong.forEach(function(v,j){ if(v>strong[pkJ]) pkJ=j; });
   var spyJ=0; ks.forEach(function(kk,j){ if(S.c[kk]>S.c[ks[spyJ]]) spyJ=j; });
   var nowStrong=strong[last], pk=strong[pkJ];
-  var vc, vt;
-  if(nowStrong<=Math.ceil(pk/3)){ vc='#b3262e'; vt='🔴 市場上能領頭的板塊已經很少：強勢階段只剩 '+nowStrong+' 個，高峰時有 '+pk+' 個'; }
-  else if(nowStrong>=pk*0.7){ vc='#1f6f3a'; vt='🟢 能領頭的板塊還不少：強勢階段 '+nowStrong+' 個，高峰時 '+pk+' 個'; }
-  else { vc='#c0600a'; vt='🟠 能領頭的板塊比高峰少了：強勢階段 '+nowStrong+' 個，高峰時 '+pk+' 個'; }
+  // v1.32：標題直接寫「現在還在強勢階段的板塊」和它的狀態；高峰數量只放在下面的白話讀法
+  var nowList=[]; lists.forEach(function(x,si){ var c=M[si][last]; if(isGoCat(c)) nowList.push(x.s.icon+' '+x.s.name+'（'+c.replace('（偏後段）','·後段')+'）'); });
+  var vc, vt, nm=nowList.length?nowList.join('、'):'';
+  if(!nowStrong){ vc='#b3262e'; vt='🔴 現在沒有任何板塊在強勢階段'; }
+  else if(nowStrong<=Math.ceil(pk/3)){ vc='#b3262e'; vt='🔴 現在強勢階段只有 '+nowStrong+' 個：'+nm; }
+  else if(nowStrong>=pk*0.7){ vc='#1f6f3a'; vt='🟢 現在強勢階段有 '+nowStrong+' 個：'+nm; }
+  else { vc='#c0600a'; vt='🟠 現在強勢階段有 '+nowStrong+' 個：'+nm; }
   // ── ② 堆疊柱＋SPY ──
   var W=640,H=150,PL=8,PR=8,PT=16,PB=20, cw=(W-PL-PR)/n, bars='', ln=[], sMin=1e18,sMax=-1e18;
   ks.forEach(function(kk){ var v=S.c[kk]; if(v<sMin)sMin=v; if(v>sMax)sMax=v; });
@@ -689,7 +692,7 @@ function drawCycle2(lists,ks,M,S,k){
     return {x:m.x,cats:cats,path:cycPath(cats),wtxt:wtxt}; });
   var head='<tr><th style="text-align:left">板塊</th>'+cols.map(function(c){ return '<th>'+c.n+'</th>'; }).join('')+'<th style="text-align:left">走到哪了（白話）</th></tr>';
   var body=rows.map(function(r){ return '<tr><td style="white-space:nowrap"><b>'+r.x.s.icon+' '+r.x.s.name+'</b></td>'+r.cats.map(function(c){ return '<td style="text-align:center">'+(c?cycChip(c):'<span style="color:#aaa">—</span>')+'</td>'; }).join('')+'<td style="min-width:210px"><b style="color:'+r.path.c+'">'+r.path.t+'</b><br><span style="font-size:12px;color:#556">'+r.wtxt+'</span></td></tr>'; }).join('');
-  box.innerHTML='<div style="background:#fff7d6;border-left:6px solid '+vc+';border-radius:8px;padding:9px 12px;margin:8px 0"><div style="font-size:17px;font-weight:800;color:'+vc+';line-height:1.55">'+vt+'</div></div>'
+  box.innerHTML='<div style="background:#fff7d6;border-left:6px solid '+vc+';border-radius:8px;padding:9px 12px;margin:8px 0"><div style="font-size:17px;font-weight:800;color:'+vc+';line-height:1.55">'+vt+'</div><div style="font-size:13px;color:#666;margin-top:2px">這 1 年裡高峰時有 '+pk+' 個板塊同時在強勢階段，現在是高峰的 '+nowStrong+'/'+pk+'（高峰只是這 1 年的最大值，不是滿分，當參考尺看）</div></div>'
    +'<div class="h" style="font-size:15px;margin-top:8px">① 四個時間點：板塊各處在哪個階段</div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:space-around">'+dn+'</div>'+leg
    +'<div class="h" style="font-size:15px;margin-top:14px">② 整個市場的組成怎麼隨時間變（綠色變少＝能領頭的板塊變少）</div>'+stack
    +'<div class="h" style="font-size:15px;margin-top:14px">③ 每個板塊的歷程（由上到下＝由早轉強到晚轉強；粗體＝現在還在強勢階段）</div>'+heat
