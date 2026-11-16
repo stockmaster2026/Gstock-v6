@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.29</title>
+<title>板塊時光機 v1.30</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,14 +31,14 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.29</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.30</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
     <div class="sub">只用「那一天以前」的價格重算，沒有偷看後面。位階規則和 charts v3.1 相同，門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證。價格資料約 2 年，所以最早只能看到資料開始後半年左右。</div>
     <div class="row" id="presets"></div>
-    <div class="sub">📍 今天＝最新一天的資料；1 週／1 個月／3 個月前會自動跟著算。★ 是你自己存的日期：想存就先選好日期，按「＋ 把現在選的這天存成按鈕」，不要的按旁邊的 ✕。</div>
-    <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button><select id="hn" class="btn"><option value="126">半年</option><option value="252">一年</option><option value="9999">全部</option></select><select id="hs" class="btn"><option value="">全部板塊</option></select><button class="btn" id="btnHist">看板塊歷程</button></div>
+    <div class="sub">📍 今天＝最新一天的資料；1 週／1 個月／3 個月／6 個月／1 年前會自動跟著算。★ 是你自己存的日期：想存就先選好日期，按「＋ 把現在選的這天存成按鈕」，不要的按旁邊的 ✕。</div>
+    <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button><select id="hn" class="btn"><option value="126">半年</option><option value="252">一年</option><option value="9999">全部</option></select><select id="hs" class="btn"><option value="">全部板塊</option></select><button class="btn" id="btnHist">看板塊歷程</button><button class="btn go" id="btnCycle">🔄 板塊週期表</button></div>
     <div class="row" style="margin-top:6px"><input type="text" id="tk" placeholder="輸入股票代號，例如 TSM" autocapitalize="characters" autocomplete="off" style="font-size:16px;padding:10px 12px;border:2px solid #e6c84a;border-radius:10px;width:210px;background:#fff"><button class="btn go" id="btnTk">查它屬於哪個板塊</button><button class="btn" id="btnLatest">用最新一天</button></div>
     <div class="sub"><b>查個股</b>：只顯示它所屬的板塊，其他板塊不會出現（用上面選的那一天；想看「現在」就按「用最新一天」）。要看全部板塊，按上面的「看這一天」或日期按鈕。</div>
     <div class="prog" id="prog">準備中…</div>
@@ -438,7 +438,7 @@ function qLoad(){ try{ var a=JSON.parse(localStorage.getItem(QK)); if(Array.isAr
 function qSave(a){ try{ localStorage.setItem(QK,JSON.stringify(a)); }catch(e){} }
 function renderQuick(){
   var dt=el('dt'), D=SPYB.d, last=D.length-1, minD=dt.min, saved=qLoad();
-  var rel=[['今天',0],['1 週前',5],['1 個月前',21],['3 個月前',63]];
+  var rel=[['今天',0],['1 週前',5],['1 個月前',21],['3 個月前',63],['6 個月前',126],['1 年前',252]];
   var h=rel.map(function(r){ var i=last-r[1]; if(i<0||D[i]<minD) return ''; var d=D[i];
     return '<button class="btn'+(r[1]===0?' go':'')+'" data-d="'+d+'">'+(r[1]===0?'📍 ':'')+r[0]+' <small>'+d.slice(5).replace('-','/')+'（週'+wd(d)+'）</small></button>'; }).join('');
   h+=saved.map(function(q,i){ return '<span style="display:inline-flex;gap:2px"><button class="btn" data-d="'+q.d+'">★ '+q.n+'</button><button class="btn" data-x="'+i+'" style="padding:9px 9px" title="移除這個按鈕">✕</button></span>'; }).join('');
@@ -599,6 +599,73 @@ function showHist(ds){
   var items=secLists().filter(function(x){return !only||x.s.name===only;}).map(function(x){ return {title:x.s.icon+' '+x.s.name,x:x,o:CATS.indexOf(catOf(stateAt(x,k).st))}; }).sort(function(a,b){return a.o-b.o;});
   histInto(el('histBox'),items,k,HN());
 }
+// ═════ v1.30：板塊週期表（每個板塊在 6 個月前／3 個月前／1 個月前／今天各是什麼狀態；底下畫「強勢階段板塊數」隨時間怎麼變）═════
+// ⚠ 狀態分類和門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證；「強勢階段」＝剛起步／進行中／進行中偏後段／高點附近暫停。
+function isGoCat(c){ return !!GOC[c]; }
+function cycChip(c){ return '<span style="display:inline-block;background:'+(CATC[c]||'#999')+';color:#fff;font-weight:800;font-size:12.5px;padding:3px 7px;border-radius:5px;white-space:nowrap">'+(c||'—').replace('（偏後段）','·後段')+'</span>'; }
+function cycPath(cats){ // cats：由舊到新，null＝那天資料不夠
+  var v=cats.filter(function(c){return c;}); if(v.length<2) return {t:'資料不夠，看不出路徑',c:'#667'};
+  var now=v[v.length-1], before=v.slice(0,-1), anyGo=before.some(isGoCat), allGo=before.every(isGoCat);
+  if(isGoCat(now)&&allGo) return {t:'一路都在強勢階段（持續很久，要留意是不是偏後段）',c:'#c0600a'};
+  if(isGoCat(now)) return {t:'新冒出來的強勢：之前不是強勢，現在進來了',c:'#1f6f3a'};
+  if(anyGo) return {t:'曾經強過，現在已經退下來了',c:'#b3262e'};
+  return {t:'這段期間都沒有強過',c:'#667'};
+}
+function showCycle(ds){
+  var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
+  var k=kOf(ds), out=el('out');
+  if(k<119){ out.innerHTML='<div class="box">這一天太早了，資料最早可看 <b>'+fd(SPYB.d[119])+'</b> 之後。</div>'; return; }
+  var S=SPYB, date=S.d[k];
+  var cols=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]].map(function(c){ var kk=k-c[1]; return {n:c[0],k:(kk>=119)?kk:null}; });
+  var lists=secLists(), rows=[];
+  lists.forEach(function(x){
+    var cats=cols.map(function(c){ if(c.k==null) return null; var st=stateAt(x,c.k).st; return catOf(st); });
+    var now=stateAt(x,k), st=now.st, wtxt='—';
+    if(st&&st.last){ var w=st.last; wtxt=st.confirmed?('上一波（已結束）：走了 '+(w.i1-w.i0)+' 個交易日、漲 '+Math.round(w.gain*100)+'%'):('這一波：已 '+st.bars+' 個交易日、漲 '+Math.round(w.gain*100)+'%'); }
+    rows.push({x:x,cats:cats,path:cycPath(cats),wtxt:wtxt,o:CATS.indexOf(cats[cats.length-1])});
+  });
+  rows.sort(function(a,b){ return (a.o<0?99:a.o)-(b.o<0?99:b.o); });
+  var cnt=cols.map(function(c,ci){ if(c.k==null) return null; return rows.filter(function(r){ return isGoCat(r.cats[ci]); }).length; });
+  var head='<tr><th style="text-align:left">板塊</th>'+cols.map(function(c){ return '<th>'+c.n+(c.k!=null?'<br><span style="font-weight:400;font-size:11px">'+md(S.d[c.k])+'</span>':'<br><span style="font-weight:400;font-size:11px">資料不足</span>')+'</th>'; }).join('')+'<th style="text-align:left">走到哪了（白話）</th></tr>';
+  var body=rows.map(function(r){
+    return '<tr><td style="white-space:nowrap"><b>'+r.x.s.icon+' '+r.x.s.name+'</b></td>'+r.cats.map(function(c){ return '<td style="text-align:center">'+(c?cycChip(c):'<span style="color:#aaa">—</span>')+'</td>'; }).join('')
+      +'<td style="min-width:210px"><b style="color:'+r.path.c+'">'+r.path.t+'</b><br><span style="font-size:12px;color:#556">'+r.wtxt+'</span></td></tr>';
+  }).join('');
+  var cs=cnt.map(function(n,i){ return n==null?null:(cols[i].n+' <b>'+n+'</b> 個'); }).filter(function(x){return x;}).join(' → ');
+  var nAll=rows.length;
+  out.innerHTML='<div class="box"><div class="h">板塊週期表<span class="sub">　（到 '+fd(date)+'；共 '+nAll+' 個板塊）</span></div>'
+    +'<div class="sub">每個板塊在四個時間點的位階，並排看它的路徑：從哪裡來、現在在哪、是不是已經走很久。顏色：綠＝順風（剛起步／進行中），橘＝小心（偏後段／暫停／跌後反彈），紅褐＝逆風（回檔／大幅回吐／休息中），灰＝沒動靜。</div>'
+    +'<div class="row" style="margin-top:6px"><button class="btn" id="btnBack2">回到當天畫面</button></div>'
+    +'<div style="background:#fff7d6;border-radius:8px;padding:8px 11px;margin:8px 0;font-size:14.5px;line-height:1.7"><b>還在「強勢階段」的板塊數：</b>'+cs+'。<br><span class="sub" id="cycRead">（強勢階段＝剛起步／進行中／偏後段／高點附近暫停。數字越少，代表市場上能領頭的板塊越少。）</span></div>'
+    +'<div class="tw"><table class="t" style="min-width:640px">'+head+body+'</table></div>'
+    +'<div class="h" style="margin-top:14px;font-size:15px">強勢階段的板塊數，跟大盤（SPY）對照</div><div id="cycChart"><div class="sub">計算中…（約十幾秒，iPad 可能更久）</div></div></div>';
+  el('btnBack2').onclick=function(){ TK=''; showDay(el('dt').value); };
+  // 時間序列：每 5 個交易日算一次「強勢階段的板塊數」
+  var ks=[], k0=Math.max(119,OFF,k-252); for(var q=k0;q<=k;q+=5) ks.push(q); if(ks[ks.length-1]!==k) ks.push(k);
+  var series=[], i=0;
+  (function step(){
+    if(i>=ks.length){ drawCycle(series,S,cnt); return; }
+    el('cycChart').innerHTML='<div class="sub">計算中 '+(i+1)+'／'+ks.length+' …</div>';
+    setTimeout(function(){ var kk=ks[i], n=0; lists.forEach(function(x){ if(isGoCat(catOf(stateAt(x,kk).st))) n++; }); series.push({k:kk,n:n,spy:S.c[kk]}); i++; step(); },10);
+  })();
+}
+function drawCycle(series,S,cnt){
+  var box=el('cycChart'); if(!box||series.length<4) return;
+  var W=620,H=150,P=24, n=series.length, mx=Math.max.apply(null,series.map(function(p){return p.n;}))||1, sMin=Math.min.apply(null,series.map(function(p){return p.spy;})), sMax=Math.max.apply(null,series.map(function(p){return p.spy;}));
+  var bw=(W-2*P)/n, bars='', line=[];
+  series.forEach(function(p,j){ var x=P+j*bw, h=(p.n/mx)*(H-2*P); bars+='<rect x="'+(x+1).toFixed(1)+'" y="'+(H-P-h).toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#46b86a" opacity=".75"/>';
+    line.push((x+bw/2).toFixed(1)+','+(H-P-((p.spy-sMin)/Math.max(1e-9,sMax-sMin))*(H-2*P)).toFixed(1)); });
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">'+bars+'<polyline fill="none" stroke="#223" stroke-width="2" points="'+line.join(' ')+'"/>'
+    +'<text x="'+P+'" y="12" font-size="11" fill="#2a7a45">綠柱＝強勢階段的板塊數（最高 '+mx+'）</text><text x="'+(W-P)+'" y="12" font-size="11" fill="#223" text-anchor="end">黑線＝SPY</text>'
+    +'<text x="'+P+'" y="'+(H-6)+'" font-size="11" fill="#667">'+md(S.d[series[0].k])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" font-size="11" fill="#667" text-anchor="end">'+md(S.d[series[n-1].k])+'</text></svg>';
+  var pkN=series.reduce(function(b,p){ return p.n>b.n?p:b; },series[0]), pkS=series.reduce(function(b,p){ return p.spy>b.spy?p:b; },series[0]), last=series[n-1];
+  var dd=pkS.k-pkN.k, rel=(Math.abs(dd)<=5)?'兩者差不多同時見頂':(dd>0?'強勢板塊數比 SPY 早約 '+dd+' 個交易日見頂':'強勢板塊數比 SPY 晚約 '+(-dd)+' 個交易日見頂');
+  var tx='<div style="font-size:14px;line-height:1.75;margin-top:6px"><b>白話：</b>這段期間，強勢階段的板塊數最多時有 <b>'+pkN.n+'</b> 個（'+md(S.d[pkN.k])+'），現在剩 <b>'+last.n+'</b> 個。SPY 這段期間的高點在 '+md(S.d[pkS.k])+'；'+rel+'。'
+    +(last.n<=Math.ceil(pkN.n/3)?'<br><b style="color:#b3262e">現在的板塊數只剩高峰的三分之一以下，市場上能領頭的板塊很少（廣度很低）。</b>':(last.n>=pkN.n*0.7?'<br><b style="color:#1f6f3a">板塊數還在高峰附近，廣度沒有明顯變差。</b>':'<br><b style="color:#c0600a">板塊數比高峰少，但還沒到很低。</b>'))
+    +'</div><div class="sub" style="margin-top:4px">⚠ 這只是這一段期間的一次經驗，<b>不能因此說「板塊數轉弱就一定領先大盤」</b>——要多幾次行情才看得出規律。柱子是每 5 個交易日算一次。</div>';
+  box.innerHTML=svg+tx;
+  var cr=el('cycRead'); if(cr) cr.innerHTML='（強勢階段＝剛起步／進行中／偏後段／高點附近暫停。這段期間最多 '+pkN.n+' 個，現在 '+last.n+' 個；數字越少，代表市場上能領頭的板塊越少。）';
+}
 function showDay(ds){
   var dtE=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtE.max||SPYB.d[SPYB.d.length-1]; dtE.value=ds; }   // v1.27：日期欄被清空（按了「重設」）就自動用最新一天
   var S=SPYB, k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; }
@@ -733,6 +800,7 @@ async function init(){
   el('btnGo').onclick=function(){ TK=''; showDay(dt.value); };
   el('hs').innerHTML='<option value="">全部板塊</option>'+secLists().map(function(x){ return '<option value="'+x.s.name+'">'+x.s.icon+' '+x.s.name+'</option>'; }).join('');
   el('btnHist').onclick=function(){ TK=''; showHist(dt.value); };
+  el('btnCycle').onclick=function(){ TK=''; showCycle(dt.value); };
   var goTk=function(){ TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
   el('btnTk').onclick=goTk; el('tk').onkeydown=function(e){ if(e.key==='Enter') goTk(); };
   el('btnLatest').onclick=function(){ dt.value=dt.max; TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
