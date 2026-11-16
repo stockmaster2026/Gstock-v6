@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>成交量雷達 v0.4</title>
+<title>成交量雷達 v0.5</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.4</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.5</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">① 掃描：哪些股票的量跟自己比特別突出？</div>
@@ -418,6 +418,9 @@ function waveState(A){
     else if(tier==='pull') why=pkTxt+'已吐回 '+Math.round(give*10)+' 成，<b>不像單純暫停</b>，要看之後能不能守住。';
     else why=pkTxt+'已吐回 '+(below?'全部（甚至跌破這一波的起點）':'超過 7 成')+'，<b>這一波幾乎失敗</b>，若整體還在大跌中，更像一個小反彈。';
   }
+  // v0.5：「跌後反彈」修正（跟 screen v0.3／charts／timemachine 一致；回測 180 筆這類板塊 20 天比大盤少 7.7%、76% 碰停損。10% 是我訂的、未驗證）
+  var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
+  if((tier==='go'||tier==='late')&&((q3!=null&&q3<=-0.10)||(q1!=null&&q1<=-0.10))){ label='跌後反彈中'; col='#c0600a'; tier='bounce'; }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
   return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
 }
@@ -457,6 +460,7 @@ var KN={prep:'偏準備',dist:'偏出貨',unk:'看不出來',gap:'跳空／消�
 function secLight(st){
   if(!st) return {t:'沒動靜',c:'#99a'};
   var tr=st.tier; if(tr==='go') return {t:'順風',c:'#1f6f3a'};
+  if(tr==='bounce') return {t:'跌後反彈',c:'#c0600a'};
   if(tr==='late'||tr==='pause') return {t:'小心',c:'#c0600a'};
   return {t:'逆風',c:'#b3262e'};
 }
@@ -469,7 +473,7 @@ function calcSecStates(){
     try{ var A=analyzeWaves(list,true); SECST[s.name]={st:A.st,icon:s.icon,name:s.name}; }catch(e){}
   });
 }
-function bestSec(t){ var ns=T2S[t]||[], best=null; ns.forEach(function(n){ var q=SECST[n]; if(!q) return; var L=secLight(q.st); var rank={'順風':0,'小心':1,'沒動靜':2,'逆風':3}[L.t]; if(!best||rank<best.r) best={r:rank,q:q,L:L}; }); return best; }
+function bestSec(t){ var ns=T2S[t]||[], best=null; ns.forEach(function(n){ var q=SECST[n]; if(!q) return; var L=secLight(q.st); var rank={'順風':0,'小心':1,'沒動靜':2,'跌後反彈':2.5,'逆風':3}[L.t]; if(!best||rank<best.r) best={r:rank,q:q,L:L}; }); return best; }
 function scan(){
   var thrv=el('thr').value, PPm=(thrv==='pp'), thr=PPm?0:+thrv, W=+el('win').value, out=[], uni=Object.keys(T2S);
   uni.forEach(function(t){
@@ -482,7 +486,7 @@ function scan(){
   var card=function(r){
     var f=r.f, B=r.B, L=r.sec?r.sec.L:{t:'不在任何板塊',c:'#99a'};
     return '<div class="card"><div style="font-size:17px;font-weight:900">'+r.t+' <span class="tag" style="background:'+KC[r.cl.k]+'">'+KN[r.cl.k]+'</span><span class="tag" style="background:'+L.c+'">板塊 '+L.t+'</span>'+(f.pp?'<span class="tag" style="background:#0066bb">口袋支點</span>':'')+(f.dry&&f.rv>=1.5?'<span class="tag" style="background:#0066bb">量縮後放量</span>':'')+'<span class="sub">　'+mdd(B.d[r.i])+(r.sec?'　'+r.sec.q.icon+' '+r.sec.q.name:'')+'</span></div>'+
-      '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b><b style="color:#0066bb">'+mdd(B.d[r.i])+' 當天</b>的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價那天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+(f.pp?'<div style="font-size:13px;color:#0066bb;margin-top:2px">口袋支點＝那天是上漲日、收紅 K、收在當天區間上半部（v0.4 起；以前只看比前日收盤上漲，會把跳空後被賣下來的也算進去），量比前 10 天裡「跌的那幾天」的最大量還大，而且股價離 50 日線不遠（在線上或最多低 3%、高不超過 15%）。意思是：買盤那天明顯壓過賣盤。這是 Gil Morales／Chris Kacher 的說法，我沒有用你的資料驗證過它有沒有用。</div>':'')+
+      '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b><b style="color:#0066bb">'+mdd(B.d[r.i])+' 當天</b>的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價那天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+(f.pp?'<div style="font-size:13px;color:#0066bb;margin-top:2px">口袋支點＝那天是上漲日、收紅 K、收在當天區間上半部（v0.5 起；以前只看比前日收盤上漲，會把跳空後被賣下來的也算進去），量比前 10 天裡「跌的那幾天」的最大量還大，而且股價離 50 日線不遠（在線上或最多低 3%、高不超過 15%）。意思是：買盤那天明顯壓過賣盤。這是 Gil Morales／Chris Kacher 的說法，我沒有用你的資料驗證過它有沒有用。</div>':'')+
       '<div class="sub">離 50 日線 '+pcs(f.ext)+'｜離 1 年高點 '+pcs(f.nearHi)+'｜從近 3 個月低點已漲 '+pcs(f.up60)+'</div></div>';
   };
   var sect=function(title,color,arr,note,open){ return '<div class="box"><div class="h" style="color:'+color+'">'+title+'（'+arr.length+' 檔）</div><div class="sub">'+note+'</div>'+(arr.length?(open?arr.map(card).join(''):'<details><summary>展開看</summary>'+arr.map(card).join('')+'</details>'):'<div class="sub" style="margin-top:6px">這次沒有。</div>')+'</div>'; };
@@ -520,7 +524,7 @@ function buildTL(){
   BARS['SPY']=save;
 }
 function lightAt(t,date){
-  var ns=T2S[t]||[], best=null, rk={'順風':0,'小心':1,'沒動靜':2,'逆風':3};
+  var ns=T2S[t]||[], best=null, rk={'順風':0,'小心':1,'沒動靜':2,'跌後反彈':2.5,'逆風':3};
   ns.forEach(function(nm){ var a=TL[nm]; if(!a) return; var L=null; for(var q=a.length-1;q>=0;q--){ if(a[q].d<=date){ L=a[q].L; break; } } if(L==null) return; if(best==null||rk[L]<rk[best]) best=L; });
   return best;
 }
@@ -598,7 +602,7 @@ async function runBt(){
     var yh='<tr><th>年份</th><th>隨便哪天（次數）</th><th>一般日放量≥2倍（次數）</th><th>偏準備（次數）</th></tr>';
     Object.keys(yrs).sort().forEach(function(y){ var a=stat('Y'+y+'|全部'), b=stat('Y'+y+'|放量2'), c=stat('Y'+y+'|準備'); var cell=function(s){ return s?'<span class="'+(s.med>=0?'pos':'neg')+'">'+pc1(s.med)+'</span>（'+s.n+'）':'—'; }; yh+='<tr><td><b>'+y+'</b></td><td>'+cell(a)+'</td><td>'+cell(b)+'</td><td>'+cell(c)+'</td></tr>'; });
     h+='<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">D. 按年份看（20 天中位數）：是不是每年都一樣？</div><div class="tw"><table class="t">'+yh+'</table></div><div class="read">看「放量」或「偏準備」是不是<b>每一年</b>都比「隨便哪天」好。只有某一年好，多半是那一年行情的功勞，不是量的功勞。</div></div>';
-    var LS=['順風','小心','逆風'];
+    var LS=['順風','小心','跌後反彈','逆風'];
     var eh='';
     LS.forEach(function(l){ eh+=line('全部日子・板塊'+l,'【基準】板塊'+l+'時的任何一天')+line('偏準備・板塊'+l,'偏準備・板塊'+l)+line('口袋支點・板塊'+l,'口袋支點・板塊'+l); });
     h+='<div style="margin-top:12px"><div style="font-weight:900;font-size:15.5px">E. 加上板塊位階（只有最近約 2 年有資料）</div><div class="tw"><table class="t"><tr><th>情況</th><th>次數</th><th>20 天中位數</th><th>平均</th><th>20 天賺錢</th><th>贏過大盤</th><th>碰停損 8%</th><th>60 天中位數</th></tr>'+eh+'</table></div><div class="read">每三行一組：先看【基準】（那種板塊狀態下的任何一天），再看偏準備、口袋支點有沒有比它好。板塊順風的次數若很少，就不能下結論。</div></div>';
