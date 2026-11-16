@@ -525,8 +525,26 @@ function fundRead(f){
   if((f.epsQ!=null&&f.epsQ<0)||(f.revQ!=null&&f.revQ<0)) return '獲利或營收在下滑，故事主要靠股價動能，不是業績。';
   return '有成長但不算突出，低於常被引用的參考線。';
 }
+function zRead(z){
+  if(z==null) return null;
+  if(z>=2.5) return {c:'#0d8a3f',t:'比它平常的速度快很多，動能很強（這時要另外確認有沒有已經延伸）'};
+  if(z>=1.5) return {c:'#0d8a3f',t:'比它平常快，算有動能'};
+  if(z>=0.5) return {c:'#9a5b00',t:'在它平常的波動範圍內，屬於正常速度，沒有特別強'};
+  if(z>-0.5) return {c:'#667',t:'幾乎沒動（只是在它平常上下抖動的範圍內），走得很慢，沒有動能'};
+  return {c:'#c81e1e',t:'是往下走，而且比它平常的抖動還大，偏弱'};
+}
+function streakLine(r){
+  if(!HIST||!HIST.info[r.t]) return '';
+  var I=HIST.info[r.t]; if(!I.streak||I.firstPx==null||I.since==null) return '';
+  var d=esc(I.firstDate.slice(5).replace('-','/')), up=I.since>=0;
+  return '<div style="font-size:13.5px;margin-top:2px;color:#334">'+(I.capped?'近 '+HIST.dates.length+' 個交易日的第一天':'入選第一天')+'（'+d+'）收盤 <b>$'+I.firstPx.toFixed(2)+'</b> → 今天 <b>$'+r.px.toFixed(2)+'</b>，<b class="'+(up?'pos':'neg')+'">'+(up?'+':'')+I.since.toFixed(1)+'%</b>'+(I.capped?'<span class="sub">（已經在名單上超過這個視窗，實際入選更久）</span>':'')+'</div>'+zLine(I);
+}
+function zLine(I){
+  var R=zRead(I.z); if(!R) return '';
+  return '<div style="font-size:13.5px;margin-top:3px;line-height:1.7"><b style="color:'+R.c+'">這段漲幅 ＝ 它平常波動的 '+(I.z>=0?'+':'')+I.z.toFixed(1)+' 倍</b>：'+R.t+'。<span class="sub">（它平常 '+I.nn+' 個交易日大約會上下動 ±'+I.sg.toFixed(1)+'%，以最近 60 天的波動算；1 倍約是正常來回的幅度，超過 2 倍才算明顯比平常快。）</span></div>';
+}
 function card(r,showMiss){
-  var h='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-size:17px">'+esc(r.t)+'</b> <span class="sub">'+esc(r.nm)+'</span><div style="font-size:14px;margin-top:2px"><b>收盤 $'+r.px.toFixed(2)+'</b> <span class="sub">（'+esc(r.d.slice(5).replace('-','/'))+(r.chg!=null?'，當天 <b style="color:'+(r.chg>=0?'#0d8a3f':'#c62828')+'">'+(r.chg>=0?'+':'')+(r.chg*100).toFixed(1)+'%</b>':'')+'）</span></div></div><div>'+((showMiss||!HIST||!HIST.info[r.t])?'':'<span class="tag" style="background:#2a5fa5">連續入選 '+Math.max(1,HIST.info[r.t].streak)+' 天</span>')+(showMiss?'':'<span class="tag" style="background:'+(r.bonus===2?'#0d8a3f':(r.bonus===1?'#dd6600':'#778'))+'">加分 '+r.bonus+'/2</span>')+'</div></div>';
+  var h='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-size:17px">'+esc(r.t)+'</b> <span class="sub">'+esc(r.nm)+'</span><div style="font-size:14px;margin-top:2px"><b>收盤 $'+r.px.toFixed(2)+'</b> <span class="sub">（'+esc(r.d.slice(5).replace('-','/'))+(r.chg!=null?'，當天 <b style="color:'+(r.chg>=0?'#0d8a3f':'#c62828')+'">'+(r.chg>=0?'+':'')+(r.chg*100).toFixed(1)+'%</b>':'')+'）</span></div>'+streakLine(r)+'</div><div>'+((showMiss||!HIST||!HIST.info[r.t])?'':'<span class="tag" style="background:#2a5fa5">連續入選 '+Math.max(1,HIST.info[r.t].streak)+' 天'+(HIST.info[r.t].capped?'以上':'')+'</span>')+(showMiss?'':'<span class="tag" style="background:'+(r.bonus===2?'#0d8a3f':(r.bonus===1?'#dd6600':'#778'))+'">加分 '+r.bonus+'/2</span>')+'</div></div>';
   h+='<div style="margin:4px 0">'+chip(r.L1,'板塊')+chip(r.stage2,'Stage 2')+chip(r.posOK,r.pos)+chip(r.volOK,'量')+chip(r.rsOK,'比大盤強')+'</div>';
   h+='<div class="read" style="font-size:13.5px;margin-top:2px">'+(showMiss?'<b>卡在：'+r.miss.join('、')+'。</b> ':'')+plain(r)+((r.dna&&typeof r.dna.pass==='number')?' dna 觀察簿記過 '+r.dna.pass+' 關（'+esc(r.dna.date)+'）。':'')+'</div>'+fundHtml(r.t)+'</div>';
   return h;
@@ -568,7 +586,12 @@ function buildHist(){
     var a=res[t], cnt=0, streak=0; a.forEach(function(x){ if(x&&x.pass) cnt++; });
     for(var q=a.length-1;q>=0;q--){ if(a[q]&&a[q].pass) streak++; else break; }
     var first=streak?a[a.length-streak]:null, last=a[a.length-1];
-    info[t]={cnt:cnt,streak:streak,since:(first&&last&&first.px>0)?(last.px/first.px-1)*100:null,firstPx:first?first.px:null};
+    var z=null, sg=null, nn=streak-1, Bt=BARS[t];
+    if(streak>=3&&Bt&&Bt.c&&Bt.c.length>70&&first&&last&&first.px>0){ // 平常波動＝最近 60 天「每日漲跌幅」的標準差，換算成 nn 天的幅度
+      var rs2=[], cl=Bt.c, nC=cl.length; for(var q2=nC-60;q2<nC;q2++){ if(cl[q2-1]>0) rs2.push(cl[q2]/cl[q2-1]-1); }
+      var mu=0; rs2.forEach(function(x){mu+=x;}); mu/=rs2.length; var vr=0; rs2.forEach(function(x){vr+=(x-mu)*(x-mu);}); sg=Math.sqrt(vr/rs2.length)*Math.sqrt(nn)*100;
+      if(sg>0) z=((last.px/first.px-1)*100)/sg; }
+    info[t]={z:z,sg:sg,nn:nn,cnt:cnt,streak:streak,capped:(streak>0&&streak===a.length),firstDate:streak?ks.map(function(k){return S.d[k];})[a.length-streak]:null,since:(first&&last&&first.px>0)?(last.px/first.px-1)*100:null,firstPx:first?first.px:null};
   });
   HIST={dates:ks.map(function(k){return S.d[k];}),res:res,info:info};
 }
@@ -578,7 +601,7 @@ function histHtml(){
   ts.sort(function(a,b){ var A=HIST.info[a],B=HIST.info[b]; return B.streak-A.streak||B.cnt-A.cnt; });
   var sel='<select class="btn" onchange="HDAYS=+this.value;runAll()">'+[5,10,20].map(function(v){return '<option value="'+v+'"'+(v===HDAYS?' selected':'')+'>近 '+v+' 個交易日</option>';}).join('')+'</select>';
   if(!ts.length) return '<div class="row">'+sel+'</div><div class="read">這段期間沒有任何一檔入選過。</div>';
-  var head='<tr><th>股票</th><th>連續入選</th><th>入選以來</th>'+HIST.dates.map(function(d){return '<th>'+esc(d.slice(5).replace('-','/'))+'</th>';}).join('')+'</tr>';
+  var head='<tr><th>股票</th><th>連續入選</th><th>入選以來</th><th>相對平常波動</th>'+HIST.dates.map(function(d){return '<th>'+esc(d.slice(5).replace('-','/'))+'</th>';}).join('')+'</tr>';
   var body=ts.map(function(t){
     var I=HIST.info[t], a=HIST.res[t], out=I.streak===0, lastMiss=a[a.length-1]&&a[a.length-1].miss&&a[a.length-1].miss.length?a[a.length-1].miss.join('、'):'';
     var cells=a.map(function(x){
@@ -586,8 +609,8 @@ function histHtml(){
       return x.pass?'<td style="background:#e3f6e8;font-weight:800;color:#0d6b33">'+x.px.toFixed(2)+'</td>':'<td style="color:#999">'+x.px.toFixed(2)+'</td>';
     }).join('');
     return '<tr><td><b>'+esc(t)+'</b>'+(out?'<br><span style="font-size:11.5px;color:#b3262e;font-weight:700">已掉出'+(lastMiss?'：'+esc(lastMiss):'')+'</span>':'')+'</td>'
-      +'<td>'+(I.streak?'<b>'+I.streak+' 天</b>':'<span style="color:#b3262e">0</span>')+'<br><span style="font-size:11.5px;color:#667">共入選 '+I.cnt+' 天</span></td>'
-      +'<td>'+(I.since==null?'—':'<span class="'+(I.since>=0?'pos':'neg')+'">'+(I.since>=0?'+':'')+I.since.toFixed(1)+'%</span>')+'</td>'+cells+'</tr>';
+      +'<td>'+(I.streak?'<b>'+I.streak+' 天'+(I.capped?'以上':'')+'</b>':'<span style="color:#b3262e">0</span>')+'<br><span style="font-size:11.5px;color:#667">共入選 '+I.cnt+' 天</span></td>'
+      +'<td>'+(I.since==null?'—':'<span class="'+(I.since>=0?'pos':'neg')+'">'+(I.since>=0?'+':'')+I.since.toFixed(1)+'%</span>')+'</td><td>'+(I.z==null?'—':'<b style="color:'+zRead(I.z).c+'">'+(I.z>=0?'+':'')+I.z.toFixed(1)+' 倍</b>')+'</td>'+cells+'</tr>';
   }).join('');
   var nIn=ts.filter(function(t){return HIST.info[t].streak>0;}).length;
   return '<div class="row">'+sel+'</div>'
