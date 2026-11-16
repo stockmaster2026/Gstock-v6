@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.33</title>
+<title>板塊時光機 v1.34</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.33</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.34</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -620,6 +620,7 @@ function donutSvg(cl,title,sub){
   order.forEach(function(k){ var v=cl[k]||0; if(!v) return; var len=v/tot*C; segs+='<circle r="'+R+'" cx="50" cy="50" fill="none" stroke="'+CLS_COL[k]+'" stroke-width="16" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 50 50)"/>'; off+=len; });
   return '<div style="text-align:center;flex:1;min-width:120px"><div style="font-weight:800;font-size:13.5px">'+title+'</div><svg viewBox="0 0 100 100" style="width:112px;height:112px">'+segs+'<text x="50" y="49" text-anchor="middle" font-size="22" font-weight="800" fill="'+CLS_COL['順風']+'">'+(cl['順風']||0)+'</text><text x="50" y="63" text-anchor="middle" font-size="9" fill="#556">個順風</text></svg><div style="font-size:12px;color:#445;line-height:1.5">'+sub+'</div></div>';
 }
+var CYCF=[];
 function showCycle(ds){
   var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
   var k=kOf(ds), out=el('out');
@@ -631,11 +632,11 @@ function showCycle(ds){
     +'<div class="row" style="margin-top:4px"><button class="btn" id="btnBack2">回到當天畫面</button></div>'
     +'<div id="cycViz"><div class="sub">計算中…（約十幾秒到半分鐘，iPad 可能更久）</div></div></div>';
   el('btnBack2').onclick=function(){ TK=''; showDay(el('dt').value); };
-  var M=lists.map(function(){return [];}), spy=[], i=0;
+  var M=lists.map(function(){return [];}), spy=[], i=0; CYCF=lists.map(function(){return [];});
   (function step(){
     if(i>=ks.length){ drawCycle2(lists,ks,M,S,k); return; }
     el('cycViz').innerHTML='<div class="sub">計算中 '+(i+1)+'／'+ks.length+' …</div>';
-    setTimeout(function(){ var kk=ks[i]; lists.forEach(function(x,si){ M[si].push(catOf(stateAt(x,kk).st)); }); i++; step(); },10);
+    setTimeout(function(){ var kk=ks[i]; lists.forEach(function(x,si){ var r=stateAt(x,kk); M[si].push(catOf(r.st)); CYCF[si].push({give:r.st?r.st.give:null,r1:r.r1}); }); i++; step(); },10);
   })();
 }
 function drawCycle2(lists,ks,M,S,k){
@@ -692,11 +693,27 @@ function drawCycle2(lists,ks,M,S,k){
     return {x:m.x,cats:cats,path:cycPath(cats),wtxt:wtxt}; });
   var head='<tr><th style="text-align:left">板塊</th>'+cols.map(function(c){ return '<th>'+c.n+'</th>'; }).join('')+'<th style="text-align:left">走到哪了（白話）</th></tr>';
   var body=rows.map(function(r){ return '<tr><td style="white-space:nowrap"><b>'+r.x.s.icon+' '+r.x.s.name+'</b></td>'+r.cats.map(function(c){ return '<td style="text-align:center">'+(c?cycChip(c):'<span style="color:#aaa">—</span>')+'</td>'; }).join('')+'<td style="min-width:210px"><b style="color:'+r.path.c+'">'+r.path.t+'</b><br><span style="font-size:12px;color:#556">'+r.wtxt+'</span></td></tr>'; }).join('');
+  // ── ⑤ v1.34：下一個可能轉強的候選（回頭看：過去哪些特徵的「逆風板塊」後來 20 個交易日內變成順風）──
+  var HZ=4, cellOf=function(f){ if(!f||f.give==null||f.r1==null) return null; return (f.give<0.5?'淺':'深')+(f.r1>-0.03?'穩':'跌'); };
+  var CN={'淺穩':'吐回淺＋最近 1 個月沒在跌','淺跌':'吐回淺＋最近 1 個月還在跌','深穩':'吐回深＋最近 1 個月沒在跌','深跌':'吐回深＋最近 1 個月還在跌'};
+  var ST={}, base={n:0,h:0}; ['淺穩','淺跌','深穩','深跌'].forEach(function(c){ ST[c]={n:0,h:0,lead:[]}; });
+  M.forEach(function(r,si){ for(var j=0;j+HZ<n;j++){ if(clsOf(r[j])!=='逆風') continue; var c=cellOf(CYCF[si][j]); if(!c) continue; var hit=-1; for(var q=1;q<=HZ;q++){ if(clsOf(r[j+q])==='順風'){ hit=q; break; } } ST[c].n++; base.n++; if(hit>0){ ST[c].h++; base.h++; ST[c].lead.push(hit*5); } } });
+  var pc=function(a){ return a.n?Math.round(a.h/a.n*100)+'%':'—'; };
+  var crows=['淺穩','淺跌','深穩','深跌'].map(function(c){ var a=ST[c]; return '<tr><td>'+CN[c]+'</td><td style="text-align:right">'+a.n+'</td><td style="text-align:right"><b>'+pc(a)+'</b></td><td style="text-align:right">'+(a.lead.length?'約 '+Math.round(med(a.lead))+' 天':'—')+'</td></tr>'; }).join('');
+  var cand=[]; lists.forEach(function(x,si){ var c=M[si][last]; if(clsOf(c)!=='逆風') return; var f=CYCF[si][last], cc=cellOf(f); if(!cc) return; cand.push({x:x,c:c,f:f,cc:cc,rate:ST[cc].n?ST[cc].h/ST[cc].n:0,n:ST[cc].n}); });
+  cand.sort(function(a,b){ return b.rate-a.rate||a.f.give-b.f.give; });
+  var ctxt=cand.length?cand.map(function(m,i){ return '<div style="padding:5px 0;border-top:1px solid #e6dcae;font-size:14px;line-height:1.6"><b>'+(i+1)+'. '+m.x.s.icon+' '+m.x.s.name+'</b>（'+m.c+'）<br><span style="color:#445">吐回 '+Math.round(m.f.give*100)+'%、最近 1 個月 '+f0(m.f.r1)+' → 歸在「'+CN[m.cc]+'」，過去這一類 '+m.n+' 次裡 20 天內轉強 <b>'+Math.round(m.rate*100)+'%</b>'+(m.n<15?'<span style="color:#b3262e">（樣本太少，只能當參考）</span>':'')+'</span></div>'; }).join(''):'<div class="sub">現在沒有板塊在「逆風」狀態，這個清單是空的。</div>';
+  var sec5='<div class="h" style="font-size:15px;margin-top:14px">⑤ 下一個可能轉強的板塊：觀察清單（不是預測）</div>'
+   +'<div style="background:#eef6ee;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.7"><b>怎麼來的：</b>回頭看這一段期間，每次有板塊處在「逆風」（回檔／大幅回吐／休息中），後來 20 個交易日內有沒有變成「順風」。再依「這一波吐回多少」「最近 1 個月有沒有止跌」分四類，看哪一類比較常轉強。整體平均：<b>'+pc(base)+'</b>（'+base.n+' 次樣本）。'
+   +'<div class="tw" style="margin:6px 0"><table class="t" style="min-width:420px"><tr><th style="text-align:left">類型</th><th>次數</th><th>20 天內轉強</th><th>轉強時間（中位）</th></tr>'+crows+'</table></div>'
+   +'<b>現在的逆風板塊，各屬於哪一類（依歷史轉強比例排）：</b>'+ctxt
+   +'<div style="font-size:13px;color:#b3262e;margin-top:6px">⚠ 這只是「值得多看一眼」的清單：①只有這 1 年、一段行情的經驗，次數是重疊取樣（同一板塊連續幾次其實是同一件事），不能當勝率；②沒考慮大盤，大盤在 50 日線下時，轉強的機率通常更低；③吐回 50%、止跌 −3%、20 天都是我訂的，未驗證。真正的訊號要等板塊變成「剛起步」才算，到那時再用 screen／volume 檢查。</div></div>';
   box.innerHTML='<div style="background:#fff7d6;border-left:6px solid '+vc+';border-radius:8px;padding:9px 12px;margin:8px 0"><div style="font-size:17px;font-weight:800;color:'+vc+';line-height:1.55">'+vt+'</div><div style="font-size:13px;color:#666;margin-top:2px">這 1 年裡高峰時有 '+pk+' 個板塊同時在強勢階段，現在是高峰的 '+nowStrong+'/'+pk+'（高峰只是這 1 年的最大值，不是滿分，當參考尺看）</div></div>'
    +'<div class="h" style="font-size:15px;margin-top:8px">① 四個時間點：板塊各處在哪個階段</div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:space-around">'+dn+'</div>'+leg
    +'<div class="h" style="font-size:15px;margin-top:14px">② 整個市場的組成怎麼隨時間變（綠色變少＝能領頭的板塊變少）</div>'+stack
    +'<div class="h" style="font-size:15px;margin-top:14px">③ 每個板塊的歷程（由上到下＝由早轉強到晚轉強；粗體＝現在還在強勢階段）</div>'+heat
    +'<div id="cycTip" style="margin:4px 0;padding:4px 8px;background:#fff7d6;border-radius:6px;font-size:13px;font-weight:700;color:#553;min-height:22px">👆 點熱圖上的色塊，這裡會顯示板塊、日期、狀態</div>'+rd
+   +sec5
    +'<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:800;font-size:14px;color:#445">④ 看每個板塊的明細（四個時間點＋這一波走了多久）</summary><div class="tw" style="margin-top:6px"><table class="t" style="min-width:640px">'+head+body+'</table></div></details>';
 }
 function showDay(ds){
