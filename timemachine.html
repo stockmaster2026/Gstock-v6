@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.30</title>
+<title>板塊時光機 v1.31</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.30</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.31</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -611,60 +611,90 @@ function cycPath(cats){ // cats：由舊到新，null＝那天資料不夠
   if(anyGo) return {t:'曾經強過，現在已經退下來了',c:'#b3262e'};
   return {t:'這段期間都沒有強過',c:'#667'};
 }
+// v1.31：板塊週期表改成「圖」——①甜甜圈：四個時間點，順風／小心／逆風各幾個 ②堆疊柱：整個市場的組成怎麼隨時間變（疊 SPY 線）③色塊熱圖：每個板塊一條橫帶，依「何時轉強」排序，看輪動順序 ④原本的表收進「看每個板塊的明細」
+var CLS_COL={'順風':'#2e9e56','小心':'#e08a2a','逆風':'#b8504a','沒動靜':'#c9ccd3'};
+function clsOf(c){ if(c==='剛起步'||c==='進行中') return '順風'; if(c==='進行中（偏後段）'||c==='暫停'||c==='跌後反彈') return '小心'; if(c==='回檔中'||c==='大幅回吐'||c==='休息中') return '逆風'; return '沒動靜'; }
+function donutSvg(cl,title,sub){
+  var order=['順風','小心','逆風','沒動靜'], tot=0; order.forEach(function(k){ tot+=cl[k]||0; }); if(!tot) return '';
+  var R=38,C=2*Math.PI*R, off=0, segs='';
+  order.forEach(function(k){ var v=cl[k]||0; if(!v) return; var len=v/tot*C; segs+='<circle r="'+R+'" cx="50" cy="50" fill="none" stroke="'+CLS_COL[k]+'" stroke-width="16" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 50 50)"/>'; off+=len; });
+  return '<div style="text-align:center;flex:1;min-width:120px"><div style="font-weight:800;font-size:13.5px">'+title+'</div><svg viewBox="0 0 100 100" style="width:112px;height:112px">'+segs+'<text x="50" y="49" text-anchor="middle" font-size="22" font-weight="800" fill="'+CLS_COL['順風']+'">'+(cl['順風']||0)+'</text><text x="50" y="63" text-anchor="middle" font-size="9" fill="#556">個順風</text></svg><div style="font-size:12px;color:#445;line-height:1.5">'+sub+'</div></div>';
+}
 function showCycle(ds){
   var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
   var k=kOf(ds), out=el('out');
   if(k<119){ out.innerHTML='<div class="box">這一天太早了，資料最早可看 <b>'+fd(SPYB.d[119])+'</b> 之後。</div>'; return; }
   var S=SPYB, date=S.d[k];
-  var cols=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]].map(function(c){ var kk=k-c[1]; return {n:c[0],k:(kk>=119)?kk:null}; });
-  var lists=secLists(), rows=[];
-  lists.forEach(function(x){
-    var cats=cols.map(function(c){ if(c.k==null) return null; var st=stateAt(x,c.k).st; return catOf(st); });
-    var now=stateAt(x,k), st=now.st, wtxt='—';
-    if(st&&st.last){ var w=st.last; wtxt=st.confirmed?('上一波（已結束）：走了 '+(w.i1-w.i0)+' 個交易日、漲 '+Math.round(w.gain*100)+'%'):('這一波：已 '+st.bars+' 個交易日、漲 '+Math.round(w.gain*100)+'%'); }
-    rows.push({x:x,cats:cats,path:cycPath(cats),wtxt:wtxt,o:CATS.indexOf(cats[cats.length-1])});
-  });
-  rows.sort(function(a,b){ return (a.o<0?99:a.o)-(b.o<0?99:b.o); });
-  var cnt=cols.map(function(c,ci){ if(c.k==null) return null; return rows.filter(function(r){ return isGoCat(r.cats[ci]); }).length; });
-  var head='<tr><th style="text-align:left">板塊</th>'+cols.map(function(c){ return '<th>'+c.n+(c.k!=null?'<br><span style="font-weight:400;font-size:11px">'+md(S.d[c.k])+'</span>':'<br><span style="font-weight:400;font-size:11px">資料不足</span>')+'</th>'; }).join('')+'<th style="text-align:left">走到哪了（白話）</th></tr>';
-  var body=rows.map(function(r){
-    return '<tr><td style="white-space:nowrap"><b>'+r.x.s.icon+' '+r.x.s.name+'</b></td>'+r.cats.map(function(c){ return '<td style="text-align:center">'+(c?cycChip(c):'<span style="color:#aaa">—</span>')+'</td>'; }).join('')
-      +'<td style="min-width:210px"><b style="color:'+r.path.c+'">'+r.path.t+'</b><br><span style="font-size:12px;color:#556">'+r.wtxt+'</span></td></tr>';
-  }).join('');
-  var cs=cnt.map(function(n,i){ return n==null?null:(cols[i].n+' <b>'+n+'</b> 個'); }).filter(function(x){return x;}).join(' → ');
-  var nAll=rows.length;
-  out.innerHTML='<div class="box"><div class="h">板塊週期表<span class="sub">　（到 '+fd(date)+'；共 '+nAll+' 個板塊）</span></div>'
-    +'<div class="sub">每個板塊在四個時間點的位階，並排看它的路徑：從哪裡來、現在在哪、是不是已經走很久。顏色：綠＝順風（剛起步／進行中），橘＝小心（偏後段／暫停／跌後反彈），紅褐＝逆風（回檔／大幅回吐／休息中），灰＝沒動靜。</div>'
-    +'<div class="row" style="margin-top:6px"><button class="btn" id="btnBack2">回到當天畫面</button></div>'
-    +'<div style="background:#fff7d6;border-radius:8px;padding:8px 11px;margin:8px 0;font-size:14.5px;line-height:1.7"><b>還在「強勢階段」的板塊數：</b>'+cs+'。<br><span class="sub" id="cycRead">（強勢階段＝剛起步／進行中／偏後段／高點附近暫停。數字越少，代表市場上能領頭的板塊越少。）</span></div>'
-    +'<div class="tw"><table class="t" style="min-width:640px">'+head+body+'</table></div>'
-    +'<div class="h" style="margin-top:14px;font-size:15px">強勢階段的板塊數，跟大盤（SPY）對照</div><div id="cycChart"><div class="sub">計算中…（約十幾秒，iPad 可能更久）</div></div></div>';
-  el('btnBack2').onclick=function(){ TK=''; showDay(el('dt').value); };
-  // 時間序列：每 5 個交易日算一次「強勢階段的板塊數」
+  var lists=secLists(), nS=lists.length;
   var ks=[], k0=Math.max(119,OFF,k-252); for(var q=k0;q<=k;q+=5) ks.push(q); if(ks[ks.length-1]!==k) ks.push(k);
-  var series=[], i=0;
+  out.innerHTML='<div class="box"><div class="h">板塊週期表<span class="sub">　（到 '+fd(date)+'；共 '+nS+' 個板塊）</span></div>'
+    +'<div class="row" style="margin-top:4px"><button class="btn" id="btnBack2">回到當天畫面</button></div>'
+    +'<div id="cycViz"><div class="sub">計算中…（約十幾秒到半分鐘，iPad 可能更久）</div></div></div>';
+  el('btnBack2').onclick=function(){ TK=''; showDay(el('dt').value); };
+  var M=lists.map(function(){return [];}), spy=[], i=0;
   (function step(){
-    if(i>=ks.length){ drawCycle(series,S,cnt); return; }
-    el('cycChart').innerHTML='<div class="sub">計算中 '+(i+1)+'／'+ks.length+' …</div>';
-    setTimeout(function(){ var kk=ks[i], n=0; lists.forEach(function(x){ if(isGoCat(catOf(stateAt(x,kk).st))) n++; }); series.push({k:kk,n:n,spy:S.c[kk]}); i++; step(); },10);
+    if(i>=ks.length){ drawCycle2(lists,ks,M,S,k); return; }
+    el('cycViz').innerHTML='<div class="sub">計算中 '+(i+1)+'／'+ks.length+' …</div>';
+    setTimeout(function(){ var kk=ks[i]; lists.forEach(function(x,si){ M[si].push(catOf(stateAt(x,kk).st)); }); i++; step(); },10);
   })();
 }
-function drawCycle(series,S,cnt){
-  var box=el('cycChart'); if(!box||series.length<4) return;
-  var W=620,H=150,P=24, n=series.length, mx=Math.max.apply(null,series.map(function(p){return p.n;}))||1, sMin=Math.min.apply(null,series.map(function(p){return p.spy;})), sMax=Math.max.apply(null,series.map(function(p){return p.spy;}));
-  var bw=(W-2*P)/n, bars='', line=[];
-  series.forEach(function(p,j){ var x=P+j*bw, h=(p.n/mx)*(H-2*P); bars+='<rect x="'+(x+1).toFixed(1)+'" y="'+(H-P-h).toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#46b86a" opacity=".75"/>';
-    line.push((x+bw/2).toFixed(1)+','+(H-P-((p.spy-sMin)/Math.max(1e-9,sMax-sMin))*(H-2*P)).toFixed(1)); });
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">'+bars+'<polyline fill="none" stroke="#223" stroke-width="2" points="'+line.join(' ')+'"/>'
-    +'<text x="'+P+'" y="12" font-size="11" fill="#2a7a45">綠柱＝強勢階段的板塊數（最高 '+mx+'）</text><text x="'+(W-P)+'" y="12" font-size="11" fill="#223" text-anchor="end">黑線＝SPY</text>'
-    +'<text x="'+P+'" y="'+(H-6)+'" font-size="11" fill="#667">'+md(S.d[series[0].k])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" font-size="11" fill="#667" text-anchor="end">'+md(S.d[series[n-1].k])+'</text></svg>';
-  var pkN=series.reduce(function(b,p){ return p.n>b.n?p:b; },series[0]), pkS=series.reduce(function(b,p){ return p.spy>b.spy?p:b; },series[0]), last=series[n-1];
-  var dd=pkS.k-pkN.k, rel=(Math.abs(dd)<=5)?'兩者差不多同時見頂':(dd>0?'強勢板塊數比 SPY 早約 '+dd+' 個交易日見頂':'強勢板塊數比 SPY 晚約 '+(-dd)+' 個交易日見頂');
-  var tx='<div style="font-size:14px;line-height:1.75;margin-top:6px"><b>白話：</b>這段期間，強勢階段的板塊數最多時有 <b>'+pkN.n+'</b> 個（'+md(S.d[pkN.k])+'），現在剩 <b>'+last.n+'</b> 個。SPY 這段期間的高點在 '+md(S.d[pkS.k])+'；'+rel+'。'
-    +(last.n<=Math.ceil(pkN.n/3)?'<br><b style="color:#b3262e">現在的板塊數只剩高峰的三分之一以下，市場上能領頭的板塊很少（廣度很低）。</b>':(last.n>=pkN.n*0.7?'<br><b style="color:#1f6f3a">板塊數還在高峰附近，廣度沒有明顯變差。</b>':'<br><b style="color:#c0600a">板塊數比高峰少，但還沒到很低。</b>'))
-    +'</div><div class="sub" style="margin-top:4px">⚠ 這只是這一段期間的一次經驗，<b>不能因此說「板塊數轉弱就一定領先大盤」</b>——要多幾次行情才看得出規律。柱子是每 5 個交易日算一次。</div>';
-  box.innerHTML=svg+tx;
-  var cr=el('cycRead'); if(cr) cr.innerHTML='（強勢階段＝剛起步／進行中／偏後段／高點附近暫停。這段期間最多 '+pkN.n+' 個，現在 '+last.n+' 個；數字越少，代表市場上能領頭的板塊越少。）';
+function drawCycle2(lists,ks,M,S,k){
+  var box=el('cycViz'); if(!box) return;
+  var n=ks.length, nS=lists.length, last=n-1;
+  var idxAt=function(off){ var kk=k-off; if(kk<ks[0]) return null; var best=0; for(var j=0;j<n;j++){ if(ks[j]<=kk) best=j; } return best; };
+  // ── ① 甜甜圈：四個時間點 ──
+  var pts=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]], dn='', cmp=[];
+  pts.forEach(function(pt){ var j=idxAt(pt[1]); if(j==null) return; var cl={}; M.forEach(function(r){ var c=clsOf(r[j]); cl[c]=(cl[c]||0)+1; }); cmp.push({n:pt[0],cl:cl,j:j});
+    dn+=donutSvg(cl,pt[0]+'<br><span style="font-weight:400;font-size:11px;color:#667">'+md(S.d[ks[j]])+'</span>','順風 '+(cl['順風']||0)+'・小心 '+(cl['小心']||0)+'<br>逆風 '+(cl['逆風']||0)+(cl['沒動靜']?'・沒動靜 '+cl['沒動靜']:'')); });
+  // ── 強勢階段（順風＋小心）的數量走勢 ──
+  var strong=ks.map(function(_,j){ var c=0; M.forEach(function(r){ if(isGoCat(r[j])) c++; }); return c; });
+  var pkJ=0; strong.forEach(function(v,j){ if(v>strong[pkJ]) pkJ=j; });
+  var spyJ=0; ks.forEach(function(kk,j){ if(S.c[kk]>S.c[ks[spyJ]]) spyJ=j; });
+  var nowStrong=strong[last], pk=strong[pkJ];
+  var vc, vt;
+  if(nowStrong<=Math.ceil(pk/3)){ vc='#b3262e'; vt='🔴 市場上能領頭的板塊已經很少：強勢階段只剩 '+nowStrong+' 個，高峰時有 '+pk+' 個'; }
+  else if(nowStrong>=pk*0.7){ vc='#1f6f3a'; vt='🟢 能領頭的板塊還不少：強勢階段 '+nowStrong+' 個，高峰時 '+pk+' 個'; }
+  else { vc='#c0600a'; vt='🟠 能領頭的板塊比高峰少了：強勢階段 '+nowStrong+' 個，高峰時 '+pk+' 個'; }
+  // ── ② 堆疊柱＋SPY ──
+  var W=640,H=150,PL=8,PR=8,PT=16,PB=20, cw=(W-PL-PR)/n, bars='', ln=[], sMin=1e18,sMax=-1e18;
+  ks.forEach(function(kk){ var v=S.c[kk]; if(v<sMin)sMin=v; if(v>sMax)sMax=v; });
+  ks.forEach(function(kk,j){ var cl={'順風':0,'小心':0,'逆風':0,'沒動靜':0}; M.forEach(function(r){ cl[clsOf(r[j])]++; }); var y=H-PB, x=PL+j*cw;
+    ['順風','小心','逆風','沒動靜'].forEach(function(c){ var h=cl[c]/nS*(H-PT-PB); if(h<=0) return; y-=h; bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(cw+0.6).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+CLS_COL[c]+'"/>'; });
+    ln.push((x+cw/2).toFixed(1)+','+(H-PB-(S.c[kk]-sMin)/Math.max(1e-9,sMax-sMin)*(H-PT-PB)).toFixed(1)); });
+  var ticks=''; ks.forEach(function(kk,j){ if(j%10===0) ticks+='<text x="'+(PL+j*cw).toFixed(1)+'" y="'+(H-5)+'" font-size="10" fill="#556">'+md(S.d[kk])+'</text>'; });
+  var stack='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">'+bars+'<polyline fill="none" stroke="#fff" stroke-width="4.5" stroke-linejoin="round" points="'+ln.join(' ')+'"/><polyline fill="none" stroke="#1d2433" stroke-width="2.2" stroke-linejoin="round" points="'+ln.join(' ')+'"/>'+ticks+'<text x="'+(W-PR)+'" y="11" font-size="10.5" fill="#1d2433" text-anchor="end">黑線＝SPY（大盤）</text></svg>';
+  // ── ③ 熱圖：每個板塊一條橫帶，依「第一次進入強勢階段」排序 ──
+  var meta=lists.map(function(x,si){ var f=-1; for(var j=0;j<n;j++){ if(isGoCat(M[si][j])){ f=j; break; } } var days=0; M[si].forEach(function(c){ if(isGoCat(c)) days+=1; }); return {si:si,x:x,first:f,goDays:days,nowGo:isGoCat(M[si][last])}; });
+  meta.sort(function(a,b){ if(a.first<0&&b.first<0) return a.x.s.name<b.x.s.name?-1:1; if(a.first<0) return 1; if(b.first<0) return -1; return a.first-b.first||b.goDays-a.goDays; });
+  var LW=96, RH=19, HW=W, HH=meta.length*RH+22, hcw=(HW-LW-6)/n, cells='', labs='';
+  meta.forEach(function(m,ri){ var y=18+ri*RH; labs+='<text x="'+(LW-5)+'" y="'+(y+RH*0.68).toFixed(1)+'" font-size="11.5" text-anchor="end" fill="#1d2433" font-weight="'+(m.nowGo?800:500)+'">'+m.x.s.icon+' '+m.x.s.name+'</text>';
+    M[m.si].forEach(function(c,j){ cells+='<rect data-t="'+m.x.s.name+'｜'+md(S.d[ks[j]])+'｜'+c+'" x="'+(LW+j*hcw).toFixed(1)+'" y="'+y+'" width="'+(hcw+0.5).toFixed(1)+'" height="'+(RH-2)+'" fill="'+CLS_COL[clsOf(c)]+'" onclick="var b=document.getElementById(\'cycTip\'); if(b) b.textContent=this.getAttribute(\'data-t\');"/>'; }); });
+  var hticks=''; ks.forEach(function(kk,j){ if(j%10===0) hticks+='<text x="'+(LW+j*hcw).toFixed(1)+'" y="11" font-size="10" fill="#556">'+md(S.d[kk])+'</text>'; });
+  var heat='<svg viewBox="0 0 '+HW+' '+HH+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">'+labs+cells+hticks+'<line x1="'+(LW+last*hcw+hcw).toFixed(1)+'" y1="14" x2="'+(LW+last*hcw+hcw).toFixed(1)+'" y2="'+(HH-2)+'" stroke="#1d2433" stroke-width="1.5" stroke-dasharray="3 2"/></svg>';
+  // ── 白話 ──
+  var first0=meta.filter(function(m){return m.first===0;}).map(function(m){return m.x.s.name;});
+  var later=meta.filter(function(m){return m.first>0;}).map(function(m){ return m.x.s.name+'（'+md(S.d[ks[m.first]])+'）'; });
+  var never=meta.filter(function(m){return m.first<0;}).map(function(m){return m.x.s.name;});
+  var stillNow=meta.filter(function(m){return m.nowGo;}).map(function(m){return m.x.s.name;});
+  var rd='<div style="font-size:14px;line-height:1.8;margin-top:8px"><b>白話讀法：</b>'
+   +'<br>• <b>整體：</b>強勢階段的板塊，最多時有 <b>'+pk+'</b> 個（'+md(S.d[ks[pkJ]])+'），現在 <b>'+nowStrong+'</b> 個；SPY 這段期間的高點在 '+md(S.d[ks[spyJ]])+'（'+(Math.abs(spyJ-pkJ)*5<=5?'跟板塊數的高峰差不多同時':(spyJ>pkJ?'比板塊數的高峰晚約 '+(spyJ-pkJ)*5+' 個交易日':'比板塊數的高峰早約 '+(pkJ-spyJ)*5+' 個交易日'))+'）。'
+   +'<br>• <b>輪動順序（熱圖由上到下）：</b>'+(first0.length?'一開始（'+md(S.d[ks[0]])+'）就已經強的：'+first0.join('、')+'。':'')+(later.length?'之後依序轉強：'+later.join(' → ')+'。':'')+(never.length?'整段期間都沒進入強勢：'+never.join('、')+'。':'')
+   +'<br>• <b>現在還在強勢階段：</b>'+(stillNow.length?stillNow.join('、'):'沒有')+'。'
+   +'<br><span style="color:#b3262e">⚠ 這是這一段期間的一次經驗，<b>不能因此說「強勢板塊變少就一定領先大盤轉弱」</b>，要多幾次行情才看得出規律；狀態分類與門檻（15%、吐回 3／7 成、10／60 日）都是我訂的，未驗證。</span></div>';
+  var leg='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;margin:4px 0">'+['順風','小心','逆風','沒動靜'].map(function(c){ return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+CLS_COL[c]+';vertical-align:-2px;margin-right:4px"></span>'+c+({'順風':'（剛起步／進行中）','小心':'（偏後段／暫停／跌後反彈）','逆風':'（回檔／大幅回吐／休息中）','沒動靜':''}[c])+'</span>'; }).join('')+'</div>';
+  // ── ④ 原本的明細表 ──
+  var cols=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]].map(function(c){ var j=idxAt(c[1]); return {n:c[0],j:j}; });
+  var rows=meta.map(function(m){ var cats=cols.map(function(c){ return c.j==null?null:M[m.si][c.j]; }); var st=stateAt(m.x,k).st, wtxt='—';
+    if(st&&st.last){ var w=st.last; wtxt=st.confirmed?('上一波（已結束）：走了 '+(w.i1-w.i0)+' 個交易日、漲 '+Math.round(w.gain*100)+'%'):('這一波：已 '+st.bars+' 個交易日、漲 '+Math.round(w.gain*100)+'%'); }
+    return {x:m.x,cats:cats,path:cycPath(cats),wtxt:wtxt}; });
+  var head='<tr><th style="text-align:left">板塊</th>'+cols.map(function(c){ return '<th>'+c.n+'</th>'; }).join('')+'<th style="text-align:left">走到哪了（白話）</th></tr>';
+  var body=rows.map(function(r){ return '<tr><td style="white-space:nowrap"><b>'+r.x.s.icon+' '+r.x.s.name+'</b></td>'+r.cats.map(function(c){ return '<td style="text-align:center">'+(c?cycChip(c):'<span style="color:#aaa">—</span>')+'</td>'; }).join('')+'<td style="min-width:210px"><b style="color:'+r.path.c+'">'+r.path.t+'</b><br><span style="font-size:12px;color:#556">'+r.wtxt+'</span></td></tr>'; }).join('');
+  box.innerHTML='<div style="background:#fff7d6;border-left:6px solid '+vc+';border-radius:8px;padding:9px 12px;margin:8px 0"><div style="font-size:17px;font-weight:800;color:'+vc+';line-height:1.55">'+vt+'</div></div>'
+   +'<div class="h" style="font-size:15px;margin-top:8px">① 四個時間點：板塊各處在哪個階段</div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:space-around">'+dn+'</div>'+leg
+   +'<div class="h" style="font-size:15px;margin-top:14px">② 整個市場的組成怎麼隨時間變（綠色變少＝能領頭的板塊變少）</div>'+stack
+   +'<div class="h" style="font-size:15px;margin-top:14px">③ 每個板塊的歷程（由上到下＝由早轉強到晚轉強；粗體＝現在還在強勢階段）</div>'+heat
+   +'<div id="cycTip" style="margin:4px 0;padding:4px 8px;background:#fff7d6;border-radius:6px;font-size:13px;font-weight:700;color:#553;min-height:22px">👆 點熱圖上的色塊，這裡會顯示板塊、日期、狀態</div>'+rd
+   +'<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:800;font-size:14px;color:#445">④ 看每個板塊的明細（四個時間點＋這一波走了多久）</summary><div class="tw" style="margin-top:6px"><table class="t" style="min-width:640px">'+head+body+'</table></div></details>';
 }
 function showDay(ds){
   var dtE=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtE.max||SPYB.d[SPYB.d.length-1]; dtE.value=ds; }   // v1.27：日期欄被清空（按了「重設」）就自動用最新一天
