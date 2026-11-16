@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.28</title>
+<title>板塊時光機 v1.29</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,12 +31,13 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.28</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.29</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
     <div class="sub">只用「那一天以前」的價格重算，沒有偷看後面。位階規則和 charts v3.1 相同，門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證。價格資料約 2 年，所以最早只能看到資料開始後半年左右。</div>
     <div class="row" id="presets"></div>
+    <div class="sub">📍 今天＝最新一天的資料；1 週／1 個月／3 個月前會自動跟著算。★ 是你自己存的日期：想存就先選好日期，按「＋ 把現在選的這天存成按鈕」，不要的按旁邊的 ✕。</div>
     <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button><select id="hn" class="btn"><option value="126">半年</option><option value="252">一年</option><option value="9999">全部</option></select><select id="hs" class="btn"><option value="">全部板塊</option></select><button class="btn" id="btnHist">看板塊歷程</button></div>
     <div class="row" style="margin-top:6px"><input type="text" id="tk" placeholder="輸入股票代號，例如 TSM" autocapitalize="characters" autocomplete="off" style="font-size:16px;padding:10px 12px;border:2px solid #e6c84a;border-radius:10px;width:210px;background:#fff"><button class="btn go" id="btnTk">查它屬於哪個板塊</button><button class="btn" id="btnLatest">用最新一天</button></div>
     <div class="sub"><b>查個股</b>：只顯示它所屬的板塊，其他板塊不會出現（用上面選的那一天；想看「現在」就按「用最新一天」）。要看全部板塊，按上面的「看這一天」或日期按鈕。</div>
@@ -431,6 +432,22 @@ function el(id){return document.getElementById(id);}
 var HN=function(){ var e=document.getElementById('hn'); return e?+e.value:126; };
 var TK='', SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜'];
 var PRESETS=[['3/13（週五）','2026-03-13'],['4/15（週三）','2026-04-15'],['5/15（週五）','2026-05-15']];
+// v1.29：快捷按鈕可以自己調整。📍今天＋相對日期（1 週前／1 個月前／3 個月前）會自動跟著日期走；★ 是你自己存的日期，可以新增、移除（存在這台裝置的瀏覽器裡）
+var QK='tm_quick_v1';
+function qLoad(){ try{ var a=JSON.parse(localStorage.getItem(QK)); if(Array.isArray(a)) return a; }catch(e){} return PRESETS.map(function(p){ return {d:p[1],n:p[0]}; }); }
+function qSave(a){ try{ localStorage.setItem(QK,JSON.stringify(a)); }catch(e){} }
+function renderQuick(){
+  var dt=el('dt'), D=SPYB.d, last=D.length-1, minD=dt.min, saved=qLoad();
+  var rel=[['今天',0],['1 週前',5],['1 個月前',21],['3 個月前',63]];
+  var h=rel.map(function(r){ var i=last-r[1]; if(i<0||D[i]<minD) return ''; var d=D[i];
+    return '<button class="btn'+(r[1]===0?' go':'')+'" data-d="'+d+'">'+(r[1]===0?'📍 ':'')+r[0]+' <small>'+d.slice(5).replace('-','/')+'（週'+wd(d)+'）</small></button>'; }).join('');
+  h+=saved.map(function(q,i){ return '<span style="display:inline-flex;gap:2px"><button class="btn" data-d="'+q.d+'">★ '+q.n+'</button><button class="btn" data-x="'+i+'" style="padding:9px 9px" title="移除這個按鈕">✕</button></span>'; }).join('');
+  h+='<button class="btn" id="btnSaveQ">＋ 把現在選的這天存成按鈕</button>';
+  el('presets').innerHTML=h;
+  Array.prototype.forEach.call(el('presets').querySelectorAll('button[data-d]'),function(b){ b.onclick=function(){ TK=''; dt.value=b.getAttribute('data-d'); showDay(dt.value); }; });
+  Array.prototype.forEach.call(el('presets').querySelectorAll('button[data-x]'),function(b){ b.onclick=function(){ var a=qLoad(); a.splice(+b.getAttribute('data-x'),1); qSave(a); renderQuick(); }; });
+  el('btnSaveQ').onclick=function(){ var d=dt.value; if(!d||d<dt.min||d>dt.max) return; var a=qLoad(); if(a.some(function(q){return q.d===d;})||a.length>=8){ return; } a.push({d:d,n:d.slice(5).replace('-','/')+'（週'+wd(d)+'）'}); qSave(a); renderQuick(); };
+}
 function wd(d){ return '日一二三四五六'.charAt(new Date(d+'T12:00:00Z').getUTCDay()); }
 function barsRow(label,pct,col,txt){
   return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div style="width:92px;font-size:13px;font-weight:700;text-align:right;flex:none">'+label+'</div><div style="flex:1;background:#eef0f4;border-radius:5px;height:20px;min-width:60px"><div style="width:'+Math.max(1,Math.min(100,pct))+'%;height:100%;background:'+col+';border-radius:5px"></div></div><div style="width:250px;font-size:12.5px;flex:none">'+txt+'</div></div>';
@@ -711,9 +728,8 @@ async function init(){
   var dates=SPYB.d.slice(OFF);
   secLists().forEach(function(x){ FULL[x.s.name]=sectorIdx(x.list,dates); });
   el('prog').textContent='價格資料：'+fd(SPYB.d[0])+' ～ '+fd(SPYB.d[SPYB.d.length-1])+'，可以開始了。';
-  var dt=el('dt'); dt.min=SPYB.d[119]; dt.max=SPYB.d[SPYB.d.length-1]; dt.value=PRESETS[0][1];
-  el('presets').innerHTML=PRESETS.map(function(p){ return '<button class="btn" data-d="'+p[1]+'">'+p[0]+'</button>'; }).join('');
-  Array.prototype.forEach.call(el('presets').children,function(b){ b.onclick=function(){ TK=''; dt.value=b.getAttribute('data-d'); showDay(dt.value); }; });
+  var dt=el('dt'); dt.min=SPYB.d[119]; dt.max=SPYB.d[SPYB.d.length-1]; dt.value=dt.max;   // v1.29：一打開就是最新一天（不再停在 3/13）
+  renderQuick();
   el('btnGo').onclick=function(){ TK=''; showDay(dt.value); };
   el('hs').innerHTML='<option value="">全部板塊</option>'+secLists().map(function(x){ return '<option value="'+x.s.name+'">'+x.s.icon+' '+x.s.name+'</option>'; }).join('');
   el('btnHist').onclick=function(){ TK=''; showHist(dt.value); };
