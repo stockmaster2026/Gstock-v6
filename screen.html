@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>整合篩選 v0.2</title>
+<title>整合篩選 v0.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,13 +36,13 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.2</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.3</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div id="verdict" class="verdict" style="background:#fff7d6">準備中…</div>
     <div class="prog" id="prog">準備中…</div>
     <div class="row"><button class="btn go" id="btnRun" disabled>重新篩選</button><button class="btn" id="btnFund" disabled>抓入選股的基本面（Finnhub）</button><button class="btn" id="btnSnap" disabled>存今天快照</button></div>
-    <div class="sub">四層：①板塊不是逆風 → ②K 線 Stage 2 且位置在買點附近 → ③量 → ④比大盤強。①②是門檻，③④是加分（回測 365 筆：門檻有一點幫助，加量能在弱市幫忙、強市沒差；全部沒有被證明）。基本面是第五層，只記錄、不當門檻。</div>
+    <div class="sub">四層：①板塊不是逆風、也不在跌後反彈（回測 180 筆比大盤少 7.7%）→ ②K 線 Stage 2 且位置在買點附近 → ③量 → ④比大盤強。①②是門檻，③④是加分（回測 365 筆：門檻有一點幫助，加量能在弱市幫忙、強市沒差；全部沒有被證明）。基本面是第五層，只記錄、不當門檻。</div>
   </div>
   <div class="box"><div class="h">漏斗：每一層剩幾檔</div><div id="funnel"></div></div>
   <div class="box"><div class="h">入選</div><div id="picks"></div></div>
@@ -458,7 +458,7 @@ function bestAt(t,k){
   var best=null; (T2S[t]||[]).forEach(function(nm){ if(!LISTS[nm]) return; var s=sectorAt(nm,k); if(!s) return; if(!best||RK[s.L]<RK[best.L]) best={L:s.L,c:s.c,n:nm}; });
   return best;
 }
-// ═════ 整合篩選 v0.2 ═════
+// ═════ 整合篩選 v0.3 ═════
 var SNAPK='gstock_screen_snap_v1', FUND={}, ROWS=[], CTX={};
 function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return c==='&'?'&amp;':(c==='<'?'&lt;':(c==='>'?'&gt;':'&quot;'));}); }
 function avg(a){ return a.length?a.reduce(function(s,x){return s+x;},0)/a.length:null; }
@@ -468,7 +468,7 @@ function judge(t,k){
   var n=B.c.length, i=n-1, px=B.c[i], r={t:t,nm:B.nm||'',px:px,d:B.d[i]};
   // ① 板塊
   var sc=bestAt(t,k); r.sec=sc?sc.n:null; r.secL=sc?(sc.L==='沒動靜'?'小心':sc.L):null; r.secC=sc?sc.c:null;
-  r.L1=!!sc && r.secL!=='逆風';
+  r.bnc=(r.secC==='跌後反彈'); r.L1=!!sc && r.secL!=='逆風' && !r.bnc;
   // ② Stage 2 ＋ 位置
   var stg=B.stg[i]; r.stg=stg; r.stage2=(stg===2);
   var hi=0; for(var q=i-30;q<i;q++) if(B.c[q]>hi) hi=B.c[q];
@@ -490,7 +490,7 @@ function judge(t,k){
   r.rsOK=(r.rs!=null&&r.rs>0);
   r.bonus=(r.volOK?1:0)+(r.rsOK?1:0);
   r.pass=r.L1&&r.L2;
-  r.miss=[]; if(!r.L1) r.miss.push('板塊逆風'); if(!r.stage2) r.miss.push(stg===22?'Stage 2 轉弱(2B)':'不在 Stage 2'); if(r.stage2&&!r.posOK) r.miss.push(r.pos);
+  r.miss=[]; if(!r.L1) r.miss.push(r.bnc?'板塊在跌後反彈（回測很差）':'板塊逆風'); if(!r.stage2) r.miss.push(stg===22?'Stage 2 轉弱(2B)':'不在 Stage 2'); if(r.stage2&&!r.posOK) r.miss.push(r.pos);
   // dna 觀察簿裡這檔最近一筆（過幾關），純參考
   try{ var a=JSON.parse(localStorage.getItem('dnaNearMiss_v1')||'[]'), m=null; a.forEach(function(e){ if(e&&e.tk===t&&(!m||e.date>m.date)) m=e; }); if(m) r.dna={pass:m.pass,date:m.date}; }catch(e){}
   return r;
@@ -520,7 +520,7 @@ function fundRead(f){
 function card(r,showMiss){
   var h='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-size:17px">'+esc(r.t)+'</b> <span class="sub">'+esc(r.nm)+'</span></div><div>'+(showMiss?'':'<span class="tag" style="background:'+(r.bonus===2?'#0d8a3f':(r.bonus===1?'#dd6600':'#778'))+'">加分 '+r.bonus+'/2</span>')+'</div></div>';
   h+='<div style="margin:4px 0">'+chip(r.L1,'板塊')+chip(r.stage2,'Stage 2')+chip(r.posOK,r.pos)+chip(r.volOK,'量')+chip(r.rsOK,'比大盤強')+'</div>';
-  h+='<div class="read" style="font-size:13.5px;margin-top:2px">'+(showMiss?'<b>卡在：'+r.miss.join('、')+'。</b> ':'')+plain(r)+(r.dna?' dna 觀察簿記過 '+r.dna.pass+' 關（'+esc(r.dna.date)+'）。':'')+'</div>'+fundHtml(r.t)+'</div>';
+  h+='<div class="read" style="font-size:13.5px;margin-top:2px">'+(showMiss?'<b>卡在：'+r.miss.join('、')+'。</b> ':'')+plain(r)+((r.dna&&typeof r.dna.pass==='number')?' dna 觀察簿記過 '+r.dna.pass+' 關（'+esc(r.dna.date)+'）。':'')+'</div>'+fundHtml(r.t)+'</div>';
   return h;
 }
 function render(){
