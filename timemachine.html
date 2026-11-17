@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.50</title>
+<title>板塊時光機 v1.52</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.50</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.52</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -663,11 +663,11 @@ function showHist(ds){
   var k=kOf(ds), out=el('out');
   if(k<119){ out.innerHTML='<div class="box">這一天太早了，資料最早可看 <b>'+fd(SPYB.d[119])+'</b> 之後。</div>'; return; }
   var date=SPYB.d[k];
-  out.innerHTML='<div class="box"><div class="h">各板塊的歷程（過去 '+(HN()>=9999?'全部可看範圍':HN()>=252?'一年':'半年')+'）<span class="sub">　（到 '+fd(date)+'）</span></div>'+HIST_LEGEND+'<div class="row" style="margin-top:6px"><button class="btn" id="btnBack">回到當天畫面</button></div><div id="histBox"><div class="sub">計算中…（約半分鐘，iPad 可能更久）</div></div></div>';
+  out.innerHTML='<div class="box"><div class="h">各板塊的歷程（過去 '+(HN()>=9999?'全部可看範圍':HN()>=252?'一年':'半年')+'）<span class="sub">　（到 '+fd(date)+'）</span></div>'+(((el('hs')||{}).value)?HIST_LEGEND:'')+'<div class="row" style="margin-top:6px"><button class="btn" id="btnBack">回到當天畫面</button></div><div id="histBox"><div class="sub">計算中…（約半分鐘，iPad 可能更久）</div></div></div>';
   el('btnBack').onclick=function(){ TK=''; showDay(el('dt').value); };
   var only=(el('hs')||{}).value||'';
   var items=secLists().filter(function(x){return !only||x.s.name===only;}).map(function(x){ return {title:x.s.icon+' '+x.s.name,x:x,o:CATS.indexOf(catOf(stateAt(x,k).st))}; }).sort(function(a,b){return a.o-b.o;});
-  histInto(el('histBox'),items,k,HN(),only?function(){ followBlock(only,k); }:function(){ buildOverview(el('histBox')); });
+  if(only) histInto(el('histBox'),items,k,HN(),function(){ followBlock(only,k); }); else histOverviewOnly(el('histBox'),items,k,HN());
 }
 // v1.48：全部板塊的「時間對齊總覽」。每一列一個板塊，所有列共用同一條時間軸（直線＝每月 1 號），
 // 綠／紅背景＝上漲段／回檔段，綠點＝每一輪起漲點。這樣一眼可以看哪些板塊是「同時起漲」、哪些是「中斷後才起來」。每列各自縮放，只比形狀和時間，不比漲幅大小。
@@ -676,6 +676,22 @@ function legsOfXs(xs){
   var mu=mean(rs), sd=Math.sqrt(mean(rs.map(function(r){return (r-mu)*(r-mu);}))), th=Math.max(0.15,1.5*sd*Math.sqrt(20));
   var legs=zigzag(xs,th), L=[]; legs.forEach(function(l){ if(L.length&&L[L.length-1].up===l.up){ L[L.length-1].i1=l.i1; L[L.length-1].open=l.open; } else L.push({up:l.up,i0:l.i0,i1:l.i1,open:!!l.open}); });
   return L;
+}
+function histOverviewOnly(box,items,k1,n){
+  var i=0; LASTH=[];
+  (function step(){
+    if(i>=items.length){ box.innerHTML=''; buildOverview(box); return; }
+    box.innerHTML='<div class="sub">計算中 '+(i+1)+'／'+items.length+' …</div>';
+    setTimeout(function(){ var it=items[i]; LASTH.push({title:it.title,H:histOf(it.x,k1,n),note:it.note}); i++; step(); },15);
+  })();
+}
+// 點總覽的某一列，才在畫面下方跳出那個板塊的詳細圖（不點就不顯示，避免畫面太雜）
+function showSheet(name){
+  var o=LASTH.filter(function(x){return x.H.name===name;})[0]; if(!o) return;
+  var old=document.getElementById('ovSheet'); if(old) old.remove();
+  var d=document.createElement('div'); d.id='ovSheet'; d.style.cssText='position:fixed;left:0;right:0;bottom:0;top:7%;background:#fffdf3;z-index:60;overflow:auto;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.28);padding:6px 14px 30px';
+  d.innerHTML='<div style="position:sticky;top:-6px;background:#fffdf3;padding:8px 0 4px;text-align:right;z-index:2"><button class="btn" id="ovClose" style="font-size:16px">✕ 關閉</button></div>'+histCard(o.title,o.H,o.note);
+  document.body.appendChild(d); document.getElementById('ovClose').onclick=function(){ d.remove(); };
 }
 var OVSORT='phase';
 function buildOverview(box){
@@ -692,31 +708,32 @@ function buildOverview(box){
   var draw=function(){
     var R=rows.slice(); if(OVSORT==='phase') R.sort(function(a,b){ return ord(a.phase)-ord(b.phase)||b.dd-a.dd; }); else if(OVSORT==='age') R.sort(function(a,b){ return (b.upDays==null?-1:b.upDays)-(a.upDays==null?-1:a.upDays); }); else R.sort(function(a,b){ return (a.upStart==null?9999:a.upStart)-(b.upStart==null?9999:b.upStart); });
     if(spy) R.unshift(spy);
-    var W=760,LX=176,RX=W-52,RH=38,TOP=24,H=TOP+R.length*RH+6, X=function(i){ return LX+i/Math.max(1,tot-1)*(RX-LX); };
+    var W=700,LX=108,RX=W-46,RH=30,TOP=20,H=TOP+R.length*RH+6, X=function(i){ return LX+i/Math.max(1,tot-1)*(RX-LX); };
     var g='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;background:#fffdf3;border-radius:8px">';
     // 月線
     var pm=null; for(var k=k0;k<=k1;k++){ var m=S.d[k].slice(0,7); if(pm!==null&&m!==pm){ var x=X(k-k0); g+='<line x1="'+x.toFixed(1)+'" y1="'+(TOP-4)+'" x2="'+x.toFixed(1)+'" y2="'+(H-4)+'" stroke="#d9cfa0" stroke-width="0.8" stroke-dasharray="2 3"/><text x="'+(x+2).toFixed(1)+'" y="14" font-size="10" fill="#8a7a3a">'+(+S.d[k].slice(5,7))+'月</text>'; } pm=m; }
+    g+='<text x="'+(W-2)+'" y="14" text-anchor="end" font-size="10.5" font-weight="800" fill="#8a7a3a">離高點</text>';
     R.forEach(function(r,ri){
-      var y0=TOP+ri*RH, h=RH-6, mn=Math.min.apply(null,r.xs), mx=Math.max.apply(null,r.xs), Y=function(v){ return y0+3+(mx-v)/Math.max(1e-9,mx-mn)*(h-6); };
+      var y0=TOP+ri*RH, h=RH-4, mn=Math.min.apply(null,r.xs), mx=Math.max.apply(null,r.xs), Y=function(v){ return y0+3+(mx-v)/Math.max(1e-9,mx-mn)*(h-6); };
       var isS=(r.name==='SPY');
       g+='<g class="ovr" data-n="'+(isS?'':r.name)+'" style="cursor:'+(isS?'default':'pointer')+'"><rect x="0" y="'+y0+'" width="'+W+'" height="'+RH+'" fill="'+(ri%2?'rgba(0,0,0,.025)':'transparent')+'"/>';
       if(!isS) r.L.forEach(function(l,li){ var xa=X(l.i0), xb=X(li<r.L.length-1?r.L[li+1].i0:tot-1); if(li===0) xa=LX; g+='<rect x="'+xa.toFixed(1)+'" y="'+(y0+1)+'" width="'+Math.max(1,xb-xa).toFixed(1)+'" height="'+(h+2)+'" fill="'+(l.up?'rgba(40,170,85,.34)':'rgba(225,60,60,.30)')+'"/>'; });
       g+='<polyline fill="none" stroke="#2b3447" stroke-width="1.7" stroke-linejoin="round" points="'+r.xs.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ')+'"/>';
       if(!isS) r.L.forEach(function(l){ if(l.up&&l.i0>1) g+='<circle cx="'+X(l.i0).toFixed(1)+'" cy="'+Y(r.xs[l.i0]).toFixed(1)+'" r="3.4" fill="#1f6f3a" stroke="#fff" stroke-width="1.2"/>'; });
       var nm=r.title.replace(/^\S+\s/,''), ic=r.title.split(' ')[0];
-      g+='<text x="4" y="'+(y0+15)+'" font-size="12.5" font-weight="800" fill="#223">'+ic+' '+nm+'</text>';
-      if(!isS&&r.phase) g+='<text x="4" y="'+(y0+29)+'" font-size="10.5" font-weight="800" fill="'+CATC[r.phase]+'">'+r.phase.replace('（偏後段）','·後段')+'</text>';
-      if(!isS&&r.upDays!=null) g+='<text x="'+(LX-6)+'" y="'+(y0+29)+'" text-anchor="end" font-size="10.5" font-weight="800" fill="#445">'+(r.upNow?'這輪':'上輪')+(r.clip?'≥':'')+(Math.round(r.upDays/21*10)/10)+'個月</text>';
-      g+='<text x="'+(W-2)+'" y="'+(y0+h/2+5)+'" text-anchor="end" font-size="11" font-weight="800" fill="'+(r.dd<-0.3?'#b3262e':'#556')+'">'+(r.dd>=-0.005?'高點':Math.round(r.dd*100)+'%')+'</text></g>';
+      g+='<text x="3" y="'+(y0+13)+'" font-size="11.5" font-weight="800" fill="#223">'+ic+' '+nm+'</text>';
+      if(!isS&&r.phase) g+='<text x="4" y="'+(y0+24)+'" font-size="9.5" font-weight="800" fill="'+CATC[r.phase]+'">'+r.phase.replace('（偏後段）','·後段')+'</text>';
+
+      g+='<text x="'+(W-2)+'" y="'+(y0+h/2+5)+'" text-anchor="end" font-size="10.5" font-weight="800" fill="'+(r.dd<-0.3?'#b3262e':'#556')+'">'+(r.dd>=-0.005?'高點':Math.round(r.dd*100)+'%')+'</text></g>';
     });
     g+='</svg>';
     var btn=function(k,t){ return '<button class="btn" data-ov="'+k+'" style="'+(OVSORT===k?'background:#e8590c;color:#fff;border-color:#e8590c':'')+'">'+t+'</button>'; };
     el('ovBox').innerHTML='<div class="row" style="margin:4px 0">'+btn('phase','依現在位階排')+btn('start','依最近一輪起漲時間排')+btn('age','依這一輪走多久排')+'</div>'+g;
     [].forEach.call(el('ovBox').querySelectorAll('[data-ov]'),function(b){ b.onclick=function(){ OVSORT=b.getAttribute('data-ov'); draw(); }; });
-    [].forEach.call(el('ovBox').querySelectorAll('.ovr'),function(gr){ gr.onclick=function(){ var n=gr.getAttribute('data-n'); if(!n) return; var t=document.getElementById('hc_'+n); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); }; });
+    [].forEach.call(el('ovBox').querySelectorAll('.ovr'),function(gr){ gr.onclick=function(){ var n=gr.getAttribute('data-n'); if(!n) return; showSheet(n); }; });
   };
   var wrap=document.createElement('div'); wrap.id='ovw'; wrap.style.cssText='background:#fff7d6;border-radius:10px;padding:8px 10px 10px;margin:8px 0 14px';
-  wrap.innerHTML='<div class="h" style="font-size:16px">全部板塊總覽（時間對齊）</div><div class="sub" style="line-height:1.6">每一列是一個板塊，<b>所有列共用同一條時間軸</b>（虛線＝每月 1 號）。<b style="color:#1f6f3a">綠底＝上漲段</b>、<b style="color:#b3262e">紅底＝回檔段</b>，<b style="color:#1f6f3a">● 綠點＝每一輪起漲點</b>。看綠點落在同一個時期的，就是同時起漲；一段紅底之後才冒出綠點的，就是中斷後才起來。左邊第二行右側的「這輪／上輪 N 個月」＝最近一次上漲段走了多久（「這輪」＝現在還在漲，「上輪」＝已經回檔；「≥」＝起點在畫面之前，實際更久；1 個月＝21 個交易日）。右邊的數字＝現在離這段期間最高點多少。走得久只是風險提示（研究看到產業動能在 9 到 12 個月以上較容易反轉），不是賣出訊號，也不能推論下一輪會一樣久。每列各自縮放，只比形狀和時間，不比漲幅大小。點任何一列，跳到下面的詳細圖。分段門檻是我訂的，未驗證。</div><div id="ovBox"></div>';
+  wrap.innerHTML='<div class="sub" style="line-height:1.5"><b style="color:#1f6f3a">綠底＝上漲</b>、<b style="color:#b3262e">紅底＝回檔</b>、<b style="color:#1f6f3a">●＝起漲點</b>；右邊＝離這段最高點多少。點任一列看詳細。（分段門檻是我訂的，未驗證）</div><div id="ovBox"></div>';
   box.insertBefore(wrap,box.firstChild); draw();
 }
 // v1.43：看單一板塊時，列出「它每一輪起漲前後，還有哪些板塊也進入強勢階段」。純粹是這段期間的觀察（誰比它早、誰比它晚），不是預測下一個是誰
