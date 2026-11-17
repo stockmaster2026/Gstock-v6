@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.46</title>
+<title>板塊時光機 v1.50</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.46</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.50</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -597,26 +597,26 @@ function histCard(title,H,note){
     // 把相鄰的同方向段接起來，並補上開頭到第一個轉折點之間（沒超過門檻的）
     var L=[]; legs.forEach(function(l){ if(L.length&&L[L.length-1].up===l.up){ L[L.length-1].i1=l.i1; L[L.length-1].open=l.open; } else L.push({up:l.up,i0:l.i0,i1:l.i1,open:!!l.open}); });
     var lastI=xs.length-1; if(L[L.length-1].i1<lastI&&!L[L.length-1].open){ L[L.length-1].i1=L[L.length-1].i1; }
-    var W=600,Hh=210,PT=40,PB=30,PX=24, mn=Math.min.apply(null,xs), mx=Math.max.apply(null,xs);
+    var W=600,Hh=214,PT=62,PB=28,PX=24, mn=Math.min.apply(null,xs), mx=Math.max.apply(null,xs);
     var X=function(i){ return PX+i/Math.max(1,xs.length-1)*(W-2*PX); }, Y=function(v){ return PT+(mx-v)/Math.max(1e-9,mx-mn)*(Hh-PT-PB); };
     var dk=function(i){ return S.d[pts[i][0]]; };
     var NUM=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
     var g='<svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block;background:#faf7e6;border-radius:6px">';
     // 背景色帶（每段用到下一段的起點，沒有縫）
     L.forEach(function(l,li){ var xa=X(l.i0), xb=X(li<L.length-1?L[li+1].i0:lastI); if(li===0) xa=PX;
-      g+='<rect x="'+xa.toFixed(1)+'" y="'+(PT-30)+'" width="'+Math.max(1,xb-xa).toFixed(1)+'" height="'+(Hh-PT-PB+30)+'" fill="'+(l.up?'rgba(31,111,58,.14)':'rgba(179,38,46,.11)')+'"/>';
+      g+='<rect x="'+xa.toFixed(1)+'" y="0" width="'+Math.max(1,xb-xa).toFixed(1)+'" height="'+(Hh-PB)+'" fill="'+(l.up?'rgba(40,170,85,.34)':'rgba(225,60,60,.30)')+'"/>';
       var cx=(xa+xb)/2, pc0=xs[l.i1]/xs[l.i0]-1;
-      g+='<text x="'+cx.toFixed(1)+'" y="'+(PT-12)+'" text-anchor="middle" font-size="15" font-weight="900" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+(NUM[li]||(li+1))+'</text>';
-      if(xb-xa>46) g+='<text x="'+cx.toFixed(1)+'" y="'+(Hh-9)+'" text-anchor="middle" font-size="11.5" font-weight="800" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+pc(pc0)+'</text>'; });
+      g+='<text x="'+cx.toFixed(1)+'" y="19" text-anchor="middle" font-size="15" font-weight="900" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+(NUM[li]||(li+1))+((xb-xa>=64)?' '+pc(pc0):'')+'</text>'+((xb-xa<64&&xb-xa>=22)?'<text x="'+cx.toFixed(1)+'" y="36" text-anchor="middle" font-size="11.5" font-weight="900" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+pc(pc0)+'</text>':'');
+    });
     // 一條線
     g+='<polyline fill="none" stroke="#2b3447" stroke-width="2.2" stroke-linejoin="round" points="'+xs.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ')+'"/>';
     // 轉折點（高點紅、低點綠）＋日期
     var placed=[];
-    var pv=function(i,hi){ var x=X(i),y=Y(xs[i]), t=md(dk(i)), w=t.length*7+6, x0=x-w/2,x1=x+w/2, yy=hi?y-8:y+16;
+    var pv=function(i,hi){ var x=X(i),y=Y(xs[i]), t=md(dk(i))+' ｜'+Math.round(xs[i]), w=t.length*7+6, x0=x-w/2,x1=x+w/2, yy=hi?y-8:y+16;
       for(var tr=0;tr<3;tr++){ var hit=placed.some(function(o){return x0<o.x1+2&&x1>o.x0-2&&Math.abs(yy-o.y)<13;}); if(!hit) break; yy+=hi?-13:13; } placed.push({x0:x0,x1:x1,y:yy});
       g+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+(hi?'#b3262e':'#fff')+'" stroke="'+(hi?'#fff':'#1f6f3a')+'" stroke-width="'+(hi?1.5:2.2)+'"/><text x="'+Math.max(18,Math.min(W-18,x)).toFixed(1)+'" y="'+yy.toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="800" fill="'+(hi?'#b3262e':'#1f6f3a')+'" stroke="#faf7e6" stroke-width="3" paint-order="stroke">'+t+'</text>'; };
     L.forEach(function(l,li){ if(li===0&&l.i0>1) pv(l.i0,!l.up); else if(li===0&&l.up&&l.i0<=1){} else if(li===0) pv(l.i0,!l.up); if(!(l.open&&li===L.length-1&&l.i1>=lastI-2)) pv(l.i1,l.up); });
-    g+='<circle cx="'+X(lastI).toFixed(1)+'" cy="'+Y(xs[lastI]).toFixed(1)+'" r="4.5" fill="#2b3447" stroke="#fff" stroke-width="1.5"/><text x="'+(W-PX).toFixed(1)+'" y="'+(Y(xs[lastI])+(L[L.length-1].up?19:-9)).toFixed(1)+'" text-anchor="end" font-size="11.5" font-weight="900" fill="#2b3447" stroke="#faf7e6" stroke-width="3" paint-order="stroke">現在</text>';
+    g+='<circle cx="'+X(lastI).toFixed(1)+'" cy="'+Y(xs[lastI]).toFixed(1)+'" r="4.5" fill="#2b3447" stroke="#fff" stroke-width="1.5"/><text x="'+(W-PX).toFixed(1)+'" y="'+(Y(xs[lastI])+(L[L.length-1].up?19:-9)).toFixed(1)+'" text-anchor="end" font-size="11.5" font-weight="900" fill="#2b3447" stroke="#faf7e6" stroke-width="3" paint-order="stroke">現在 ｜'+Math.round(xs[lastI])+'</text>';
     g+='</svg>';
     // 白話故事
     var d1=function(i){ return md(dk(i)); }, nd=function(l){ return l.i1-l.i0; };
@@ -625,17 +625,18 @@ function histCard(title,H,note){
       var when=(clip?'畫面一開始就在漲（起點在畫面之前）':d1(l.i0))+' → '+d1(l.i1)+(tail?'（還在進行）':'');
       var ex=''; if(l.up&&!clip){ var prevHi=null; for(var q=li-2;q>=0;q-=2){ if(L[q].up){ prevHi=L[q]; break; } } if(prevHi){ var r=xs[l.i1]/xs[prevHi.i1]-1; ex='；這個高點比前一個高點（'+d1(prevHi.i1)+'）'+(r>=0?'高 ':'低 ')+Math.abs(Math.round(r*100))+'%'; } }
       if(clip) ex='；實際漲幅比這個數字更大（至少）';
-      return '<div style="margin:3px 0"><b style="color:'+(l.up?'#1f6f3a':'#b3262e')+';font-size:16px">'+(NUM[li]||(li+1))+'</b> '+when+'，共 '+nd(l)+' 個交易日，'+t+ex+'</div>'; }).join('');
+      return '<div style="margin:3px 0"><b style="color:'+(l.up?'#1f6f3a':'#b3262e')+';font-size:16px">'+(NUM[li]||(li+1))+'</b> '+when+'，共 '+nd(l)+' 個交易日，'+t+'（指數 '+Math.round(xs[l.i0])+' → '+Math.round(xs[l.i1])+'）'+ex+'</div>'; }).join('');
     var highs=L.filter(function(l,li){ return l.up&&!(li===L.length-1&&l.open); }).map(function(l){ return {i:l.i1,v:xs[l.i1]}; });
     var pat=''; if(highs.length>=2){ var dn=true,up=true; for(var j=1;j<highs.length;j++){ if(highs[j].v>=highs[j-1].v) dn=false; if(highs[j].v<=highs[j-1].v) up=false; }
       pat=dn?'高點一次比一次低（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':(up?'高點一路墊高（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':'高點有高有低（'+highs.map(function(o){return d1(o.i);}).join('、')+'）'); }
     var imx=xs.indexOf(mx), imn=xs.lastIndexOf(Math.min.apply(null,xs.slice(imx))), cur=xs[lastI];
-    var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'');
-    curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">背景：<b style="color:#1f6f3a">綠＝上漲段</b>、<b style="color:#b3262e">紅＝回檔段</b>，編號對應下面的故事；紅點＝高點、空心圈＝低點（日期）。回檔或反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算一段（我訂的，未驗證），小抖動不單獨分段。位階顏色看下面的色條。</div>'
+    var lu=null; L.forEach(function(l){ if(l.up) lu=l; }); var luDays=lu?((lu===L[L.length-1])?lastI:lu.i1)-lu.i0:null, luClip=lu&&lu.i0<=1;
+    var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'')+(lu?'最近一次上漲段'+(lu===L[L.length-1]?'已走':'走了')+(luClip?'至少 ':' ')+luDays+' 個交易日（約 '+(Math.round(luDays/21*10)/10)+' 個月）。':'');
+    curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">背景：<b style="color:#1f6f3a">綠＝上漲段</b>、<b style="color:#b3262e">紅＝回檔段</b>，編號對應下面的故事；紅點＝高點、空心圈＝低點，旁邊寫「日期 ｜ 板塊指數」。板塊指數是這個板塊所有成分股的等權平均，<b>這個畫面最左邊那天＝100</b>（不是某一檔的股價；換「半年／一年」起點不同，數字也不同）。要對 K 線請看個股。回檔或反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算一段（我訂的，未驗證），小抖動不單獨分段。位階顏色看下面的色條。</div>'
       +'<div style="background:#f2f6ff;border-radius:8px;padding:7px 10px;margin:4px 0 6px;font-size:14px;line-height:1.6"><b>這條線的故事</b>'+items+'<div style="margin-top:5px;padding-top:4px;border-top:1px solid #d8e0f0"><b>'+now+'</b><span style="color:#778;font-size:12.5px">（只是這段期間的樣子，不是預測）</span></div></div>';
   })();
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
-  return '<div style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+(curve||spark)+strip+axis+chipLeg()+
+  return '<div id="hc_'+H.name+'" style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+(curve||spark)+strip+axis+chipLeg()+
     sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪：</b>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
 }
 function stayCard(A){
@@ -647,12 +648,13 @@ function stayCard(A){
   if(!rows) return '';
   return '<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:13.5px;line-height:1.55"><b>每種狀態通常停多久？</b>（下面這些板塊、已走完的色塊，不含最左最右兩段）<table style="border-collapse:collapse;margin:3px 0;font-size:13.5px"><tr style="color:#778;font-size:12px"><td></td><td style="padding:2px 6px">停留中位數</td><td style="padding:2px 6px">5 天內就換掉</td><td></td></tr>'+rows+'</table><div style="color:#556;font-size:12.5px">白話：「5 天內就換掉」的比例高，代表那種狀態很容易閃一下就過，色塊很窄時別太當真；中位數才是它「通常」停多久。這只是下面這些板塊這段期間的統計，不保證之後也一樣。</div></div>';
 }
+var LASTH=[];
 function histInto(box,items,k1,n,done){
-  var i=0, html=[], ALLSEGS=[];
+  var i=0, html=[], ALLSEGS=[]; LASTH=[];
   (function step(){
     if(i>=items.length){ box.innerHTML=stayCard(ALLSEGS)+html.join(''); if(done) done(); return; }
     box.innerHTML='<div class="sub">計算中 '+(i+1)+'／'+items.length+' …</div>'+html.join('');
-    setTimeout(function(){ var it=items[i], Hh=histOf(it.x,k1,n); Hh.segs.forEach(function(sg,j){ if(j>0&&j<Hh.segs.length-1) ALLSEGS.push({c:sg.c,d:sg.k1-sg.k0+1}); }); html.push(histCard(it.title,Hh,it.note)); i++; step(); },15);
+    setTimeout(function(){ var it=items[i], Hh=histOf(it.x,k1,n); Hh.segs.forEach(function(sg,j){ if(j>0&&j<Hh.segs.length-1) ALLSEGS.push({c:sg.c,d:sg.k1-sg.k0+1}); }); LASTH.push({title:it.title,H:Hh}); html.push(histCard(it.title,Hh,it.note)); i++; step(); },15);
   })();
 }
 var HIST_LEGEND='<div class="sub">每條是一個板塊（或一檔股票），從左到右是時間，顏色是當時的位階：<b style="color:#1f6f3a">綠＝順風</b>（剛起步／進行中）、<b style="color:#c0600a">橘＝小心</b>（急拉／偏後段／高點附近暫停／跌後反彈）、<b style="color:#b3262e">紅褐＝逆風</b>（回檔／大幅回吐／休息中）、灰＝沒動靜。每一格上面寫：狀態、起訖日、板塊指數在那一段漲跌多少（▲漲／▼跌）。太窄的格子只寫百分比，點一下或停一下可看完整（太窄的連百分比也放不下）。少於 3 天的短暫變化會併進前一段。位階用的仍是我訂的 15% 等規則，沒有驗證。</div>';
@@ -665,7 +667,57 @@ function showHist(ds){
   el('btnBack').onclick=function(){ TK=''; showDay(el('dt').value); };
   var only=(el('hs')||{}).value||'';
   var items=secLists().filter(function(x){return !only||x.s.name===only;}).map(function(x){ return {title:x.s.icon+' '+x.s.name,x:x,o:CATS.indexOf(catOf(stateAt(x,k).st))}; }).sort(function(a,b){return a.o-b.o;});
-  histInto(el('histBox'),items,k,HN(),only?function(){ followBlock(only,k); }:null);
+  histInto(el('histBox'),items,k,HN(),only?function(){ followBlock(only,k); }:function(){ buildOverview(el('histBox')); });
+}
+// v1.48：全部板塊的「時間對齊總覽」。每一列一個板塊，所有列共用同一條時間軸（直線＝每月 1 號），
+// 綠／紅背景＝上漲段／回檔段，綠點＝每一輪起漲點。這樣一眼可以看哪些板塊是「同時起漲」、哪些是「中斷後才起來」。每列各自縮放，只比形狀和時間，不比漲幅大小。
+function legsOfXs(xs){
+  var rs=[]; for(var i=1;i<xs.length;i++){ if(xs[i-1]>0) rs.push(xs[i]/xs[i-1]-1); }
+  var mu=mean(rs), sd=Math.sqrt(mean(rs.map(function(r){return (r-mu)*(r-mu);}))), th=Math.max(0.15,1.5*sd*Math.sqrt(20));
+  var legs=zigzag(xs,th), L=[]; legs.forEach(function(l){ if(L.length&&L[L.length-1].up===l.up){ L[L.length-1].i1=l.i1; L[L.length-1].open=l.open; } else L.push({up:l.up,i0:l.i0,i1:l.i1,open:!!l.open}); });
+  return L;
+}
+var OVSORT='phase';
+function buildOverview(box){
+  if(!box||!LASTH.length) return; var S=SPYB, rows=[];
+  var H0=LASTH[0].H, k0=H0.k0, k1=H0.k1, tot=k1-k0+1; if(tot<20) return;
+  var mk=function(name,title,getv,phase){ var xs=[]; for(var k=k0;k<=k1;k++){ var v=getv(k); if(v==null||!isFinite(v)) return null; xs.push(v); } var b0=xs[0]; if(!b0) return null; xs=xs.map(function(v){return v/b0*100;});
+    var L=legsOfXs(xs), mx=Math.max.apply(null,xs), cur=xs[xs.length-1], lastUp=null; L.forEach(function(l){ if(l.up) lastUp=l; });
+    var lastLeg=L[L.length-1], upDays=lastUp?((lastUp===lastLeg)?(tot-1):lastUp.i1)-lastUp.i0:null;
+    return {name:name,title:title,xs:xs,L:L,dd:cur/mx-1,phase:phase,upStart:lastUp?lastUp.i0:null,clip:!!(lastUp&&lastUp.i0<=1),upDays:upDays,upNow:!!(lastUp&&lastUp===lastLeg)}; };
+  LASTH.forEach(function(o){ var H=o.H, IX=FULL[H.name]||[]; var r=mk(H.name,o.title,function(k){ var v=IX[k-OFF]; return v==null?null:v; },H.segs[H.segs.length-1].c); if(r) rows.push(r); });
+  if(!rows.length) return;
+  var spy=mk('SPY','📈 SPY 大盤',function(k){ return S.c[k]; },null);
+  var ord=function(c){ var i=CATS.indexOf(c); return i<0?99:i; };
+  var draw=function(){
+    var R=rows.slice(); if(OVSORT==='phase') R.sort(function(a,b){ return ord(a.phase)-ord(b.phase)||b.dd-a.dd; }); else if(OVSORT==='age') R.sort(function(a,b){ return (b.upDays==null?-1:b.upDays)-(a.upDays==null?-1:a.upDays); }); else R.sort(function(a,b){ return (a.upStart==null?9999:a.upStart)-(b.upStart==null?9999:b.upStart); });
+    if(spy) R.unshift(spy);
+    var W=760,LX=176,RX=W-52,RH=38,TOP=24,H=TOP+R.length*RH+6, X=function(i){ return LX+i/Math.max(1,tot-1)*(RX-LX); };
+    var g='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;background:#fffdf3;border-radius:8px">';
+    // 月線
+    var pm=null; for(var k=k0;k<=k1;k++){ var m=S.d[k].slice(0,7); if(pm!==null&&m!==pm){ var x=X(k-k0); g+='<line x1="'+x.toFixed(1)+'" y1="'+(TOP-4)+'" x2="'+x.toFixed(1)+'" y2="'+(H-4)+'" stroke="#d9cfa0" stroke-width="0.8" stroke-dasharray="2 3"/><text x="'+(x+2).toFixed(1)+'" y="14" font-size="10" fill="#8a7a3a">'+(+S.d[k].slice(5,7))+'月</text>'; } pm=m; }
+    R.forEach(function(r,ri){
+      var y0=TOP+ri*RH, h=RH-6, mn=Math.min.apply(null,r.xs), mx=Math.max.apply(null,r.xs), Y=function(v){ return y0+3+(mx-v)/Math.max(1e-9,mx-mn)*(h-6); };
+      var isS=(r.name==='SPY');
+      g+='<g class="ovr" data-n="'+(isS?'':r.name)+'" style="cursor:'+(isS?'default':'pointer')+'"><rect x="0" y="'+y0+'" width="'+W+'" height="'+RH+'" fill="'+(ri%2?'rgba(0,0,0,.025)':'transparent')+'"/>';
+      if(!isS) r.L.forEach(function(l,li){ var xa=X(l.i0), xb=X(li<r.L.length-1?r.L[li+1].i0:tot-1); if(li===0) xa=LX; g+='<rect x="'+xa.toFixed(1)+'" y="'+(y0+1)+'" width="'+Math.max(1,xb-xa).toFixed(1)+'" height="'+(h+2)+'" fill="'+(l.up?'rgba(40,170,85,.34)':'rgba(225,60,60,.30)')+'"/>'; });
+      g+='<polyline fill="none" stroke="#2b3447" stroke-width="1.7" stroke-linejoin="round" points="'+r.xs.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ')+'"/>';
+      if(!isS) r.L.forEach(function(l){ if(l.up&&l.i0>1) g+='<circle cx="'+X(l.i0).toFixed(1)+'" cy="'+Y(r.xs[l.i0]).toFixed(1)+'" r="3.4" fill="#1f6f3a" stroke="#fff" stroke-width="1.2"/>'; });
+      var nm=r.title.replace(/^\S+\s/,''), ic=r.title.split(' ')[0];
+      g+='<text x="4" y="'+(y0+15)+'" font-size="12.5" font-weight="800" fill="#223">'+ic+' '+nm+'</text>';
+      if(!isS&&r.phase) g+='<text x="4" y="'+(y0+29)+'" font-size="10.5" font-weight="800" fill="'+CATC[r.phase]+'">'+r.phase.replace('（偏後段）','·後段')+'</text>';
+      if(!isS&&r.upDays!=null) g+='<text x="'+(LX-6)+'" y="'+(y0+29)+'" text-anchor="end" font-size="10.5" font-weight="800" fill="#445">'+(r.upNow?'這輪':'上輪')+(r.clip?'≥':'')+(Math.round(r.upDays/21*10)/10)+'個月</text>';
+      g+='<text x="'+(W-2)+'" y="'+(y0+h/2+5)+'" text-anchor="end" font-size="11" font-weight="800" fill="'+(r.dd<-0.3?'#b3262e':'#556')+'">'+(r.dd>=-0.005?'高點':Math.round(r.dd*100)+'%')+'</text></g>';
+    });
+    g+='</svg>';
+    var btn=function(k,t){ return '<button class="btn" data-ov="'+k+'" style="'+(OVSORT===k?'background:#e8590c;color:#fff;border-color:#e8590c':'')+'">'+t+'</button>'; };
+    el('ovBox').innerHTML='<div class="row" style="margin:4px 0">'+btn('phase','依現在位階排')+btn('start','依最近一輪起漲時間排')+btn('age','依這一輪走多久排')+'</div>'+g;
+    [].forEach.call(el('ovBox').querySelectorAll('[data-ov]'),function(b){ b.onclick=function(){ OVSORT=b.getAttribute('data-ov'); draw(); }; });
+    [].forEach.call(el('ovBox').querySelectorAll('.ovr'),function(gr){ gr.onclick=function(){ var n=gr.getAttribute('data-n'); if(!n) return; var t=document.getElementById('hc_'+n); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); }; });
+  };
+  var wrap=document.createElement('div'); wrap.id='ovw'; wrap.style.cssText='background:#fff7d6;border-radius:10px;padding:8px 10px 10px;margin:8px 0 14px';
+  wrap.innerHTML='<div class="h" style="font-size:16px">全部板塊總覽（時間對齊）</div><div class="sub" style="line-height:1.6">每一列是一個板塊，<b>所有列共用同一條時間軸</b>（虛線＝每月 1 號）。<b style="color:#1f6f3a">綠底＝上漲段</b>、<b style="color:#b3262e">紅底＝回檔段</b>，<b style="color:#1f6f3a">● 綠點＝每一輪起漲點</b>。看綠點落在同一個時期的，就是同時起漲；一段紅底之後才冒出綠點的，就是中斷後才起來。左邊第二行右側的「這輪／上輪 N 個月」＝最近一次上漲段走了多久（「這輪」＝現在還在漲，「上輪」＝已經回檔；「≥」＝起點在畫面之前，實際更久；1 個月＝21 個交易日）。右邊的數字＝現在離這段期間最高點多少。走得久只是風險提示（研究看到產業動能在 9 到 12 個月以上較容易反轉），不是賣出訊號，也不能推論下一輪會一樣久。每列各自縮放，只比形狀和時間，不比漲幅大小。點任何一列，跳到下面的詳細圖。分段門檻是我訂的，未驗證。</div><div id="ovBox"></div>';
+  box.insertBefore(wrap,box.firstChild); draw();
 }
 // v1.43：看單一板塊時，列出「它每一輪起漲前後，還有哪些板塊也進入強勢階段」。純粹是這段期間的觀察（誰比它早、誰比它晚），不是預測下一個是誰
 function followBlock(only,k1){
