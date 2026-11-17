@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.39</title>
+<title>板塊時光機 v1.40</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.39</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.40</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -438,7 +438,7 @@ function waveState(A){
     why='最近一小波的高點在最近幾天，但整組 3 個月 '+(q3==null?'—':fmtPct(q3*100,0))+'、1 個月 '+(q1==null?'—':fmtPct(q1*100,0))+'，這比較像大跌中的一段反彈，還沒走出新的上升趨勢。';
   }
   var ratio=(!isMain&&main.gain>0)?w.gain/main.gain:null;
-  return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed};
+  return {label:label,col:col,why:why,give:give,below:giveRaw>1,dayPk:dayPk,bars:bars,ratio:ratio,isMain:isMain,tier:tier,last:w,main:main,confirmed:w.confirmed,gainTot:gainTot,barsTot:barsTot,zTot:zTot,th:A.th,sm:A.sm,lowD:A.dates[Li]};
 }
 function el(id){return document.getElementById(id);}
 var HN=function(){ var e=document.getElementById('hn'); return e?+e.value:126; };
@@ -648,7 +648,7 @@ function showCycle(ds){
   (function step(){
     if(i>=ks.length){ var s0=0; while(s0<ks.length-1&&ks[s0]<kv) s0++; CYCFULL={ks:ks,M:M,F:CYCF}; var ksV=ks.slice(s0), MV=M.map(function(r){return r.slice(s0);}); CYCF=CYCF.map(function(r){return r.slice(s0);}); drawCycle2(lists,ksV,MV,S,k); return; }
     el('cycViz').innerHTML='<div class="sub">計算中 '+(i+1)+'／'+ks.length+' …</div>';
-    setTimeout(function(){ var kk=ks[i]; lists.forEach(function(x,si){ var r=stateAt(x,kk); M[si].push(catOf(r.st)); CYCF[si].push({give:r.st?r.st.give:null,r1:r.r1}); }); i++; step(); },10);
+    setTimeout(function(){ var kk=ks[i]; lists.forEach(function(x,si){ var r=stateAt(x,kk); M[si].push(catOf(r.st)); CYCF[si].push({give:r.st?r.st.give:null,r1:r.r1,st:r.st?{bars:r.st.bars,wg:r.st.last.gain,wd:r.st.last.i0,gt:r.st.gainTot,bt:r.st.barsTot,z:r.st.zTot,th:r.st.th,sm:r.st.sm,lowD:r.st.lowD}:null}); }); i++; step(); },10);
   })();
 }
 // v1.35：山形圖。左谷底→起步→爬坡→山頂→下山→右谷底。下山的位置＝這一波吐回多少（0%＝山頂、100%＝谷底）；山頂／爬坡只按階段分類大概放
@@ -771,15 +771,17 @@ function drawCycle2(lists,ks,M,S,k){
   var ctxt=cand.length?cand.map(function(m,i){ return '<div style="padding:5px 0;border-top:1px solid #e6dcae;font-size:14px;line-height:1.6"><b>'+(i+1)+'. '+m.x.s.icon+' '+m.x.s.name+'</b>（'+m.c+'）<br><span style="color:#445">吐回 '+Math.round(m.f.give*100)+'%、最近 1 個月 '+f0(m.f.r1)+' → 歸在「'+CN[m.cc]+'」，過去這一類 '+m.n+' 次裡 20 天內轉強 <b>'+Math.round(m.rate*100)+'%</b>'+(m.n<15?'<span style="color:#b3262e">（樣本太少，只能當參考）</span>':'')+'</span></div>'; }).join(''):'<div class="sub">現在沒有板塊在「逆風」狀態，這個清單是空的。</div>';
   SECNAMES=lists.map(function(x){ return x.s.name; });
   var j1=idxAt(21), mi=[];
-  lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null};
+  lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f};
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); } mi.push(it); });
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
+  var fresh=mi.filter(function(m){return m.c==='剛起步';});
   var nmj=function(a){ return a.length?a.map(function(m){return m.name;}).join('、'):'沒有'; };
   var mtn='<div class="h" style="font-size:15px;margin-top:14px">⑤ 山：每個板塊現在走到哪了</div>'+mountainSvg(mi)
    +'<div style="font-size:12.5px;color:#556;margin:3px 0">圓點＝現在的位置（顏色同順風／小心／逆風）；空心圈＋虛線＝1 個月前的位置，虛線指向現在，看得出往哪邊走。</div>'
    +'<div style="font-size:14px;line-height:1.8;margin-top:4px"><b>白話讀法：</b><br>• <b>山頂／爬坡（還在強勢階段）'+gTop.length+' 個：</b>'+nmj(gTop)
    +'<br>• <b>剛下山（這一波吐回不到 5 成）'+gShallow.length+' 個：</b>'+nmj(gShallow)+'　← 歷史上轉強比例比深的稍高一點，值得多看一眼'
-   +'<br>• <b>快到谷底（吐回 5 成以上）'+gDeep.length+' 個：</b>'+nmj(gDeep)+'<br><span style="color:#b3262e">⚠ 山頂／爬坡的位置只是按階段大概放；「剛下山比較容易再起來」的差距很小、樣本重疊，只當觀察，不是預測。</span></div>';
+   +'<br>• <b>快到谷底（吐回 5 成以上）'+gDeep.length+' 個：</b>'+nmj(gDeep)+(fresh.length?'<br>• <b>標成「剛起步」的數字（檢查用）：</b>'+fresh.map(function(m){ var q=m.f&&m.f.st; return q?m.name+'：最近一波走了 '+q.bars+' 個交易日、漲 '+fmtPct(q.wg*100,0)+'；從 '+fd(q.lowD)+' 的低點算起 '+q.bt+' 個交易日漲 '+fmtPct(q.gt*100,0)+(q.z!=null?'（約月波動的 '+q.z.toFixed(1)+' 倍）':'')+'；「偏後段」的門檻＝漲 '+Math.round(Math.max(0.25,3*q.sm)*100)+'% 以上':m.name; }).join('<br>　　'):'')
+   +'<br><span style="color:#b3262e">⚠ 山頂／爬坡的位置只是按階段大概放；「剛下山比較容易再起來」的差距很小、樣本重疊，只當觀察，不是預測。</span></div>';
   var sec5=mtn+'<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:800;font-size:14px;color:#445">看統計細節：歷史轉強比例＋每個板塊歸類</summary>'
    +'<div style="background:#eef6ee;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.7"><b>怎麼來的：</b>回頭看這一段期間，每次有板塊處在「逆風」（回檔／大幅回吐／休息中），後來 20 個交易日內有沒有變成「順風」。再依「這一波吐回多少」「最近 1 個月有沒有止跌」分四類，看哪一類比較常轉強。整體平均：<b>'+pc(base)+'</b>（'+base.n+' 次樣本）。'
    +'<div class="tw" style="margin:6px 0"><table class="t" style="min-width:420px"><tr><th style="text-align:left">類型</th><th>次數</th><th>20 天內轉強</th><th>轉強時間（中位）</th></tr>'+crows+'</table></div>'
