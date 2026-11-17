@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.52</title>
+<title>板塊時光機 v1.53</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.52</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.53</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -632,10 +632,12 @@ function histCard(title,H,note){
     var imx=xs.indexOf(mx), imn=xs.lastIndexOf(Math.min.apply(null,xs.slice(imx))), cur=xs[lastI];
     var lu=null; L.forEach(function(l){ if(l.up) lu=l; }); var luDays=lu?((lu===L[L.length-1])?lastI:lu.i1)-lu.i0:null, luClip=lu&&lu.i0<=1;
     var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'')+(lu?'最近一次上漲段'+(lu===L[L.length-1]?'已走':'走了')+(luClip?'至少 ':' ')+luDays+' 個交易日（約 '+(Math.round(luDays/21*10)/10)+' 個月）。':'');
+    if(window.HC_COMPACT){ curve=g; return; }
     curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">背景：<b style="color:#1f6f3a">綠＝上漲段</b>、<b style="color:#b3262e">紅＝回檔段</b>，編號對應下面的故事；紅點＝高點、空心圈＝低點，旁邊寫「日期 ｜ 板塊指數」。板塊指數是這個板塊所有成分股的等權平均，<b>這個畫面最左邊那天＝100</b>（不是某一檔的股價；換「半年／一年」起點不同，數字也不同）。要對 K 線請看個股。回檔或反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算一段（我訂的，未驗證），小抖動不單獨分段。位階顏色看下面的色條。</div>'
       +'<div style="background:#f2f6ff;border-radius:8px;padding:7px 10px;margin:4px 0 6px;font-size:14px;line-height:1.6"><b>這條線的故事</b>'+items+'<div style="margin-top:5px;padding-top:4px;border-top:1px solid #d8e0f0"><b>'+now+'</b><span style="color:#778;font-size:12.5px">（只是這段期間的樣子，不是預測）</span></div></div>';
   })();
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
+  if(window.HC_COMPACT) return '<div onclick="showSheet(\''+H.name+'\')" style="cursor:pointer;background:#fffdf3;border:1px solid #eadf9f;border-radius:10px;padding:5px 6px"><div style="font-weight:900;font-size:14.5px">'+title+'<span style="font-size:12px;font-weight:700;color:'+CATC[last.c]+'">　'+last.c+'</span></div>'+(curve||'<div class="sub">資料不足</div>')+'</div>';
   return '<div id="hc_'+H.name+'" style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+(curve||spark)+strip+axis+chipLeg()+
     sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪：</b>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
 }
@@ -680,7 +682,7 @@ function legsOfXs(xs){
 function histOverviewOnly(box,items,k1,n){
   var i=0; LASTH=[];
   (function step(){
-    if(i>=items.length){ box.innerHTML=''; buildOverview(box); return; }
+    if(i>=items.length){ box.innerHTML=''; buildOverview(box); var cs=[]; window.HC_COMPACT=true; try{ LASTH.forEach(function(o){ cs.push(histCard(o.title,o.H,o.note)); }); }finally{ window.HC_COMPACT=false; } var g=document.createElement('div'); g.innerHTML='<div class="h" style="margin-top:14px">各板塊的走勢圖（縮小版，點一張看詳細）</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px;margin-top:6px">'+cs.join('')+'</div>'; box.appendChild(g); return; }
     box.innerHTML='<div class="sub">計算中 '+(i+1)+'／'+items.length+' …</div>';
     setTimeout(function(){ var it=items[i]; LASTH.push({title:it.title,H:histOf(it.x,k1,n),note:it.note}); i++; step(); },15);
   })();
