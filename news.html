@@ -342,7 +342,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.11</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.12</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -5199,7 +5199,7 @@ loadPressure();
    資料：先試 Yahoo 批次報價（有即時市值就用即時市值），失敗就逐檔抓日線，格子大小用內建概略值。
    ⚠ 這張圖是「一眼看今天誰漲誰跌」，不是買賣訊號。選的是大型權值股，不等於整個市場。      */
 var HM_PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
-var HM_BUSY=false, HM_DATA=null;
+var HM_BUSY=false, HM_DATA=null, HM_TODAY=null, HM_HIST=null, HM_CAL=[], HM_HBUSY=false;
 var HM_SECS=[
  ['科技','NVDA:4500 AAPL:4000 MSFT:3800 AVGO:1700 ORCL:700 PLTR:400 AMD:350 MU:250 CSCO:280 IBM:250 CRM:250 NOW:190 AMAT:170 QCOM:170 TXN:170 INTC:150 LRCX:150 ANET:150 ADBE:150 KLAC:130 PANW:130 CRWD:120'],
  ['通訊','GOOGL:3800 META:1700 NFLX:450 TMUS:260 DIS:200 T:190 VZ:180'],
@@ -5264,11 +5264,50 @@ async function hmLoad(force){
     }
     var okN=U.filter(function(u){return u.pct!=null;}).length;
     if(okN<U.length*0.5){ box.innerHTML=hmShell('抓不到足夠的資料（只拿到 '+okN+'／'+U.length+' 檔），先不畫圖，免得誤導。按 ↻ 再試一次。'); HM_BUSY=false; return; }
-    HM_DATA={U:U,date:tradeDate,real:real};
+    HM_DATA={U:U,date:tradeDate,real:real}; HM_TODAY=HM_DATA;
     hmDraw();
   }catch(e){ box.innerHTML=hmShell('❌ '+e.message); }
   HM_BUSY=false;
 }
+
+/* v7.12：選日期看過去任何一天的色塊圖。用 Yahoo 日線歷史（2 年）算出當天漲跌，不用事先存；格子大小仍是概略市值，不是當時的市值。 */
+var HM_FMT=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'});
+async function hmFetchHist(t){
+  var base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(t)+'?interval=1d&range=2y';
+  var r=await fetch(HM_PROXY+encodeURIComponent(base),{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  var d=await r.json(), res=d.chart&&d.chart.result&&d.chart.result[0]; if(!res) throw new Error('no data');
+  var c=res.indicators.quote[0].close||[], ts=res.timestamp||[], o={}, ds=[];
+  for(var i=0;i<c.length;i++){ if(c[i]!=null){ var dd=HM_FMT.format(new Date(ts[i]*1000)); o[dd]=c[i]; ds.push(dd); } }
+  return {m:o,d:ds};
+}
+async function hmEnsureHist(){
+  if(HM_HIST) return true; if(HM_HBUSY) return false; HM_HBUSY=true;
+  var U=hmUniverse(), idx=0, done=0, H={}, cnt={};
+  var s=document.getElementById('hmsub');
+  var worker=async function(){ while(idx<U.length){ var u=U[idx++]; try{ var o=await hmFetchHist(u.t); H[u.t]=o; o.d.forEach(function(x){ cnt[x]=(cnt[x]||0)+1; }); }catch(e){} done++; var el=document.getElementById('hmtip'); if(el&&done%10===0) el.textContent='載入歷史資料 '+done+'／'+U.length+' …'; } };
+  var ws=[]; for(var k=0;k<8;k++) ws.push(worker()); await Promise.all(ws);
+  HM_HBUSY=false;
+  var cal=Object.keys(cnt).filter(function(x){ return cnt[x]>=U.length*0.5; }).sort();
+  if(cal.length<30){ var el=document.getElementById('hmtip'); if(el) el.textContent='❌ 抓不到足夠的歷史資料，稍後按 ↻ 再試。'; return false; }
+  HM_HIST=H; HM_CAL=cal; return true;
+}
+function hmBuildDay(d){
+  var U=hmUniverse(), i=HM_CAL.indexOf(d); if(i<1) return null; var pd=HM_CAL[i-1];
+  U.forEach(function(u){ var h=HM_HIST[u.t]; if(h&&h.m[d]!=null&&h.m[pd]!=null) u.pct=(h.m[d]/h.m[pd]-1)*100; });
+  return {U:U,date:d,real:false,hist:true};
+}
+async function hmGoDate(v){
+  if(!v) return; var ok=await hmEnsureHist(); if(!ok) return;
+  var d=null; for(var i=HM_CAL.length-1;i>=0;i--){ if(HM_CAL[i]<=v){ d=HM_CAL[i]; break; } }
+  if(!d||HM_CAL.indexOf(d)<1){ var el=document.getElementById('hmtip'); if(el) el.textContent='這個日期太早，資料不夠。'; return; }
+  var last=HM_CAL[HM_CAL.length-1], day=hmBuildDay(d); if(!day) return;
+  HM_DATA=(HM_TODAY&&d===HM_TODAY.date)?HM_TODAY:day; hmDraw();
+}
+async function hmShift(dir){
+  var ok=await hmEnsureHist(); if(!ok) return; var cur=HM_DATA.date, i=HM_CAL.indexOf(cur); if(i<0) return;
+  var j=i+dir; if(j<1) return; if(j>=HM_CAL.length){ hmToday(); return; } hmGoDate(HM_CAL[j]);
+}
+function hmToday(){ if(HM_TODAY){ HM_DATA=HM_TODAY; hmDraw(); } else hmLoad(true); }
 function hmShell(msg){ return '<div style="background:#fff;border-bottom:1px solid #c8d0dc;padding:10px 16px"><div style="display:flex;align-items:center;gap:8px"><b style="font-size:13px;color:#12385e;letter-spacing:1px">🟥🟩 今日漲跌色塊圖</b><button onclick="hmLoad(true)" style="margin-left:auto;border:1px solid #c8d0dc;background:#f0f4f8;border-radius:8px;padding:4px 12px;font-size:14px">↻</button></div><div id="hmsub" style="font-size:12.5px;color:#4a5568;margin-top:4px">'+msg+'</div></div>'; }
 function hmDraw(){
   var box=document.getElementById('hm'); if(!box||!HM_DATA) return;
@@ -5298,10 +5337,11 @@ function hmDraw(){
     +'<div style="font-size:13px;color:#4a5568;line-height:1.65;margin-top:2px">跌最多的板塊：<b>'+worst.n+'（'+(worst.wavg>=0?'+':'')+worst.wavg.toFixed(1)+'%）</b>；最強或跌最少的：<b>'+best.n+'（'+(best.wavg>=0?'+':'')+best.wavg.toFixed(1)+'%）</b>。</div>';
   var leg='<div style="display:flex;align-items:center;gap:0;margin-top:5px;font-size:11px;color:#4a5568">'+[-3,-2,-1,0,1,2,3].map(function(v){ return '<span style="background:'+hmColor(v)+';color:#fff;padding:2px 7px;font-weight:700">'+(v>0?'+':'')+v+'%</span>'; }).join('')+'<span style="margin-left:8px">格子越大＝市值越大</span></div>';
   box.innerHTML='<div style="background:#fff;border-bottom:1px solid #c8d0dc;padding:10px 8px 8px"><div style="display:flex;align-items:center;gap:8px;padding:0 8px"><b style="font-size:13px;color:#12385e;letter-spacing:1px">🟥🟩 今日漲跌色塊圖</b><button onclick="hmLoad(true)" style="margin-left:auto;border:1px solid #c8d0dc;background:#f0f4f8;border-radius:8px;padding:4px 12px;font-size:14px">↻</button></div>'
+    +'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 8px 4px;font-size:13px;color:#4a5568"><span>📅 日期</span><button onclick="hmShift(-1)" style="border:1px solid #c8d0dc;background:#f0f4f8;border-radius:8px;padding:5px 12px;font-size:15px">‹ 前一天</button><input type="date" value="'+(HM_DATA.date||'')+'" onchange="hmGoDate(this.value)" style="border:1px solid #c8d0dc;border-radius:8px;padding:5px 8px;font-size:15px"><button onclick="hmShift(1)" style="border:1px solid #c8d0dc;background:#f0f4f8;border-radius:8px;padding:5px 12px;font-size:15px">後一天 ›</button><button onclick="hmToday()" style="border:1px solid #12385e;background:#12385e;color:#fff;border-radius:8px;padding:5px 12px;font-size:14px;font-weight:700">回到今天</button>'+(HM_DATA.hist?'<span style="color:#b3262e;font-weight:700">（歷史日期）</span>':'')+'</div>'
     +'<div style="padding:4px 8px 6px">'+read+'</div>'
     +'<div style="position:relative;width:'+W+'px;height:'+H+'px;margin:0 auto;background:#111">'+html+'</div>'
     +'<div id="hmtip" style="margin:5px 8px 0;padding:4px 8px;background:#f0f4f8;border-radius:6px;font-size:13px;font-weight:700;color:#12385e;min-height:22px">👆 點任何一格，這裡會顯示代號、板塊、今天漲跌</div>'
-    +'<div style="padding:0 8px">'+leg+'<div style="font-size:11.5px;color:#718096;line-height:1.6;margin-top:4px">⚠ 這是大型權值股（'+n+' 檔），不是整個市場；格子大小'+(HM_DATA.real?'用即時市值':'用我內建的概略市值（不是即時，只決定格子大小）')+'。漲跌是「最近一個交易日收盤（或盤中最新價）對前一天收盤」。這張圖只用來一眼看今天誰漲誰跌，不是買賣訊號。</div></div></div>';
+    +'<div style="padding:0 8px">'+leg+'<div style="font-size:11.5px;color:#718096;line-height:1.6;margin-top:4px">⚠ 這是大型權值股（'+n+' 檔），不是整個市場；格子大小'+(HM_DATA.real?'用即時市值':'用我內建的概略市值（不是即時、也不是當時的市值，只決定格子大小）')+'。漲跌是「最近一個交易日收盤（或盤中最新價）對前一天收盤」。這張圖只用來一眼看今天誰漲誰跌，不是買賣訊號。</div></div></div>';
 }
 var HM_RT=null; window.addEventListener('resize',function(){ clearTimeout(HM_RT); HM_RT=setTimeout(function(){ if(HM_DATA&&document.getElementById('panel-market').classList.contains('active')) hmDraw(); },250); });
 hmLoad();
