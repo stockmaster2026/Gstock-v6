@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.38</title>
+<title>板塊時光機 v1.39</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.38</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.39</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -428,7 +428,8 @@ function waveState(A){
   var Lb=Math.max(0,NB-1-126), Li=Lb; for(var li=Lb;li<NB;li++){ if(A.idx[li]<A.idx[Li]) Li=li; }
   var gainTot=now/A.idx[Li]-1, barsTot=NB-1-Li, zTot=(A.sm>0&&gainTot>0)?Math.log(1+gainTot)/A.sm:null, bigRun=gainTot>=Math.max(0.25,3*(A.sm||0));
   var totTxt='；若從 '+fd(A.dates[Li])+' 的低點算起，整組 '+barsTot+' 個交易日已漲 '+fmtPct(gainTot*100,0)+(zTot!=null?'（約是這個板塊平常一個月波動的 '+zTot.toFixed(1)+' 倍）':'');
-  if(tier==='go'&&bigRun&&(barsTot>bars||label!=='剛起步')){ label='進行中，偏後段'; col='#c0600a'; tier='late'; why+=totTxt+'）。<b>最近一小波雖然才剛開始，但整段已經漲很多，不算「剛起步」，位置偏後段。</b>'; }
+  if(tier==='go'&&bigRun){ var wasFresh=(label==='剛起步'); label='進行中，偏後段'; col='#c0600a'; tier='late';
+    why+=totTxt+'）。'+(barsTot>bars?'<b>最近一小波雖然才剛開始，但整段已經漲很多，不算「剛起步」，位置偏後段。</b>':(wasFresh?'<b>這是短時間的急漲：才走 '+bars+' 個交易日就已經漲了這麼多，離起漲點已經很遠，追進去不是「剛起步」的位置，算偏後段。</b>':'<b>整段已經漲很多，位置偏後段。</b>')); }
   else if((tier==='go'||tier==='late')&&gainTot>0.1&&barsTot>bars){ why+=totTxt+'）。'; }
   // v1.28：跟 charts v3.16 一樣——大跌中的反彈不能標「順風」。3 個月或 1 個月跌超過 10%，原本標順風／偏後段的改標「跌後反彈中」（10% 是我訂的、沒驗證）
   var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
