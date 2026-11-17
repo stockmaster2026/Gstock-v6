@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.43</title>
+<title>板塊時光機 v1.46</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.43</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.46</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -577,7 +577,7 @@ function histCard(title,H,note){
   var pc=function(v){ return (v>=0?'+':'')+Math.round(v*100)+'%'; };
   var GAINS=[],DEPTHS=[],RDAYS=[];
   var runTxt=runs.length?runs.map(function(r,ri){ var end=r.b===H.k1, nxt=''; if(!end){ var ns=segs.filter(function(s){return s.k0===r.b+1;})[0]; nxt=ns?ns.c:''; }
-    var g='', lo=rng(Math.max(H.k0,r.a-40),r.a,function(v,b){return v<b;}), hi=rng(r.a,r.b,function(v,b){return v>b;}), e=ix(r.b);
+    var g='', lo=rng(Math.max(H.k0,r.a-40,ri>0?runs[ri-1].b+1:0),r.a,function(v,b){return v<b;}), hi=rng(r.a,r.b,function(v,b){return v>b;}), e=ix(r.b);
     if(lo.v&&hi.v&&e){ g='<div style="margin-left:12px;color:#334">從低點 '+md(S.d[lo.k])+' 到高點 '+md(S.d[hi.k])+'：板塊指數漲了 <b style="color:#1f6f3a;font-size:15px">'+pc(hi.v/lo.v-1)+'</b>'+(end?'；現在離那個高點 '+pc(e/hi.v-1):'；結束那天離高點 '+pc(e/hi.v-1))+(r.first&&r.a===H.k0?'（這輪開頭看不到，實際漲幅可能更大）':'')+'</div>'; }
     if(lo.v&&hi.v&&!(r.first&&r.a===H.k0)) GAINS.push(hi.v/lo.v-1);
     var rt='';
@@ -585,27 +585,54 @@ function histCard(title,H,note){
     return '<div style="margin-top:3px">'+md(S.d[r.a])+(r.first?'（看到的最早一天，更早可能就已開始）':'')+' → '+(end?'到 '+md(S.d[r.b])+' 還在進行':md(S.d[r.b])+' 結束，之後轉成「'+nxt+'」')+'，共 <b>'+(r.b-r.a+1)+'</b> 個交易日（'+r.labs.join(' → ')+'）</div>'+g+rt; }).join(''):'<div>這段期間沒有出現「剛起步／進行中／暫停」的上漲階段。</div>';
   var sumTxt='';
   if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息的中位數：吐回到 <b>'+pc(med(DEPTHS))+'</b>、約 <b>'+Math.round(med(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
-  // v1.43：單一板塊的完整曲線——線依當時狀態上色，並在曲線上標出每一輪的起漲點、最高點，以及還沒走出來的最低點
+  // v1.46：單一板塊的「分段故事圖」。線只用一種顏色；背景依波段分段上色（綠＝上漲段、紅＝回檔段），標編號；下面用白話一段一句。
+  // 分段規則：回檔／反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算新的一段，小抖動不切（門檻是我訂的，未驗證）
   var curve=''; (function(){
-    var pts=[],mn=1e9,mx=-1e9,b0=ix(H.k0); if(!b0) return;
-    for(var k=H.k0;k<=H.k1;k++){ var v=ix(k); if(v==null) continue; v=v/b0*100; pts.push([k,v]); if(v<mn)mn=v; if(v>mx)mx=v; }
-    if(pts.length<5) return;
-    var W=600,Hh=190,PT=34,PB=34,PX=30, X=function(k){ return PX+(k-H.k0)/Math.max(1,tot-1)*(W-2*PX); }, Y=function(v){ return PT+(mx-v)/Math.max(1e-9,mx-mn)*(Hh-PT-PB); };
-    var vOf={}; pts.forEach(function(q){ vOf[q[0]]=q[1]; });
+    var pts=[],b0=ix(H.k0); if(!b0) return;
+    for(var k=H.k0;k<=H.k1;k++){ var v=ix(k); if(v==null) continue; pts.push([k,v/b0*100]); }
+    if(pts.length<20) return;
+    var xs=pts.map(function(q){return q[1];}), rs=[]; for(var i=1;i<xs.length;i++){ if(xs[i-1]>0) rs.push(xs[i]/xs[i-1]-1); }
+    var mu=mean(rs), sd=Math.sqrt(mean(rs.map(function(r){return (r-mu)*(r-mu);}))), th=Math.max(0.15,1.5*sd*Math.sqrt(20));
+    var legs=zigzag(xs,th); if(!legs.length) return;
+    // 把相鄰的同方向段接起來，並補上開頭到第一個轉折點之間（沒超過門檻的）
+    var L=[]; legs.forEach(function(l){ if(L.length&&L[L.length-1].up===l.up){ L[L.length-1].i1=l.i1; L[L.length-1].open=l.open; } else L.push({up:l.up,i0:l.i0,i1:l.i1,open:!!l.open}); });
+    var lastI=xs.length-1; if(L[L.length-1].i1<lastI&&!L[L.length-1].open){ L[L.length-1].i1=L[L.length-1].i1; }
+    var W=600,Hh=210,PT=40,PB=30,PX=24, mn=Math.min.apply(null,xs), mx=Math.max.apply(null,xs);
+    var X=function(i){ return PX+i/Math.max(1,xs.length-1)*(W-2*PX); }, Y=function(v){ return PT+(mx-v)/Math.max(1e-9,mx-mn)*(Hh-PT-PB); };
+    var dk=function(i){ return S.d[pts[i][0]]; };
+    var NUM=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
     var g='<svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block;background:#faf7e6;border-radius:6px">';
-    segs.forEach(function(sg){ var a0=Math.max(H.k0,sg.k0-1), xy=[]; for(var k=a0;k<=sg.k1;k++){ if(vOf[k]!=null) xy.push(X(k).toFixed(1)+','+Y(vOf[k]).toFixed(1)); } if(xy.length>1) g+='<polyline fill="none" stroke="'+CATC[sg.c]+'" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" points="'+xy.join(' ')+'"/>'; });
-    var lab=function(x,y,t,c,above){ var xx=Math.max(56,Math.min(W-56,x)); return '<text x="'+xx.toFixed(1)+'" y="'+(above?y-8:y+16).toFixed(1)+'" text-anchor="middle" font-size="12" font-weight="800" fill="'+c+'" stroke="#faf7e6" stroke-width="3" paint-order="stroke">'+t+'</text>'; };
-    runs.forEach(function(r,ri){
-      var lo=rng(Math.max(H.k0,r.a-40),r.a,function(v,b){return v<b;}), hi=rng(r.a,r.b,function(v,b){return v>b;}); if(!lo.v||!hi.v) return;
-      var ltl=(r.first&&r.a===H.k0)?'':'起 '+md(S.d[lo.k]);
-      if(ltl){ g+='<circle cx="'+X(lo.k).toFixed(1)+'" cy="'+Y(lo.v/b0*100).toFixed(1)+'" r="5" fill="#fff" stroke="#1f6f3a" stroke-width="2.5"/>'+lab(X(lo.k),Y(lo.v/b0*100),ltl,'#1f6f3a',false); }
-      g+='<circle cx="'+X(hi.k).toFixed(1)+'" cy="'+Y(hi.v/b0*100).toFixed(1)+'" r="5" fill="#b3262e" stroke="#fff" stroke-width="1.5"/>'+lab(X(hi.k),Y(hi.v/b0*100),'峰 '+md(S.d[hi.k])+' '+pc(hi.v/lo.v-1),'#b3262e',true);
-      if(r.b===H.k1) return;
-      var nr=runs[ri+1]; if(nr) return;
-      var rl=rng(r.b+1,H.k1,function(v,b){return v<b;}); if(rl.v&&rl.k>hi.k+3){ g+='<circle cx="'+X(rl.k).toFixed(1)+'" cy="'+Y(rl.v/b0*100).toFixed(1)+'" r="4.5" fill="#8a5a00" stroke="#fff" stroke-width="1.5"/>'+lab(X(rl.k),Y(rl.v/b0*100),'谷 '+md(S.d[rl.k])+' '+pc(rl.v/hi.v-1),'#8a5a00',false); }
-    });
+    // 背景色帶（每段用到下一段的起點，沒有縫）
+    L.forEach(function(l,li){ var xa=X(l.i0), xb=X(li<L.length-1?L[li+1].i0:lastI); if(li===0) xa=PX;
+      g+='<rect x="'+xa.toFixed(1)+'" y="'+(PT-30)+'" width="'+Math.max(1,xb-xa).toFixed(1)+'" height="'+(Hh-PT-PB+30)+'" fill="'+(l.up?'rgba(31,111,58,.14)':'rgba(179,38,46,.11)')+'"/>';
+      var cx=(xa+xb)/2, pc0=xs[l.i1]/xs[l.i0]-1;
+      g+='<text x="'+cx.toFixed(1)+'" y="'+(PT-12)+'" text-anchor="middle" font-size="15" font-weight="900" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+(NUM[li]||(li+1))+'</text>';
+      if(xb-xa>46) g+='<text x="'+cx.toFixed(1)+'" y="'+(Hh-9)+'" text-anchor="middle" font-size="11.5" font-weight="800" fill="'+(l.up?'#1f6f3a':'#b3262e')+'">'+pc(pc0)+'</text>'; });
+    // 一條線
+    g+='<polyline fill="none" stroke="#2b3447" stroke-width="2.2" stroke-linejoin="round" points="'+xs.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ')+'"/>';
+    // 轉折點（高點紅、低點綠）＋日期
+    var placed=[];
+    var pv=function(i,hi){ var x=X(i),y=Y(xs[i]), t=md(dk(i)), w=t.length*7+6, x0=x-w/2,x1=x+w/2, yy=hi?y-8:y+16;
+      for(var tr=0;tr<3;tr++){ var hit=placed.some(function(o){return x0<o.x1+2&&x1>o.x0-2&&Math.abs(yy-o.y)<13;}); if(!hit) break; yy+=hi?-13:13; } placed.push({x0:x0,x1:x1,y:yy});
+      g+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+(hi?'#b3262e':'#fff')+'" stroke="'+(hi?'#fff':'#1f6f3a')+'" stroke-width="'+(hi?1.5:2.2)+'"/><text x="'+Math.max(18,Math.min(W-18,x)).toFixed(1)+'" y="'+yy.toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="800" fill="'+(hi?'#b3262e':'#1f6f3a')+'" stroke="#faf7e6" stroke-width="3" paint-order="stroke">'+t+'</text>'; };
+    L.forEach(function(l,li){ if(li===0&&l.i0>1) pv(l.i0,!l.up); else if(li===0&&l.up&&l.i0<=1){} else if(li===0) pv(l.i0,!l.up); if(!(l.open&&li===L.length-1&&l.i1>=lastI-2)) pv(l.i1,l.up); });
+    g+='<circle cx="'+X(lastI).toFixed(1)+'" cy="'+Y(xs[lastI]).toFixed(1)+'" r="4.5" fill="#2b3447" stroke="#fff" stroke-width="1.5"/><text x="'+(W-PX).toFixed(1)+'" y="'+(Y(xs[lastI])+(L[L.length-1].up?19:-9)).toFixed(1)+'" text-anchor="end" font-size="11.5" font-weight="900" fill="#2b3447" stroke="#faf7e6" stroke-width="3" paint-order="stroke">現在</text>';
     g+='</svg>';
-    curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">線的顏色＝當時的位階（看下面色條說明）。<b style="color:#1f6f3a">○ 起</b>＝這一輪的低點（往前找 40 個交易日內最低），<b style="color:#b3262e">● 峰</b>＝這一輪的最高點與從低點漲了多少，<b style="color:#8a5a00">● 谷</b>＝最高點之後到現在的最低點與吐回多少。起點／高點是程式依規則抓的，可能跟你用 K 線看的差幾天。</div>';
+    // 白話故事
+    var d1=function(i){ return md(dk(i)); }, nd=function(l){ return l.i1-l.i0; };
+    var items=L.map(function(l,li){ var p=xs[l.i1]/xs[l.i0]-1, clip=(li===0&&l.up&&l.i0<=1), tail=(li===L.length-1&&l.open);
+      var t=(l.up?'上漲':'回檔')+' <b style="color:'+(l.up?'#1f6f3a':'#b3262e')+'">'+pc(p)+'</b>';
+      var when=(clip?'畫面一開始就在漲（起點在畫面之前）':d1(l.i0))+' → '+d1(l.i1)+(tail?'（還在進行）':'');
+      var ex=''; if(l.up&&!clip){ var prevHi=null; for(var q=li-2;q>=0;q-=2){ if(L[q].up){ prevHi=L[q]; break; } } if(prevHi){ var r=xs[l.i1]/xs[prevHi.i1]-1; ex='；這個高點比前一個高點（'+d1(prevHi.i1)+'）'+(r>=0?'高 ':'低 ')+Math.abs(Math.round(r*100))+'%'; } }
+      if(clip) ex='；實際漲幅比這個數字更大（至少）';
+      return '<div style="margin:3px 0"><b style="color:'+(l.up?'#1f6f3a':'#b3262e')+';font-size:16px">'+(NUM[li]||(li+1))+'</b> '+when+'，共 '+nd(l)+' 個交易日，'+t+ex+'</div>'; }).join('');
+    var highs=L.filter(function(l,li){ return l.up&&!(li===L.length-1&&l.open); }).map(function(l){ return {i:l.i1,v:xs[l.i1]}; });
+    var pat=''; if(highs.length>=2){ var dn=true,up=true; for(var j=1;j<highs.length;j++){ if(highs[j].v>=highs[j-1].v) dn=false; if(highs[j].v<=highs[j-1].v) up=false; }
+      pat=dn?'高點一次比一次低（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':(up?'高點一路墊高（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':'高點有高有低（'+highs.map(function(o){return d1(o.i);}).join('、')+'）'); }
+    var imx=xs.indexOf(mx), imn=xs.lastIndexOf(Math.min.apply(null,xs.slice(imx))), cur=xs[lastI];
+    var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'');
+    curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">背景：<b style="color:#1f6f3a">綠＝上漲段</b>、<b style="color:#b3262e">紅＝回檔段</b>，編號對應下面的故事；紅點＝高點、空心圈＝低點（日期）。回檔或反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算一段（我訂的，未驗證），小抖動不單獨分段。位階顏色看下面的色條。</div>'
+      +'<div style="background:#f2f6ff;border-radius:8px;padding:7px 10px;margin:4px 0 6px;font-size:14px;line-height:1.6"><b>這條線的故事</b>'+items+'<div style="margin-top:5px;padding-top:4px;border-top:1px solid #d8e0f0"><b>'+now+'</b><span style="color:#778;font-size:12.5px">（只是這段期間的樣子，不是預測）</span></div></div>';
   })();
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
   return '<div style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+(curve||spark)+strip+axis+chipLeg()+
