@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.40</title>
+<title>板塊時光機 v1.42</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.40</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.42</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -431,6 +431,11 @@ function waveState(A){
   if(tier==='go'&&bigRun){ var wasFresh=(label==='剛起步'); label='進行中，偏後段'; col='#c0600a'; tier='late';
     why+=totTxt+'）。'+(barsTot>bars?'<b>最近一小波雖然才剛開始，但整段已經漲很多，不算「剛起步」，位置偏後段。</b>':(wasFresh?'<b>這是短時間的急漲：才走 '+bars+' 個交易日就已經漲了這麼多，離起漲點已經很遠，追進去不是「剛起步」的位置，算偏後段。</b>':'<b>整段已經漲很多，位置偏後段。</b>')); }
   else if((tier==='go'||tier==='late')&&gainTot>0.1&&barsTot>bars){ why+=totTxt+'）。'; }
+  // v1.42：短線急拉。最近一波才走不到 15 個交易日就漲了 max(18%, 自己平常一個月波動的 1.2 倍) 以上，標「急拉（短線）」而不是「剛起步」。
+  // 原因：無人機國防 5/28 起漲標「剛起步」，只撐 8 個交易日就轉成大幅回吐（18%、1.2 倍、15 日都是我訂的，只看過一個板塊兩輪，未驗證）
+  var spikeTh=Math.max(0.18,1.2*(A.sm||0));
+  if(tier==='go'&&bars<=15&&w.gain>=spikeTh){ label='急拉（短線）'; col='#d98a1f'; tier='late';
+    why='最近一波才走 '+bars+' 個交易日就漲了 '+fmtPct(w.gain*100,0)+'（門檻 '+Math.round(spikeTh*100)+'%），這是<b>短時間急漲，不確定能不能延續</b>；這類急拉可能很快就回吐，不要當成「剛起步」的穩定起漲。'+(why.indexOf(totTxt)<0?'':''); }
   // v1.28：跟 charts v3.16 一樣——大跌中的反彈不能標「順風」。3 個月或 1 個月跌超過 10%，原本標順風／偏後段的改標「跌後反彈中」（10% 是我訂的、沒驗證）
   var q3=NB>63?now/A.idx[NB-1-63]-1:null, q1=NB>21?now/A.idx[NB-1-21]-1:null;
   if((tier==='go'||tier==='late')&&((q3!=null&&q3<=-0.10)||(q1!=null&&q1<=-0.10))){
@@ -442,7 +447,7 @@ function waveState(A){
 }
 function el(id){return document.getElementById(id);}
 var HN=function(){ var e=document.getElementById('hn'); return e?+e.value:126; };
-var TK='', SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜'];
+var TK='', SECS=[], SPYB=null, FULL={}, OFF=0, CATS=['剛起步','急拉（短線）','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜'];
 var PRESETS=[['3/13（週五）','2026-03-13'],['4/15（週三）','2026-04-15'],['5/15（週五）','2026-05-15']];
 // v1.29：快捷按鈕可以自己調整。📍今天＋相對日期（1 週前／1 個月前／3 個月前）會自動跟著日期走；★ 是你自己存的日期，可以新增、移除（存在這台裝置的瀏覽器裡）
 var QK='tm_quick_v1';
@@ -500,6 +505,7 @@ function plainRead(r3,r1,lead,st,longUp){
   var lb=st.label, pc=Math.round(st.give*100), tr=st.tier, PW=(r3>=0.10?'過去強':'過去有漲'), sen, C, LT;
   var nowW=/^休息中/.test(lb)?'休息':(/^回檔中/.test(lb)?'回檔':'大幅回吐');
   if(tr==='go'){ LT='順風'; C='#1f6f3a'; sen='現在'+(/剛起步/.test(lb)?'剛開始動':'還在漲')+'，位置在高點附近，算順風。'; }
+  else if(tr==='late'&&/急拉/.test(lb)){ LT='小心'; C='#c0600a'; sen='短時間急漲：這一波才 '+st.bars+' 個交易日就漲了 '+pctA(st.last.gain)+'，不確定能不能延續；不要當成「剛起步」的穩定起漲，追的話要小、要快。'; }
   else if(tr==='late'){ LT='小心'; C='#c0600a'; sen='強勢板塊的後段：站在高點附近，但這一波已經跑了 '+st.bars+' 個交易日、漲了 '+pctA(st.last.gain)+'，不是起漲位置；追的話要小、要快。'+(a1<0?' 最近 1 個月已轉弱。':''); }
   else if(tr==='bounce'){ LT='小心'; C='#c0600a'; sen='高點只是最近這一小段反彈的高點；'+d3+'，'+d1+'，整體還在跌勢裡，不是順風。先觀察，等它回升後守得住、走出新的一波再說。'; }
   else if(tr==='pause'){ LT='小心'; C='#c0600a'; sen='停在高點附近整理（離高點 '+st.dayPk+' 天），'+(a1<0?'最近 1 個月跌了 '+pctA(r1)+'，':(a1>0?'最近 1 個月漲了 '+pctA(r1)+'，':''))+'還沒大幅吐回，也還沒再往上；等突破確認。'; }
@@ -512,6 +518,7 @@ function catOf(st){
   if(!st) return '沒動靜';
   var l=st.label;
   if(l.indexOf('跌後反彈')===0) return '跌後反彈';
+  if(l.indexOf('急拉')===0) return '急拉（短線）';
   if(l.indexOf('剛起步')===0) return '剛起步';
   if(l.indexOf('偏後段')>=0) return '進行中（偏後段）';
   if(l.indexOf('進行中')>=0) return '進行中';
@@ -541,8 +548,8 @@ function f0(v){ return v==null?'—':fmtPct(v*100,0); }
 function med(a){ a=a.slice().sort(function(x,y){return x-y;}); var m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
 function mean(a){ var t=0; a.forEach(function(x){t+=x;}); return a.length?t/a.length:0; }
 function md(d){ var p=d.split('-'); return (+p[1])+'/'+(+p[2]); }
-var CATC={'剛起步':'#46b86a','進行中':'#1f6f3a','進行中（偏後段）':'#c0600a','暫停':'#e0a040','回檔中':'#d9534f','大幅回吐':'#b3262e','休息中':'#8a5a00','跌後反彈':'#e07b39','沒動靜':'#c9ced6'};
-var GOC={'剛起步':1,'進行中':1,'進行中（偏後段）':1,'暫停':1};
+var CATC={'剛起步':'#46b86a','急拉（短線）':'#d98a1f','進行中':'#1f6f3a','進行中（偏後段）':'#c0600a','暫停':'#e0a040','回檔中':'#d9534f','大幅回吐':'#b3262e','休息中':'#8a5a00','跌後反彈':'#e07b39','沒動靜':'#c9ced6'};
+var GOC={'剛起步':1,'急拉（短線）':1,'進行中':1,'進行中（偏後段）':1,'暫停':1};
 function kOf(ds){ var S=SPYB,k=-1; for(var i=0;i<S.d.length;i++){ if(S.d[i]<=ds) k=i; else break; } return k; }
 function histOf(x,k1,n){
   var k0=Math.max(119,OFF,k1-n+1), seg=[];
@@ -550,7 +557,7 @@ function histOf(x,k1,n){
   for(var i=1;i<seg.length;){ if(seg[i].k1-seg[i].k0+1<3){ seg[i-1].k1=seg[i].k1; seg.splice(i,1); if(i<seg.length&&seg[i].c===seg[i-1].c){ seg[i-1].k1=seg[i].k1; seg.splice(i,1); } } else i++; }
   return {segs:seg,k0:k0,k1:k1,name:x.s.name};
 }
-function chipLeg(){ var ks=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜']; return '<div style="display:flex;flex-wrap:wrap;gap:3px 9px;font-size:11.5px;color:#445;margin:2px 0 4px">'+ks.map(function(k){ return '<span style="white-space:nowrap"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:'+CATC[k]+';vertical-align:-1px;margin-right:3px"></span>'+k+'</span>'; }).join('')+'<span style="color:#778">（顏色＝位階狀態；漲跌看色塊裡的 ▲▼）</span></div>'; }
+function chipLeg(){ var ks=['剛起步','急拉（短線）','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜']; return '<div style="display:flex;flex-wrap:wrap;gap:3px 9px;font-size:11.5px;color:#445;margin:2px 0 4px">'+ks.map(function(k){ return '<span style="white-space:nowrap"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:'+CATC[k]+';vertical-align:-1px;margin-right:3px"></span>'+k+'</span>'; }).join('')+'<span style="color:#778">（顏色＝位階狀態；漲跌看色塊裡的 ▲▼）</span></div>'; }
 function histCard(title,H,note){
   var IX=FULL[H.name]||[], ix=function(k){ var v=IX[k-OFF]; return v==null?null:v; };
   var S=SPYB, segs=H.segs, tot=H.k1-H.k0+1, last=segs[segs.length-1], lastDays=last.k1-last.k0+1;
@@ -584,7 +591,7 @@ function histCard(title,H,note){
 }
 function stayCard(A){
   if(A.length<8) return '';
-  var order=['剛起步','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜'], rows='';
+  var order=['剛起步','急拉（短線）','進行中','進行中（偏後段）','暫停','回檔中','大幅回吐','休息中','跌後反彈','沒動靜'], rows='';
   order.forEach(function(c){ var ds=A.filter(function(x){return x.c===c;}).map(function(x){return x.d;}); if(ds.length<3) return;
     var sh=ds.filter(function(d){return d<=5;}).length;
     rows+='<tr><td style="padding:2px 6px;color:'+CATC[c]+';font-weight:800">'+c+'</td><td style="padding:2px 6px;text-align:right"><b>'+med(ds)+'</b> 天</td><td style="padding:2px 6px;text-align:right">'+Math.round(sh/ds.length*100)+'%</td><td style="padding:2px 6px;text-align:right;color:#778">'+ds.length+' 段</td></tr>'; });
@@ -599,7 +606,7 @@ function histInto(box,items,k1,n,done){
     setTimeout(function(){ var it=items[i], Hh=histOf(it.x,k1,n); Hh.segs.forEach(function(sg,j){ if(j>0&&j<Hh.segs.length-1) ALLSEGS.push({c:sg.c,d:sg.k1-sg.k0+1}); }); html.push(histCard(it.title,Hh,it.note)); i++; step(); },15);
   })();
 }
-var HIST_LEGEND='<div class="sub">每條是一個板塊（或一檔股票），從左到右是時間，顏色是當時的位階：<b style="color:#1f6f3a">綠＝順風</b>（剛起步／進行中）、<b style="color:#c0600a">橘＝小心</b>（偏後段／高點附近暫停／跌後反彈）、<b style="color:#b3262e">紅褐＝逆風</b>（回檔／大幅回吐／休息中）、灰＝沒動靜。每一格上面寫：狀態、起訖日、板塊指數在那一段漲跌多少（▲漲／▼跌）。太窄的格子只寫百分比，點一下或停一下可看完整（太窄的連百分比也放不下）。少於 3 天的短暫變化會併進前一段。位階用的仍是我訂的 15% 等規則，沒有驗證。</div>';
+var HIST_LEGEND='<div class="sub">每條是一個板塊（或一檔股票），從左到右是時間，顏色是當時的位階：<b style="color:#1f6f3a">綠＝順風</b>（剛起步／進行中）、<b style="color:#c0600a">橘＝小心</b>（急拉／偏後段／高點附近暫停／跌後反彈）、<b style="color:#b3262e">紅褐＝逆風</b>（回檔／大幅回吐／休息中）、灰＝沒動靜。每一格上面寫：狀態、起訖日、板塊指數在那一段漲跌多少（▲漲／▼跌）。太窄的格子只寫百分比，點一下或停一下可看完整（太窄的連百分比也放不下）。少於 3 天的短暫變化會併進前一段。位階用的仍是我訂的 15% 等規則，沒有驗證。</div>';
 function showHist(ds){
   var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
   var k=kOf(ds), out=el('out');
@@ -625,7 +632,7 @@ function cycPath(cats){ // cats：由舊到新，null＝那天資料不夠
 }
 // v1.31：板塊週期表改成「圖」——①甜甜圈：四個時間點，順風／小心／逆風各幾個 ②堆疊柱：整個市場的組成怎麼隨時間變（疊 SPY 線）③色塊熱圖：每個板塊一條橫帶，依「何時轉強」排序，看輪動順序 ④原本的表收進「看每個板塊的明細」
 var CLS_COL={'順風':'#2e9e56','小心':'#e08a2a','逆風':'#b8504a','沒動靜':'#c9ccd3'};
-function clsOf(c){ if(c==='剛起步'||c==='進行中') return '順風'; if(c==='進行中（偏後段）'||c==='暫停'||c==='跌後反彈') return '小心'; if(c==='回檔中'||c==='大幅回吐'||c==='休息中') return '逆風'; return '沒動靜'; }
+function clsOf(c){ if(c==='剛起步'||c==='進行中') return '順風'; if(c==='急拉（短線）'||c==='進行中（偏後段）'||c==='暫停'||c==='跌後反彈') return '小心'; if(c==='回檔中'||c==='大幅回吐'||c==='休息中') return '逆風'; return '沒動靜'; }
 function donutSvg(cl,title,sub){
   var order=['順風','小心','逆風','沒動靜'], tot=0; order.forEach(function(k){ tot+=cl[k]||0; }); if(!tot) return '';
   var R=38,C=2*Math.PI*R, off=0, segs='';
@@ -653,7 +660,7 @@ function showCycle(ds){
 }
 // v1.35：山形圖。左谷底→起步→爬坡→山頂→下山→右谷底。下山的位置＝這一波吐回多少（0%＝山頂、100%＝谷底）；山頂／爬坡只按階段分類大概放
 function mtnX(c,give){
-  if(c==='剛起步') return 0.10; if(c==='進行中') return 0.28; if(c==='進行中（偏後段）') return 0.42;
+  if(c==='剛起步') return 0.10; if(c==='進行中') return 0.28; if(c==='進行中（偏後段）') return 0.42; if(c==='急拉（短線）') return 0.20;
   if(c==='跌後反彈') return 0.90; if(c==='沒動靜') return 0.03;
   var g=(give==null)?0.85:Math.max(0,Math.min(1,give)); return 0.5+0.5*g;
 }
@@ -751,7 +758,7 @@ function drawCycle2(lists,ks,M,S,k){
    +'<br>• <b>輪動順序（熱圖由上到下）：</b>'+(first0.length?'一開始（'+md(S.d[ks[0]])+'）就已經強的：'+first0.join('、')+'。':'')+(later.length?'之後依序轉強：'+later.join(' → ')+'。':'')+(never.length?'整段期間都沒進入強勢：'+never.join('、')+'。':'')
    +'<br>• <b>現在還在強勢階段：</b>'+(stillNow.length?stillNow.join('、'):'沒有')+'。'
    +'<br><span style="color:#b3262e">⚠ 這是這一段期間的一次經驗，<b>不能因此說「強勢板塊變少就一定領先大盤轉弱」</b>，要多幾次行情才看得出規律；狀態分類與門檻（15%、吐回 3／7 成、10／60 日）都是我訂的，未驗證。</span></div>';
-  var leg='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;margin:4px 0">'+['順風','小心','逆風','沒動靜'].map(function(c){ return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+CLS_COL[c]+';vertical-align:-2px;margin-right:4px"></span>'+c+({'順風':'（剛起步／進行中）','小心':'（偏後段／暫停／跌後反彈）','逆風':'（回檔／大幅回吐／休息中）','沒動靜':''}[c])+'</span>'; }).join('')+'</div>';
+  var leg='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;margin:4px 0">'+['順風','小心','逆風','沒動靜'].map(function(c){ return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+CLS_COL[c]+';vertical-align:-2px;margin-right:4px"></span>'+c+({'順風':'（剛起步／進行中）','小心':'（急拉／偏後段／暫停／跌後反彈）','逆風':'（回檔／大幅回吐／休息中）','沒動靜':''}[c])+'</span>'; }).join('')+'</div>';
   // ── ④ 原本的明細表 ──
   var cols=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]].map(function(c){ var j=idxAt(c[1]); return {n:c[0],j:j}; });
   var rows=meta.map(function(m){ var cats=cols.map(function(c){ return c.j==null?null:M[m.si][c.j]; }); var st=stateAt(m.x,k).st, wtxt='—';
@@ -771,16 +778,33 @@ function drawCycle2(lists,ks,M,S,k){
   var ctxt=cand.length?cand.map(function(m,i){ return '<div style="padding:5px 0;border-top:1px solid #e6dcae;font-size:14px;line-height:1.6"><b>'+(i+1)+'. '+m.x.s.icon+' '+m.x.s.name+'</b>（'+m.c+'）<br><span style="color:#445">吐回 '+Math.round(m.f.give*100)+'%、最近 1 個月 '+f0(m.f.r1)+' → 歸在「'+CN[m.cc]+'」，過去這一類 '+m.n+' 次裡 20 天內轉強 <b>'+Math.round(m.rate*100)+'%</b>'+(m.n<15?'<span style="color:#b3262e">（樣本太少，只能當參考）</span>':'')+'</span></div>'; }).join(''):'<div class="sub">現在沒有板塊在「逆風」狀態，這個清單是空的。</div>';
   SECNAMES=lists.map(function(x){ return x.s.name; });
   var j1=idxAt(21), mi=[];
-  lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f};
+  lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f,sx:x};
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); } mi.push(it); });
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
-  var fresh=mi.filter(function(m){return m.c==='剛起步';});
+  var fresh=mi.filter(function(m){return m.c==='剛起步'||m.c==='急拉（短線）';});
+  // v1.41：「剛起步」是板塊平均。把這個板塊裡每一檔從同一個低點算起漲多少列出來，看漲幅是不是集中在少數幾檔（領頭股可能已經偏後段）
+  var leadTxt=function(m){
+    try{ var q=m.f&&m.f.st; if(!q||!q.lowD||!m.sx||!m.sx.list) return ''; var endD=S.d[k], g=[];
+      m.sx.list.forEach(function(sk){ var B=sk.B; if(!B||!B.map) return; var a=B.map[q.lowD], b=B.map[endD]; if(a!=null&&b!=null&&B.c[a]>0) g.push({t:sk.t,v:B.c[b]/B.c[a]-1}); });
+      if(g.length<3) return ''; g.sort(function(a,b){return b.v-a.v;});
+      var mv=med(g.map(function(o){return o.v;})), t2=(g[0].v+g[1].v)/2, conc=t2>=Math.max(0.4,2.5*Math.max(mv,0.02));
+      return '<br>　　↳ 同一段期間各檔漲幅：領頭 '+g.slice(0,3).map(function(o){return o.t+' '+fmtPct(o.v*100,0);}).join('、')+'；中位數 '+fmtPct(mv*100,0)+'（共 '+g.length+' 檔）'+(conc?'。<b style="color:#b3262e">漲幅集中在少數幾檔：板塊平均才剛起步，但領頭這幾檔已經漲很多，位置可能偏後段，不要把「板塊剛起步」當成「這幾檔剛起步」。</b>':'。漲幅沒有特別集中。');
+    }catch(e){ return ''; }
+  };
+  // v1.42：集中度檢查，強勢階段的板塊若漲幅集中在少數幾檔，名字後面加 ⚠（門檻是我訂的，未驗證）
+  var concOf=function(m){
+    try{ var q=m.f&&m.f.st; if(!q||!q.lowD||!m.sx||!m.sx.list) return false; var endD=S.d[k], g=[];
+      m.sx.list.forEach(function(sk){ var B=sk.B; if(!B||!B.map) return; var a=B.map[q.lowD], b=B.map[endD]; if(a!=null&&b!=null&&B.c[a]>0) g.push(B.c[b]/B.c[a]-1); });
+      if(g.length<3) return false; g.sort(function(a,b){return b-a;}); var mv=med(g); return (g[0]+g[1])/2>=Math.max(0.4,2.5*Math.max(mv,0.02));
+    }catch(e){ return false; } };
+  mi.forEach(function(m){ if(isGoCat(m.c)&&concOf(m)){ m.name+=' ⚠'; m.conc=true; } });
   var nmj=function(a){ return a.length?a.map(function(m){return m.name;}).join('、'):'沒有'; };
   var mtn='<div class="h" style="font-size:15px;margin-top:14px">⑤ 山：每個板塊現在走到哪了</div>'+mountainSvg(mi)
    +'<div style="font-size:12.5px;color:#556;margin:3px 0">圓點＝現在的位置（顏色同順風／小心／逆風）；空心圈＋虛線＝1 個月前的位置，虛線指向現在，看得出往哪邊走。</div>'
    +'<div style="font-size:14px;line-height:1.8;margin-top:4px"><b>白話讀法：</b><br>• <b>山頂／爬坡（還在強勢階段）'+gTop.length+' 個：</b>'+nmj(gTop)
    +'<br>• <b>剛下山（這一波吐回不到 5 成）'+gShallow.length+' 個：</b>'+nmj(gShallow)+'　← 歷史上轉強比例比深的稍高一點，值得多看一眼'
-   +'<br>• <b>快到谷底（吐回 5 成以上）'+gDeep.length+' 個：</b>'+nmj(gDeep)+(fresh.length?'<br>• <b>標成「剛起步」的數字（檢查用）：</b>'+fresh.map(function(m){ var q=m.f&&m.f.st; return q?m.name+'：最近一波走了 '+q.bars+' 個交易日、漲 '+fmtPct(q.wg*100,0)+'；從 '+fd(q.lowD)+' 的低點算起 '+q.bt+' 個交易日漲 '+fmtPct(q.gt*100,0)+(q.z!=null?'（約月波動的 '+q.z.toFixed(1)+' 倍）':'')+'；「偏後段」的門檻＝漲 '+Math.round(Math.max(0.25,3*q.sm)*100)+'% 以上':m.name; }).join('<br>　　'):'')
+   +'<br>• <b>快到谷底（吐回 5 成以上）'+gDeep.length+' 個：</b>'+nmj(gDeep)+(fresh.length?'<br>• <b>標成「剛起步」的數字（檢查用）：</b>'+fresh.map(function(m){ var q=m.f&&m.f.st; return q?m.name+'：最近一波走了 '+q.bars+' 個交易日、漲 '+fmtPct(q.wg*100,0)+'；從 '+fd(q.lowD)+' 的低點算起 '+q.bt+' 個交易日漲 '+fmtPct(q.gt*100,0)+(q.z!=null?'（約月波動的 '+q.z.toFixed(1)+' 倍）':'')+'；「偏後段」的門檻＝漲 '+Math.round(Math.max(0.25,3*q.sm)*100)+'% 以上'+leadTxt(m):m.name; }).join('<br>　　'):'')
+   +(mi.some(function(m){return m.conc;})?'<br><span style="color:#b3262e">名字後面有 ⚠ 的板塊：板塊平均看起來還好，但漲幅集中在少數幾檔，<b>板塊位置只回答「整個板塊在哪」，個股能不能買要另外看 screen／volume</b>。</span>':'')
    +'<br><span style="color:#b3262e">⚠ 山頂／爬坡的位置只是按階段大概放；「剛下山比較容易再起來」的差距很小、樣本重疊，只當觀察，不是預測。</span></div>';
   var sec5=mtn+'<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:800;font-size:14px;color:#445">看統計細節：歷史轉強比例＋每個板塊歸類</summary>'
    +'<div style="background:#eef6ee;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.7"><b>怎麼來的：</b>回頭看這一段期間，每次有板塊處在「逆風」（回檔／大幅回吐／休息中），後來 20 個交易日內有沒有變成「順風」。再依「這一波吐回多少」「最近 1 個月有沒有止跌」分四類，看哪一類比較常轉強。整體平均：<b>'+pc(base)+'</b>（'+base.n+' 次樣本）。'
@@ -806,7 +830,7 @@ function showDay(ds){
   var nm=function(c){ return by[c].map(function(r){return r.x.s.name;}).join('、'); };
   var go=by['剛起步'].concat(by['進行中']);
   var h='<div class="box"><div class="h" style="font-size:20px">'+fd(date)+'（週'+wd(date)+'）當天'+(date!==ds?'<span class="sub">（你選的 '+ds+' 不是交易日，用前一個交易日）</span>':'')+'</div>';
-  h+='<div class="read"><b>一句話：</b>'+(go.length?'當天「剛起步／進行中」的板塊有 <b>'+go.length+'</b> 個：'+go.map(function(r){return r.x.s.name+'（'+r.st.label+'）';}).join('、')+'。':'當天沒有任何板塊在「剛起步／進行中」。')+(by['進行中（偏後段）'].length?' 進行中但偏後段：'+nm('進行中（偏後段）')+'。':'')+(by['暫停'].length?' 高點附近暫停：'+nm('暫停')+'。':'')+'</div>';
+  h+='<div class="read"><b>一句話：</b>'+(go.length?'當天「剛起步／進行中」的板塊有 <b>'+go.length+'</b> 個：'+go.map(function(r){return r.x.s.name+'（'+r.st.label+'）';}).join('、')+'。':'當天沒有任何板塊在「剛起步／進行中」。')+(by['急拉（短線）'].length?' 短線急拉（不確定能延續）：'+nm('急拉（短線）')+'。':'')+(by['進行中（偏後段）'].length?' 進行中但偏後段：'+nm('進行中（偏後段）')+'。':'')+(by['暫停'].length?' 高點附近暫停：'+nm('暫停')+'。':'')+'</div>';
   var rest=by['休息中'].length+by['回檔中'].length+by['大幅回吐'].length+by['跌後反彈'].length+by['沒動靜'].length;
   h+='<div class="read">另外 <b>'+rest+'</b> 個板塊在回檔、回吐、休息、跌後反彈或沒動靜。'+(by['剛起步'].length===0?' 沒有板塊在剛起步，代表當天看不到「新主流剛冒出來」的訊號。':'')+'</div></div>';
   // 強弱
@@ -852,7 +876,7 @@ function reveal(R,k){
   rows.forEach(function(w){ h+='<tr><td><b>'+w.r.x.s.icon+' '+w.r.x.s.name+'</b></td><td>'+w.r.cat+'</td><td class="'+cl(w.a)+'">'+f0(w.a)+'</td><td class="'+cl(w.ea)+'">'+f0(w.ea)+'</td><td class="'+cl(w.b)+'">'+f0(w.b)+'</td><td class="'+cl(w.eb)+'">'+f0(w.eb)+'</td></tr>'; });
   h+='</table></div>';
   var grp=function(cs){ var a=rows.filter(function(w){return cs.indexOf(w.r.cat)>=0&&w.ea!=null;}); return a; };
-  var g1=grp(['剛起步','進行中','進行中（偏後段）']), g2=grp(['休息中','回檔中','大幅回吐','跌後反彈','沒動靜']);
+  var g1=grp(['剛起步','急拉（短線）','進行中','進行中（偏後段）']), g2=grp(['休息中','回檔中','大幅回吐','跌後反彈','沒動靜']);
   var avg=function(a){ return a.length?a.reduce(function(s,w){return s+w.ea;},0)/a.length:null; };
   h+='<div class="read"><b>白話：</b>'+(g1.length?'當天標「剛起步／進行中」的 '+g1.length+' 個板塊，後 20 日平均比大盤 '+f0(avg(g1))+'；':'當天沒有「剛起步／進行中」的板塊；')+(g2.length?'標「回檔／休息／跌後反彈／沒動靜」的 '+g2.length+' 個，平均比大盤 '+f0(avg(g2))+'。':'')+' 單一天只有十幾個板塊，只能當一個故事，不能當證據。</div>';
   el('rev').innerHTML=h;
