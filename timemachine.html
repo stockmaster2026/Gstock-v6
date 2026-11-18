@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.59</title>
+<title>板塊時光機 v1.60</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,14 +31,14 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.59</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.60</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
     <div class="sub">只用「那一天以前」的價格重算，沒有偷看後面。位階規則和 charts v3.1 相同，門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證。價格資料約 2 年，所以最早只能看到資料開始後半年左右。</div>
     <div class="row" id="presets"></div>
     <div class="sub">📍 今天＝最新一天的資料；1 週／1 個月／3 個月／6 個月／1 年前會自動跟著算。★ 是你自己存的日期：想存就先選好日期，按「＋ 把現在選的這天存成按鈕」，不要的按旁邊的 ✕。</div>
-    <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button><select id="hn" class="btn"><option value="126">半年</option><option value="252">一年</option><option value="9999">全部</option></select><select id="hs" class="btn"><option value="">全部板塊</option></select><button class="btn" id="btnHist">看板塊歷程</button><button class="btn go" id="btnCycle">🔄 板塊週期表</button><button class="btn go" id="btnShort">⚡ 短線軌跡</button></div>
+    <div class="row"><input type="date" id="dt"><button class="btn go" id="btnGo">看這一天</button><select id="hn" class="btn"><option value="126">半年</option><option value="252">一年</option><option value="9999">全部</option></select><select id="hs" class="btn"><option value="">全部板塊</option></select><button class="btn" id="btnHist">看板塊歷程</button><button class="btn go" id="btnCycle">🔄 板塊週期表</button><button class="btn go" id="btnShort">⚡ 短線軌跡</button><button class="btn go" id="btnCheck">✅ 確認清單</button></div>
     <div class="row" style="margin-top:6px"><input type="text" id="tk" placeholder="輸入股票代號，例如 TSM" autocapitalize="characters" autocomplete="off" style="font-size:16px;padding:10px 12px;border:2px solid #e6c84a;border-radius:10px;width:210px;background:#fff"><button class="btn go" id="btnTk">查它屬於哪個板塊</button><button class="btn" id="btnLatest">用最新一天</button></div>
     <div class="sub"><b>查個股</b>：只顯示它所屬的板塊，其他板塊不會出現（用上面選的那一天；想看「現在」就按「用最新一天」）。要看全部板塊，按上面的「看這一天」或日期按鈕。</div>
     <div class="prog" id="prog">準備中…</div>
@@ -760,7 +760,7 @@ function followBlock(only,k1){
   })();
 }
 
-// ═════ v1.59：⚡ 短線軌跡（5／10／15／20 個交易日，每天一個點）═════
+// ═════ v1.60：⚡ 短線軌跡（5／10／15／20 個交易日，每天一個點）═════
 // 做法參考：StockCharts RRG 的日線版（尾巴以「交易日」為單位，預設 5、可改 10；最後一個點收盤前還會變）、
 // 動能交易者看板塊的做法（1 週／1 個月漲幅，並且確認是整個族群在動，還是只有少數幾檔）、市場廣度（有幾成成分股在漲）。
 // 這裡不用「剛起步」那套 15% 規則（太慢），改看：這 N 天板塊指數 vs SPY、有幾成成分股上漲、帶頭的是誰。門檻都是我訂的，未驗證。
@@ -838,6 +838,122 @@ function showShort(ds,N){
   el('btnBack3').onclick=function(){ TK=''; showDay(el('dt').value); };
 }
 
+
+// ═════ v1.60：✅ 確認清單（板塊「單日跳漲」之後，有沒有站得住）＋ 歷史回測 ＋ 帶頭股新聞 ═════
+// 做法：先偵測「跳漲日」（單日漲幅 ≥ 自己平常波動的 1.5 倍、至少 1.5%，且當天一半以上成分股上漲），再用 5 項數字檢查它有沒有站得住。
+// 5 項門檻（一半、10 天、1.2 倍…）都是我訂的，未驗證；下半部用這份資料自己回測看有沒有用（事件很少、會重疊，只能當參考）。
+function ckIdx(x,j){ var v=(FULL[x.s.name]||[])[j-OFF]; return v==null?null:v; }
+function ckRet(x,j){ var a=ckIdx(x,j), b=ckIdx(x,j-1); return (a==null||b==null||!(b>0))?null:a/b-1; }
+function ckBreadth(x,j0,j1){ var S=SPYB, up=0,n=0; x.list.forEach(function(q){ var B=q.B,a=B.map[S.d[j1]],b=B.map[S.d[j0]]; if(a==null||b==null||!(B.c[b]>0)) return; n++; if(B.c[a]>B.c[b]) up++; }); return n?up/n:null; }
+function ckVol(x,j){ var S=SPYB, hit=0,n=0; x.list.forEach(function(q){ var B=q.B,a=B.map[S.d[j]]; if(a==null||a<21||!B.v) return; var m=0,c=0; for(var i=a-20;i<a;i++){ if(B.v[i]>0){ m+=B.v[i]; c++; } } if(c<10||!(B.v[a]>0)) return; m/=c; n++; if(B.v[a]/m>=1.2) hit++; }); return n>=3?hit/n:null; }
+function ckPop(x,j){
+  var r=ckRet(x,j); if(r==null||r<=0) return null; var rs=[]; for(var i=j-65;i<=j-6;i++){ var v=ckRet(x,i); if(v!=null) rs.push(v); }
+  if(rs.length<30) return null; var mu=mean(rs), sd=Math.sqrt(mean(rs.map(function(v){return (v-mu)*(v-mu);}))), thr=Math.max(0.015,1.5*sd);
+  if(r<thr) return null; var b=ckBreadth(x,j-1,j); if(b==null||b<0.5) return null; return {r:r,thr:thr,b:b};
+}
+// 在 k 這一天，對 P 這個跳漲日做 5 項檢查。回傳每項 'ok'／'no'／'wait'，加上用到的數字
+function ckChecks(x,P,k,prov){
+  var base=ckIdx(x,P-1), pk=ckIdx(x,P); if(base==null||pk==null||!(pk>base)) return null; var gain=pk-base, later=k>P, res={};
+  var retAt=function(j){ var v=ckIdx(x,j); return v==null?null:(v-base)/gain; };
+  var now=retAt(k); res.keep=now;
+  res.c1=later?(now>=0.5?'ok':'no'):'wait';
+  var mn=1e9; for(var j=P+1;j<=k;j++){ var rv=retAt(j); if(rv!=null&&rv<mn) mn=rv; } res.worst=later?mn:null;
+  res.c2=later?(mn>=0.5?'ok':'no'):'wait';
+  var bd=ckBreadth(x,P-1,k); res.br=bd; res.c3=bd==null?'wait':(bd>=0.5?'ok':'no');
+  var pre=1e9; for(var i=P-10;i<=P-1;i++){ var v=ckIdx(x,i); if(v!=null&&v<pre) pre=v; } var lo=1e9; for(var m=P+1;m<=k;m++){ var w=ckIdx(x,m); if(w!=null&&w<lo) lo=w; }
+  res.c4=later?(lo>pre?'ok':'no'):'wait';
+  var vr=ckVol(x,P); res.vol=vr; res.c5=vr==null?'wait':(vr>=0.5?'ok':((prov&&P===k)?'wait':'no'));
+  var ok=0,no=0,wt=0; ['c1','c2','c3','c4','c5'].forEach(function(c){ if(res[c]==='ok') ok++; else if(res[c]==='no') no++; else wt++; }); res.ok=ok; res.no=no; res.wait=wt;
+  return res;
+}
+var CK_TXT={c1:['漲幅還在','到今天收盤，還保有跳漲那天漲幅的一半以上'],c2:['沒有大幅吐回','跳漲之後每一天，都沒有把那天漲幅吐回一半以上'],c3:['不是少數幾檔','從跳漲前一天到今天，一半以上成分股是漲的'],c4:['低點墊高','跳漲之後的最低點，沒有跌破跳漲前 10 天的最低點'],c5:['有量','跳漲那天，一半以上成分股的成交量比自己 20 天平均大 1.2 倍以上']};
+function ckChip(st,k){ var c={ok:['#1f8a4a','✓'],no:['#c0392b','✗'],wait:['#b08a1f','⏳']}[st]; return '<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:12px;background:'+c[0]+';color:#fff;font-weight:800;font-size:13px">'+c[1]+' '+CK_TXT[k][0]+'</span>'; }
+function ckAgo(u){ var d=Math.floor(Date.now()/1000-u); if(d<3600) return Math.max(1,Math.floor(d/60))+' 分鐘前'; if(d<86400) return Math.floor(d/3600)+' 小時前'; return Math.floor(d/86400)+' 天前'; }
+var CK_LAST=null;
+function showCheck(ds){
+  var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
+  var k=kOf(ds), out=el('out'), S=SPYB;
+  if(k-OFF<80){ out.innerHTML='<div class="box">這一天太早了，往前沒有足夠的資料。</div>'; return; }
+  var prov=(k===S.d.length-1)&&isIntraday(S.d[k]), pc=function(v){ return (v>=0?'+':'')+(v*100).toFixed(1)+'%'; };
+  var rows=[], quiet=[];
+  secLists().forEach(function(x){
+    var best=null; for(var j=k;j>=k-4;j--){ var pp=ckPop(x,j); if(pp&&(!best||pp.r>best.pp.r)) best={P:j,pp:pp}; }
+    if(!best){ quiet.push(x.s.icon+' '+x.s.name); return; }
+    var ch=ckChecks(x,best.P,k,prov); if(!ch){ quiet.push(x.s.icon+' '+x.s.name); return; }
+    var lead=[]; x.list.forEach(function(q){ var B=q.B,a=B.map[S.d[k]],b=B.map[S.d[best.P-1]]; if(a!=null&&b!=null&&B.c[b]>0) lead.push({t:q.t,r:B.c[a]/B.c[b]-1}); });
+    lead.sort(function(a,b){return b.r-a.r;}); rows.push({x:x,P:best.P,pp:best.pp,ch:ch,lead:lead.slice(0,3)});
+  });
+  rows.sort(function(a,b){ return (b.ch.ok-b.ch.no)-(a.ch.ok-a.ch.no)||b.pp.r-a.pp.r; });
+  CK_LAST={rows:rows,k:k};
+  var h='<div class="box"><div class="h">✅ 確認清單<span class="sub">　（到 '+fd(S.d[k])+'；看最近 5 個交易日內有沒有板塊「單日跳漲」）</span></div>'
+   +'<div class="row" style="margin:6px 0"><button class="btn" id="btnBack4">回到當天畫面</button></div>'
+   +(prov?'<div style="background:#ffe9c9;border-left:5px solid #d98a1f;border-radius:6px;padding:6px 10px;margin:6px 0;font-size:14px;font-weight:700;color:#7a4a00">⚠ 美股還沒收盤，今天（'+md(S.d[k])+'）是盤中數字：跳漲日如果就是今天，「⏳」的項目要等收盤後、至少再過一天才能判斷。</div>':'')
+   +'<div style="background:#fff7d6;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:15.5px;line-height:1.7"><b>結論：</b>最近 5 天有 <b>'+rows.length+'</b> 個板塊出現單日跳漲'+(rows.length?'；其中 5 項裡通過 3 項以上的有 <b>'+rows.filter(function(r){return r.ch.ok>=3;}).length+'</b> 個，目前還沒辦法判斷（⏳ 很多）的有 <b>'+rows.filter(function(r){return r.ch.wait>=3;}).length+'</b> 個。':'，沒有需要檢查的。')+'</div>'
+   +'<div style="font-size:12.5px;color:#556;margin:2px 0 6px"><b>跳漲日</b>＝板塊指數單日漲幅 ≥ 自己平常波動的 1.5 倍（至少 1.5%），而且當天一半以上成分股上漲。下面每個板塊用 5 項檢查它站不站得住：<b style="color:#1f8a4a">✓通過</b>、<b style="color:#c0392b">✗沒過</b>、<b style="color:#b08a1f">⏳還不能判斷</b>。</div>';
+  rows.forEach(function(r,i){
+    var c=r.ch, P=r.P, same=(P===k);
+    var verdict=(c.no>=2)?'站不住的跡象多':(c.ok>=4?'目前站得住':(c.wait>=3?'太早，還不能判斷':'還在觀察'));
+    var vcol=(c.no>=2)?'#c0392b':(c.ok>=4?'#1f8a4a':'#8a6d00');
+    h+='<div style="border:1px solid #e6dcae;border-radius:10px;padding:8px 10px;margin:8px 0;background:'+(i%2?'#fffdf3':'#f9f3d9')+'">'
+     +'<div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline"><b style="font-size:17px">'+r.x.s.icon+' '+r.x.s.name+'</b><b style="font-size:16px;color:'+vcol+'">'+verdict+'</b><span style="font-size:13px;color:#556">跳漲日 '+md(S.d[P])+(same?'（就是今天）':'（'+(k-P)+' 天前）')+'：單日 '+pc(r.pp.r)+'；到今天共 '+pc(ckIdx(r.x,k)/ckIdx(r.x,P-1)-1)+'</span></div>'
+     +'<div style="margin:4px 0">'+['c1','c2','c3','c4','c5'].map(function(kk){ return ckChip(c[kk],kk); }).join('')+'</div>'
+     +'<div style="font-size:13px;color:#445;line-height:1.55">'
+     +(c.keep!=null&&!same?(c.keep>=1?'到今天累計漲幅是跳漲日那天的 <b>'+c.keep.toFixed(1)+' 倍</b>':'保有跳漲日漲幅的 <b>'+Math.round(c.keep*100)+'%</b>')+'（中間最差時是 '+(c.worst!=null?(c.worst>=1?c.worst.toFixed(1)+' 倍':Math.round(c.worst*100)+'%'):'—')+'）；':'')
+     +'從跳漲前一天算起 <b>'+(c.br!=null?Math.round(c.br*100)+'%':'—')+'</b> 的成分股在漲；跳漲日 <b>'+(c.vol!=null?Math.round(c.vol*100)+'%':'—')+'</b> 的成分股有放量。</div>'
+     +'<div style="font-size:13px;color:#445;margin-top:2px">帶頭股（到今天）：'+r.lead.map(function(o){ return '<b>'+o.t+'</b> '+pc(o.r); }).join('、')+'</div>'
+     +'<div id="ckNews'+i+'" style="font-size:13px;margin-top:3px"></div></div>';
+  });
+  if(quiet.length) h+='<div style="font-size:13px;color:#667;margin:6px 0">最近 5 天沒有單日跳漲的板塊（不用檢查）：'+quiet.join('、')+'</div>';
+  if(rows.length) h+='<div class="row" style="margin:8px 0"><button class="btn go" id="btnCkNews">📰 查帶頭股新聞（每個板塊 2 檔，會慢慢查）</button></div><div id="ckNewsMsg" class="sub"></div>';
+  h+='<div style="font-size:12.5px;color:#b3262e;margin:6px 0;line-height:1.6">⚠ ① 5 項的標準（一半、10 天、1.2 倍）是我訂的，未驗證，驗證結果看下面的回測；②這份清單只回答「跳漲有沒有站得住」，不是買賣訊號；③板塊指數是等權平均，個股能不能買要看 screen／volume；④盤中的數字收盤後會變。</div>'
+   +'<div class="h" style="font-size:15px;margin-top:14px">📊 回測：過去通過清單的跳漲，後來有比較好嗎？</div><div id="ckBt" class="sub">計算中…</div></div>';
+  out.innerHTML=h;
+  el('btnBack4').onclick=function(){ TK=''; showDay(el('dt').value); };
+  var nb=el('btnCkNews'); if(nb) nb.onclick=function(){ ckNews(); };
+  setTimeout(function(){ try{ ckBacktest(k); }catch(e){ el('ckBt').textContent='回測失敗：'+e.message; } },30);
+}
+// 帶頭股新聞（用 news.html 同一把 Finnhub key，同網域 localStorage）
+async function ckNews(){
+  var msg=el('ckNewsMsg'), key=''; try{ key=localStorage.getItem('finprobe_key')||''; }catch(e){}
+  if(!key){ msg.innerHTML='<span style="color:#b3262e">沒有讀到 Finnhub key。請先到「市場情報站」（news.html）輸入過 key，再回來按一次。</span>'; return; }
+  if(!CK_LAST) return; var S=SPYB, k=CK_LAST.k, n=0, tot=CK_LAST.rows.length*2;
+  var btn=el('btnCkNews'); if(btn) btn.disabled=true;
+  for(var i=0;i<CK_LAST.rows.length;i++){
+    var r=CK_LAST.rows[i], box=el('ckNews'+i), withNews=0, seen=0, parts=[];
+    for(var q=0;q<Math.min(2,r.lead.length);q++){
+      var t=r.lead[q].t; msg.textContent='查新聞中 '+(++n)+'／'+tot+'（'+t+'）…';
+      var from=S.d[Math.max(0,r.P-1)], to=S.d[k], list=null;
+      try{ var rs=await fetch('https://finnhub.io/api/v1/company-news?symbol='+encodeURIComponent(t)+'&from='+from+'&to='+to+'&token='+encodeURIComponent(key),{cache:'no-store'}); if(rs.ok){ var js=await rs.json(); list=Array.isArray(js)?js:[]; } }catch(e){ list=null; }
+      seen++; if(list&&list.length) withNews++;
+      parts.push('<div style="margin:2px 0"><b>'+t+'</b>：'+(list==null?'<span style="color:#b3262e">查不到（額度或網路問題）</span>':(list.length?list.slice(0,2).map(function(a){ return '<a href="'+String(a.url||'#').replace(/"/g,'')+'" target="_blank" rel="noopener" style="color:#0a56a0">'+String(a.headline||'').replace(/</g,'&lt;').slice(0,90)+'</a> <span style="color:#778">（'+String(a.source||'').replace(/</g,'')+'，'+ckAgo(a.datetime)+'）</span>'; }).join('<br>　'):'<span style="color:#667">這段期間沒有查到新聞</span>'))+'</div>');
+      await new Promise(function(res){ setTimeout(res,1100); });
+    }
+    var cls=!seen?'':(withNews===seen?'兩檔帶頭股<b>各自都有新聞</b> → 比較像個別消息，要點開看是不是同一個題材':(withNews===0?'帶頭股<b>都沒查到新聞</b> → 可能是資金或題材帶動，也可能只是新聞還沒出現':'有的有新聞、有的沒有 → 分歧，要自己讀'));
+    box.innerHTML='<div style="background:#eef3fb;border-radius:8px;padding:5px 9px"><b>📰 帶頭股新聞</b>（跳漲前一天到今天）'+parts.join('')+(cls?'<div style="color:#334;margin-top:2px">'+cls+'<span style="color:#b3262e">（分類是我訂的，只幫你分流，不準）</span></div>':'')+'</div>';
+  }
+  msg.textContent='新聞查完了（新聞來源是 Finnhub，可能漏掉；標題看得出發生什麼，看不出為什麼市場今天才反應）。'; if(btn) btn.disabled=false;
+}
+// 回測：過去每一次跳漲，在跳漲後第 2 天用同一份 5 項清單打分，看之後 5／10 天比 SPY 好多少
+function ckBacktest(kNow){
+  var S=SPYB, evs=[];
+  secLists().forEach(function(x){
+    var last=-99; for(var j=OFF+75;j<=S.d.length-13;j++){ if(j-last<5) continue; var pp=ckPop(x,j); if(!pp) continue; last=j;
+      var e=j+2, ch=ckChecks(x,j,e,false); if(!ch) continue; var a=ckIdx(x,e); if(a==null) continue;
+      var o={score:ch.ok,nm:x.s.name,d:S.d[j]};
+      [5,10].forEach(function(h){ var b=ckIdx(x,e+h); if(b==null||e+h>=S.d.length){ o['x'+h]=null; return; } o['x'+h]=(b/a-1)-(S.c[e+h]/S.c[e]-1); });
+      evs.push(o); }
+  });
+  var G=[['全部跳漲（基準）',function(o){return true;}],['通過 4～5 項',function(o){return o.score>=4;}],['通過 3 項',function(o){return o.score===3;}],['通過 0～2 項',function(o){return o.score<=2;}]];
+  var f=function(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; };
+  var rows=G.map(function(g){ var a=evs.filter(g[1]); var s5=a.map(function(o){return o.x5;}).filter(function(v){return v!=null;}), s10=a.map(function(o){return o.x10;}).filter(function(v){return v!=null;});
+    return '<tr><td style="text-align:left;font-weight:700">'+g[0]+'</td><td>'+a.length+'</td><td>'+(s5.length?f(mean(s5)):'—')+'</td><td>'+(s5.length?Math.round(s5.filter(function(v){return v>0;}).length/s5.length*100)+'%':'—')+'</td><td>'+(s10.length?f(mean(s10)):'—')+'</td><td>'+(s10.length?Math.round(s10.filter(function(v){return v>0;}).length/s10.length*100)+'%':'—')+'</td></tr>'; }).join('');
+  var hi=evs.filter(function(o){return o.score>=4&&o.x5!=null;}), lo=evs.filter(function(o){return o.score<=2&&o.x5!=null;}), diff=(hi.length&&lo.length)?mean(hi.map(function(o){return o.x5;}))-mean(lo.map(function(o){return o.x5;})):null;
+  var read=(!evs.length)?'資料裡沒有找到跳漲事件。':((hi.length<8||lo.length<8)?'通過 4～5 項或 0～2 項的事件少於 8 次，<b>樣本太少，這張表看不出差別</b>，只能當紀錄。':(diff>0.01?'通過 4～5 項的，之後 5 天平均比沒通過的多贏 SPY <b>'+(diff*100).toFixed(1)+'%</b>：這份清單<b>有一點用</b>，但樣本少、事件會重疊，不能當勝率。':(diff<-0.01?'通過 4～5 項的，之後反而比沒通過的差 '+(Math.abs(diff)*100).toFixed(1)+'%：<b>這份清單目前看不出有用</b>，標準可能要重訂。':'通過和沒通過的差距在 1% 以內：<b>看不出差別</b>，這份清單目前沒有證明有用。')));
+  el('ckBt').innerHTML='<div style="overflow-x:auto"><table class="t" style="min-width:480px"><tr><th style="text-align:left">分組（跳漲後第 2 天打分）</th><th>事件數</th><th>之後 5 天比 SPY 平均多贏</th><th>贏 SPY 的比例</th><th>之後 10 天比 SPY 平均多贏</th><th>贏 SPY 的比例</th></tr>'+rows+'</table></div>'
+   +'<div style="background:#fff7d6;border-radius:8px;padding:7px 10px;margin:6px 0;font-size:14.5px;line-height:1.6"><b>白話：</b>'+read+'</div>'
+   +'<div style="font-size:12.5px;color:#b3262e;line-height:1.6">⚠ 資料只有約 2 年、'+secLists().length+' 個板塊，同一個板塊 5 天內的跳漲只算一次，但不同板塊常同一天一起跳（其實是同一件事），所以事件數看起來比真實獨立的次數多；這是「過去這份資料裡」的結果，不保證以後；新聞那一項沒有歷史資料，沒有回測。</div>';
+}
+
 // ═════ v1.30：板塊週期表（每個板塊在 6 個月前／3 個月前／1 個月前／今天各是什麼狀態；底下畫「強勢階段板塊數」隨時間怎麼變）═════
 // ⚠ 狀態分類和門檻（15%、吐回 3／7 成、10／60 日）都是我訂的參考範圍，未經驗證；「強勢階段」＝剛起步／進行中／進行中偏後段／高點附近暫停。
 function isGoCat(c){ return !!GOC[c]; }
@@ -884,7 +1000,7 @@ function mtnX(c,give){
   if(c==='跌後反彈') return 0.90; if(c==='沒動靜') return 0.03;
   var g=(give==null)?0.85:Math.max(0,Math.min(1,give)); return 0.5+0.5*g;
 }
-// v1.59：「移動圖」＝箭頭圖（arrow plot）。每個板塊一列，同一條橫軸（同山的位置：左強右弱），
+// v1.60：「移動圖」＝箭頭圖（arrow plot）。每個板塊一列，同一條橫軸（同山的位置：左強右弱），
 // 一條實線從「1 個月前」（空心圈）畫到「現在」（箭頭）；綠＝往強走、紅＝往弱走、灰＝幾乎沒動。列與列不重疊，所以谷底擠很多板塊也看得清楚。
 function movePlotSvg(items){
   var W=720,PL=124,PR=235,PW=W-PL-PR,RH=38,top=30,xAt=function(x){ return PL+x*PW; };
@@ -1223,6 +1339,7 @@ async function init(){
   el('btnHist').onclick=function(){ TK=''; showHist(dt.value); };
   el('btnCycle').onclick=function(){ TK=''; showCycle(dt.value); };
   el('btnShort').onclick=function(){ TK=''; showShort(dt.value,SHN); };
+  el('btnCheck').onclick=function(){ TK=''; showCheck(dt.value); };
   var goTk=function(){ TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
   el('btnTk').onclick=goTk; el('tk').onkeydown=function(e){ if(e.key==='Enter') goTk(); };
   el('btnLatest').onclick=function(){ dt.value=dt.max; TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
