@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.55</title>
+<title>板塊時光機 v1.56</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.55</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.56</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -805,24 +805,41 @@ function mtnX(c,give){
   if(c==='跌後反彈') return 0.90; if(c==='沒動靜') return 0.03;
   var g=(give==null)?0.85:Math.max(0,Math.min(1,give)); return 0.5+0.5*g;
 }
-// v1.55：「移動圖」＝箭頭圖（arrow plot）。每個板塊一列，同一條橫軸（同山的位置：左強右弱），
+// v1.56：「移動圖」＝箭頭圖（arrow plot）。每個板塊一列，同一條橫軸（同山的位置：左強右弱），
 // 一條實線從「1 個月前」（空心圈）畫到「現在」（箭頭）；綠＝往強走、紅＝往弱走、灰＝幾乎沒動。列與列不重疊，所以谷底擠很多板塊也看得清楚。
 function movePlotSvg(items){
-  var W=720,PL=132,PR=16,PW=W-PL-PR,RH=26,top=30,xAt=function(x){ return PL+x*PW; };
+  var W=720,PL=124,PR=205,PW=W-PL-PR,RH=28,top=30,xAt=function(x){ return PL+x*PW; };
+  var sh=function(c){ return (c||'').replace('（偏後段）','·後段').replace('（短線）','').replace('跌後反彈','反彈'); };
   var rows=items.filter(function(m){ return m.gx!=null; }).map(function(m){ return {m:m,d:m.x-m.gx}; });
   rows.sort(function(a,b){ return a.d-b.d; });
-  var H=top+rows.length*RH+8;
+  var H=top+rows.length*RH+8, T=0.02;
   var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">';
   [[0.1,'起步'],[0.28,'爬坡'],[0.5,'山頂'],[0.7,'下山'],[0.92,'谷底']].forEach(function(z){ svg+='<line x1="'+xAt(z[0]).toFixed(1)+'" y1="'+(top-6)+'" x2="'+xAt(z[0]).toFixed(1)+'" y2="'+(H-6)+'" stroke="#d9cf95" stroke-width="1" stroke-dasharray="2 3"/><text x="'+xAt(z[0]).toFixed(1)+'" y="16" font-size="12.5" font-weight="800" fill="#6b5d1f" text-anchor="middle">'+z[1]+'</text>'; });
+  svg+='<text x="'+(W-PR+8)+'" y="16" font-size="12.5" font-weight="800" fill="#6b5d1f">說明</text>';
+  var colOf=function(d){ return Math.abs(d)<T?'#9a9a9a':(d<0?'#1f8a4a':'#c0392b'); };
   rows.forEach(function(r,i){
-    var m=r.m, y=top+i*RH+RH/2, x1=xAt(m.gx), x2=xAt(m.x), big=Math.abs(r.d)>=0.02, col=!big?'#9a9a9a':(r.d<0?'#1f8a4a':'#c0392b');
+    var m=r.m, y=top+i*RH+RH/2, x0=xAt(m.gx), x2=xAt(m.x), x1=(m.x5!=null)?xAt(m.x5):null;
+    var dm=m.x-m.gx, dw=(m.x5!=null)?(m.x-m.x5):0, d1=(m.x5!=null)?(m.x5-m.gx):dm;
+    var bigM=Math.abs(dm)>=T, bigW=Math.abs(dw)>=T, any=bigM||bigW||Math.abs(d1)>=T, mainCol=bigW?colOf(dw):colOf(dm);
     if(i%2===0) svg+='<rect x="0" y="'+(y-RH/2).toFixed(1)+'" width="'+W+'" height="'+RH+'" fill="#f1ead0" opacity=".55"/>';
-    svg+='<text x="'+(PL-8)+'" y="'+(y+5).toFixed(1)+'" font-size="13.5" font-weight="'+(big?800:500)+'" fill="'+(big?col:'#777')+'" text-anchor="end">'+m.icon+' '+m.name+'</text>';
-    if(big){ var dir=x2>x1?1:-1, tx=x2, bx=x2-dir*11;
-      svg+='<line x1="'+x1.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="3.6" stroke-linecap="round"/>'
-        +'<polygon points="'+tx.toFixed(1)+','+y.toFixed(1)+' '+bx.toFixed(1)+','+(y-6.5).toFixed(1)+' '+bx.toFixed(1)+','+(y+6.5).toFixed(1)+'" fill="'+col+'"/>'
-        +'<circle cx="'+x1.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.5" fill="#fff" stroke="'+col+'" stroke-width="2"/>'; }
-    else svg+='<circle cx="'+x2.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.5" fill="#9a9a9a"/>';
+    svg+='<text x="'+(PL-8)+'" y="'+(y+5).toFixed(1)+'" font-size="13.5" font-weight="'+(any?800:500)+'" fill="'+(any?mainCol:'#777')+'" text-anchor="end">'+m.icon+' '+m.name+'</text>';
+    var note='';
+    if(!any){ svg+='<circle cx="'+x2.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.5" fill="#9a9a9a"/>'; note='1 個月沒動'; }
+    else {
+      // 第一段：1 個月前 → 1 週前（細、淡）；第二段：1 週前 → 現在（粗）＋箭頭
+      if(x1!=null&&Math.abs(d1)>=T) svg+='<line x1="'+x0.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+x1.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+colOf(d1)+'" stroke-width="2.4" opacity=".55" stroke-linecap="round"/>';
+      var sx=(x1!=null&&bigW)?x1:x0, dir=(x2>sx)?1:-1; if(Math.abs(x2-sx)<1) dir=(dm>0?1:-1);
+      var bx=x2-dir*11; if(dir>0&&bx<sx) bx=sx; if(dir<0&&bx>sx) bx=sx;
+      svg+='<line x1="'+sx.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+mainCol+'" stroke-width="3.6" stroke-linecap="round"/>'
+        +'<polygon points="'+x2.toFixed(1)+','+y.toFixed(1)+' '+(x2-dir*11).toFixed(1)+','+(y-6.5).toFixed(1)+' '+(x2-dir*11).toFixed(1)+','+(y+6.5).toFixed(1)+'" fill="'+mainCol+'"/>';
+      if(x1!=null&&Math.abs(x1-x0)>=3&&Math.abs(x2-x1)>=3) svg+='<circle cx="'+x1.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.2" fill="#fff" stroke="'+mainCol+'" stroke-width="1.6"/>';
+      svg+='<circle cx="'+x0.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.5" fill="#fff" stroke="'+colOf(bigM?dm:d1)+'" stroke-width="2"/>';
+      if(m.c0&&m.c0!==m.c) note='階段換了：'+sh(m.c0)+'→'+sh(m.c);
+      else if(bigW&&!bigM) note='最近 1 週往'+(dw<0?'強':'弱')+'走';
+      else if(bigM&&bigW&&(dm<0)!==(dw<0)) note='1 週前先'+(d1<0?'轉強':'轉弱')+'、最近又'+(dw<0?'轉強':'轉弱');
+      else note='同階段內位置變動';
+    }
+    svg+='<text x="'+(W-PR+8)+'" y="'+(y+4.5).toFixed(1)+'" font-size="11" font-weight="'+(any?700:500)+'" fill="'+(any?'#554':'#888')+'">'+note+'</text>';
   });
   return svg+'</svg>';
 }
@@ -941,7 +958,7 @@ function drawCycle2(lists,ks,M,S,k){
   SECNAMES=lists.map(function(x){ return x.s.name; });
   var j1=idxAt(21), j5=idxAt(5), mi=[];
   lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f,sx:x};
-    if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); }
+    if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); it.c0=c0; }
     if(j5!=null){ var c5=M[si][j5], f5=CYCF[si][j5]; it.x5=mtnX(c5,f5&&f5.give); it.c5=c5; it.g5=f5?f5.give:null; } mi.push(it); });
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
   var fresh=mi.filter(function(m){return m.c==='剛起步'||m.c==='急拉（短線）';});
@@ -968,7 +985,7 @@ function drawCycle2(lists,ks,M,S,k){
       return '<div style="font-size:18px;font-weight:800;line-height:1.7;color:'+(up?'#1f6f3a':'#b3262e')+'">'+m.icon+' '+m.name+'　'+(up?'← 往強走':'往弱走 →')+'<span style="font-size:13px;font-weight:600;color:#556">　'+why+'</span></div>'; }).join('')
       :'<div style="font-size:15px;color:#556;margin-top:3px">最近約 1 週沒有板塊的位置明顯變動，不用特別盯。</div>')
     +'<div style="font-size:12px;color:#b3262e;margin-top:3px">⚠ 「明顯」的門檻（山上位置變動約 1 成以上）是我訂的，未驗證；往左是「吐回變少／反彈」，不等於新一輪上漲已確立。沒列出的板塊代表變化小，先忽略。</div></div>';
-  var mtn='<div class="h" style="font-size:15px;margin-top:14px">⑤ 山：每個板塊現在走到哪了</div>'+mvHtml+mountainSvg(mi)+'<div class="h" style="font-size:15px;margin-top:12px">移動圖：每個板塊這 1 個月往哪走了</div><div style="font-size:12.5px;color:#556;margin:2px 0 4px">一列一個板塊，橫軸跟上面的山一樣（左＝強、右＝弱）。<b>空心圈＝1 個月前，箭頭＝現在</b>；<b style="color:#1f8a4a">綠＝往強走</b>、<b style="color:#c0392b">紅＝往弱走</b>、灰點＝幾乎沒動。排序：最往強走的在最上面、最往弱走的在最下面。線越長＝移動越多。</div>'+movePlotSvg(mi)
+  var mtn='<div class="h" style="font-size:15px;margin-top:14px">⑤ 山：每個板塊現在走到哪了</div>'+mvHtml+mountainSvg(mi)+'<div class="h" style="font-size:15px;margin-top:12px">移動圖：每個板塊這 1 個月往哪走了</div><div style="font-size:12.5px;color:#556;margin:2px 0 4px">一列一個板塊，橫軸跟上面的山一樣（左＝強、右＝弱）。<b>大空心圈＝1 個月前，小空心圈＝1 週前，箭頭＝現在</b>（細淡線＝1 個月前→1 週前，粗線＝1 週前→現在）；<b style="color:#1f8a4a">綠＝往強走</b>、<b style="color:#c0392b">紅＝往弱走</b>、灰點＝1 個月內位置沒變。右邊「說明」欄用文字寫出發生了什麼。⚠ 位置是按階段放的，所以「階段換了」的那種，線長不等於漲跌幅。排序依 1 個月的變動，最往強走的在最上面。</div>'+movePlotSvg(mi)
    +'<div style="font-size:12.5px;color:#556;margin:3px 0">圓點＝現在的位置（顏色同順風／小心／逆風）；空心圈＝1 個月前的位置，實線＋箭頭指向現在（綠＝往強走、紅＝往弱走）。擠在一起看不清楚的，看下面的「移動圖」。</div>'
    +'<div style="font-size:14px;line-height:1.8;margin-top:4px"><b>白話讀法：</b><br>• <b>山頂／爬坡（還在強勢階段）'+gTop.length+' 個：</b>'+nmj(gTop)
    +'<br>• <b>剛下山（這一波吐回不到 5 成）'+gShallow.length+' 個：</b>'+nmj(gShallow)+'　← 歷史上轉強比例比深的稍高一點，值得多看一眼'
