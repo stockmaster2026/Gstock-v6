@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.63</title>
+<title>板塊時光機 v1.64</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.63</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.64</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -584,7 +584,7 @@ function histCard(title,H,note){
     if(!end&&hi.v){ var nr=runs[ri+1], rE=nr?nr.a-1:H.k1, rl=rng(r.b+1,rE,function(v,b){return v<b;}); if(rl.v&&rE>=r.b+1){ var dp=rl.v/hi.v-1, dd=rE-r.b; if(nr){ DEPTHS.push(dp); RDAYS.push(dd); } rt='<div style="margin-left:12px;color:#7a4a00">之後休息／回檔 <b>'+dd+'</b> 個交易日，最深跌到高點下 <b>'+pc(dp)+'</b>（'+md(S.d[rl.k])+'）'+(nr?'，然後下一輪才開始':'，到現在還沒走出新的一輪')+'</div>'; } }
     return '<div style="margin-top:3px">'+md(S.d[r.a])+(r.first?'（看到的最早一天，更早可能就已開始）':'')+' → '+(end?'到 '+md(S.d[r.b])+' 還在進行':md(S.d[r.b])+' 結束，之後轉成「'+nxt+'」')+'，共 <b>'+(r.b-r.a+1)+'</b> 個交易日（'+r.labs.join(' → ')+'）</div>'+g+rt; }).join(''):'<div>這段期間沒有出現「剛起步／進行中／暫停」的上漲階段。</div>';
   var sumTxt='';
-  if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息的中位數：吐回到 <b>'+pc(med(DEPTHS))+'</b>、約 <b>'+Math.round(med(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
+  if(GAINS.length){ sumTxt='<div style="background:#fff7d6;border-radius:8px;padding:6px 9px;margin:6px 0;font-size:14px;line-height:1.6"><b>這段期間的規律（依小階段）：</b>上升 '+GAINS.length+' 輪，每輪漲 '+GAINS.map(pc).join('、')+'（中位 <b>'+pc(med(GAINS))+'</b>）'+(DEPTHS.length?'；每輪之後休息的中位數：吐回到 <b>'+pc(med(DEPTHS))+'</b>、約 <b>'+Math.round(med(RDAYS))+'</b> 個交易日':'')+'。<span class="sub">（輪數很少，只是這段期間的樣子，不是保證下一輪也一樣）</span></div>'; }
   // v1.46：單一板塊的「分段故事圖」。線只用一種顏色；背景依波段分段上色（綠＝上漲段、紅＝回檔段），標編號；下面用白話一段一句。
   // 分段規則：回檔／反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算新的一段，小抖動不切（門檻是我訂的，未驗證）
   var curve=''; (function(){
@@ -631,15 +631,15 @@ function histCard(title,H,note){
       pat=dn?'高點一次比一次低（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':(up?'高點一路墊高（'+highs.map(function(o){return d1(o.i);}).join(' → ')+'）':'高點有高有低（'+highs.map(function(o){return d1(o.i);}).join('、')+'）'); }
     var imx=xs.indexOf(mx), imn=xs.lastIndexOf(Math.min.apply(null,xs.slice(imx))), cur=xs[lastI];
     var lu=null; L.forEach(function(l){ if(l.up) lu=l; }); var luDays=lu?((lu===L[L.length-1])?lastI:lu.i1)-lu.i0:null, luClip=lu&&lu.i0<=1;
-    var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'')+(lu?'最近一次上漲段'+(lu===L[L.length-1]?'已走':'走了')+(luClip?'至少 ':' ')+luDays+' 個交易日（約 '+(Math.round(luDays/21*10)/10)+' 個月）。':'');
+    var now='現在：離這一年最高點（'+d1(imx)+'）'+pc(cur/mx-1)+'，離最高點之後的最低點（'+d1(imn)+'）'+pc(cur/xs[imn]-1)+'。'+(pat?pat+'。':'')+(lu?'最近一次大波段'+(lu===L[L.length-1]?'已走':'走了')+(luClip?'至少 ':' ')+luDays+' 個交易日（約 '+(Math.round(luDays/21*10)/10)+' 個月）。':'');
     if(window.HC_COMPACT){ curve=g; return; }
     curve=g+'<div style="font-size:12px;color:#556;margin:2px 0 4px">背景：<b style="color:#1f6f3a">綠＝上漲段</b>、<b style="color:#b3262e">紅＝回檔段</b>，編號對應下面的故事；紅點＝高點、空心圈＝低點，旁邊寫「日期 ｜ 板塊指數」。板塊指數是這個板塊所有成分股的等權平均，<b>這個畫面最左邊那天＝100</b>（不是某一檔的股價；換「半年／一年」起點不同，數字也不同）。要對 K 線請看個股。回檔或反彈超過「自己平常一個月波動的 1.5 倍（最低 15%）」才算一段（我訂的，未驗證），小抖動不單獨分段。位階顏色看下面的色條。</div>'
-      +'<div style="background:#f2f6ff;border-radius:8px;padding:7px 10px;margin:4px 0 6px;font-size:14px;line-height:1.6"><b>這條線的故事</b>'+items+'<div style="margin-top:5px;padding-top:4px;border-top:1px solid #d8e0f0"><b>'+now+'</b><span style="color:#778;font-size:12.5px">（只是這段期間的樣子，不是預測）</span></div></div>';
+      +'<div style="background:#f2f6ff;border-radius:8px;padding:7px 10px;margin:4px 0 6px;font-size:14px;line-height:1.6"><b>這條線的故事</b><span style="color:#778;font-size:12.5px">（大波段：回檔或反彈超過門檻才切一段，所以整段可能只有 1～2 段）</span>'+items+'<div style="margin-top:5px;padding-top:4px;border-top:1px solid #d8e0f0"><b>'+now+'</b><span style="color:#778;font-size:12.5px">（只是這段期間的樣子，不是預測）</span></div></div>';
   })();
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
   if(window.HC_COMPACT) return '<div onclick="showSheet(\''+H.name+'\')" style="cursor:pointer;background:#fffdf3;border:1px solid #eadf9f;border-radius:10px;padding:5px 6px"><div style="font-weight:900;font-size:14.5px">'+title+'<span style="font-size:12px;font-weight:700;color:'+CATC[last.c]+'">　'+last.c+'</span></div>'+(curve||'<div class="sub">資料不足</div>')+'</div>';
-  return '<div id="hc_'+H.name+'" style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span></div>'+(curve||spark)+strip+axis+chipLeg()+
-    sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪：</b>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
+  return '<div id="hc_'+H.name+'" style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span>'+(function(){ var rdx=recentDrop(H.name,H.k1); return rdx?'<span style="color:#c0392b;font-size:13.5px;font-weight:800">　⚠ 近期回落 '+(Math.round(rdx.drop*1000)/10)+'%（從 '+md(SPYB.d[rdx.hiK])+' 的高點算起，'+rdx.days+' 天）；階段看的是大波段，這裡另外提醒最近在跌</span>':''; })()+'</div>'+(curve||spark)+strip+axis+chipLeg()+
+    sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪</b><span style="color:#778;font-size:12.5px">（依「位階狀態」切的小階段：剛起步／進行中／暫停算同一輪，回檔中／休息中就斷開；跟上面的大波段切法不同，所以輪數、天數不一樣）：</span>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
 }
 function stayCard(A){
   if(A.length<8) return '';
@@ -791,9 +791,10 @@ function shortWords(c,N){
   else if(c.rel<=-thr&&c.br<=0.4) t='落後大盤，多數成分股（'+(c.n-c.up)+'／'+c.n+' 檔）在跌';
   else if(c.rel<=-thr&&c.br>=0.6) t='落後大盤：雖然 '+c.up+'／'+c.n+' 檔在漲，但漲得比 SPY 少';
   else if(c.rel<=-thr) t='落後大盤，而且漲跌分歧（'+c.up+'／'+c.n+' 檔在漲）';
+  else if(c.br<=0.25&&c.ret<0) t='成分股幾乎都在跌（只有 '+c.up+'／'+c.n+' 檔在漲），板塊'+(c.rel<0?'弱於大盤':'跌得比大盤少')+'，不是「差不多」';
   else if(c.top[0]&&c.top[0].r>=0.1&&c.br<0.6) t='板塊整體跟大盤差不多，但有個股在動（見右邊帶頭股）';
   else t='跟大盤差不多，沒有明顯變化';
-  if(c.relB-c.relA>=thr/2) tag='近半段在加速'; else if(c.relA-c.relB>=thr/2) tag='近半段在減弱';
+  if(c.relB-c.relA>=thr/2) tag='近半段相對大盤在轉強'; else if(c.relA-c.relB>=thr/2) tag='近半段相對大盤在轉弱';
   return {t:t,tag:tag,lead:c.rel>=thr,real:(c.rel>=thr&&c.ret>0),lag:c.rel<=-thr};
 }
 function shortSpark(c,prov){
@@ -822,14 +823,14 @@ function showShort(ds,N){
   var h='<div class="box"><div class="h">⚡ 短線軌跡<span class="sub">　（到 '+fd(S.d[k])+'，往前 '+N+' 個交易日；每個點＝一天）</span></div>'
    +'<div class="row" style="margin:6px 0">'+[5,10,15,20].map(function(n){ return '<button class="btn'+(n===N?' go':'')+'" onclick="showShort(el(\'dt\').value,'+n+')">最近 '+n+' 天</button>'; }).join('')+'<button class="btn" id="btnBack3">回到當天畫面</button></div>'
    +'<div style="background:#fff7d6;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:15.5px;line-height:1.7"><b>結論：</b>這 '+N+' 天 SPY '+pc(spr)+'；板塊裡比 SPY 強的有 <b>'+nLead+'</b> 個，但<b>真的有漲</b>的只有 <b>'+nReal+'</b> 個（其中多數成分股一起漲的 '+nWide+' 個）；其餘 '+(nLead-nReal)+' 個只是「跌得比大盤少」。</div>'+(prov?'<div style="background:#ffe9c9;border-left:5px solid #d98a1f;border-radius:6px;padding:6px 10px;margin:6px 0;font-size:14px;font-weight:700;color:#7a4a00">⚠ 現在美股還沒收盤，最後一天（'+md(S.d[k])+'）是<b>盤中</b>數字，圖上用虛線＋空心點標出；收盤後會變，「最近加速」這類判斷先不要當真，收盤後再看一次。</div>':'')
-   +'<div style="font-size:12.5px;color:#556;margin:2px 0 6px">每列一個板塊：<b>實線＝板塊指數，虛線＝SPY</b>（第一天都＝100），小圓點＝每一天，實心點＝最後一天；綠＝領先大盤、紅＝落後。右邊寫 '+N+' 天漲跌、比 SPY 多或少多少、幾檔成分股在漲、帶頭股。依「比 SPY 強多少」排序。</div>';
+   +'<div style="font-size:12.5px;color:#556;margin:2px 0 6px">每列一個板塊：<b>實線＝板塊指數，虛線＝SPY</b>（第一天都＝100），小圓點＝每一天，實心點＝最後一天；綠＝領先大盤、紅＝落後。右邊寫 '+N+' 天漲跌、比 SPY 多或少多少、幾檔成分股在漲、帶頭股。依「比 SPY 強多少」排序。「比 SPY 多／少」是兩條指數的比值，不是漲幅直接相減（例：板塊 +9.5%、SPY −2.3%，比值是 12.1%，直接相減是 11.8%）；「近半段相對大盤在轉強／轉弱」是比較前半段和後半段、板塊相對 SPY 有沒有變好或變差，不等於板塊自己在漲或在跌。</div>';
   rows.forEach(function(c,i){
     var col=c.w.lead?'#1f8a4a':(c.w.lag?'#c0392b':'#667');
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:7px 4px;border-top:1px solid #e6dcae;'+(i%2?'':'background:#f6f0d6;')+'">'
      +'<div style="flex:0 0 120px;font-size:15px;font-weight:'+((c.w.lead||c.w.lag)?900:600)+';color:'+col+'">'+c.icon+' '+c.name+'</div>'
      +'<div style="flex:0 0 250px">'+shortSpark(c,prov)+'</div>'
      +'<div style="flex:1 1 230px;font-size:13.5px;line-height:1.55"><div><b style="color:'+col+';font-size:15px">'+pc(c.ret)+'</b>　比 SPY <b style="color:'+col+'">'+(c.rel>=0?'多 ':'少 ')+Math.abs(c.rel*100).toFixed(1)+'%</b>　'+c.up+'／'+c.n+' 檔在漲</div>'
-     +'<div style="color:#334">'+c.w.t+(c.w.tag?'；<b>'+c.w.tag+(prov&&c.w.tag==='近半段在加速'?'（含盤中最後一天）':'')+'</b>':'')+'</div>'
+     +'<div style="color:#334">'+c.w.t+(c.w.tag?'；<b>'+c.w.tag+(prov&&c.w.tag==='近半段相對大盤在轉強'?'（含盤中最後一天）':'')+'</b>':'')+'</div>'
      +'<div style="color:#445;font-size:13px">'+(prov?(c.stk>=1&&c.stk2===0?'最後一天（盤中）上漲，前面沒有連漲':(c.stk2>=2?'前面已連漲 '+c.stk2+' 天'+(c.stk>c.stk2?'，今天盤中繼續漲':''):'前面沒有連續上漲')):(c.stk>=2?'連漲 '+c.stk+' 天':'沒有連續上漲'))+'</div>'
      +'<div style="color:#667;font-size:12.5px">帶頭：'+c.top.map(function(o){ return o.t+' '+pc(o.r); }).join('、')+'</div></div></div>';
   });
@@ -1060,7 +1061,7 @@ function movePlotSvg(items){
       else note='階段沒變，位置小幅變動';
     }
     var cc=CLS_COL[clsOf(m.c)]||'#554', cw=clsOf(m.c)==='沒動靜'?'沒動靜':clsOf(m.c);
-    svg+='<text x="'+(W-PR+8)+'" y="'+(y-1).toFixed(1)+'" font-size="12.5" font-weight="800" fill="'+cc+'">現在：'+sh(m.c)+'（'+cw+'）</text><text x="'+(W-PR+8)+'" y="'+(y+12).toFixed(1)+'" font-size="10.5" font-weight="'+(any?700:500)+'" fill="'+(any?'#554':'#888')+'">'+note+'</text>';
+    svg+='<text x="'+(W-PR+8)+'" y="'+(y-1).toFixed(1)+'" font-size="12.5" font-weight="800" fill="'+cc+'">現在：'+sh(m.c)+'（'+cw+'）</text><text x="'+(W-PR+8)+'" y="'+(y+12).toFixed(1)+'" font-size="10.5" font-weight="'+(any?700:500)+'" fill="'+(any?'#554':'#888')+'">'+(m.rd?'<tspan fill="#c0392b" font-weight="800">⚠近期回落 '+Math.round(m.rd.drop*1000)/10+'%｜</tspan>':'')+note+'</text>';
   });
   return svg+'</svg>';
 }
@@ -1076,7 +1077,7 @@ function mountainSvg(items){
   svg+='<text x="'+xAt(0.7).toFixed(1)+'" y="'+(base+31)+'" font-size="10.5" fill="#8a7a33" text-anchor="middle">（吐回越多越靠右）</text>';
   svg+='<text x="'+PL+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#1f8a4a">← 往左＝轉強</text><text x="'+(PL+PW)+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#c0392b" text-anchor="end">往右＝轉弱 →</text>';
   svg+='<text x="'+(W/2)+'" y="'+(base+65)+'" font-size="10.5" fill="#667" text-anchor="middle">位置是依「階段」放的，不是股價高低；只有近 1 週變動明顯的才畫箭頭（綠＝往轉強、紅＝往轉弱，空心圈＝1 週前）</text>';
-  svg+='<text x="'+(W/2)+'" y="'+(base+81)+'" font-size="10.5" fill="#667" text-anchor="middle">名字後面的 ▲▼＝今天這個板塊實際漲跌（灰＝±0.3% 內），「5日」＝近 5 個交易日（灰＝±0.5% 內）；盤中為盤中數字</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(base+81)+'" font-size="10.5" fill="#667" text-anchor="middle">名字後面的 ▲▼＝今天這個板塊實際漲跌（灰＝±0.3% 內），「5日」＝近 5 個交易日（灰＝±0.5% 內），「⚠回落」＝近幾天從高點掉得比它平常的波動大；盤中為盤中數字</text>';
   var mvSet={}; items.filter(function(m){ return m.x5!=null&&Math.abs(m.x5-m.x)>=0.06; }).sort(function(a,b){ return Math.abs(b.x5-b.x)-Math.abs(a.x5-a.x); }).slice(0,6).forEach(function(m){ mvSet[m.name]=1; });
   var sorted=items.slice().sort(function(a,b){ return a.x-b.x; }), prev=-99, arrows='', lines='', dots='', labs='';
   sorted.forEach(function(m,r){
@@ -1089,6 +1090,7 @@ function mountainSvg(items){
       tail+='<tspan fill="'+u1+'" font-size="11"> '+a1+(m.d1>=0?'+':'')+(m.d1*100).toFixed(1)+'%</tspan>'; tw+=62; }
     if(m.d5!=null){ var u5=m.d5>=0.005?'#1f8a4a':(m.d5<=-0.005?'#c0392b':'#888'), a5=m.d5>=0.005?'▲':(m.d5<=-0.005?'▼':'■');
       tail+='<tspan fill="'+u5+'" font-size="10"> 5日'+a5+'</tspan>'; tw+=38; }
+    if(m.rd){ tail+='<tspan fill="#c0392b" font-size="10"> ⚠回落</tspan>'; tw+=40; }
     var lw=(m.name.length*12.5)+22+tw+(mvSet[m.name]?16:0), toRight=(cx+4+lw>W-4), lx=toRight?(cx-4):(cx+4);
     labs+='<text x="'+lx.toFixed(1)+'" y="'+(ry+11)+'" font-size="11.5" font-weight="800" fill="'+m.col+'" text-anchor="'+(toRight?'end':'start')+'" style="paint-order:stroke;stroke:#faf4dc;stroke-width:3px;stroke-linejoin:round">'+(mvSet[m.name]?(m.x<m.x5?'⬅ ':'➡ '):'')+m.icon+' '+m.name+tail+'</text>';
     dots+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="5.5" fill="'+m.col+'" stroke="#fff" stroke-width="1.5"/>';
@@ -1121,6 +1123,18 @@ function simSection(F,S,k){
   return '<div class="h" style="font-size:15px;margin-top:14px">⑥ 歷史上有沒有類似的日子？</div><div style="background:#eef3fa;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.7">'
    +'<div>找法：掃這段資料的每一個日期（每 5 個交易日一個），強勢階段的板塊 ≤ '+thr+' 個、而且 6 成以上板塊在逆風／沒動靜，就算「類似」。資料範圍：'+fd(S.d[ks[0]])+' 到 '+fd(S.d[ks[last]])+'（約 '+Math.round((ks[last]-ks[0])/21)+' 個月）。</div><div style="margin:3px 0">'+now+'</div>'+body
    +'<div style="font-size:13px;color:#b3262e;margin-top:6px">⚠ 資料只有這麼長，通常只含一兩次行情，段數很少，結果只能當「過去發生過什麼」的參考，不能當規律或預測；門檻（15%、6 成）是我訂的，未驗證。</div></div>';
+}
+// v1.64：近期回落提醒——階段是看大波段，最近幾天掉了很多不一定會變。這裡另外看「近 10 日高點到現在掉多少、超過自己平常波動沒有」
+// 門檻＝max(2%, 2×自己近 60 日日波動×√(離高點天數))，只看高點在近 7 天內；數字是我訂的，未驗證
+function recentDrop(name,k){
+  var IX=FULL[name]; if(!IX) return null; var v=IX[k-OFF]; if(!(v>0)) return null;
+  var hi=-1,hv=0; for(var j=k-10;j<=k;j++){ var u=IX[j-OFF]; if(u>=hv){ hv=u; hi=j; } }
+  if(hi<0||hi===k||k-hi>7) return null;
+  var rs=[]; for(var j2=k-59;j2<=k;j2++){ var a=IX[j2-OFF], b=IX[j2-1-OFF]; if(a>0&&b>0) rs.push(a/b-1); }
+  if(rs.length<30) return null;
+  var mu=rs.reduce(function(x,y){return x+y;},0)/rs.length, sd=Math.sqrt(rs.reduce(function(x,y){return x+(y-mu)*(y-mu);},0)/rs.length);
+  var drop=v/hv-1, th=Math.max(0.02,2*sd*Math.sqrt(k-hi));
+  return drop<=-th?{drop:drop,days:k-hi,hiK:hi}:null;
 }
 function drawCycle2(lists,ks,M,S,k){
   var box=el('cycViz'); if(!box) return;
@@ -1189,7 +1203,7 @@ function drawCycle2(lists,ks,M,S,k){
   SECNAMES=lists.map(function(x){ return x.s.name; });
   var j1=idxAt(21), j5=idxAt(5), mi=[];
   lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f,sx:x};
-    (function(){ var IXn=FULL[x.s.name]||[], v0=IXn[k-OFF], v1=IXn[k-1-OFF], v5=IXn[k-5-OFF]; it.d1=(v0>0&&v1>0)?v0/v1-1:null; it.d5=(v0>0&&v5>0)?v0/v5-1:null; })();
+    (function(){ var IXn=FULL[x.s.name]||[], v0=IXn[k-OFF], v1=IXn[k-1-OFF], v5=IXn[k-5-OFF]; it.d1=(v0>0&&v1>0)?v0/v1-1:null; it.d5=(v0>0&&v5>0)?v0/v5-1:null; it.rd=recentDrop(x.s.name,k); })();
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); it.c0=c0; }
     if(j5!=null){ var c5=M[si][j5], f5=CYCF[si][j5]; it.x5=mtnX(c5,f5&&f5.give); it.c5=c5; it.g5=f5?f5.give:null; } mi.push(it); });
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
