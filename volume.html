@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>成交量雷達 v0.6</title>
+<title>成交量雷達 v0.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -36,7 +36,7 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.6</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">成交量<span>雷達</span> v0.7</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">① 掃描：哪些股票的量跟自己比特別突出？</div>
@@ -489,6 +489,8 @@ function scan(){
     var dtag='<span class="tag" style="background:#fff;color:'+dcol+';border:2px solid '+dcol+';font-size:15px">'+dtxt+'</span>';
     return '<div class="card"><div style="font-size:17px;font-weight:900">'+r.t+' '+dtag+'<span class="tag" style="background:'+KC[r.cl.k]+'">'+KN[r.cl.k]+'</span><span class="tag" style="background:'+L.c+'">板塊 '+L.t+'</span>'+(f.pp?'<span class="tag" style="background:#0066bb">口袋支點</span>':'')+(f.dry&&f.rv>=1.5?'<span class="tag" style="background:#0066bb">量縮後放量</span>':'')+'<span class="sub">　'+mdd(B.d[r.i])+(r.sec?'　'+r.sec.q.icon+' '+r.sec.q.name:'')+'</span></div>'+
       '<div style="font-size:14.5px;line-height:1.6;margin-top:3px"><b>白話：</b><b style="color:#0066bb">'+mdd(B.d[r.i])+' 當天</b>的量是平常（過去 50 天平均）的 <b>'+f.rv.toFixed(1)+' 倍</b>'+(f.top?'，是近 3 個月最大量':'')+'；股價那天 '+pcs(f.chg)+'、收在當天區間的 '+Math.round(f.cp*100)+'% 位置（越高越強）。'+r.cl.why+'。</div>'+(f.pp?'<div style="font-size:13px;color:#0066bb;margin-top:2px">口袋支點＝那天是上漲日、收紅 K、收在當天區間上半部（v0.5 起；以前只看比前日收盤上漲，會把跳空後被賣下來的也算進去），量比前 10 天裡「跌的那幾天」的最大量還大，而且股價離 50 日線不遠（在線上或最多低 3%、高不超過 15%）。意思是：買盤那天明顯壓過賣盤。這是 Gil Morales／Chris Kacher 的說法，我沒有用你的資料驗證過它有沒有用。</div>':'')+
+      (function(){ var S=BARS['SPY'], last=S&&S.d[S.d.length-1], stale=last&&B.d[r.i]<last; var P=function(v){return '$'+v.toFixed(2);};
+        return '<div class="sub" style="font-size:14px;color:#223;margin-top:3px"><b>收盤價 '+P(B.c[r.i])+'</b>（'+mdd(B.d[r.i])+'）｜前一天收盤 '+P(B.c[r.i-1])+'（'+mdd(B.d[r.i-1])+'）｜漲跌 '+((B.c[r.i]/B.c[r.i-1]-1)*100).toFixed(2)+'%'+(stale?'<br><b style="color:#b3262e">⚠ 這檔抓到的資料只到 '+mdd(B.d[r.i])+'，比大盤（到 '+mdd(last)+'）少一天，上面的量價是前一天的，不是今天。</b>':'')+'</div>'; })()+
       '<div class="sub">離 50 日線 '+pcs(f.ext)+'｜離 1 年高點 '+pcs(f.nearHi)+'｜從近 3 個月低點已漲 '+pcs(f.up60)+'</div></div>';
   };
   var sect=function(title,color,arr,note,open){ var nu=arr.filter(function(r){return r.f.chg>=0.003;}).length, nd=arr.filter(function(r){return r.f.chg<=-0.003;}).length; var ud=arr.length?'<span style="font-size:14px;font-weight:900;margin-left:6px"><span style="color:#1f6f3a">▲上漲 '+nu+'</span>　<span style="color:#b3262e">▼下跌 '+nd+'</span></span>':''; return '<div class="box"><div class="h" style="color:'+color+'">'+title+'（'+arr.length+' 檔）'+ud+'</div><div class="sub">'+note+'</div>'+(arr.length?(open?arr.map(card).join(''):'<details><summary>展開看</summary>'+arr.map(card).join('')+'</details>'):'<div class="sub" style="margin-top:6px">這次沒有。</div>')+'</div>'; };
