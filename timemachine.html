@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.60</title>
+<title>板塊時光機 v1.63</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.60</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.63</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -901,7 +901,7 @@ function showCheck(ds){
      +(c.keep!=null&&!same?(c.keep>=1?'到今天累計漲幅是跳漲日那天的 <b>'+c.keep.toFixed(1)+' 倍</b>':'保有跳漲日漲幅的 <b>'+Math.round(c.keep*100)+'%</b>')+'（中間最差時是 '+(c.worst!=null?(c.worst>=1?c.worst.toFixed(1)+' 倍':Math.round(c.worst*100)+'%'):'—')+'）；':'')
      +'從跳漲前一天算起 <b>'+(c.br!=null?Math.round(c.br*100)+'%':'—')+'</b> 的成分股在漲；跳漲日 <b>'+(c.vol!=null?Math.round(c.vol*100)+'%':'—')+'</b> 的成分股有放量。</div>'
      +'<div style="font-size:13px;color:#445;margin-top:2px">帶頭股（到今天）：'+r.lead.map(function(o){ return '<b>'+o.t+'</b> '+pc(o.r); }).join('、')+'</div>'
-     +'<div id="ckNews'+i+'" style="font-size:13px;margin-top:3px"></div></div>';
+     +ckStocks(r.x,P,k,prov)+'<div id="ckNews'+i+'" style="font-size:13px;margin-top:3px"></div></div>';
   });
   if(quiet.length) h+='<div style="font-size:13px;color:#667;margin:6px 0">最近 5 天沒有單日跳漲的板塊（不用檢查）：'+quiet.join('、')+'</div>';
   if(rows.length) h+='<div class="row" style="margin:8px 0"><button class="btn go" id="btnCkNews">📰 查帶頭股新聞（每個板塊 2 檔，會慢慢查）</button></div><div id="ckNewsMsg" class="sub"></div>';
@@ -933,6 +933,22 @@ async function ckNews(){
   }
   msg.textContent='新聞查完了（新聞來源是 Finnhub，可能漏掉；標題看得出發生什麼，看不出為什麼市場今天才反應）。'; if(btn) btn.disabled=false;
 }
+// v1.62：成分股明細——每一檔今天漲跌、從跳漲前一天到今天共漲跌、今天成交量是自己 20 日平均的幾倍；看是整個板塊在動還是少數幾檔
+function ckStocks(x,P,k,prov){
+  var S=SPYB, f=function(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; }, rows=[];
+  x.list.forEach(function(q){ var B=q.B, a=B.map[S.d[k]], b1=B.map[S.d[k-1]], bP=B.map[S.d[P-1]]; if(a==null||b1==null||!(B.c[b1]>0)) return;
+    var vr=null; if(a>=21){ var sm=0,c2=0; for(var z=a-20;z<a;z++){ if(B.v[z]>0){ sm+=B.v[z]; c2++; } } if(c2>=10&&B.v[a]>0) vr=B.v[a]/(sm/c2); }
+    rows.push({t:q.t,d1:B.c[a]/B.c[b1]-1,dp:(bP!=null&&B.c[bP]>0)?B.c[a]/B.c[bP]-1:null,vr:vr}); });
+  if(!rows.length) return '';
+  rows.sort(function(a,b){ return b.d1-a.d1; });
+  var up=rows.filter(function(r){return r.d1>0;}).length, big=rows.filter(function(r){return r.d1>=0.03;}).length, bigV=rows.filter(function(r){return r.d1>=0.03&&r.vr!=null&&r.vr>=1.2;}).length, flat=rows.filter(function(r){return Math.abs(r.d1)<0.01;}).length;
+  var col=function(v){ return v==null?'#667':(v>=0?'#1f7a45':'#b3262e'); };
+  var body=rows.map(function(r){ return '<tr><td style="text-align:left;font-weight:700">'+r.t+'</td><td style="color:'+col(r.d1)+';font-weight:700">'+f(r.d1)+'</td><td style="color:'+col(r.dp)+'">'+f(r.dp)+'</td><td>'+(r.vr==null?'—':r.vr.toFixed(1)+' 倍')+'</td></tr>'; }).join('');
+  return '<details style="margin-top:5px"><summary style="cursor:pointer;font-size:13.5px;font-weight:800;color:#1a5fb4">📋 成分股明細（'+rows.length+' 檔）：今天 '+up+' 檔上漲、'+big+' 檔漲 ≥3%</summary>'
+   +'<div style="font-size:13.5px;line-height:1.6;margin:4px 0"><b>白話：</b>'+(big>=Math.max(3,rows.length*0.3)?'漲得多的不只幾檔（'+big+' 檔 ≥3%），比較像整個板塊在動':(big>0?'只有 '+big+' 檔漲 ≥3%，比較像少數幾檔在帶':'沒有哪一檔漲到 3%，今天是小幅整體移動'))+'；其中有放量（≥1.2 倍）的 '+bigV+' 檔；今天幾乎沒動（±1% 內）的有 '+flat+' 檔。</div>'
+   +'<div class="tw"><table class="t" style="min-width:380px"><tr><th style="text-align:left">股票（依今天漲幅）</th><th>今天</th><th>跳漲前一天到今天</th><th>今天量比</th></tr>'+body+'</table></div>'
+   +'<div style="font-size:12px;color:#667">量比＝今天成交量 ÷ 自己前 20 日平均。'+(prov?'<b style="color:#b3262e">今天還沒收盤，量比會偏低、收盤後才準。</b>':'')+'</div></details>';
+}
 // 回測：過去每一次跳漲，在跳漲後第 2 天用同一份 5 項清單打分，看之後 5／10 天比 SPY 好多少
 function ckBacktest(kNow){
   var S=SPYB, evs=[];
@@ -940,6 +956,8 @@ function ckBacktest(kNow){
     var last=-99; for(var j=OFF+75;j<=S.d.length-13;j++){ if(j-last<5) continue; var pp=ckPop(x,j); if(!pp) continue; last=j;
       var e=j+2, ch=ckChecks(x,j,e,false); if(!ch) continue; var a=ckIdx(x,e); if(a==null) continue;
       var o={score:ch.ok,nm:x.s.name,d:S.d[j]};
+      var pre=ckIdx(x,j-1), pop=ckIdx(x,j);
+      [5,10,20].forEach(function(h){ var q=ckIdx(x,j+h); if(pre==null||pop==null||q==null||j+h>=S.d.length||pop<=pre){ o['k'+h]=null; return; } o['k'+h]=((q-pre)/(pop-pre)>=0.5); });
       [5,10].forEach(function(h){ var b=ckIdx(x,e+h); if(b==null||e+h>=S.d.length){ o['x'+h]=null; return; } o['x'+h]=(b/a-1)-(S.c[e+h]/S.c[e]-1); });
       evs.push(o); }
   });
@@ -947,10 +965,16 @@ function ckBacktest(kNow){
   var f=function(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; };
   var rows=G.map(function(g){ var a=evs.filter(g[1]); var s5=a.map(function(o){return o.x5;}).filter(function(v){return v!=null;}), s10=a.map(function(o){return o.x10;}).filter(function(v){return v!=null;});
     return '<tr><td style="text-align:left;font-weight:700">'+g[0]+'</td><td>'+a.length+'</td><td>'+(s5.length?f(mean(s5)):'—')+'</td><td>'+(s5.length?Math.round(s5.filter(function(v){return v>0;}).length/s5.length*100)+'%':'—')+'</td><td>'+(s10.length?f(mean(s10)):'—')+'</td><td>'+(s10.length?Math.round(s10.filter(function(v){return v>0;}).length/s10.length*100)+'%':'—')+'</td></tr>'; }).join('');
+  var pr=G.map(function(g){ var a=evs.filter(g[1]); var cell=function(h){ var v=a.map(function(o){return o['k'+h];}).filter(function(u){return u!=null;}); return v.length?Math.round(v.filter(function(u){return u;}).length/v.length*100)+'%':'—'; };
+    return '<tr><td style="text-align:left;font-weight:700">'+g[0]+'</td><td>'+cell(5)+'</td><td>'+cell(10)+'</td><td>'+cell(20)+'</td></tr>'; }).join('');
+  var all=function(h){ var v=evs.map(function(o){return o['k'+h];}).filter(function(u){return u!=null;}); return v.length?Math.round(v.filter(function(u){return u;}).length/v.length*100):null; };
+  var a5=all(5),a10=all(10),a20=all(20);
+  var persist=(a5==null)?'':('<div style="font-weight:800;font-size:15px;margin:10px 0 4px">⏱ 跳漲之後，漲幅撐得住多久？</div><div style="overflow-x:auto"><table class="t" style="min-width:420px"><tr><th style="text-align:left">分組</th><th>第 5 天還守住一半以上漲幅</th><th>第 10 天</th><th>第 20 天</th></tr>'+pr+'</table></div>'
+   +'<div style="background:#fff7d6;border-radius:8px;padding:7px 10px;margin:6px 0;font-size:14.5px;line-height:1.6"><b>白話：</b>過去這份資料裡，所有跳漲的板塊，跳漲後第 5 天還守住當天一半以上漲幅的有 <b>'+a5+'%</b>，第 10 天 <b>'+a10+'%</b>，第 20 天 <b>'+a20+'%</b>。'+(evs.length<8?'<b>事件少於 8 次，樣本太少，只能當紀錄。</b>':(a20<a5-5?'數字越往後越低，代表<b>跳漲通常不是一天就消失，但時間拉長，吐回的會越來越多</b>。':'數字沒有明顯隨時間往下掉，<b>這份資料裡跳漲的漲幅不太會很快吐回</b>。'))+'這不是預測，只是這兩年這些板塊發生過的比例。「守住」＝指數仍高於「跳漲前一天＋當天漲幅的一半」。</div>');
   var hi=evs.filter(function(o){return o.score>=4&&o.x5!=null;}), lo=evs.filter(function(o){return o.score<=2&&o.x5!=null;}), diff=(hi.length&&lo.length)?mean(hi.map(function(o){return o.x5;}))-mean(lo.map(function(o){return o.x5;})):null;
   var read=(!evs.length)?'資料裡沒有找到跳漲事件。':((hi.length<8||lo.length<8)?'通過 4～5 項或 0～2 項的事件少於 8 次，<b>樣本太少，這張表看不出差別</b>，只能當紀錄。':(diff>0.01?'通過 4～5 項的，之後 5 天平均比沒通過的多贏 SPY <b>'+(diff*100).toFixed(1)+'%</b>：這份清單<b>有一點用</b>，但樣本少、事件會重疊，不能當勝率。':(diff<-0.01?'通過 4～5 項的，之後反而比沒通過的差 '+(Math.abs(diff)*100).toFixed(1)+'%：<b>這份清單目前看不出有用</b>，標準可能要重訂。':'通過和沒通過的差距在 1% 以內：<b>看不出差別</b>，這份清單目前沒有證明有用。')));
   el('ckBt').innerHTML='<div style="overflow-x:auto"><table class="t" style="min-width:480px"><tr><th style="text-align:left">分組（跳漲後第 2 天打分）</th><th>事件數</th><th>之後 5 天比 SPY 平均多贏</th><th>贏 SPY 的比例</th><th>之後 10 天比 SPY 平均多贏</th><th>贏 SPY 的比例</th></tr>'+rows+'</table></div>'
-   +'<div style="background:#fff7d6;border-radius:8px;padding:7px 10px;margin:6px 0;font-size:14.5px;line-height:1.6"><b>白話：</b>'+read+'</div>'
+   +'<div style="background:#fff7d6;border-radius:8px;padding:7px 10px;margin:6px 0;font-size:14.5px;line-height:1.6"><b>白話：</b>'+read+'</div>'+persist
    +'<div style="font-size:12.5px;color:#b3262e;line-height:1.6">⚠ 資料只有約 2 年、'+secLists().length+' 個板塊，同一個板塊 5 天內的跳漲只算一次，但不同板塊常同一天一起跳（其實是同一件事），所以事件數看起來比真實獨立的次數多；這是「過去這份資料裡」的結果，不保證以後；新聞那一項沒有歷史資料，沒有回測。</div>';
 }
 
@@ -1042,7 +1066,7 @@ function movePlotSvg(items){
 }
 function mountainSvg(items){
   // 階梯式標籤：由左到右，名字一列比一列低，每個圓點拉一條細線到自己那一列，線不會穿過別人的字
-  var W=720,PL=14,PR=112,PW=W-PL-PR,hh=100,RH=15,top=14,n=items.length,base=Math.max(250,top+n*RH+24),H=base+44,i;
+  var W=720,PL=14,PR=112,PW=W-PL-PR,hh=100,RH=15,top=14,n=items.length,base=Math.max(250,top+n*RH+24),H=base+86,i;
   var yAt=function(x){ return base-(1-Math.cos(2*Math.PI*x))/2*hh; }, xAt=function(x){ return PL+x*PW; };
   var pts=[]; for(i=0;i<=60;i++){ var t=i/60; pts.push((PL+t*PW).toFixed(1)+','+yAt(t).toFixed(1)); }
   var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:#faf7e6;border-radius:8px">'
@@ -1050,13 +1074,23 @@ function mountainSvg(items){
    +'<polyline fill="none" stroke="#8a7a33" stroke-width="2.5" points="'+pts.join(' ')+'"/>';
   [[0.1,'起步'],[0.28,'爬坡'],[0.5,'山頂'],[0.7,'下山'],[0.92,'谷底']].forEach(function(z){ svg+='<text x="'+xAt(z[0]).toFixed(1)+'" y="'+(base+17)+'" font-size="12.5" font-weight="800" fill="#6b5d1f" text-anchor="middle">'+z[1]+'</text>'; });
   svg+='<text x="'+xAt(0.7).toFixed(1)+'" y="'+(base+31)+'" font-size="10.5" fill="#8a7a33" text-anchor="middle">（吐回越多越靠右）</text>';
+  svg+='<text x="'+PL+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#1f8a4a">← 往左＝轉強</text><text x="'+(PL+PW)+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#c0392b" text-anchor="end">往右＝轉弱 →</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(base+65)+'" font-size="10.5" fill="#667" text-anchor="middle">位置是依「階段」放的，不是股價高低；只有近 1 週變動明顯的才畫箭頭（綠＝往轉強、紅＝往轉弱，空心圈＝1 週前）</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(base+81)+'" font-size="10.5" fill="#667" text-anchor="middle">名字後面的 ▲▼＝今天這個板塊實際漲跌（灰＝±0.3% 內），「5日」＝近 5 個交易日（灰＝±0.5% 內）；盤中為盤中數字</text>';
+  var mvSet={}; items.filter(function(m){ return m.x5!=null&&Math.abs(m.x5-m.x)>=0.06; }).sort(function(a,b){ return Math.abs(b.x5-b.x)-Math.abs(a.x5-a.x); }).slice(0,6).forEach(function(m){ mvSet[m.name]=1; });
   var sorted=items.slice().sort(function(a,b){ return a.x-b.x; }), prev=-99, arrows='', lines='', dots='', labs='';
   sorted.forEach(function(m,r){
     var cx=xAt(m.x), cy=yAt(m.x); if(cx<prev+9) cx=prev+9; prev=cx;
-    if(m.gx!=null&&Math.abs(m.gx-m.x)>0.02){ var gx=xAt(m.gx), gy=yAt(m.gx); arrows+='<line x1="'+gx.toFixed(1)+'" y1="'+gy.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+cy.toFixed(1)+'" stroke="'+(cx<gx?'#1f8a4a':'#c0392b')+'" stroke-width="2.6" opacity=".85" stroke-linecap="round"/>'+(function(){ var dx=cx-gx, dy=cy-gy, L=Math.sqrt(dx*dx+dy*dy)||1, ux=dx/L, uy=dy/L, tx=cx-ux*9, ty=cy-uy*9, bx=tx-ux*12, by=ty-uy*12; return '<polygon points="'+tx.toFixed(1)+','+ty.toFixed(1)+' '+(bx-uy*6).toFixed(1)+','+(by+ux*6).toFixed(1)+' '+(bx+uy*6).toFixed(1)+','+(by-ux*6).toFixed(1)+'" fill="'+(cx<gx?'#1f8a4a':'#c0392b')+'" opacity=".95"/>'; })()+'<circle cx="'+gx.toFixed(1)+'" cy="'+gy.toFixed(1)+'" r="4" fill="#fff" stroke="'+(cx<gx?'#1f8a4a':'#c0392b')+'" stroke-width="1.8"/>'; }
+    if(m.x5!=null&&mvSet[m.name]){ var gx=xAt(m.x5), gy=yAt(m.x5); arrows+='<line x1="'+gx.toFixed(1)+'" y1="'+gy.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+cy.toFixed(1)+'" stroke="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" stroke-width="2.6" opacity=".85" stroke-linecap="round"/>'+(function(){ var dx=cx-gx, dy=cy-gy, L=Math.sqrt(dx*dx+dy*dy)||1, ux=dx/L, uy=dy/L, tx=cx-ux*9, ty=cy-uy*9, bx=tx-ux*12, by=ty-uy*12; return '<polygon points="'+tx.toFixed(1)+','+ty.toFixed(1)+' '+(bx-uy*6).toFixed(1)+','+(by+ux*6).toFixed(1)+' '+(bx+uy*6).toFixed(1)+','+(by-ux*6).toFixed(1)+'" fill="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" opacity=".95"/>'; })()+'<circle cx="'+gx.toFixed(1)+'" cy="'+gy.toFixed(1)+'" r="4" fill="#fff" stroke="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" stroke-width="1.8"/>'; }
     var ry=top+r*RH;
     lines+='<line x1="'+cx.toFixed(1)+'" y1="'+(ry+7)+'" x2="'+cx.toFixed(1)+'" y2="'+(cy-5).toFixed(1)+'" stroke="'+m.col+'" stroke-width="1" opacity=".4"/>';
-    labs+='<text x="'+(cx+4).toFixed(1)+'" y="'+(ry+11)+'" font-size="11.5" font-weight="800" fill="'+m.col+'">'+m.icon+' '+m.name+'</text>';
+    var tail='', tw=0;
+    if(m.d1!=null){ var u1=m.d1>=0.003?'#1f8a4a':(m.d1<=-0.003?'#c0392b':'#888'), a1=m.d1>=0.003?'▲':(m.d1<=-0.003?'▼':'■');
+      tail+='<tspan fill="'+u1+'" font-size="11"> '+a1+(m.d1>=0?'+':'')+(m.d1*100).toFixed(1)+'%</tspan>'; tw+=62; }
+    if(m.d5!=null){ var u5=m.d5>=0.005?'#1f8a4a':(m.d5<=-0.005?'#c0392b':'#888'), a5=m.d5>=0.005?'▲':(m.d5<=-0.005?'▼':'■');
+      tail+='<tspan fill="'+u5+'" font-size="10"> 5日'+a5+'</tspan>'; tw+=38; }
+    var lw=(m.name.length*12.5)+22+tw+(mvSet[m.name]?16:0), toRight=(cx+4+lw>W-4), lx=toRight?(cx-4):(cx+4);
+    labs+='<text x="'+lx.toFixed(1)+'" y="'+(ry+11)+'" font-size="11.5" font-weight="800" fill="'+m.col+'" text-anchor="'+(toRight?'end':'start')+'" style="paint-order:stroke;stroke:#faf4dc;stroke-width:3px;stroke-linejoin:round">'+(mvSet[m.name]?(m.x<m.x5?'⬅ ':'➡ '):'')+m.icon+' '+m.name+tail+'</text>';
     dots+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="5.5" fill="'+m.col+'" stroke="#fff" stroke-width="1.5"/>';
   });
   return svg+arrows+lines+labs+dots+'</svg>';
@@ -1155,6 +1189,7 @@ function drawCycle2(lists,ks,M,S,k){
   SECNAMES=lists.map(function(x){ return x.s.name; });
   var j1=idxAt(21), j5=idxAt(5), mi=[];
   lists.forEach(function(x,si){ var c=M[si][last], f=CYCF[si][last]; var it={name:x.s.name,icon:x.s.icon,x:mtnX(c,f&&f.give),col:CLS_COL[clsOf(c)],c:c,give:f?f.give:null,f:f,sx:x};
+    (function(){ var IXn=FULL[x.s.name]||[], v0=IXn[k-OFF], v1=IXn[k-1-OFF], v5=IXn[k-5-OFF]; it.d1=(v0>0&&v1>0)?v0/v1-1:null; it.d5=(v0>0&&v5>0)?v0/v5-1:null; })();
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); it.c0=c0; }
     if(j5!=null){ var c5=M[si][j5], f5=CYCF[si][j5]; it.x5=mtnX(c5,f5&&f5.give); it.c5=c5; it.g5=f5?f5.give:null; } mi.push(it); });
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
