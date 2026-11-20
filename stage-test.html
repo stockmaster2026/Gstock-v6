@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage 審判回測 v1.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;background:#f5edc8;color:#2a2a2a;padding:12px;line-height:1.6}
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.hdr h2{font-size:20px;color:#8a4a00}
+.back{padding:6px 12px;border:2px solid #1a6fd0;border-radius:10px;color:#1a6fd0;font-weight:800;text-decoration:none;font-size:14px;background:#fff}
+.box{background:#fffdf0;border:2px solid #e2c75a;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.box h3{font-size:16px;margin-bottom:6px}
+.sub{font-size:13px;color:#555}
+button.go{padding:10px 18px;font-size:16px;font-weight:800;border:0;border-radius:10px;background:#e8620c;color:#fff;margin-top:8px}
+button.go:disabled{background:#bbb}
+table{border-collapse:collapse;font-size:13px;width:100%}
+td,th{padding:4px 6px;text-align:right;border-top:1px solid #e6dcae}
+th{font-size:12px;color:#778;font-weight:600}
+td:first-child,th:first-child{text-align:left;font-weight:800;white-space:nowrap}
+.tw{overflow-x:auto}
+.warn{font-size:12.5px;color:#b3262e;margin-top:6px}
+.v{padding:8px 11px;background:#fff;border-radius:8px;border-left:5px solid #667;font-size:14px;margin-top:6px}
+#prog{font-size:13px;color:#555;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="hdr"><a class="back" href="javascript:history.back()">← 返回</a><h2>Stage 審判回測 <span style="font-size:13px;color:#c8952a">v1.0</span></h2></div>
+
+<div class="box">
+<h3>這個測試在回答什麼？</h3>
+<div class="sub">個股決策樹的「Stage 審判」會把一檔股票分成 <b>早段／中段／末段／資格未滿</b>，說「早段才是該買的位置、末段是高位陷阱」。這個頁面用你名單裡所有股票的過去 2 年資料，<b>回到每一個過去的日子，用同樣的規則分類，再看後來 10／20／40 天真的怎麼走</b>——看分類有沒有用。<br><br>
+<b>跟決策樹有兩處不同（資料抓不到）：</b>① 沒有 RS 分數（單檔無法精算），所以 Trend Template 8 條只測其中 7 條；② 沒有「突破幾週」。其餘門檻（乖離 &gt;25%、離低點 &gt;90%、50 日均走平、貼前高又漲多）跟決策樹完全一樣。<br>
+<b>所有門檻都不是我用你的資料訂出來的，這個測試就是在檢驗它們。</b></div>
+<button class="go" id="goBtn" onclick="runTest()">開始回測（約 1～3 分鐘）</button>
+<div id="prog"></div>
+</div>
+<div id="out"></div>
+
+<script>
+var PROXY='https://gstock-proxy.cykjas.workers.dev/?url=';
+// 名單：先讀 radar／charts 共用的（同網域 localStorage），讀不到用內建（現行系統，防禦型／金融等）
+var SECTOR_MAP_DEFAULT={"AI巨頭": ["NVDA", "MSFT", "GOOGL", "AMZN", "META", "AAPL", "AVGO", "ORCL", "TSM"], "AI基礎設施": ["ANET", "SMCI", "DELL", "VRT", "CRDO", "HPE", "MRVL", "ALAB"], "光通信": ["COHR", "LITE", "AAOI", "AXTI", "APH", "CIEN", "FN", "POET", "TSEM", "NOK"], "AI電力散熱": ["VST", "CEG", "TLN", "NRG", "PEG", "D", "EXC", "AES", "NEE"], "AI電力設備": ["ETN", "GEV", "PWR", "GNRC", "EMR", "HUBB", "NVT", "AME"], "太空衛星": ["LUNR", "RKLB", "PL", "BKSY", "ASTS", "IRDM", "GSAT", "VSAT"], "無人機國防": ["KTOS", "AVAV", "LDOS", "LMT", "RTX", "NOC", "GD", "AXON", "HII"], "量子運算": ["IONQ", "RGTI", "QBTS", "QUBT"], "儲存硬體": ["MU", "WDC", "STX", "SNDK", "SKHY", "AMKR", "TER", "ONTO", "NTAP", "P"], "生技健康": ["CRSP", "NTRA", "NVAX", "RXRX", "BEAM", "NTLA", "EDIT", "ALNY", "VKTX", "SRPT"], "貴金屬礦業": ["NEM", "AEM", "WPM", "B", "KGC", "AU", "FNV", "RGLD"], "機器人": ["ISRG", "CGNX", "SYM", "SERV", "OUST", "AMBA", "PATH"], "AI算力雲": ["NBIS", "CRWV", "IREN", "APLD", "CORZ", "WULF", "HUT", "GLXY"], "AI軟體應用": ["NOW", "CRM", "SNOW", "DDOG", "WDAY", "TEAM", "APP", "MDB", "PLTR", "INTU"], "資安": ["PANW", "CRWD", "FTNT", "ZS", "S", "OKTA", "TENB", "QLYS", "RBRK", "NET"], "金融": ["JPM", "GS", "MS", "BLK", "KKR", "BX", "SCHW", "COIN", "HOOD", "V", "ARCC", "APO", "SYF", "ALLY", "AXP", "COF", "MA", "CME", "SPGI", "BAC"], "防禦型個股": ["COST", "WMT", "PG", "KO", "PEP", "CL", "MDLZ", "PM", "MCD", "JNJ", "ABT", "MRK", "DUK", "SO", "WM"]};
+function getUniverse(){
+  var map=SECTOR_MAP_DEFAULT;
+  try{ var raw=JSON.parse(localStorage.getItem('biaoguo_sectors_v5')||'null');
+    if(Array.isArray(raw)){ var m2={}; raw.forEach(function(x){ if(x&&x.name&&x.name!=='自訂'&&(x.tickers||[]).length) m2[x.name]=x.tickers; }); if(Object.keys(m2).length) map=m2; } }catch(e){}
+  var seen={},out=[]; Object.keys(map).forEach(function(n){ map[n].forEach(function(t){ if(!seen[t]){ seen[t]=1; out.push(t); } }); });
+  return out;
+}
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+async function getBars(sym){
+  var y='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=2y&interval=1d';
+  for(var t=0;t<3;t++){
+    try{
+      var r=await fetch(PROXY+encodeURIComponent(y)); var j=await r.json(); var res=j.chart&&j.chart.result&&j.chart.result[0];
+      if(!res) throw new Error('no data');
+      var q=res.indicators.quote[0], ts=res.timestamp||[], d=[],c=[],h=[],l=[];
+      for(var i=0;i<ts.length;i++){ if(q.close[i]==null||q.high[i]==null||q.low[i]==null) continue; var dt=new Date(ts[i]*1000); d.push(dt.toISOString().slice(0,10)); c.push(q.close[i]); h.push(q.high[i]); l.push(q.low[i]); }
+      return {d:d,c:c,h:h,l:l};
+    }catch(e){ await sleep(600*(t+1)); }
+  }
+  return null;
+}
+function avg(a,i,n){ var s=0; for(var k=i-n+1;k<=i;k++) s+=a[k]; return s/n; }
+function med(a){ var b=a.slice().sort(function(x,y){return x-y;}), m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+// ── 跟決策樹 judgeStage 同一套規則（RS、突破週數除外）──
+function classify(B,i){
+  var c=B.c, price=c[i];
+  var ma50=avg(c,i,50), ma150=avg(c,i,150), ma200=avg(c,i,200), ma200p=avg(c,i-21,200), ma50p=avg(c,i-15,50);
+  var hi=-1e18, lo=1e18; for(var k=i-251;k<=i;k++){ if(B.h[k]>hi) hi=B.h[k]; if(B.l[k]<lo) lo=B.l[k]; }
+  var tt=[ price>ma150&&price>ma200, ma150>ma200, ma200>ma200p, ma50>ma150&&ma50>ma200, price>ma50, price/lo-1>=0.30, 1-price/hi<=0.25 ];
+  var pass=tt.filter(Boolean).length;
+  if(pass<7) return pass>=5?'資格未滿（差一兩條）':'資格未滿（差很多）';
+  var dev50=price/ma50-1, gainLow=price/lo-1, offHigh=1-price/hi, slope50=ma50/ma50p-1, late=0;
+  if(dev50>0.25) late++; if(gainLow>0.90) late++; if(slope50<0.01) late++; if(offHigh<0.03&&gainLow>0.6) late++;
+  return late===0?'早段':(late===1?'中段':'末段');
+}
+var CLASSES=['早段','中段','末段','資格未滿（差一兩條）','資格未滿（差很多）'];
+var HZ=[10,20,40];
+async function runTest(){
+  var btn=document.getElementById('goBtn'); btn.disabled=true; var prog=document.getElementById('prog');
+  var syms=getUniverse(); prog.textContent='抓 SPY…';
+  var spy=await getBars('SPY'); if(!spy){ prog.textContent='抓不到 SPY，請稍後再試。'; btn.disabled=false; return; }
+  var spyIx={}; spy.d.forEach(function(d,i){ spyIx[d]=i; });
+  var S={}, ALL={n:0,w:{},fw:{},rel:{},mon:{}}; // S[class][h]=list
+  CLASSES.concat(['全部']).forEach(function(k){ S[k]={}; HZ.forEach(function(h){ S[k][h]={r:[],rel:[]}; }); S[k].mon={}; S[k].tk={}; });
+  var done=0, fail=0, q=syms.slice(), CONC=4;
+  async function worker(){
+    while(q.length){
+      var sym=q.shift(); var B=await getBars(sym); done++;
+      prog.textContent='抓資料並分類… '+done+' / '+syms.length+'（失敗 '+fail+'）';
+      if(!B||B.c.length<300){ fail++; continue; }
+      for(var i=251;i<B.c.length-HZ[HZ.length-1];i+=5){          // 每 5 個交易日取一次，減少「同一檔連續幾天算很多次」
+        var cls=classify(B,i), ym=B.d[i].slice(0,7), si=spyIx[B.d[i]];
+        [cls,'全部'].forEach(function(k){
+          HZ.forEach(function(h){
+            var r=B.c[i+h]/B.c[i]-1; S[k][h].r.push(r);
+            var sj=spyIx[B.d[i+h]]; if(si!=null&&sj!=null) S[k][h].rel.push(r-(spy.c[sj]/spy.c[si]-1));
+          });
+          S[k].mon[ym]=1; S[k].tk[sym]=1;
+        });
+      }
+    }
+  }
+  var ws=[]; for(var w=0;w<CONC;w++) ws.push(worker()); await Promise.all(ws);
+  prog.textContent='完成：'+(syms.length-fail)+' 檔有資料（失敗 '+fail+' 檔）。';
+  btn.disabled=false; render(S,syms.length-fail);
+}
+function pct(v){ return v==null?'—':Math.round(v*100)+'%'; }
+function f1(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; }
+function stat(o){ var r=o.r; if(!r.length) return null; return {n:r.length,win:r.filter(function(v){return v>0;}).length/r.length,med:med(r),worst:Math.min.apply(null,r),beat:o.rel.length?o.rel.filter(function(v){return v>0;}).length/o.rel.length:null}; }
+function render(S,nTk){
+  var h='';
+  HZ.forEach(function(H){
+    h+='<div class="box"><h3>之後 '+H+' 天的結果</h3><div class="tw"><table><tr><th>分類</th><th>次數</th><th>涵蓋月份</th><th>賺錢比例</th><th>中位數</th><th>最差一次</th><th>贏過大盤</th></tr>';
+    CLASSES.concat(['全部']).forEach(function(k){
+      var st=stat(S[k][H]); if(!st){ h+='<tr><td>'+k+'</td><td colspan="6" style="text-align:left;color:#99a">沒有案例</td></tr>'; return; }
+      h+='<tr'+(k==='全部'?' style="color:#667"':'')+'><td>'+(k==='全部'?'基準（任何一天）':k)+'</td><td>'+st.n+'</td><td>'+Object.keys(S[k].mon).length+' 個月</td><td>'+pct(st.win)+'</td><td><b>'+f1(st.med)+'</b></td><td style="color:#b3262e">'+f1(st.worst)+'</td><td>'+pct(st.beat)+'</td></tr>';
+    });
+    h+='</table></div></div>';
+  });
+  // 白話結論（看 20 天）
+  var base=stat(S['全部'][20]), e=stat(S['早段'][20]), l=stat(S['末段'][20]), m=stat(S['中段'][20]);
+  var enough=function(s,k){ return s&&s.n>=30&&Object.keys(S[k].mon).length>=6; };
+  var vt='', col='#667';
+  if(!enough(e,'早段')||!enough(l,'末段')){ vt='「早段」或「末段」的案例不夠多（要至少 30 次、涵蓋 6 個月以上），不能下結論。'; }
+  else{
+    var de=(e.win-base.win), dl=(l.win-base.win), me=e.med-base.med, ml=l.med-base.med;
+    var eGood=(de>=0.10&&me>=0.01), eBad=(de<=-0.10&&me<=-0.01), lBad=(dl<=-0.10&&ml<=-0.01), lGood=(dl>=0.10&&ml>=0.01);
+    vt='<b>早段</b>：20 天賺錢 '+pct(e.win)+'、中位數 '+f1(e.med)+'（基準 '+pct(base.win)+'／'+f1(base.med)+'）→ '+(eGood?'<b style="color:#1f6f3a">比隨便挑一天好</b>':eBad?'<b style="color:#b3262e">比隨便挑一天差</b>':'<b>跟隨便挑一天差不多</b>')+'。<br>'
+      +'<b>末段</b>：20 天賺錢 '+pct(l.win)+'、中位數 '+f1(l.med)+' → '+(lBad?'<b style="color:#1f6f3a">確實比基準差，「末段＝陷阱」這條有支持</b>':lGood?'<b style="color:#b3262e">反而比基準好，「末段＝陷阱」這條<b>沒有</b>被支持</b>':'<b>跟基準差不多，「末段＝陷阱」這條沒有被支持</b>')+'。';
+    if(eGood&&lBad) col='#1f6f3a'; else if(eBad||lGood) col='#b3262e';
+  }
+  h='<div class="box"><h3>白話結論</h3><div class="v" style="border-left-color:'+col+'">'+vt+'</div>'
+   +'<div class="sub" style="margin-top:6px"><b>怎麼讀：</b>「基準」是同一段期間、名單裡任何股票任何一天的結果。分類只有在<b>比基準明顯好或差</b>時才有用（我的標準：賺錢比例差 10 個百分點以上、而且中位數差 1% 以上）；差不多就表示這個分類沒帶來額外資訊。</div>'
+   +'<div class="warn">⚠ 限制：① 只有約 2 年資料，其中前 1 年要拿來算 52 週高低與 200 日均，真正可測的約 1 年，而且很可能剛好是一段大多頭，所有分類看起來都會偏好；② 名單是你「現在」在追蹤的股票，過去有跌掉被你拿掉的不在裡面（倖存者偏差）；③ 每 5 個交易日取一次樣，案例之間仍有重疊，同一時期很多檔其實是同一件事，「涵蓋月份」比「次數」更能代表真正的獨立程度；④ 沒測 RS 與突破週數；⑤ 門檻（25%、90%、1% 等）是決策樹原本的，我沒改，這裡就是在檢驗它。這是「過去發生過什麼」，不是預測。共 '+nTk+' 檔股票。</div></div>'+h;
+  document.getElementById('out').innerHTML=h;
+}
+</script>
+</body>
+</html>
