@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股深度分析</title>
+<title>個股深度分析 v15</title>
   <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -152,7 +152,7 @@ input.num:focus{border-color:#c8a84b;}
 </style>
 </head>
 <body>
-<div class="hdr"><div class="dot"></div><h2>個股深度分析</h2></div>
+<div class="hdr"><div class="dot"></div><h2>個股深度分析 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v15 · 11/20</span></h2></div>
 <div class="tabs">
   <div class="tab active" id="tab1">📈 技術與籌碼</div>
   <div class="tab" id="tab2">📊 板塊籌碼</div>
@@ -285,36 +285,50 @@ function switchTab(t){
 }
 
 // ── 板塊數據 ──
+// v15：前 17 個板塊換成「現在系統」的名單（與 radar／charts／時光機同一份；名稱 光通訊→光通信、衛星通信併入太空衛星）。
+// 之後只要 radar／charts 改了名單，這裡開啟時會自動跟著（見 loadSectors）。⭐測試星池／⭐探索／💡光通訊鏈／自訂 是你自己的個人池，保留。
 var SECTORS={
-  'AI巨頭':     [{sym:'NVDA'},{sym:'META'},{sym:'GOOGL'},{sym:'MSFT'},{sym:'AMZN'}],
-  'AI基礎設施': [{sym:'ANET'},{sym:'SMCI'},{sym:'DELL'},{sym:'CRWD'},{sym:'SNOW'}],
-  '光通訊':     [{sym:'COHR'},{sym:'LITE'},{sym:'AAOI'},{sym:'VECO'}],
-  'AI電力散熱': [{sym:'VST'},{sym:'CEG'},{sym:'ETN'},{sym:'GNRC'},{sym:'VRT'}],
-  '太空衛星':   [{sym:'LUNR'},{sym:'RKLB'},{sym:'PL'},{sym:'BKSY'},{sym:'ASTS'}],
-  '無人機國防': [{sym:'ONDS'},{sym:'KTOS'},{sym:'PLTR'},{sym:'ACHR'},{sym:'RCAT'}],
-  '量子運算':   [{sym:'IONQ'},{sym:'RGTI'},{sym:'QBTS'},{sym:'QUBT'}],
-  '儲存硬體':   [{sym:'WDC'},{sym:'NTAP'},{sym:'PURE'},{sym:'STX'},{sym:'PSTG'}],
-  '生技健康':   [{sym:'TEM'},{sym:'HIMS'},{sym:'RXRX'},{sym:'NVAX'},{sym:'CRSP'}],
-  '衛星通信':   [{sym:'IRDM'},{sym:'ASTS'},{sym:'GSAT'},{sym:'VSAT'}],
-  '貴金屬礦業': [{sym:'GLD'},{sym:'SLV'},{sym:'NEM'},{sym:'AEM'},{sym:'WPM'}],
+  'AI巨頭': [{sym:'NVDA'},{sym:'MSFT'},{sym:'GOOGL'},{sym:'AMZN'},{sym:'META'},{sym:'AAPL'},{sym:'AVGO'},{sym:'ORCL'},{sym:'TSM'}],
+  'AI基礎設施': [{sym:'ANET'},{sym:'SMCI'},{sym:'DELL'},{sym:'VRT'},{sym:'CRDO'},{sym:'HPE'},{sym:'MRVL'},{sym:'ALAB'}],
+  '光通信': [{sym:'COHR'},{sym:'LITE'},{sym:'AAOI'},{sym:'AXTI'},{sym:'APH'},{sym:'CIEN'},{sym:'FN'},{sym:'POET'},{sym:'TSEM'},{sym:'NOK'}],
+  'AI電力散熱': [{sym:'VST'},{sym:'CEG'},{sym:'TLN'},{sym:'NRG'},{sym:'PEG'},{sym:'D'},{sym:'EXC'},{sym:'AES'},{sym:'NEE'}],
+  'AI電力設備': [{sym:'ETN'},{sym:'GEV'},{sym:'PWR'},{sym:'GNRC'},{sym:'EMR'},{sym:'HUBB'},{sym:'NVT'},{sym:'AME'}],
+  '太空衛星': [{sym:'LUNR'},{sym:'RKLB'},{sym:'PL'},{sym:'BKSY'},{sym:'ASTS'},{sym:'IRDM'},{sym:'GSAT'},{sym:'VSAT'}],
+  '無人機國防': [{sym:'KTOS'},{sym:'AVAV'},{sym:'LDOS'},{sym:'LMT'},{sym:'RTX'},{sym:'NOC'},{sym:'GD'},{sym:'AXON'},{sym:'HII'}],
+  '量子運算': [{sym:'IONQ'},{sym:'RGTI'},{sym:'QBTS'},{sym:'QUBT'}],
+  '儲存硬體': [{sym:'MU'},{sym:'WDC'},{sym:'STX'},{sym:'SNDK'},{sym:'SKHY'},{sym:'AMKR'},{sym:'TER'},{sym:'ONTO'},{sym:'NTAP'},{sym:'P'}],
+  '生技健康': [{sym:'CRSP'},{sym:'NTRA'},{sym:'NVAX'},{sym:'RXRX'},{sym:'BEAM'},{sym:'NTLA'},{sym:'EDIT'},{sym:'ALNY'},{sym:'VKTX'},{sym:'SRPT'}],
+  '貴金屬礦業': [{sym:'NEM'},{sym:'AEM'},{sym:'WPM'},{sym:'B'},{sym:'KGC'},{sym:'AU'},{sym:'FNV'},{sym:'RGLD'}],
+  '機器人': [{sym:'ISRG'},{sym:'CGNX'},{sym:'SYM'},{sym:'SERV'},{sym:'OUST'},{sym:'AMBA'},{sym:'PATH'}],
+  'AI算力雲': [{sym:'NBIS'},{sym:'CRWV'},{sym:'IREN'},{sym:'APLD'},{sym:'CORZ'},{sym:'WULF'},{sym:'HUT'},{sym:'GLXY'}],
+  'AI軟體應用': [{sym:'NOW'},{sym:'CRM'},{sym:'SNOW'},{sym:'DDOG'},{sym:'WDAY'},{sym:'TEAM'},{sym:'APP'},{sym:'MDB'},{sym:'PLTR'},{sym:'INTU'}],
+  '資安': [{sym:'PANW'},{sym:'CRWD'},{sym:'FTNT'},{sym:'ZS'},{sym:'S'},{sym:'OKTA'},{sym:'TENB'},{sym:'QLYS'},{sym:'RBRK'},{sym:'NET'}],
+  '金融': [{sym:'JPM'},{sym:'GS'},{sym:'MS'},{sym:'BLK'},{sym:'KKR'},{sym:'BX'},{sym:'SCHW'},{sym:'COIN'},{sym:'HOOD'},{sym:'V'},{sym:'ARCC'},{sym:'APO'},{sym:'SYF'},{sym:'ALLY'},{sym:'AXP'},{sym:'COF'},{sym:'MA'},{sym:'CME'},{sym:'SPGI'},{sym:'BAC'}],
+  '防禦型個股': [{sym:'COST'},{sym:'WMT'},{sym:'PG'},{sym:'KO'},{sym:'PEP'},{sym:'CL'},{sym:'MDLZ'},{sym:'PM'},{sym:'MCD'},{sym:'JNJ'},{sym:'ABT'},{sym:'MRK'},{sym:'DUK'},{sym:'SO'},{sym:'WM'}],
   '⭐測試星池': [{sym:'MRVL'},{sym:'INFQ'},{sym:'VSH'},{sym:'ICHR'},{sym:'MTSI'},{sym:'UMAC'},{sym:'OKLO'}],
-  '⭐探索':     [],
+  '⭐探索': [],
   '💡光通訊鏈': [{sym:'GLW'},{sym:'LWLG'},{sym:'LASR'},{sym:'IPGP'},{sym:'POET'},{sym:'TSEM'},{sym:'GFS'},{sym:'FN'},{sym:'AVGO'},{sym:'CRDO'},{sym:'ALAB'},{sym:'MKSI'},{sym:'CIEN'},{sym:'NOK'},{sym:'AXTI'},{sym:'AMKR'},{sym:'AEHR'}],
-  '自訂':       []
+  '自訂': []
 };
 
 var DEFAULT_SECTORS={
-  'AI巨頭':['NVDA','META','GOOGL','MSFT','AMZN'],
-  'AI基礎設施':['ANET','SMCI','DELL','CRWD','SNOW'],
-  '光通訊':['COHR','LITE','AAOI','VECO'],
-  'AI電力散熱':['VST','CEG','ETN','GNRC','VRT'],
-  '太空衛星':['LUNR','RKLB','PL','BKSY','ASTS'],
-  '無人機國防':['ONDS','KTOS','PLTR','ACHR','RCAT'],
+  'AI巨頭':['NVDA','MSFT','GOOGL','AMZN','META','AAPL','AVGO','ORCL','TSM'],
+  'AI基礎設施':['ANET','SMCI','DELL','VRT','CRDO','HPE','MRVL','ALAB'],
+  '光通信':['COHR','LITE','AAOI','AXTI','APH','CIEN','FN','POET','TSEM','NOK'],
+  'AI電力散熱':['VST','CEG','TLN','NRG','PEG','D','EXC','AES','NEE'],
+  'AI電力設備':['ETN','GEV','PWR','GNRC','EMR','HUBB','NVT','AME'],
+  '太空衛星':['LUNR','RKLB','PL','BKSY','ASTS','IRDM','GSAT','VSAT'],
+  '無人機國防':['KTOS','AVAV','LDOS','LMT','RTX','NOC','GD','AXON','HII'],
   '量子運算':['IONQ','RGTI','QBTS','QUBT'],
-  '儲存硬體':['WDC','NTAP','PURE','STX','PSTG'],
-  '生技健康':['TEM','HIMS','RXRX','NVAX','CRSP'],
-  '衛星通信':['IRDM','ASTS','GSAT','VSAT'],
-  '貴金屬礦業':['GLD','SLV','NEM','AEM','WPM'],
+  '儲存硬體':['MU','WDC','STX','SNDK','SKHY','AMKR','TER','ONTO','NTAP','P'],
+  '生技健康':['CRSP','NTRA','NVAX','RXRX','BEAM','NTLA','EDIT','ALNY','VKTX','SRPT'],
+  '貴金屬礦業':['NEM','AEM','WPM','B','KGC','AU','FNV','RGLD'],
+  '機器人':['ISRG','CGNX','SYM','SERV','OUST','AMBA','PATH'],
+  'AI算力雲':['NBIS','CRWV','IREN','APLD','CORZ','WULF','HUT','GLXY'],
+  'AI軟體應用':['NOW','CRM','SNOW','DDOG','WDAY','TEAM','APP','MDB','PLTR','INTU'],
+  '資安':['PANW','CRWD','FTNT','ZS','S','OKTA','TENB','QLYS','RBRK','NET'],
+  '金融':['JPM','GS','MS','BLK','KKR','BX','SCHW','COIN','HOOD','V','ARCC','APO','SYF','ALLY','AXP','COF','MA','CME','SPGI','BAC'],
+  '防禦型個股':['COST','WMT','PG','KO','PEP','CL','MDLZ','PM','MCD','JNJ','ABT','MRK','DUK','SO','WM'],
   '⭐測試星池':['MRVL','INFQ','VSH','ICHR','MTSI','UMAC','OKLO'],
   '⭐探索':[],
   '💡光通訊鏈':['GLW','LWLG','LASR','IPGP','POET','TSEM','GFS','FN','AVGO','CRDO','ALAB','MKSI','CIEN','NOK','AXTI','AMKR','AEHR'],
@@ -337,33 +351,42 @@ function saveSectors(){
   }catch(e){}
 }
 
+var SECTOR_RENAME={'光通訊':'光通信','衛星通信':'太空衛星'};   // 舊名稱 → 現行名稱（舊的自訂股票併進新板塊）
+var PERSONAL_POOLS=['⭐測試星池','⭐探索','💡光通訊鏈','自訂'];   // 你自己的個人池：算「探索池」，其餘算「核心池」
+function isCoreSector(s){ return PERSONAL_POOLS.indexOf(s)===-1; }
 function loadSectors(){
+  var shared={};
+  // ① 跟 radar／charts／時光機同一份名單（同網域 localStorage）：名稱相同的板塊用它的成分股，沒有的板塊加進來
+  try{
+    var raw=JSON.parse(localStorage.getItem('biaoguo_sectors_v5')||'null');
+    if(Array.isArray(raw)) raw.forEach(function(sec){
+      if(!sec||!sec.name) return;
+      var nm=SECTOR_RENAME[sec.name]||sec.name, ts=sec.tickers||[];
+      if(nm==='自訂'&&!ts.length) return;
+      if(shared[nm]){ ts.forEach(function(t){ if(shared[nm].indexOf(t)<0) shared[nm].push(t); }); }
+      else shared[nm]=ts.slice();
+    });
+  }catch(e){}
+  Object.keys(shared).forEach(function(nm){
+    SECTORS[nm]=shared[nm].map(function(sym){return {sym:sym};});
+  });
+  // ② 這個頁面自己存的（板塊管理新增的股票／自訂板塊）：只套用在「共用名單沒有管」的板塊，避免把你在 radar 刪掉的股票又加回來
   try{
     var s=localStorage.getItem('sectors_v3');
-    if(!s) return;
-    var data=JSON.parse(s);
-    Object.keys(data).forEach(function(sector){
-      if(!SECTORS[sector]){
-        // 新板塊
-        SECTORS[sector]={};
-        SECTORS[sector]=[];
-      }
-      data[sector].forEach(function(sym){
-        if(!SECTORS[sector].find(function(x){return x.sym===sym;}))
-          SECTORS[sector].push({sym:sym});
+    if(s){
+      var data=JSON.parse(s);
+      Object.keys(data).forEach(function(sector){
+        var nm=SECTOR_RENAME[sector]||sector;
+        if(shared[nm]) return;
+        if(!SECTORS[nm]) SECTORS[nm]=[];
+        data[sector].forEach(function(sym){
+          if(!SECTORS[nm].find(function(x){return x.sym===sym;})) SECTORS[nm].push({sym:sym});
+        });
       });
-    });
-    // 還原自訂板塊名稱
+    }
     try{
       var names=localStorage.getItem('sector_names');
-      if(names){
-        var namesData=JSON.parse(names);
-        namesData.forEach(function(item){
-          if(!SECTORS[item.name]){
-            SECTORS[item.name]=[];
-          }
-        });
-      }
+      if(names){ JSON.parse(names).forEach(function(item){ var nm=SECTOR_RENAME[item.name]||item.name; if(!SECTORS[nm]) SECTORS[nm]=[]; }); }
     }catch(e){}
   }catch(e){}
 }
@@ -566,19 +589,18 @@ async function fYahooRetry(s,tries){
   return null;
 }
 
-// 核心池板塊名單（舊 11 板塊）。不在這名單的板塊（測試星池、探索、自訂…）一律算「探索池」
-var CORE_SECTORS=['AI巨頭','AI基礎設施','光通訊','AI電力散熱','太空衛星','無人機國防','量子運算','儲存硬體','生技健康','衛星通信','貴金屬礦業'];
+// 核心池＝現行系統的板塊（v15 起）；個人池（測試星池、探索、光通訊鏈、自訂）算「探索池」。
 
 async function runBigOrderAlert(mode){
   mode=mode||'core';
   var el=document.getElementById('bigOrderAlertOut');
   el.style.display='block';
-  var poolName=mode==='core'?'🐋 核心池（舊板塊）':'🔭 探索池';
+  var poolName=mode==='core'?'🐋 核心池（現行板塊）':'🔭 探索池';
   var poolColor=mode==='core'?'#d94f4f':'#7c3aed';
   el.innerHTML='<div class="loading"><span class="spin"></span>掃描 '+poolName+' 大單中，請稍候...</div>';
   var allSyms=[];
   Object.keys(SECTORS).forEach(function(s){
-    var isCore=CORE_SECTORS.indexOf(s)!==-1;
+    var isCore=isCoreSector(s);
     if(mode==='core'&&!isCore) return;
     if(mode==='explore'&&isCore) return;
     SECTORS[s].forEach(function(st){
@@ -657,12 +679,12 @@ async function runSellAlert(mode){
   mode=mode||'core';
   var el=document.getElementById('sellAlertOut');
   el.style.display='block';
-  var poolName=mode==='core'?'🐋 核心池（舊板塊）':'🔭 探索池';
+  var poolName=mode==='core'?'🐋 核心池（現行板塊）':'🔭 探索池';
   var poolColor=mode==='core'?'#8a2020':'#4a1d6e';
   el.innerHTML='<div class="loading"><span class="spin"></span>掃描 '+poolName+' 大單賣出中，請稍候...</div>';
   var allSyms=[];
   Object.keys(SECTORS).forEach(function(s){
-    var isCore=CORE_SECTORS.indexOf(s)!==-1;
+    var isCore=isCoreSector(s);
     if(mode==='core'&&!isCore) return;
     if(mode==='explore'&&isCore) return;
     SECTORS[s].forEach(function(st){
@@ -3161,7 +3183,7 @@ initAccumSectors();
   });
 
   window.dtOpen = function(params){
-    var url = 'decision.html';
+    var url = 'decision-v2.html';
     if(params){
       var qs = [];
       for(var k in params){
