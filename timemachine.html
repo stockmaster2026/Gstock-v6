@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.64</title>
+<title>板塊時光機 v1.65</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.64</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.65</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -639,7 +639,7 @@ function histCard(title,H,note){
   var segTxt=segs.map(function(s){ return '<span style="color:'+CATC[s.c]+';font-weight:800">'+s.c+'</span> '+md(S.d[s.k0])+'–'+md(S.d[s.k1])+'（'+(s.k1-s.k0+1)+' 天）'; }).join(' → ');
   if(window.HC_COMPACT) return '<div onclick="showSheet(\''+H.name+'\')" style="cursor:pointer;background:#fffdf3;border:1px solid #eadf9f;border-radius:10px;padding:5px 6px"><div style="font-weight:900;font-size:14.5px">'+title+'<span style="font-size:12px;font-weight:700;color:'+CATC[last.c]+'">　'+last.c+'</span></div>'+(curve||'<div class="sub">資料不足</div>')+'</div>';
   return '<div id="hc_'+H.name+'" style="margin:12px 0 16px;padding-bottom:10px;border-bottom:1px dashed #e6dba0"><div style="font-weight:900;font-size:15.5px">'+title+'<span class="sub">　現在：'+last.c+'（已 '+lastDays+' 個交易日）</span>'+(function(){ var rdx=recentDrop(H.name,H.k1); return rdx?'<span style="color:#c0392b;font-size:13.5px;font-weight:800">　⚠ 近期回落 '+(Math.round(rdx.drop*1000)/10)+'%（從 '+md(SPYB.d[rdx.hiK])+' 的高點算起，'+rdx.days+' 天）；階段看的是大波段，這裡另外提醒最近在跌</span>':''; })()+'</div>'+(curve||spark)+strip+axis+chipLeg()+
-    sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪</b><span style="color:#778;font-size:12.5px">（依「位階狀態」切的小階段：剛起步／進行中／暫停算同一輪，回檔中／休息中就斷開；跟上面的大波段切法不同，所以輪數、天數不一樣）：</span>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+(note||'')+'</div>';
+    sumTxt+'<div style="font-size:13.5px;line-height:1.6;margin-top:4px"><b>漲的那一輪</b><span style="color:#778;font-size:12.5px">（依「位階狀態」切的小階段：剛起步／進行中／暫停算同一輪，回檔中／休息中就斷開；跟上面的大波段切法不同，所以輪數、天數不一樣）：</span>'+runTxt+'</div><details style="margin-top:3px"><summary style="cursor:pointer;font-size:13px;color:#556">每一段明細</summary><div style="font-size:13px;line-height:1.7;margin-top:3px">'+segTxt+'</div></details>'+anaBox(H)+(note||'')+'</div>';
 }
 function stayCard(A){
   if(A.length<8) return '';
@@ -1123,6 +1123,85 @@ function simSection(F,S,k){
   return '<div class="h" style="font-size:15px;margin-top:14px">⑥ 歷史上有沒有類似的日子？</div><div style="background:#eef3fa;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.7">'
    +'<div>找法：掃這段資料的每一個日期（每 5 個交易日一個），強勢階段的板塊 ≤ '+thr+' 個、而且 6 成以上板塊在逆風／沒動靜，就算「類似」。資料範圍：'+fd(S.d[ks[0]])+' 到 '+fd(S.d[ks[last]])+'（約 '+Math.round((ks[last]-ks[0])/21)+' 個月）。</div><div style="margin:3px 0">'+now+'</div>'+body
    +'<div style="font-size:13px;color:#b3262e;margin-top:6px">⚠ 資料只有這麼長，通常只含一兩次行情，段數很少，結果只能當「過去發生過什麼」的參考，不能當規律或預測；門檻（15%、6 成）是我訂的，未驗證。</div></div>';
+}
+// ═════ v1.65：🔍 歷史上相似的時候（板塊版）═════
+// 做法：把「這個板塊在這一天的樣子」寫成 4 個數字（最近 5 天漲跌、最近 1 個月漲跌、從半年低點已漲多少、離半年高點多遠；
+// 每個都除以這個板塊自己平常的波動，所以防禦型和高波動板塊可以放在一起比），到所有板塊、所有過去的日子裡找最接近的，
+// 看它們「後來」5／10／20 天的表現，並跟「隨便挑一天」的基準比。只用「那一天以前就已經發生完」的案例（選過去日期時也一樣，不偷看未來）。
+// 門檻（20 個案例、同板塊 10 天內算同一次、比基準好／差的判斷）都是我訂的，未驗證。
+var ANA=null, ANA_W=126;
+function anaBuild(){
+  var key=OFF+'|'+SPYB.d.length+'|'+Object.keys(FULL).length;
+  if(ANA&&ANA.key===key) return ANA;
+  var rows=[], icons={};
+  secLists().forEach(function(x){ icons[x.s.name]=x.s.icon; });
+  Object.keys(icons).forEach(function(nm){
+    var IX=FULL[nm]; if(!IX||IX.length<ANA_W+30) return;
+    var rs=[]; for(var i=1;i<IX.length;i++){ if(IX[i-1]>0) rs.push(IX[i]/IX[i-1]-1); }
+    var mu=mean(rs), sd=Math.sqrt(mean(rs.map(function(r){return (r-mu)*(r-mu);}))); if(!(sd>0)) return;
+    for(var p=ANA_W;p<IX.length;p++){
+      var mn=1e18,mx=-1e18; for(var q=p-ANA_W;q<=p;q++){ var v=IX[q]; if(v<mn) mn=v; if(v>mx) mx=v; }
+      var r5=IX[p]/IX[p-5]-1, r21=IX[p]/IX[p-21]-1, fl=IX[p]/mn-1, fh=IX[p]/mx-1;
+      rows.push({n:nm,p:p,r5:r5,r21:r21,fl:fl,fh:fh,z:[r5/(sd*Math.sqrt(5)),r21/(sd*Math.sqrt(21)),fl/(sd*Math.sqrt(ANA_W)),fh/(sd*Math.sqrt(ANA_W))]});
+    }
+  });
+  var sdz=[0,1,2,3].map(function(j){ var a=rows.map(function(r){return r.z[j];}), m=mean(a); return Math.sqrt(mean(a.map(function(v){return (v-m)*(v-m);})))||1; });
+  ANA={key:key,rows:rows,sdz:sdz,icons:icons};
+  return ANA;
+}
+function anaBox(H){
+  if(!secLists().some(function(x){return x.s.name===H.name;})) return '';
+  return '<div style="margin-top:8px"><button class="btn" style="font-size:15px;font-weight:800" onclick="showAnalog(this,\''+H.name+'\','+H.k1+')">🔍 歷史上相似的時候，後來怎樣？</button><div class="anaOut" style="margin-top:6px"></div></div>';
+}
+function showAnalog(btn,name,k1){
+  var box=btn.parentNode.querySelector('.anaOut'); box.innerHTML='<div class="sub">計算中…</div>';
+  setTimeout(function(){ try{ box.innerHTML=anaHtml(name,k1); }catch(e){ box.innerHTML='<div class="sub">算不出來：'+e.message+'</div>'; } },20);
+}
+function goAna(ds){ var o=document.getElementById('ovSheet'); if(o) o.remove(); el('dt').value=ds; TK=''; showDay(ds); try{ el('out').scrollIntoView(); }catch(e){} }
+function anaHtml(name,k1){
+  var A=anaBuild(), p0=k1-OFF, S=SPYB, T=null, HZ=[5,10,20];
+  A.rows.forEach(function(r){ if(r.n===name&&r.p===p0) T=r; });
+  if(!T) return '<div class="sub">這一天太早（要先有半年的歷史才算得出「當天的樣子」），或這個板塊資料不夠，找不了。</div>';
+  var f1=function(v){ return v==null?'—':fmtPct(v*100,1); };
+  var cands=[]; A.rows.forEach(function(r){
+    if(r.p+5>p0) return; if(r.n===name&&Math.abs(r.p-p0)<=10) return;
+    var d=0; for(var j=0;j<4;j++){ var t=(r.z[j]-T.z[j])/A.sdz[j]; d+=t*t; }
+    cands.push({r:r,d:Math.sqrt(d)});
+  });
+  cands.sort(function(a,b){ return a.d-b.d; });
+  var ev=[]; for(var ci=0;ci<cands.length&&ev.length<20;ci++){ var c=cands[ci]; if(ev.some(function(e){ return e.r.n===c.r.n&&Math.abs(e.r.p-c.r.p)<10; })) continue; ev.push(c); }
+  var fw=function(e,h){ var IX=FULL[e.r.n], p=e.r.p; if(p+h>p0||p+h>=IX.length) return null; return IX[p+h]/IX[p]-1; };
+  var sf=function(e,h){ var k=e.r.p+OFF; if(e.r.p+h>p0) return null; return spyFwd(k,h); };
+  var stat=function(h){
+    var a=[],rel=[]; ev.forEach(function(e){ var v=fw(e,h), s=sf(e,h); if(v!=null){ a.push(v); if(s!=null) rel.push(v-s); } });
+    var b=[]; A.rows.forEach(function(r){ if(r.p+h>p0) return; var IX=FULL[r.n]; if(r.p+h>=IX.length) return; b.push(IX[r.p+h]/IX[r.p]-1); });
+    var win=function(x){ return x.length?x.filter(function(v){return v>0;}).length/x.length:null; };
+    return {h:h,n:a.length,win:win(a),med:a.length?med(a):null,worst:a.length?Math.min.apply(null,a):null,beat:rel.length?rel.filter(function(v){return v>0;}).length/rel.length:null,bn:b.length,bwin:win(b),bmed:b.length?med(b):null};
+  };
+  var ST=HZ.map(stat);
+  var ps=ev.map(function(e){return e.r.p;}).sort(function(x,y){return x-y;}), EPI=ps.length?1:0; for(var pi=1;pi<ps.length;pi++){ if(ps[pi]-ps[pi-1]>10) EPI++; }   // 不同板塊但日期相近＝同一段行情，算同一個「時期」
+  var pct=function(v){ return v==null?'—':Math.round(v*100)+'%'; };
+  var rows=ST.map(function(s){ return '<tr><td style="padding:3px 6px;font-weight:800">之後 '+s.h+' 天</td><td style="text-align:right;padding:3px 6px">'+s.n+' 次</td><td style="text-align:right;padding:3px 6px">'+pct(s.win)+'</td><td style="text-align:right;padding:3px 6px"><b>'+f1(s.med)+'</b></td><td style="text-align:right;padding:3px 6px;color:#b3262e">'+f1(s.worst)+'</td><td style="text-align:right;padding:3px 6px">'+pct(s.beat)+'</td><td style="text-align:right;padding:3px 6px;color:#667;border-left:1px solid #ccd">'+pct(s.bwin)+'</td><td style="text-align:right;padding:3px 6px;color:#667">'+f1(s.bmed)+'</td></tr>'; }).join('');
+  // 白話結論：優先看 20 天，樣本不夠 10 次就看 10 天，再不夠就說樣本太少
+  var pick=null; [ST[2],ST[1],ST[0]].forEach(function(s){ if(!pick&&s.n>=10&&EPI>=4) pick=s; });
+  var verdict, vcol;
+  if(!pick){ verdict='找到的相似案例太少，或是集中在不到 4 個不同的時期（目前 '+ev.length+' 次、約 '+EPI+' 個時期），樣本太少，不能下結論。下面的案例只能當「過去發生過什麼」翻來看。'; vcol='#667'; }
+  else {
+    var dw=pick.win-pick.bwin, dm=pick.med-pick.bmed;
+    var cmp=(dw>=0.10&&dm>=0.01)?'比「隨便挑一天」好一些':((dw<=-0.10&&dm<=-0.01)?'比「隨便挑一天」差一些':'跟「隨便挑一天」差不多，這個樣子本身沒有帶來額外的資訊');
+    vcol=(dw>=0.10&&dm>=0.01)?'#1f6f3a':((dw<=-0.10&&dm<=-0.01)?'#b3262e':'#667');
+    verdict='相似的 <b>'+pick.n+'</b> 次裡，之後 '+pick.h+' 天賺錢的有 <b>'+Math.round(pick.win*pick.n)+'</b> 次（'+pct(pick.win)+'），中位數 '+f1(pick.med)+'（這 '+ev.length+' 次其實只集中在約 <b>'+EPI+'</b> 個不同的時期）；隨便挑一天的基準是 '+pct(pick.bwin)+' 賺錢、中位數 '+f1(pick.bmed)+'。<br>→ <b style="color:'+vcol+'">'+cmp+'。</b>';
+  }
+  var nowTxt='<b>'+(A.icons[name]||'')+' '+name+' 在 '+fd(S.d[k1])+' 的樣子：</b>最近 5 天 '+f1(T.r5)+'、最近 1 個月 '+f1(T.r21)+'、從半年低點已漲 '+f1(T.fl)+'、離半年高點 '+f1(T.fh)+'。';
+  var evRows=ev.map(function(e,i){ var r=e.r, cell=function(h){ var v=fw(e,h), s=sf(e,h); if(v==null) return '<td style="text-align:right;padding:3px 5px;color:#99a">還沒到</td>'; return '<td style="text-align:right;padding:3px 5px;color:'+(v>=0?'#1f6f3a':'#b3262e')+'"><b>'+f1(v)+'</b>'+(s!=null?'<br><span style="color:#889;font-size:11.5px">大盤 '+f1(s)+'</span>':'')+'</td>'; };
+    return '<tr style="border-top:1px solid #e3e6ee"><td style="padding:3px 5px;text-align:center;color:#778">'+(i+1)+'</td><td style="padding:3px 5px;white-space:nowrap">'+fd(S.d[r.p+OFF])+'<br>'+(A.icons[r.n]||'')+' '+r.n+'</td><td style="padding:3px 5px;font-size:12px;line-height:1.4">5日 '+f1(r.r5)+'<br>1月 '+f1(r.r21)+'<br>離低 '+f1(r.fl)+'／離高 '+f1(r.fh)+'</td>'+cell(5)+cell(10)+cell(20)+'<td style="padding:3px 5px"><button class="btn" style="font-size:12px;padding:2px 7px" onclick="goAna(\''+S.d[r.p+OFF]+'\')">看那天</button></td></tr>'; }).join('');
+  return '<div style="background:#eef3fa;border-radius:8px;padding:8px 11px;font-size:14px;line-height:1.65">'
+   +'<div>'+nowTxt+'</div>'
+   +'<div style="margin-top:5px;padding:6px 9px;background:#fff;border-radius:6px;border-left:5px solid '+vcol+'">'+verdict+'</div>'
+   +'<div class="tw" style="margin-top:6px"><table style="border-collapse:collapse;font-size:13px;min-width:430px"><tr style="color:#778;font-size:12px"><td></td><td style="text-align:right;padding:2px 6px">相似案例</td><td style="text-align:right;padding:2px 6px">賺錢比例</td><td style="text-align:right;padding:2px 6px">中位數</td><td style="text-align:right;padding:2px 6px">最差一次</td><td style="text-align:right;padding:2px 6px">贏過大盤</td><td style="text-align:right;padding:2px 6px;border-left:1px solid #ccd">基準賺錢</td><td style="text-align:right;padding:2px 6px">基準中位數</td></tr>'+rows+'</table></div>'
+   +'<div style="font-size:13px;color:#445;margin-top:4px"><b>怎麼讀：</b>「相似案例」＝所有板塊、過去所有日子裡，樣子最接近的前 20 次（同一板塊 10 天內連續出現算同一次）；「基準」＝同一段期間、隨便挑哪個板塊哪一天的結果。<b>只有比基準明顯好或差，才代表「這種樣子」有意義；跟基準差不多，就只是大環境本身的漲跌。</b></div>'
+   +'<details style="margin-top:6px"><summary style="cursor:pointer;font-weight:800;font-size:14px">看這 '+ev.length+' 個案例（越上面越像）</summary><div class="tw"><table style="border-collapse:collapse;font-size:13px;min-width:520px;margin-top:4px"><tr style="color:#778;font-size:12px"><td>排名</td><td>日期／板塊</td><td>當時的樣子</td><td style="text-align:right">之後 5 天</td><td style="text-align:right">10 天</td><td style="text-align:right">20 天</td><td></td></tr>'+evRows+'</table></div></details>'
+   +'<div style="font-size:12.5px;color:#b3262e;margin-top:6px">⚠ 限制：資料只有約 2 年（前半年用來算「半年低點／高點」，所以可比對的日子約 1.5 年），案例很容易集中在同一段行情，同一時期的不同板塊其實是同一件事、不是獨立的幾次；板塊指數用的是你現在的成分股名單。「相似」的 4 個條件、取前 20 次、判斷好／差的門檻（賺錢比例差 10 個百分點且中位數差 1%）都是我訂的，沒有驗證過。這是「過去發生過什麼」，不是預測。</div></div>';
 }
 // v1.64：近期回落提醒——階段是看大波段，最近幾天掉了很多不一定會變。這裡另外看「近 10 日高點到現在掉多少、超過自己平常波動沒有」
 // 門檻＝max(2%, 2×自己近 60 日日波動×√(離高點天數))，只看高點在近 7 天內；數字是我訂的，未驗證
