@@ -252,7 +252,7 @@ function doFetch(){
   var btn=document.getElementById('fetchBtn');
   btn.disabled=true; setStatus('抓取中… '+sym,'');
 
-  var yahoo='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=1y&interval=1d';
+  var yahoo='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=2y&interval=1d';
   var url='https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent(yahoo);
 
   fetch(url).then(function(r){ return r.json(); }).then(function(j){
@@ -271,19 +271,35 @@ function doFetch(){
     state.manual.ma200=round(ma(closes,200));
     state.manual.ma200prev=round(maAt(closes,200,21));   // 約1個月前
     state.manual.ma50prev=round(maAt(closes,50,15));      // 約3週前
-    state.manual.high52=round(Math.max.apply(null,highs));
-    state.manual.low52=round(Math.min.apply(null,lows));
-    // RS 無法用單檔精算,保留使用者既有值,不覆蓋
-    setStatus('✅ '+sym+' 抓取成功,數字已填入下方。RS 請自己從 TradingView 補。','ok');
-    btn.disabled=false;
-    renderStageGate();
-    setStatus('✅ '+sym+' 已填入,按「用上面數字判讀」或補 RS 後判讀。','ok');
+    state.manual.high52=round(Math.max.apply(null,highs.slice(-252)));
+    state.manual.low52=round(Math.min.apply(null,lows.slice(-252)));
+    // v2：RS 用跟吸籌頁同一套公式自己算（近 3/6/9/12 個月加權表現 vs SPY），算不出來才留給你手填；你已經填過的不覆蓋
+    var hadRS=(state.manual.rs!=null&&state.manual.rs!=='');
+    var spyUrl='https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=2y&interval=1d');
+    return fetch(spyUrl).then(function(r){ return r.json(); }).then(function(sj){
+      var sres=sj.chart&&sj.chart.result&&sj.chart.result[0]; if(!sres) return null;
+      return (sres.indicators.quote[0].close||[]).filter(function(x){return x!=null;});
+    }).catch(function(){ return null; }).then(function(spyC){
+      var rsNote='';
+      if(!hadRS && spyC){ var r=calcRSRating(calcRSPerf(closes),calcRSPerf(spyC)); if(r!=null){ state.manual.rs=r; rsNote=' RS 已自動算出：'+r+'（跟吸籌頁同一套公式的估計值，不是 TradingView 的百分位排名）。'; } }
+      btn.disabled=false;
+      renderStageGate();
+      setStatus('✅ '+sym+' 已填入。'+rsNote+(state.manual.rs==null||state.manual.rs===''?' RS 沒算出來也沒關係，直接按「用上面數字判讀」（只確認其他 7 條）。':' 按「用上面數字判讀」。'),'ok');
+    });
   }).catch(function(e){
     btn.disabled=false;
     setStatus('⚠️ 自動抓取失敗('+(e.message||'網路/proxy')+')。請手動填下方數字後按藍色判讀鈕。','err');
   });
 }
 function setStatus(t,c){ var s=document.getElementById('fetchStatus'); if(s){ s.textContent=t; s.className='fetch-status '+(c||''); } }
+// RS：跟吸籌頁 calcRSPerformance／calcRSRating 同一套（近 63/126/189/252 日表現，40/20/20/20 加權，對比 SPY 換算成 1～99）
+function calcRSPerf(c){ var n=c.length; if(n<253) return null; var cur=c[n-1], r1=(cur-c[n-64])/c[n-64], r2=(cur-c[n-127])/c[n-127], r3=(cur-c[n-190])/c[n-190], r4=(cur-c[n-253])/c[n-253]; return {weighted:r1*0.4+r2*0.2+r3*0.2+r4*0.2}; }
+function calcRSRating(sp,mp){
+  if(!sp||!mp) return null; var rs=(1+sp.weighted)/(1+mp.weighted)-1, r;
+  if(rs>=0.5) r=95+(rs-0.5)*8; else if(rs>=0.3) r=85+(rs-0.3)*50; else if(rs>=0.15) r=75+(rs-0.15)*66.67; else if(rs>=0.05) r=60+(rs-0.05)*150;
+  else if(rs>=0) r=50+rs*200; else if(rs>=-0.05) r=40+rs*200; else if(rs>=-0.15) r=25+(rs+0.05)*150; else if(rs>=-0.30) r=10+(rs+0.15)*100; else r=Math.max(1,10+rs*30);
+  return Math.max(1,Math.min(99,Math.round(r)));
+}
 function ma(a,n){ if(a.length<n) return null; var s=0; for(var i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
 function maAt(a,n,back){ var end=a.length-back; if(end<n) return null; var s=0; for(var i=end-n;i<end;i++)s+=a[i]; return s/n; }
 function round(x){ return x==null?null:Math.round(x*100)/100; }
@@ -335,7 +351,7 @@ function judgeStage(){
   if(slope50!=null && slope50>0.03) earlyFlags.push('50均陡上(動能強)');
 
   // —— 裁決 ——
-  var stage;
+  var stage; var rsMissingFlag=(hasNull&&passCount===7&&!hardFail);
   if(hardFail && !hasNull && passCount<6){
     // 結構壞掉:判 Stage 1 或 4
     var sub;
@@ -344,22 +360,23 @@ function judgeStage(){
     else sub='不符上升結構,8條過 '+passCount+'/8 — 不夠格';
     stage={cls:'no',label:'非 Stage 2',sub:sub,tt:tt,passCount:passCount,
       metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags.concat(earlyFlags),proceed:false};
-  } else if(hardFail || passCount<8){
+  } else if(hardFail || (passCount<8 && !(hasNull && passCount===7))){
     stage={cls:'no',label:'資格未滿',sub:'Trend Template 過 '+passCount+'/8'+(hasNull?'(有缺值,補齊再判)':'')+' — 尚不夠格進場',
       tt:tt,passCount:passCount,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:[],proceed:false};
   } else {
     // 8條全過 → 分早段/末段
     if(lateFlags.length>=2){
-      stage={cls:'late',label:'Stage 3 末段',sub:'8/8 PASS,但出現 '+lateFlags.length+' 個末段訊號 = 高位陷阱,減碼別追',
-        tt:tt,passCount:8,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags,proceed:false};
+      stage={cls:'late',label:'Stage 3 末段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',但出現 '+lateFlags.length+' 個末段訊號 = 高位陷阱,減碼別追',
+        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags,proceed:false};
     } else if(lateFlags.length===1){
-      stage={cls:'late',label:'Stage 2 偏中段',sub:'8/8 PASS,1 個末段訊號需留意。可進但倉位收斂、停損更嚴',
-        tt:tt,passCount:8,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags.concat(earlyFlags),proceed:true};
+      stage={cls:'late',label:'Stage 2 偏中段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',1 個末段訊號需留意。可進但倉位收斂、停損更嚴',
+        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags.concat(earlyFlags),proceed:true};
     } else {
-      stage={cls:'go',label:'Stage 2 早段',sub:'8/8 PASS,無末段訊號 = 該買的起漲位置。往下走四因子進場檢核',
-        tt:tt,passCount:8,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:earlyFlags,proceed:true};
+      stage={cls:'go',label:'Stage 2 早段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',無末段訊號 = 該買的起漲位置。往下走四因子進場檢核',
+        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:earlyFlags,proceed:true};
     }
   }
+  if(stage.rsMissing){ stage.sub+='（⚠ RS 沒有資料，只確認其他 7 條；補上 RS 判斷會更完整）'; }
   state.stage=stage;
   renderStageGate();
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
@@ -426,6 +443,10 @@ function enterTree(){
     else state.answers.rs='<50';
   }
   var sd=sectorState(state.sym); if(sd&&sd.cls&&!sd.stale) state.answers.sector=sectorAnswerFrom(sd);
+  var fa=state.fromAccum||{};
+  if(fa.sell){ state.answers.sellSignal=(fa.sell==='no')?'no':'yes'; }
+  if(fa.newhigh!=null||fa.trend){ var cnt=(fa.newhigh==='1'?1:0)+(fa.trend==='up'?1:0); state.answers.momentum=cnt>=2?'both':(cnt===1?'one':'none'); }
+  if(fa.break){ if(fa.break==='pre') state.answers.breakout='pre'; else { var bk=parseInt(fa.break); if(!isNaN(bk)) state.answers.breakout=bk<=5?'1-5':(bk<=15?'6-15':'15+'); } }
   render();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -659,6 +680,9 @@ function renderResult(){
   catch(e){ document.body.classList.add('iframe-mode'); }
   var params=new URLSearchParams(window.location.search);
   if(params.has('sym')) state.sym=(params.get('sym')||'').toUpperCase().trim();
+  // v2：吸籌頁按「決策樹」時會把它算好的數字用網址帶過來（rs／sell／newhigh／trend／break／macd），以前這裡只讀了代號，其他都被丟掉了
+  if(params.has('rs')){ var rv=parseFloat(params.get('rs')); if(!isNaN(rv)) state.manual.rs=rv; }
+  state.fromAccum={}; ['sell','newhigh','trend','break','macd'].forEach(function(k){ if(params.has(k)) state.fromAccum[k]=params.get(k); });
   renderStageGate();
 })();
 </script>
