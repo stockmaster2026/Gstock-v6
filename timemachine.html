@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.65</title>
+<title>板塊時光機 v1.66</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.65</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.66</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -1285,6 +1285,8 @@ function drawCycle2(lists,ks,M,S,k){
     (function(){ var IXn=FULL[x.s.name]||[], v0=IXn[k-OFF], v1=IXn[k-1-OFF], v5=IXn[k-5-OFF]; it.d1=(v0>0&&v1>0)?v0/v1-1:null; it.d5=(v0>0&&v5>0)?v0/v5-1:null; it.rd=recentDrop(x.s.name,k); })();
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); it.c0=c0; }
     if(j5!=null){ var c5=M[si][j5], f5=CYCF[si][j5]; it.x5=mtnX(c5,f5&&f5.give); it.c5=c5; it.g5=f5?f5.give:null; } mi.push(it); });
+  // v1.66：把「今天」每個板塊的狀態存起來（同網域 localStorage），個股決策樹 v2 讀它來做「板塊順風檢查」。只存最新一天，選過去日期不存。
+  try{ if(k===SPYB.d.length-1){ var SS={date:SPYB.d[k],saved:Date.now(),data:{}}; mi.forEach(function(m){ SS.data[m.name]={cls:clsOf(m.c),cat:m.c,give:m.give,d1:m.d1,d5:m.d5,rd:m.rd?m.rd.drop:null}; }); localStorage.setItem('gstock_sector_state_v1',JSON.stringify(SS)); } }catch(e){}
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
   var fresh=mi.filter(function(m){return m.c==='剛起步'||m.c==='急拉（短線）';});
   // v1.41：「剛起步」是板塊平均。把這個板塊裡每一檔從同一個低點算起漲多少列出來，看漲幅是不是集中在少數幾檔（領頭股可能已經偏後段）
