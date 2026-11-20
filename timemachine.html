@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.66</title>
+<title>板塊時光機 v1.67</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.66</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.67</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -1456,7 +1456,7 @@ async function init(){
   var tick={'SPY':1}; SECS.forEach(function(s){ s.tickers.forEach(function(t){ tick[t]=1; }); });
   var list=Object.keys(tick).filter(function(t){ return !BARS[t]; });
   await loadMany(list,function(d,tot){ el('prog').textContent='載入價格 '+d+'／'+tot+' …（第一次要一兩分鐘；20 分鐘內開過 charts 的話會用同一份快取）'; });
-  if(!BARS['SPY']){ el('prog').textContent='沒抓到大盤（SPY）資料，無法計算。請稍後按重新整理。'; return; }
+  if(!BARS['SPY']){ el('prog').textContent='沒抓到大盤（SPY）資料，無法計算。請稍後按重新整理。'; try{ if(/[?&]auto=1/.test(location.search)) parent.postMessage({gstockSector:'fail'},'*'); }catch(e){} return; }
   SPYB=BARS['SPY'];
   OFF=Math.max(0,SPYB.d.length-504);
   var dates=SPYB.d.slice(OFF);
@@ -1474,6 +1474,14 @@ async function init(){
   el('btnTk').onclick=goTk; el('tk').onkeydown=function(e){ if(e.key==='Enter') goTk(); };
   el('btnLatest').onclick=function(){ dt.value=dt.max; TK=(el('tk').value||'').trim().toUpperCase(); showDay(dt.value); try{ el('out').scrollIntoView(); }catch(e){} };
   el('btnAgg').onclick=runAgg;
+  // v1.67：決策樹在背景叫我（網址帶 ?auto=1，藏在 iframe 裡）→ 不畫日畫面，直接算板塊週期表（算完會把今日狀態存起來），算好通知上一層
+  if(/[?&]auto=1/.test(location.search) && window.parent!==window){
+    var t0=Date.now(); showCycle(dt.max);
+    var iv=setInterval(function(){ var ok=false; try{ var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); ok=!!(SS&&SS.saved>=t0); }catch(e){}
+      if(ok){ clearInterval(iv); try{ parent.postMessage({gstockSector:'done'},'*'); }catch(e){} }
+      else if(Date.now()-t0>280000){ clearInterval(iv); try{ parent.postMessage({gstockSector:'fail'},'*'); }catch(e){} } },1000);
+    return;
+  }
   showDay(dt.value);
 }
 init();
