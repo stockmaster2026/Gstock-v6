@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股決策樹 · Stage 審判版 v2</title>
+<title>個股決策樹 · Stage 審判版 v2.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:#f5f0e8;font-family:-apple-system,'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;min-height:100vh;}
@@ -106,6 +106,8 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 .verdict-bar .vb-sub{font-size:13px;font-weight:600;line-height:1.6;}
 .vb-go{background:#edfaf3;border:2px solid #2ea86e;}
 .vb-go .vb-stage{color:#2ea86e;}
+.vb-near{background:#fff8e6;border:2px solid #c8952a;}
+.vb-near .vb-stage{color:#a8780f;}
 .vb-late{background:#fff5ec;border:2px solid #d97020;}
 .vb-late .vb-stage{color:#d97020;}
 .vb-no{background:#fef0f0;border:2px solid #d94f4f;}
@@ -130,7 +132,7 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 </head>
 <body>
 
-<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:13px;color:#c8952a">v2</span></h2></div>
+<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.1 · 11/20</span></h2></div>
 <div id="app"></div>
 
 <script>
@@ -149,7 +151,7 @@ var app = document.getElementById('app');
 // ═══════════════════════════════════════════
 // v2 新增：板塊順風檢查（獨立角度，不取代 Stage 審判，也不是否決權）
 //  · 這檔屬於哪個板塊：先讀 radar／charts 共用的名單（localStorage biaoguo_sectors_v5），讀不到用下面內建名單
-//  · 板塊現在順不順：讀「板塊時光機」存的今日結果（localStorage gstock_sector_state_v1）。沒開過時光機的板塊週期表就沒有，退回手動選
+//  · 板塊現在順不順：讀「板塊時光機」存的今日結果（localStorage gstock_sector_state_v1）。沒有或太舊（超過 12 小時）時，v2.1 起自己在背景叫時光機（?auto=1）算，算不出來才退回手動選
 //  · 依據：IBD／O'Neil——個股漲跌有相當大一部分來自所屬產業組；但龍頭股也可能在弱勢組裡，所以這裡只「提醒、減倉」，不「禁止」
 //  · 「逆風 → 倉位再減半」這個做法是我訂的，沒有用你的資料回測過
 // ═══════════════════════════════════════════
@@ -172,6 +174,23 @@ function sectorState(sym){
   var age=(Date.now()-(SS.saved||0))/86400000; d.stale=age>3;
   return d;
 }
+// v2.1：沒有今天的板塊狀態時，自己在背景叫時光機算（同一套分類，不另外發明規則），不用你先去開時光機
+var SECAUTO={running:false,failed:false,startedFor:null};
+function sectorFresh(){ try{ var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); return !!(SS&&SS.data&&(Date.now()-(SS.saved||0))<12*3600*1000); }catch(e){ return false; } }
+function ensureSectorState(){
+  if(SECAUTO.running||sectorFresh()||SECAUTO.failed) return;
+  SECAUTO.running=true; var t0=Date.now();
+  var ifr=document.createElement('iframe'); ifr.src='timemachine.html?auto=1'; ifr.setAttribute('aria-hidden','true');
+  ifr.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;border:0;opacity:0;pointer-events:none;';
+  var done=function(ok){ if(!SECAUTO.running) return; SECAUTO.running=false; if(!ok) SECAUTO.failed=true; try{ window.removeEventListener('message',onMsg); clearTimeout(to); }catch(e){} try{ ifr.parentNode.removeChild(ifr); }catch(e){}
+    if(ok){ var sd=sectorState(state.sym); if(sd&&sd.cls&&!sd.stale&&state.answers) state.answers.sector=sectorAnswerFrom(sd); }
+    refreshSectorCard(); };
+  var onMsg=function(e){ if(e.data&&e.data.gstockSector==='done') done(true); else if(e.data&&e.data.gstockSector==='fail') done(false); };
+  window.addEventListener('message',onMsg);
+  var to=setTimeout(function(){ done(sectorFresh()); },300000);
+  document.body.appendChild(ifr); refreshSectorCard();
+}
+function refreshSectorCard(){ var el=document.getElementById('secCardWrap'); if(el) el.innerHTML=renderSectorCard(); }
 function sectorPlain(d){
   var pc=function(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; };
   var t='板塊「'+d.name+'」目前在<b>'+d.cls+'</b>（階段：'+d.cat+'）；今天 '+pc(d.d1)+'、最近 5 天 '+pc(d.d5)+'。';
@@ -180,7 +199,7 @@ function sectorPlain(d){
   else if(d.cls==='逆風') t+='板塊整體在往弱走，個股要逆著水流才會漲——不是不行，但勝算較低，倉位要再縮。';
   else t+='板塊最近沒什麼動靜。';
   if(d.rd!=null) t+=' ⚠ 板塊近期回落 '+(d.rd*100).toFixed(0)+'%。';
-  if(d.stale) t+=' （這份資料是 '+d.date+' 的，已超過 3 天，請先開時光機更新。）';
+  if(d.stale) t+=' （這份資料是 '+d.date+' 的，已超過 3 天；正在或即將自動更新。）';
   return t;
 }
 function sectorAnswerFrom(d){ return d.cls==='順風'?'tail':d.cls==='逆風'?'head':'caution'; }
@@ -188,7 +207,9 @@ function renderSectorCard(){
   var d=sectorState(state.sym), h='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">🌬️ 板塊順風檢查（另一個角度）</div>';
   if(!state.sym) h+='<div style="font-size:13px;color:#5a4010;">先輸入股票代號。</div>';
   else if(!d.name) h+='<div style="font-size:13px;color:#5a4010;">'+state.sym+' 不在你現在任何一個板塊名單裡，板塊這一項要自己判斷（進四因子時會問你）。</div>';
-  else if(d.missing) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，但還沒有今天的板塊狀態。先打開<b>板塊時光機 → 板塊週期表</b>（只要打開一次），再回來按一次判讀；或進四因子時手動選。</div>';
+  else if((d.missing||d.stale)&&SECAUTO.running) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」。⏳ 正在背景自動計算今天的板塊狀態（第一次約 1～2 分鐘，你可以先往下看 Stage 結果，算好這裡會自己更新）。</div>';
+  else if(d.missing&&!SECAUTO.failed&&!sectorFresh()){ h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，還沒有今天的板塊狀態。</div>'; }
+  else if(d.missing) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，但自動計算沒成功（可能是網路或資料來源問題）。可以先打開<b>板塊時光機 → 板塊週期表</b>一次再回來，或進四因子時手動選。先打開<b>板塊時光機 → 板塊週期表</b>（只要打開一次），再回來按一次判讀；或進四因子時手動選。</div>';
   else h+='<div style="font-size:13px;color:#2a3a50;line-height:1.7;">'+sectorPlain(d)+'</div>';
   h+='</div>'; return h;
 }
@@ -360,6 +381,10 @@ function judgeStage(){
     else sub='不符上升結構,8條過 '+passCount+'/8 — 不夠格';
     stage={cls:'no',label:'非 Stage 2',sub:sub,tt:tt,passCount:passCount,
       metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags.concat(earlyFlags),proceed:false};
+  } else if(hardFail && !hasNull && passCount===7){
+    var failT=tt.filter(function(x){return x.pass===false;})[0].t;
+    stage={cls:'near',label:'強勢股回檔中 · 差一條',sub:'8 條只差「'+failT+'」。長期結構還在，只是短線回檔／還沒站上。先不進，放進觀察名單，等這一條回來再判一次',
+      tt:tt,passCount:passCount,failT:failT,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:[],proceed:false};
   } else if(hardFail || (passCount<8 && !(hasNull && passCount===7))){
     stage={cls:'no',label:'資格未滿',sub:'Trend Template 過 '+passCount+'/8'+(hasNull?'(有缺值,補齊再判)':'')+' — 尚不夠格進場',
       tt:tt,passCount:passCount,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:[],proceed:false};
@@ -385,7 +410,7 @@ function judgeStage(){
 function renderStageVerdict(){
   var s=state.stage;
   var h='<div class="verdict-bar vb-'+s.cls+'">';
-  h+='<div class="vb-stage">'+(s.cls==='go'?'🟢 ':s.cls==='late'?'🟠 ':'🔴 ')+s.label+'</div>';
+  h+='<div class="vb-stage">'+(s.cls==='go'?'🟢 ':s.cls==='late'?'🟠 ':s.cls==='near'?'🟡 ':'🔴 ')+s.label+'</div>';
   h+='<div class="vb-sub">'+s.sub+'</div>';
   h+='<div class="vb-metrics">';
   h+='<div class="vb-metric">離50均<b>'+(s.metrics.dev50*100).toFixed(0)+'%</b></div>';
@@ -393,7 +418,7 @@ function renderStageVerdict(){
   h+='<div class="vb-metric">離52週高<b>-'+(s.metrics.offHigh*100).toFixed(0)+'%</b></div>';
   h+='</div></div>';
 
-  h+=renderSectorCard();
+  h+='<div id="secCardWrap">'+renderSectorCard()+'</div>'; if(sectorOf(state.sym)) setTimeout(ensureSectorState,50);
   // Trend Template 檢核表
   h+='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">📋 Trend Template '+s.passCount+'/8</div><div class="tt-list">';
   s.tt.forEach(function(x){
@@ -417,6 +442,8 @@ function renderStageVerdict(){
     if(s.cls==='late'){
       h+='<div class="firewall-note">🚨 <b>防火牆 D 提醒</b>:這是末段/陷阱區,系統判定 NO。要覆蓋,必須湊滿「兩個獨立證據」並留紀錄,不准用單一強訊號(尤其大單)翻盤。</div>';
       h+='<button class="override-btn" onclick="enterTree()">我有兩個獨立證據,仍要進四因子(已留紀錄)</button>';
+    } else if(s.cls==='near'){
+      h+='<div class="firewall-note" style="border-color:#c8952a;color:#7a5a10;background:#fff8e6;">⏸ <b>現在不進，但不是壞股票。</b>8 條裡只差一條（'+s.failT+'），其餘長期條件都過。Minervini 原版要求 8 條全過才算 Stage 2，所以現在不買；放進觀察名單，這一條回來（例如站回 50 日均）再按一次判讀。</div>';
     } else {
       h+='<div class="firewall-note" style="border-color:#8a7050;color:#8a7050;">這檔不夠格(或還在底部/走空)。把判斷外包給系統 = 這裡停手,去看名單上下一檔。</div>';
     }
