@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股決策樹 · Stage 審判版 v2.3</title>
+<title>個股決策樹 · Stage 審判版 v2.4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:#f5f0e8;font-family:-apple-system,'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;min-height:100vh;}
@@ -132,7 +132,7 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 </head>
 <body>
 
-<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.3 · 11/20</span></h2></div>
+<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.4 · 11/20</span></h2></div>
 <div id="app"></div>
 
 <script>
@@ -211,8 +211,8 @@ function renderSectorCard(){
   var d=sectorState(state.sym), h='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">🌬️ 板塊順風檢查（另一個角度）</div>';
   if(!state.sym) h+='<div style="font-size:13px;color:#5a4010;">先輸入股票代號。</div>';
   else if(!d.name) h+='<div style="font-size:13px;color:#5a4010;">'+state.sym+' 不在你現在任何一個板塊名單裡，板塊這一項要自己判斷（進四因子時會問你）。</div>';
-  else if((d.missing||d.stale)&&SECAUTO.running) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」。⏳ 正在背景自動計算今天的板塊狀態（第一次約 1～2 分鐘，你可以先往下看 Stage 結果，算好這裡會自己更新）。</div>';
-  else if(d.missing&&!(SECAUTO.failed&&SECAUTO.failedFor===(state.asof||''))&&!sectorFresh()){ h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，還沒有今天的板塊狀態。</div>'; }
+  else if((d.missing||d.stale)&&SECAUTO.running) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」。⏳ 正在背景自動計算今天的板塊狀態（第一次約 1～2 分鐘；這段時間 iPad 的畫面可能暫時不太流暢，你可以先看下面的 Stage 結果，算好這裡會自己更新）。</div>';
+  else if(d.missing&&!(SECAUTO.failed&&SECAUTO.failedFor===(state.asof||''))&&!sectorFresh()){ h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，接下來會在背景自動計算板塊狀態。</div>'; }
   else if(d.missing) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，但自動計算沒成功（可能是網路或資料來源問題）。可以先打開<b>板塊時光機 → 板塊週期表</b>一次再回來，或進四因子時手動選。先打開<b>板塊時光機 → 板塊週期表</b>（只要打開一次），再回來按一次判讀；或進四因子時手動選。</div>';
   else h+='<div style="font-size:13px;color:#2a3a50;line-height:1.7;">'+sectorPlain(d)+'</div>';
   h+='</div>'; return h;
@@ -349,7 +349,6 @@ function doFetch(){
     btn.disabled=false;
     renderStageGate();
     setStatus('✅ '+sym+(asof?('（'+realDay+' 收盤）'):'')+' 已填入。'+rsNote+(state.manual.rs==null||state.manual.rs===''?' RS 沒算出來也沒關係，直接按「用上面數字判讀」（只確認其他 7 條）。':' 按「用上面數字判讀」。'),'ok');
-    if(asof&&sectorOf(state.sym)) setTimeout(ensureSectorState,50);
   }).catch(function(e){
     btn.disabled=false;
     setStatus('⚠️ 自動抓取失敗('+(e.message||'網路/proxy')+')。'+(asof?'':'請手動填下方數字後按藍色判讀鈕。'),'err');
@@ -402,13 +401,17 @@ function judgeStage(){
   var gainLow=(price/low52-1);                     // 離52週低漲幅
   var offHigh=(1-price/high52);                    // 離高點
   var slope50=(ma50prev!=null)?(ma50/ma50prev-1):null;
-  var lateFlags=[]; 
-  if(dev50>0.25) lateFlags.push('離50均乖離 +'+(dev50*100).toFixed(0)+'%(>25%,拉太開)');
-  if(gainLow>0.90) lateFlags.push('離52週低已 +'+(gainLow*100).toFixed(0)+'%(漲幅巨大,衝頂風險)');
-  if(slope50!=null && slope50<0.01) lateFlags.push('50均近3週走平/翻緩(動能轉弱)');
-  if(weeks!=null && weeks>=10) lateFlags.push('突破已 '+weeks+' 週(成熟,非新鮮起漲)');
-  if(offHigh<0.03 && gainLow>0.6) lateFlags.push('貼前高又漲多(末段churning風險)');
-
+  // v2.4：依 Weinstein 的 Stage 3 定義重寫。Stage 3＝均線走平＋股價在均線附近來回震盪（新高嘗試失敗），不是「漲很多」。
+  //  · topFlags＝真正的頂部證據（均線走平／翻緩）。有 2 個以上才判 Stage 3；1 個判「偏中段」。
+  //  · extFlags＝「已延伸」提醒（漲幅大、離均線遠、突破已久）。強勢股本來就會漲很多，這只提醒不追高，不再算頂部。
+  var slope200=(ma200prev!=null&&ma200prev>0)?(ma200/ma200prev-1):null;
+  var topFlags=[], extFlags=[];
+  if(slope50!=null && slope50<0.01) topFlags.push('50均近3週走平/翻緩(動能轉弱，Stage 3 的特徵)');
+  if(slope200!=null && slope200<0.005) topFlags.push('200均近1個月幾乎走平(長期趨勢停止向上，Stage 3 的特徵)');
+  if(dev50>0.25) extFlags.push('離50均乖離 +'+(dev50*100).toFixed(0)+'%(>25%,短線拉太開，容易回測均線)');
+  if(gainLow>0.90) extFlags.push('離52週低已 +'+(gainLow*100).toFixed(0)+'%(漲幅已大；強勢股常見，但新進場的風險報酬變差)');
+  if(weeks!=null && weeks>=10) extFlags.push('突破已 '+weeks+' 週(成熟,非新鮮起漲)');
+  var lateFlags=topFlags;   // 舊名保留給下面的流程用
   var earlyFlags=[];
   if(dev50<0.10) earlyFlags.push('貼著50均(乖離小,起漲位置健康)');
   if(weeks!=null && weeks<=8) earlyFlags.push('突破 '+weeks+' 週內(新鮮)');
@@ -432,16 +435,20 @@ function judgeStage(){
     stage={cls:'no',label:'資格未滿',sub:'Trend Template 過 '+passCount+'/8'+(hasNull?'(有缺值,補齊再判)':'')+' — 尚不夠格進場',
       tt:tt,passCount:passCount,metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:[],proceed:false};
   } else {
-    // 8條全過 → 分早段/末段
-    if(lateFlags.length>=2){
-      stage={cls:'late',label:'Stage 3 末段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',但出現 '+lateFlags.length+' 個末段訊號 = 高位陷阱,減碼別追',
-        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags,proceed:false};
-    } else if(lateFlags.length===1){
-      stage={cls:'late',label:'Stage 2 偏中段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',1 個末段訊號需留意。可進但倉位收斂、停損更嚴',
-        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:lateFlags.concat(earlyFlags),proceed:true};
+    // 8條全過 → 看有沒有「頂部證據」，再看是否「已延伸」
+    var pre=(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS'), mm={dev50:dev50,gainLow:gainLow,offHigh:offHigh}, rm=(hasNull&&passCount===7);
+    if(topFlags.length>=2){
+      stage={cls:'late',label:'Stage 3 頂部區',sub:pre+',但均線已走平、出現 '+topFlags.length+' 個頂部證據 = 上漲動能停了,減碼別追',
+        tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:topFlags.concat(extFlags),proceed:false};
+    } else if(topFlags.length===1){
+      stage={cls:'late',label:'Stage 2 偏中段',sub:pre+',有 1 個頂部證據需留意。可進但倉位收斂、停損更嚴',
+        tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:topFlags.concat(extFlags,earlyFlags),proceed:true};
+    } else if(extFlags.length>=1){
+      stage={cls:'go',label:'Stage 2 · 已延伸',sub:pre+',均線都還向上、沒有頂部證據，仍是 Stage 2。但漲幅／距離已大，不是剛起漲：不追太遠、倉位取下限，等整理或回測均線再進更好',
+        tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:extFlags.concat(earlyFlags),proceed:true};
     } else {
-      stage={cls:'go',label:'Stage 2 早段',sub:(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS')+',無末段訊號 = 該買的起漲位置。往下走四因子進場檢核',
-        tt:tt,passCount:passCount,rsMissing:(hasNull&&passCount===7),metrics:{dev50:dev50,gainLow:gainLow,offHigh:offHigh},flags:earlyFlags,proceed:true};
+      stage={cls:'go',label:'Stage 2 早段',sub:pre+',沒有頂部證據、也不算延伸 = 該買的起漲位置。往下走四因子進場檢核',
+        tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:earlyFlags,proceed:true};
     }
   }
   if(stage.rsMissing){ stage.sub+='（⚠ RS 沒有資料，只確認其他 7 條；補上 RS 判斷會更完整）'; }
@@ -484,7 +491,7 @@ function renderStageVerdict(){
   h+='<div class="vb-metric">離52週高<b>-'+(s.metrics.offHigh*100).toFixed(0)+'%</b></div>';
   h+='</div></div>';
 
-  h+='<div id="secCardWrap">'+renderSectorCard()+'</div>'; if(sectorOf(state.sym)) setTimeout(ensureSectorState,50);
+  h+='<div id="secCardWrap">'+renderSectorCard()+'</div>'; if(sectorOf(state.sym)) setTimeout(ensureSectorState,700);
   // Trend Template 檢核表
   h+='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">📋 Trend Template '+s.passCount+'/8</div><div class="tt-list">';
   s.tt.forEach(function(x){
@@ -496,7 +503,7 @@ function renderStageVerdict(){
 
   // 末段/起漲訊號
   if(s.flags && s.flags.length){
-    h+='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">🔎 訊號明細</div>';
+    h+='<div class="stage-card" style="margin-top:12px;"><div class="stage-title">🔎 訊號明細（頂部證據／已延伸提醒／起漲加分）</div>';
     s.flags.forEach(function(f){ h+='<div style="font-size:12px;color:#5a4010;padding:5px 0;">• '+f+'</div>'; });
     h+='</div>';
   }
