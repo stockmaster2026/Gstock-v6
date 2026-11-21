@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股決策樹 · Stage 審判版 v2.4</title>
+<title>個股決策樹 · Stage 審判版 v2.5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:#f5f0e8;font-family:-apple-system,'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;min-height:100vh;}
@@ -106,6 +106,8 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 .verdict-bar .vb-sub{font-size:13px;font-weight:600;line-height:1.6;}
 .vb-go{background:#edfaf3;border:2px solid #2ea86e;}
 .vb-go .vb-stage{color:#2ea86e;}
+.vb-act{font-size:22px;font-weight:800;line-height:1.35;margin-bottom:6px;color:#1a1a2e;}
+.vb-pos{font-size:12.5px;color:#456;line-height:1.7;margin-top:8px;}
 .vb-near{background:#fff8e6;border:2px solid #c8952a;}
 .vb-near .vb-stage{color:#a8780f;}
 .vb-late{background:#fff5ec;border:2px solid #d97020;}
@@ -132,7 +134,7 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 </head>
 <body>
 
-<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.4 · 11/20</span></h2></div>
+<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.5 · 11/20</span></h2></div>
 <div id="app"></div>
 
 <script>
@@ -179,12 +181,12 @@ function sectorState(sym){
 }
 // v2.1：沒有今天的板塊狀態時，自己在背景叫時光機算（同一套分類，不另外發明規則），不用你先去開時光機
 var SECAUTO={running:false,failed:false,failedFor:null,startedFor:null};
-function sectorFresh(){ try{ if(state.asof){ var A=JSON.parse(localStorage.getItem('gstock_sector_state_asof_v1')||'null'); return !!(A&&A.data&&A.asof===state.asof); } var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); return !!(SS&&SS.data&&(Date.now()-(SS.saved||0))<12*3600*1000); }catch(e){ return false; } }
+function sectorFresh(){ try{ var nm=sectorOf(state.sym); if(state.asof){ var A=JSON.parse(localStorage.getItem('gstock_sector_state_asof_v1')||'null'); return !!(A&&A.data&&A.asof===state.asof&&(!nm||A.data[nm])); } var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); return !!(SS&&SS.data&&(!nm||SS.data[nm])&&(Date.now()-(SS.saved||0))<12*3600*1000); }catch(e){ return false; } }
 function ensureSectorState(){
   var want=state.asof||'';
   if(SECAUTO.running||sectorFresh()||(SECAUTO.failed&&SECAUTO.failedFor===want)) return;
   SECAUTO.running=true; SECAUTO.failed=false; SECAUTO.failedFor=null; var t0=Date.now();
-  var ifr=document.createElement('iframe'); ifr.src='timemachine.html?auto=1'+(want?('&date='+want):''); ifr.setAttribute('aria-hidden','true');
+  var ifr=document.createElement('iframe'); ifr.src='timemachine.html?auto=1'+(want?('&date='+want):'')+'&only='+encodeURIComponent(sectorOf(state.sym)||''); ifr.setAttribute('aria-hidden','true');
   ifr.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;border:0;opacity:0;pointer-events:none;';
   var done=function(ok){ if(!SECAUTO.running) return; SECAUTO.running=false; if(!ok){ SECAUTO.failed=true; SECAUTO.failedFor=want; } try{ window.removeEventListener('message',onMsg); clearTimeout(to); }catch(e){} try{ ifr.parentNode.removeChild(ifr); }catch(e){}
     if(ok){ var sd=sectorState(state.sym); if(sd&&sd.cls&&!sd.stale&&state.answers) state.answers.sector=sectorAnswerFrom(sd); }
@@ -437,20 +439,23 @@ function judgeStage(){
   } else {
     // 8條全過 → 看有沒有「頂部證據」，再看是否「已延伸」
     var pre=(rsMissingFlag?'其他 7 條 PASS':'8/8 PASS'), mm={dev50:dev50,gainLow:gainLow,offHigh:offHigh}, rm=(hasNull&&passCount===7);
+    var earlyOK=(gainLow<0.5 && dev50<0.15);   // 離起漲點不遠（門檻是我訂的，未驗證）
     if(topFlags.length>=2){
-      stage={cls:'late',label:'Stage 3 頂部區',sub:pre+',但均線已走平、出現 '+topFlags.length+' 個頂部證據 = 上漲動能停了,減碼別追',
+      stage={act:'🔴 先不買（已持有的要小心、考慮減碼）',cls:'late',label:'Stage 3 頂部區',sub:pre+',但均線已走平、出現 '+topFlags.length+' 個頂部證據 = 上漲動能停了,減碼別追',
         tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:topFlags.concat(extFlags),proceed:false};
     } else if(topFlags.length===1){
-      stage={cls:'late',label:'Stage 2 偏中段',sub:pre+',有 1 個頂部證據需留意。可進但倉位收斂、停損更嚴',
+      stage={act:'🟠 小心：只能輕倉試探，停損收緊',cls:'late',label:'Stage 2 偏中段',sub:pre+',有 1 個頂部證據需留意。可進但倉位收斂、停損更嚴',
         tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:topFlags.concat(extFlags,earlyFlags),proceed:true};
     } else if(extFlags.length>=1){
-      stage={cls:'go',label:'Stage 2 · 已延伸',sub:pre+',均線都還向上、沒有頂部證據，仍是 Stage 2。但漲幅／距離已大，不是剛起漲：不追太遠、倉位取下限，等整理或回測均線再進更好',
+      stage={act:'🟡 還能買，但已經漲很遠：輕倉、不追高，等回測均線再進更好',cls:'go',label:'Stage 2 · 已延伸',sub:pre+',均線都還向上、沒有頂部證據，仍是 Stage 2。但漲幅／距離已大，不是剛起漲：不追太遠、倉位取下限，等整理或回測均線再進更好',
         tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:extFlags.concat(earlyFlags),proceed:true};
     } else {
-      stage={cls:'go',label:'Stage 2 早段',sub:pre+',沒有頂部證據、也不算延伸 = 該買的起漲位置。往下走四因子進場檢核',
+      stage=earlyOK?{act:'🟢 可以積極建倉（離起漲點不遠）',cls:'go',label:'Stage 2 早段',sub:pre+',沒有頂部證據、也不算延伸 = 該買的起漲位置。往下走四因子進場檢核',tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:earlyFlags,proceed:true}:{act:'🟢 可以買，但已走到中段：控制倉位、不要滿倉',cls:'go',label:'Stage 2 中段',sub:pre+',均線都向上、沒有頂部證據，但已離起漲點一段距離：可以買，倉位要比早段保守',
         tt:tt,passCount:passCount,rsMissing:rm,metrics:mm,flags:earlyFlags,proceed:true};
     }
   }
+  if(!stage.act){ stage.act=(stage.cls==='near')?'⏸ 先不買，放進觀察名單':(stage.cls==='late'?'🔴 先不買':'🔴 不能買'); }
+  stage.pos='位置白話：從 52 週低點算已漲 '+(gainLow*100).toFixed(0)+'%（越大代表離起漲點越遠）；離 50 日均 '+(dev50>=0?'+':'')+(dev50*100).toFixed(0)+'%（拉太開容易回頭測均線）；離 52 週高 '+(offHigh*100).toFixed(0)+'%（越小越貼近高點）。';
   if(stage.rsMissing){ stage.sub+='（⚠ RS 沒有資料，只確認其他 7 條；補上 RS 判斷會更完整）'; }
   state.stage=stage;
   renderStageGate();
@@ -483,13 +488,14 @@ function renderStageVerdict(){
   var h='';
   if(state.asof) h+='<div style="background:#e8f0ff;border:2px solid #3a7bd5;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px;font-weight:700;color:#1f4a8a;">📅 這是「'+state.asof+'」那天的判讀，不是今天'+(state.fwd&&state.fwd.d0!==state.asof?('（那天休市，用 '+state.fwd.d0+' 收盤）'):'')+'</div>';
   h+='<div class="verdict-bar vb-'+s.cls+'">';
-  h+='<div class="vb-stage">'+(s.cls==='go'?'🟢 ':s.cls==='late'?'🟠 ':s.cls==='near'?'🟡 ':'🔴 ')+s.label+'</div>';
+  h+='<div class="vb-act">'+(s.act||'')+'</div>';
+  h+='<div class="vb-stage" style="font-size:15px;">'+(s.cls==='go'?'🟢 ':s.cls==='late'?'🟠 ':s.cls==='near'?'🟡 ':'🔴 ')+s.label+'</div>';
   h+='<div class="vb-sub">'+s.sub+'</div>';
   h+='<div class="vb-metrics">';
   h+='<div class="vb-metric">離50均<b>'+(s.metrics.dev50*100).toFixed(0)+'%</b></div>';
   h+='<div class="vb-metric">離52週低<b>+'+(s.metrics.gainLow*100).toFixed(0)+'%</b></div>';
   h+='<div class="vb-metric">離52週高<b>-'+(s.metrics.offHigh*100).toFixed(0)+'%</b></div>';
-  h+='</div></div>';
+  h+='</div>'+(s.pos?'<div class="vb-pos">'+s.pos+'</div>':'')+'</div>';
 
   h+='<div id="secCardWrap">'+renderSectorCard()+'</div>'; if(sectorOf(state.sym)) setTimeout(ensureSectorState,700);
   // Trend Template 檢核表
