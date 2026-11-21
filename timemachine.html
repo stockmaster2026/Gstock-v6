@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.68</title>
+<title>板塊時光機 v1.69</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.68</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.69</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -1001,6 +1001,7 @@ function donutSvg(cl,title,sub){
   return '<div style="text-align:center;flex:1;min-width:120px"><div style="font-weight:800;font-size:13.5px">'+title+'</div><svg viewBox="0 0 100 100" style="width:112px;height:112px">'+segs+'<text x="50" y="49" text-anchor="middle" font-size="22" font-weight="800" fill="'+CLS_COL['順風']+'">'+(cl['順風']||0)+'</text><text x="50" y="63" text-anchor="middle" font-size="9" fill="#556">個順風</text></svg><div style="font-size:12px;color:#445;line-height:1.5">'+sub+'</div></div>';
 }
 var CYCF=[], CYCFULL=null, SECNAMES=[];
+var AUTO_ONLY=(function(){ var m=/[?&]only=([^&]+)/.exec(location.search); try{ return (m&&/[?&]auto=1/.test(location.search))?decodeURIComponent(m[1]):''; }catch(e){ return ''; } })();   // v1.69：只算這一個板塊（決策樹背景呼叫用，比算全部快很多）
 var AUTO_DATE=(function(){ var m=/[?&]date=(\d{4}-\d{2}-\d{2})/.exec(location.search); return (m&&/[?&]auto=1/.test(location.search))?m[1]:''; })();   // v1.68：決策樹「回到某一天」背景呼叫
 function showCycle(ds){
   var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
@@ -1287,8 +1288,13 @@ function drawCycle2(lists,ks,M,S,k){
     if(j1!=null){ var c0=M[si][j1], f0_=CYCF[si][j1]; it.gx=mtnX(c0,f0_&&f0_.give); it.c0=c0; }
     if(j5!=null){ var c5=M[si][j5], f5=CYCF[si][j5]; it.x5=mtnX(c5,f5&&f5.give); it.c5=c5; it.g5=f5?f5.give:null; } mi.push(it); });
   // v1.66：把「今天」每個板塊的狀態存起來（同網域 localStorage），個股決策樹 v2 讀它來做「板塊順風檢查」。只存最新一天，選過去日期不存。
-  try{ if(k===SPYB.d.length-1){ var SS={date:SPYB.d[k],saved:Date.now(),data:{}}; mi.forEach(function(m){ SS.data[m.name]={cls:clsOf(m.c),cat:m.c,give:m.give,d1:m.d1,d5:m.d5,rd:m.rd?m.rd.drop:null}; }); localStorage.setItem('gstock_sector_state_v1',JSON.stringify(SS)); }
-    if(AUTO_DATE){ var SA={asof:AUTO_DATE,date:SPYB.d[k],saved:Date.now(),data:{}}; mi.forEach(function(m){ SA.data[m.name]={cls:clsOf(m.c),cat:m.c,give:m.give,d1:m.d1,d5:m.d5,rd:m.rd?m.rd.drop:null}; }); localStorage.setItem('gstock_sector_state_asof_v1',JSON.stringify(SA)); } }catch(e){}
+  try{ var _row=function(m){ return {cls:clsOf(m.c),cat:m.c,give:m.give,d1:m.d1,d5:m.d5,rd:m.rd?m.rd.drop:null}; };
+    var _put=function(key,meta,asofKey){ var old=null; try{ old=JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
+      var base={data:{}}; if(AUTO_ONLY&&old&&old.data&&old.date===SPYB.d[k]&&(!asofKey||old.asof===asofKey)) base.data=old.data;   // 只算單一板塊時，保留同一天已存的其他板塊
+      var o={date:SPYB.d[k],saved:Date.now(),data:base.data}; if(asofKey) o.asof=asofKey;
+      mi.forEach(function(m){ o.data[m.name]=_row(m); }); localStorage.setItem(key,JSON.stringify(o)); };
+    if(k===SPYB.d.length-1) _put('gstock_sector_state_v1');
+    if(AUTO_DATE) _put('gstock_sector_state_asof_v1',null,AUTO_DATE); }catch(e){}
   var gTop=mi.filter(function(m){return isGoCat(m.c);}), gShallow=mi.filter(function(m){return !isGoCat(m.c)&&m.give!=null&&m.give<0.5&&m.c!=='沒動靜';}), gDeep=mi.filter(function(m){return gTop.indexOf(m)<0&&gShallow.indexOf(m)<0;});
   var fresh=mi.filter(function(m){return m.c==='剛起步'||m.c==='急拉（短線）';});
   // v1.41：「剛起步」是板塊平均。把這個板塊裡每一檔從同一個低點算起漲多少列出來，看漲幅是不是集中在少數幾檔（領頭股可能已經偏後段）
@@ -1455,6 +1461,7 @@ function runAgg(){
 async function init(){
   try{ migrateNames2(); }catch(e){}
   SECS=getSectors().filter(function(s){return s.tickers&&s.tickers.length>=3;});
+  if(AUTO_ONLY){ var one=SECS.filter(function(s){return s.name===AUTO_ONLY;}); if(one.length) SECS=one; }
   var tick={'SPY':1}; SECS.forEach(function(s){ s.tickers.forEach(function(t){ tick[t]=1; }); });
   var list=Object.keys(tick).filter(function(t){ return !BARS[t]; });
   await loadMany(list,function(d,tot){ el('prog').textContent='載入價格 '+d+'／'+tot+' …（第一次要一兩分鐘；20 分鐘內開過 charts 的話會用同一份快取）'; });
