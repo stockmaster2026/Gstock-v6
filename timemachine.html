@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.69</title>
+<title>板塊時光機 v1.70</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.69</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.70</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -1003,6 +1003,17 @@ function donutSvg(cl,title,sub){
 var CYCF=[], CYCFULL=null, SECNAMES=[];
 var AUTO_ONLY=(function(){ var m=/[?&]only=([^&]+)/.exec(location.search); try{ return (m&&/[?&]auto=1/.test(location.search))?decodeURIComponent(m[1]):''; }catch(e){ return ''; } })();   // v1.69：只算這一個板塊（決策樹背景呼叫用，比算全部快很多）
 var AUTO_DATE=(function(){ var m=/[?&]date=(\d{4}-\d{2}-\d{2})/.exec(location.search); return (m&&/[?&]auto=1/.test(location.search))?m[1]:''; })();   // v1.68：決策樹「回到某一天」背景呼叫
+// v1.70：決策樹背景模式只需要「那一天」每個板塊的狀態；不必像週期表那樣把兩年每 5 天都算一遍（和 showCycle 最後一步用同一套 stateAt／catOf，結果一樣）
+function autoState(ds){
+  var k=kOf(ds); var lists=secLists(); var o={date:SPYB.d[k],saved:Date.now(),data:{}}; if(AUTO_DATE) o.asof=AUTO_DATE;
+  var key=AUTO_DATE?'gstock_sector_state_asof_v1':'gstock_sector_state_v1', old=null; try{ old=JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
+  if(old&&old.data&&old.date===o.date&&(!AUTO_DATE||old.asof===AUTO_DATE)) o.data=old.data;
+  lists.forEach(function(x){ var r=stateAt(x,k), IXn=FULL[x.s.name]||[], v0=IXn[k-OFF], v1=IXn[k-1-OFF], v5=IXn[k-5-OFF], rd=null;
+    try{ rd=recentDrop(x.s.name,k); }catch(e){}
+    o.data[x.s.name]={cls:clsOf(catOf(r.st)),cat:catOf(r.st),give:r.st?r.st.give:null,d1:(v0>0&&v1>0)?v0/v1-1:null,d5:(v0>0&&v5>0)?v0/v5-1:null,rd:rd?rd.drop:null}; });
+  localStorage.setItem(key,JSON.stringify(o));
+  if(!AUTO_DATE&&k===SPYB.d.length-1) localStorage.setItem('gstock_sector_state_v1',JSON.stringify(o));
+}
 function showCycle(ds){
   var dtH=el('dt'); if(!ds||!/^\d{4}-\d{2}-\d{2}$/.test(ds)){ ds=dtH.max||SPYB.d[SPYB.d.length-1]; dtH.value=ds; }
   var k=kOf(ds), out=el('out');
@@ -1487,7 +1498,7 @@ async function init(){
   if(/[?&]auto=1/.test(location.search) && window.parent!==window){
     var t0=Date.now(); var tgt=AUTO_DATE||dt.max;
     if(AUTO_DATE&&(AUTO_DATE<dt.min||AUTO_DATE>dt.max)){ try{ parent.postMessage({gstockSector:'fail'},'*'); }catch(e){} return; }
-    showCycle(tgt);
+    try{ autoState(tgt); }catch(e){ try{ parent.postMessage({gstockSector:'fail'},'*'); }catch(_e){} return; }
     var iv=setInterval(function(){ var ok=false; try{ var SS=JSON.parse(localStorage.getItem(AUTO_DATE?'gstock_sector_state_asof_v1':'gstock_sector_state_v1')||'null'); ok=!!(SS&&SS.saved>=t0&&(!AUTO_DATE||SS.asof===AUTO_DATE)); }catch(e){}
       if(ok){ clearInterval(iv); try{ parent.postMessage({gstockSector:'done'},'*'); }catch(e){} }
       else if(Date.now()-t0>280000){ clearInterval(iv); try{ parent.postMessage({gstockSector:'fail'},'*'); }catch(e){} } },1000);
