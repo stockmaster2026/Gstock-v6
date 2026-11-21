@@ -234,9 +234,10 @@ function renderStageGate(){
   h += '<div style="background:#f3f7ff;border:1px solid #b9cdf0;border-radius:10px;padding:10px 12px;margin-bottom:10px;">'
      +'<div style="font-size:13px;font-weight:700;color:#2a4a80;">📅 回到某一天（選填；不選＝今天）</div>'
      +'<div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">'
-     +'<input type="date" id="asofInput" value="'+(state.asof||'')+'" max="'+todayStr()+'" onchange="setAsof(this.value)" style="padding:8px;border:1px solid #b9cdf0;border-radius:8px;font-size:15px;">'
+     +'<input type="date" id="asofInput" value="'+(state.asof||'')+'" max="'+todayStr()+'" onchange="onAsofPick(this.value)" style="padding:8px;border:1px solid #b9cdf0;border-radius:8px;font-size:15px;">'
      +(state.asof?'<button class="override-btn" style="padding:6px 10px;" onclick="setAsof(\'\')">回到今天</button>':'')
      +'</div>'
+     +'<div id="asofNote" style="font-size:13px;color:#1f4a8a;font-weight:700;margin-top:6px;">'+(state.asof?('已選 '+state.asof+'，選好後按下面的「自動抓取並判讀」。'):'')+'</div>'
      +'<div style="font-size:12px;color:#456;line-height:1.6;margin-top:6px;">選一個過去的日子，工具只用「那天以前」的價格資料重新判讀，等於回到那天早上看盤，並顯示那天之後實際漲跌，讓你對照系統判得準不準。<b>只還原 Stage 審判＋RS＋板塊</b>；四因子（賣出訊號、動能、突破天數）這版還不能還原。</div>'
      +'</div>';
   h += '<button class="fetch-btn" id="fetchBtn" onclick="doFetch()">🔍 自動抓取並判讀'+(state.asof?'（'+state.asof+'）':'')+'</button>';
@@ -278,6 +279,9 @@ function onManual(e){ state.manual[e.target.dataset.mk]=e.target.value; }
 // 自動抓資料(Yahoo v8 + corsproxy);失敗有手動退路
 // ═══════════════════════════════════════════
 function todayStr(){ var d=new Date(); var z=function(n){return (n<10?'0':'')+n;}; return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+// 注意：iPad 的日期滾輪每轉一下就會觸發 change；這裡「只記值、不重畫整頁」，不然選擇器會被重畫弄掉（v2.2 的 bug）
+function onAsofPick(v){ v=(v||'').trim(); if(v&&v>=todayStr()) v=''; if(v!==state.asof){ state.asof=v; state.fwd=null; }
+  var n=document.getElementById('asofNote'); if(n) n.textContent=v?('已選 '+v+'，選好後按下面的「自動抓取並判讀」。'):'不選＝今天。'; }
 function setAsof(v){
   v=(v||'').trim(); if(v&&v>=todayStr()) v='';
   state.asof=v; state.fwd=null; state.stage=null; state.manual={};
@@ -302,7 +306,9 @@ function doFetch(){
   sym = (sym||state.sym||'').toUpperCase().trim();
   if(!sym){ setStatus('請先輸入代號','err'); return; }
   state.sym = sym;
+  var ai=document.getElementById('asofInput'); if(ai){ var av=(ai.value||'').trim(); state.asof=(av&&av<todayStr())?av:''; }
   var asof=state.asof||'';
+  state.stage=null; state.fwd=null; SECAUTO.failedFor=null;
   var btn=document.getElementById('fetchBtn');
   btn.disabled=true; setStatus('抓取中… '+sym+(asof?('（回到 '+asof+'，要抓比較長的歷史，約多幾秒）'):''),'');
   var range=asof?'5y':'2y';
