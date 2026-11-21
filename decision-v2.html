@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>個股決策樹 · Stage 審判版 v2.1</title>
+<title>個股決策樹 · Stage 審判版 v2.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:#f5f0e8;font-family:-apple-system,'Helvetica Neue',sans-serif;padding:16px;color:#1a1a2e;min-height:100vh;}
@@ -132,7 +132,7 @@ body.iframe-mode .hdr{margin-bottom:12px;}
 </head>
 <body>
 
-<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.1 · 11/20</span></h2></div>
+<div class="hdr"><div class="dot"></div><h2>個股決策樹 · Stage 審判版 <span style="font-size:14px;font-weight:700;color:#fff;background:#c8952a;border-radius:6px;padding:2px 8px;">v2.2 · 11/20</span></h2></div>
 <div id="app"></div>
 
 <script>
@@ -144,6 +144,8 @@ var state = {
   stage: null,        // Stage 審判結果
   metrics: null,      // 自動/手動算出的數值
   manual: {},         // 手動輸入暫存
+  asof: '',           // v2.2：回到某一天（YYYY-MM-DD；空＝今天）
+  fwd: null,          // v2.2：那天之後實際走勢
 };
 var app = document.getElementById('app');
 
@@ -168,21 +170,23 @@ function sectorOf(sym){
 }
 function sectorState(sym){
   var nm=sectorOf(sym); if(!nm) return {name:null};
-  var SS=null; try{ SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); }catch(e){}
+  var SS=null; try{ SS=JSON.parse(localStorage.getItem(state.asof?'gstock_sector_state_asof_v1':'gstock_sector_state_v1')||'null'); }catch(e){}
+  if(state.asof && SS && SS.asof!==state.asof) SS=null;
   if(!SS||!SS.data||!SS.data[nm]) return {name:nm,missing:true};
   var d=SS.data[nm]; d.name=nm; d.date=SS.date;
-  var age=(Date.now()-(SS.saved||0))/86400000; d.stale=age>3;
+  var age=(Date.now()-(SS.saved||0))/86400000; d.stale=state.asof?false:age>3;
   return d;
 }
 // v2.1：沒有今天的板塊狀態時，自己在背景叫時光機算（同一套分類，不另外發明規則），不用你先去開時光機
-var SECAUTO={running:false,failed:false,startedFor:null};
-function sectorFresh(){ try{ var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); return !!(SS&&SS.data&&(Date.now()-(SS.saved||0))<12*3600*1000); }catch(e){ return false; } }
+var SECAUTO={running:false,failed:false,failedFor:null,startedFor:null};
+function sectorFresh(){ try{ if(state.asof){ var A=JSON.parse(localStorage.getItem('gstock_sector_state_asof_v1')||'null'); return !!(A&&A.data&&A.asof===state.asof); } var SS=JSON.parse(localStorage.getItem('gstock_sector_state_v1')||'null'); return !!(SS&&SS.data&&(Date.now()-(SS.saved||0))<12*3600*1000); }catch(e){ return false; } }
 function ensureSectorState(){
-  if(SECAUTO.running||sectorFresh()||SECAUTO.failed) return;
-  SECAUTO.running=true; var t0=Date.now();
-  var ifr=document.createElement('iframe'); ifr.src='timemachine.html?auto=1'; ifr.setAttribute('aria-hidden','true');
+  var want=state.asof||'';
+  if(SECAUTO.running||sectorFresh()||(SECAUTO.failed&&SECAUTO.failedFor===want)) return;
+  SECAUTO.running=true; SECAUTO.failed=false; SECAUTO.failedFor=null; var t0=Date.now();
+  var ifr=document.createElement('iframe'); ifr.src='timemachine.html?auto=1'+(want?('&date='+want):''); ifr.setAttribute('aria-hidden','true');
   ifr.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;border:0;opacity:0;pointer-events:none;';
-  var done=function(ok){ if(!SECAUTO.running) return; SECAUTO.running=false; if(!ok) SECAUTO.failed=true; try{ window.removeEventListener('message',onMsg); clearTimeout(to); }catch(e){} try{ ifr.parentNode.removeChild(ifr); }catch(e){}
+  var done=function(ok){ if(!SECAUTO.running) return; SECAUTO.running=false; if(!ok){ SECAUTO.failed=true; SECAUTO.failedFor=want; } try{ window.removeEventListener('message',onMsg); clearTimeout(to); }catch(e){} try{ ifr.parentNode.removeChild(ifr); }catch(e){}
     if(ok){ var sd=sectorState(state.sym); if(sd&&sd.cls&&!sd.stale&&state.answers) state.answers.sector=sectorAnswerFrom(sd); }
     refreshSectorCard(); };
   var onMsg=function(e){ if(e.data&&e.data.gstockSector==='done') done(true); else if(e.data&&e.data.gstockSector==='fail') done(false); };
@@ -193,7 +197,7 @@ function ensureSectorState(){
 function refreshSectorCard(){ var el=document.getElementById('secCardWrap'); if(el) el.innerHTML=renderSectorCard(); }
 function sectorPlain(d){
   var pc=function(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; };
-  var t='板塊「'+d.name+'」目前在<b>'+d.cls+'</b>（階段：'+d.cat+'）；今天 '+pc(d.d1)+'、最近 5 天 '+pc(d.d5)+'。';
+  var t='板塊「'+d.name+'」目前在<b>'+d.cls+'</b>（階段：'+d.cat+'）；'+(state.asof?'當天':'今天')+' '+pc(d.d1)+'、最近 5 天 '+pc(d.d5)+'。';
   if(d.cls==='順風') t+='整個板塊在往強走，買這個板塊的股票是順著水流。';
   else if(d.cls==='小心') t+='板塊還沒壞，但已走一段、或在暫停／短線急拉，追的時候要小心。';
   else if(d.cls==='逆風') t+='板塊整體在往弱走，個股要逆著水流才會漲——不是不行，但勝算較低，倉位要再縮。';
@@ -208,7 +212,7 @@ function renderSectorCard(){
   if(!state.sym) h+='<div style="font-size:13px;color:#5a4010;">先輸入股票代號。</div>';
   else if(!d.name) h+='<div style="font-size:13px;color:#5a4010;">'+state.sym+' 不在你現在任何一個板塊名單裡，板塊這一項要自己判斷（進四因子時會問你）。</div>';
   else if((d.missing||d.stale)&&SECAUTO.running) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」。⏳ 正在背景自動計算今天的板塊狀態（第一次約 1～2 分鐘，你可以先往下看 Stage 結果，算好這裡會自己更新）。</div>';
-  else if(d.missing&&!SECAUTO.failed&&!sectorFresh()){ h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，還沒有今天的板塊狀態。</div>'; }
+  else if(d.missing&&!(SECAUTO.failed&&SECAUTO.failedFor===(state.asof||''))&&!sectorFresh()){ h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，還沒有今天的板塊狀態。</div>'; }
   else if(d.missing) h+='<div style="font-size:13px;color:#5a4010;">這檔屬於「'+d.name+'」，但自動計算沒成功（可能是網路或資料來源問題）。可以先打開<b>板塊時光機 → 板塊週期表</b>一次再回來，或進四因子時手動選。先打開<b>板塊時光機 → 板塊週期表</b>（只要打開一次），再回來按一次判讀；或進四因子時手動選。</div>';
   else h+='<div style="font-size:13px;color:#2a3a50;line-height:1.7;">'+sectorPlain(d)+'</div>';
   h+='</div>'; return h;
@@ -227,7 +231,15 @@ function renderStageGate(){
 
   h += '<div class="stage-card">';
   h += '<div class="stage-title">🚦 第一層 · Stage 自動審判</div>';
-  h += '<button class="fetch-btn" id="fetchBtn" onclick="doFetch()">🔍 自動抓取並判讀</button>';
+  h += '<div style="background:#f3f7ff;border:1px solid #b9cdf0;border-radius:10px;padding:10px 12px;margin-bottom:10px;">'
+     +'<div style="font-size:13px;font-weight:700;color:#2a4a80;">📅 回到某一天（選填；不選＝今天）</div>'
+     +'<div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">'
+     +'<input type="date" id="asofInput" value="'+(state.asof||'')+'" max="'+todayStr()+'" onchange="setAsof(this.value)" style="padding:8px;border:1px solid #b9cdf0;border-radius:8px;font-size:15px;">'
+     +(state.asof?'<button class="override-btn" style="padding:6px 10px;" onclick="setAsof(\'\')">回到今天</button>':'')
+     +'</div>'
+     +'<div style="font-size:12px;color:#456;line-height:1.6;margin-top:6px;">選一個過去的日子，工具只用「那天以前」的價格資料重新判讀，等於回到那天早上看盤，並顯示那天之後實際漲跌，讓你對照系統判得準不準。<b>只還原 Stage 審判＋RS＋板塊</b>；四因子（賣出訊號、動能、突破天數）這版還不能還原。</div>'
+     +'</div>';
+  h += '<button class="fetch-btn" id="fetchBtn" onclick="doFetch()">🔍 自動抓取並判讀'+(state.asof?'（'+state.asof+'）':'')+'</button>';
   h += '<div class="fetch-status" id="fetchStatus">先按自動抓取;抓不到再用下方手動填(數字可從 TradingView 直接讀)</div>';
 
   h += '<div class="manual-note">▾ 手動輸入(自動失敗時用,或想覆蓋):</div>';
@@ -265,51 +277,76 @@ function onManual(e){ state.manual[e.target.dataset.mk]=e.target.value; }
 // ═══════════════════════════════════════════
 // 自動抓資料(Yahoo v8 + corsproxy);失敗有手動退路
 // ═══════════════════════════════════════════
+function todayStr(){ var d=new Date(); var z=function(n){return (n<10?'0':'')+n;}; return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+function setAsof(v){
+  v=(v||'').trim(); if(v&&v>=todayStr()) v='';
+  state.asof=v; state.fwd=null; state.stage=null; state.manual={};
+  SECAUTO.failedFor=null; renderStageGate();
+  setStatus(v?('已選 '+v+'。按「自動抓取並判讀」，工具會用那天以前的資料判讀。'):'已回到今天。','');
+}
+// 把 Yahoo 回傳整理成 [{d,c,h,l}]，d＝美東交易日 YYYY-MM-DD（只留有收盤價的）
+function toBars(res){
+  var q=res.indicators.quote[0], ts=res.timestamp||[], out=[];
+  for(var i=0;i<ts.length;i++){ if(q.close[i]==null) continue;
+    out.push({d:new Date(ts[i]*1000).toISOString().slice(0,10),c:q.close[i],h:(q.high[i]!=null?q.high[i]:q.close[i]),l:(q.low[i]!=null?q.low[i]:q.close[i])}); }
+  return out;
+}
+function lastIdxOnOrBefore(bars,ds){ var k=-1; for(var i=0;i<bars.length;i++){ if(bars[i].d<=ds) k=i; else break; } return k; }
+function getJ(sym,range){
+  var y='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range='+range+'&interval=1d';
+  return fetch('https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent(y)).then(function(r){ return r.json(); }).then(function(j){
+    var res=j.chart&&j.chart.result&&j.chart.result[0]; if(!res) throw new Error('no data'); return toBars(res); });
+}
 function doFetch(){
   var sym = (document.getElementById('symInput')||{}).value;
   sym = (sym||state.sym||'').toUpperCase().trim();
   if(!sym){ setStatus('請先輸入代號','err'); return; }
   state.sym = sym;
+  var asof=state.asof||'';
   var btn=document.getElementById('fetchBtn');
-  btn.disabled=true; setStatus('抓取中… '+sym,'');
-
-  var yahoo='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=2y&interval=1d';
-  var url='https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent(yahoo);
-
-  fetch(url).then(function(r){ return r.json(); }).then(function(j){
-    var res=j.chart && j.chart.result && j.chart.result[0];
-    if(!res) throw new Error('no data');
-    var q=res.indicators.quote[0];
-    var closes=(q.close||[]).filter(function(x){return x!=null;});
-    var highs=(q.high||[]).filter(function(x){return x!=null;});
-    var lows=(q.low||[]).filter(function(x){return x!=null;});
-    if(closes.length<200) throw new Error('歷史不足');
-
-    var price=closes[closes.length-1];
-    state.manual.price=round(price);
+  btn.disabled=true; setStatus('抓取中… '+sym+(asof?('（回到 '+asof+'，要抓比較長的歷史，約多幾秒）'):''),'');
+  var range=asof?'5y':'2y';
+  Promise.all([getJ(sym,range), getJ('SPY',range).catch(function(){return null;})]).then(function(arr){
+    var B=arr[0], SP=arr[1];
+    var k=B.length-1;
+    if(asof){ k=lastIdxOnOrBefore(B,asof); if(k<0) throw new Error('那天以前沒有資料'); }
+    if(k+1<253) throw new Error(asof?'那天以前的歷史不到一年，算不出 200 日均與 RS（請選比較晚的日子）':'歷史不足');
+    var closes=B.slice(0,k+1).map(function(b){return b.c;});
+    var highs=B.slice(0,k+1).map(function(b){return b.h;});
+    var lows=B.slice(0,k+1).map(function(b){return b.l;});
+    var realDay=B[k].d;
+    var prevRS=state.manual.rs, prevWeeks=state.manual.weeks;
+    state.manual={weeks:prevWeeks};
+    state.manual.price=round(closes[k]);
     state.manual.ma50=round(ma(closes,50));
     state.manual.ma150=round(ma(closes,150));
     state.manual.ma200=round(ma(closes,200));
-    state.manual.ma200prev=round(maAt(closes,200,21));   // 約1個月前
-    state.manual.ma50prev=round(maAt(closes,50,15));      // 約3週前
+    state.manual.ma200prev=round(maAt(closes,200,21));
+    state.manual.ma50prev=round(maAt(closes,50,15));
     state.manual.high52=round(Math.max.apply(null,highs.slice(-252)));
     state.manual.low52=round(Math.min.apply(null,lows.slice(-252)));
-    // v2：RS 用跟吸籌頁同一套公式自己算（近 3/6/9/12 個月加權表現 vs SPY），算不出來才留給你手填；你已經填過的不覆蓋
-    var hadRS=(state.manual.rs!=null&&state.manual.rs!=='');
-    var spyUrl='https://gstock-proxy.cykjas.workers.dev/?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=2y&interval=1d');
-    return fetch(spyUrl).then(function(r){ return r.json(); }).then(function(sj){
-      var sres=sj.chart&&sj.chart.result&&sj.chart.result[0]; if(!sres) return null;
-      return (sres.indicators.quote[0].close||[]).filter(function(x){return x!=null;});
-    }).catch(function(){ return null; }).then(function(spyC){
-      var rsNote='';
-      if(!hadRS && spyC){ var r=calcRSRating(calcRSPerf(closes),calcRSPerf(spyC)); if(r!=null){ state.manual.rs=r; rsNote=' RS 已自動算出：'+r+'（跟吸籌頁同一套公式的估計值，不是 TradingView 的百分位排名）。'; } }
-      btn.disabled=false;
-      renderStageGate();
-      setStatus('✅ '+sym+' 已填入。'+rsNote+(state.manual.rs==null||state.manual.rs===''?' RS 沒算出來也沒關係，直接按「用上面數字判讀」（只確認其他 7 條）。':' 按「用上面數字判讀」。'),'ok');
-    });
+    // RS：跟吸籌頁同一套公式（近 3/6/9/12 個月加權表現 vs SPY）；回到過去時 SPY 也只取那天以前
+    var rsNote='', spyC=null, ks=-1;
+    if(SP){ ks=asof?lastIdxOnOrBefore(SP,realDay):SP.length-1; if(ks>=252) spyC=SP.slice(0,ks+1).map(function(b){return b.c;}); }
+    // 今天模式：你手填或吸籌頁帶來的 RS 不覆蓋；回到過去：一律用當時資料重算
+    if(!asof&&prevRS!=null&&prevRS!=='') state.manual.rs=prevRS;
+    var hadRS=(!asof)&&(state.manual.rs!=null&&state.manual.rs!=='');
+    if(!hadRS && spyC){ var r=calcRSRating(calcRSPerf(closes),calcRSPerf(spyC)); if(r!=null){ state.manual.rs=r; rsNote=' RS 已自動算出：'+r+'（跟吸籌頁同一套公式的估計值，不是 TradingView 的百分位排名）。'; } }
+    // 那天之後實際走勢（只有回到過去才算）
+    state.fwd=null;
+    if(asof){
+      var f={d0:realDay,p0:closes[k]};
+      [20,60].forEach(function(n){ if(k+n<B.length){ f['r'+n]=B[k+n].c/B[k].c-1; if(SP&&ks>=0&&ks+n<SP.length) f['s'+n]=SP[ks+n].c/SP[ks].c-1; } else { f['avail'+n]=B.length-1-k; } });
+      if(k+20<B.length){ var mn=Infinity; for(var q=k+1;q<=k+20;q++) mn=Math.min(mn,B[q].l); f.dd20=mn/B[k].c-1; }
+      f.last=B[B.length-1].d; state.fwd=f;
+    }
+    btn.disabled=false;
+    renderStageGate();
+    setStatus('✅ '+sym+(asof?('（'+realDay+' 收盤）'):'')+' 已填入。'+rsNote+(state.manual.rs==null||state.manual.rs===''?' RS 沒算出來也沒關係，直接按「用上面數字判讀」（只確認其他 7 條）。':' 按「用上面數字判讀」。'),'ok');
+    if(asof&&sectorOf(state.sym)) setTimeout(ensureSectorState,50);
   }).catch(function(e){
     btn.disabled=false;
-    setStatus('⚠️ 自動抓取失敗('+(e.message||'網路/proxy')+')。請手動填下方數字後按藍色判讀鈕。','err');
+    setStatus('⚠️ 自動抓取失敗('+(e.message||'網路/proxy')+')。'+(asof?'':'請手動填下方數字後按藍色判讀鈕。'),'err');
   });
 }
 function setStatus(t,c){ var s=document.getElementById('fetchStatus'); if(s){ s.textContent=t; s.className='fetch-status '+(c||''); } }
@@ -407,9 +444,32 @@ function judgeStage(){
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 }
 
+function pcs(v){ return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(1)+'%'; }
+function renderFwdCard(){
+  var f=state.fwd, s=state.stage; if(!f) return '';
+  var good=(s.cls==='go'||s.proceed===true);
+  var h='<div class="stage-card" style="margin-top:12px;border-color:#7aa2e0;"><div class="stage-title">🔭 那天之後實際發生什麼（'+f.d0+' 收盤 '+f.p0.toFixed(2)+'）</div>';
+  var rows=[];
+  [20,60].forEach(function(n){
+    if(f['r'+n]!=null){ var ex=(f['s'+n]!=null)?(f['r'+n]-f['s'+n]):null;
+      rows.push('<div style="font-size:14px;line-height:1.7;">• '+n+' 個交易日後：<b>'+pcs(f['r'+n])+'</b>'+(f['s'+n]!=null?('，同期 SPY '+pcs(f['s'+n])+'，比大盤'+(ex>=0?'多':'少')+' <b>'+Math.abs(ex*100).toFixed(1)+'</b> 個百分點'):'')+'</div>'); }
+    else rows.push('<div style="font-size:13px;color:#888;">• '+n+' 個交易日後：資料還沒走到（那天之後只有 '+f['avail'+n]+' 個交易日）</div>'); });
+  h+=rows.join('');
+  if(f.dd20!=null) h+='<div style="font-size:14px;line-height:1.7;">• 前 20 天內最低點比當天收盤低 <b>'+(Math.abs(f.dd20)*100).toFixed(1)+'%</b>'+(f.dd20<=-0.08?'（碰到了 -8% 的停損線）':'（沒碰到 -8% 停損線）')+'</div>';
+  // 白話對照
+  var ref=(f.r20!=null)?((f.s20!=null)?(f.r20-f.s20):f.r20):null;
+  if(ref!=null){
+    var did=ref>0;
+    h+='<div style="margin-top:8px;padding:8px 10px;background:#eef4ff;border-radius:8px;font-size:14px;line-height:1.7;"><b>對照：</b>系統當時的判讀是「'+s.label+'」（'+(good?'看好、可以往下評估':'不看好、先不進')+'）；之後 20 天這檔'+(did?'比大盤強':'沒有比大盤強')+'，所以<b>方向'+((good===did)?'一致 ✅':'不一致 ❌')+'</b>。</div>';
+  }
+  h+='<div style="font-size:12px;color:#a33;line-height:1.6;margin-top:8px;">⚠ 一檔股票的一次結果有運氣成分，只能當「看起來對不對」，<b>不能當準確率</b>。要看整體準確率請用 stage-test（用很多檔、很多天統計）。這裡只還原了 Stage 審判＋RS＋板塊，四因子沒有還原。</div>';
+  h+='</div>'; return h;
+}
 function renderStageVerdict(){
   var s=state.stage;
-  var h='<div class="verdict-bar vb-'+s.cls+'">';
+  var h='';
+  if(state.asof) h+='<div style="background:#e8f0ff;border:2px solid #3a7bd5;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px;font-weight:700;color:#1f4a8a;">📅 這是「'+state.asof+'」那天的判讀，不是今天'+(state.fwd&&state.fwd.d0!==state.asof?('（那天休市，用 '+state.fwd.d0+' 收盤）'):'')+'</div>';
+  h+='<div class="verdict-bar vb-'+s.cls+'">';
   h+='<div class="vb-stage">'+(s.cls==='go'?'🟢 ':s.cls==='late'?'🟠 ':s.cls==='near'?'🟡 ':'🔴 ')+s.label+'</div>';
   h+='<div class="vb-sub">'+s.sub+'</div>';
   h+='<div class="vb-metrics">';
@@ -435,15 +495,18 @@ function renderStageVerdict(){
     h+='</div>';
   }
 
+  if(state.asof) h+=renderFwdCard();
   // 行動
-  if(s.proceed){
+  if(state.asof){
+    h+='<div class="firewall-note" style="border-color:#3a7bd5;color:#1f4a8a;background:#f3f7ff;">這是回到過去的檢視，只還原 Stage 審判＋RS＋板塊，所以不進四因子。要實際判斷要不要買，請按「回到今天」再判讀。</div>';
+  } else if(s.proceed){
     h+='<button class="proceed-btn" onclick="enterTree()">→ 進入四因子進場決策</button>';
   } else {
     if(s.cls==='late'){
       h+='<div class="firewall-note">🚨 <b>防火牆 D 提醒</b>:這是末段/陷阱區,系統判定 NO。要覆蓋,必須湊滿「兩個獨立證據」並留紀錄,不准用單一強訊號(尤其大單)翻盤。</div>';
       h+='<button class="override-btn" onclick="enterTree()">我有兩個獨立證據,仍要進四因子(已留紀錄)</button>';
     } else if(s.cls==='near'){
-      h+='<div class="firewall-note" style="border-color:#c8952a;color:#7a5a10;background:#fff8e6;">⏸ <b>現在不進，但不是壞股票。</b>8 條裡只差一條（'+s.failT+'），其餘長期條件都過。Minervini 原版要求 8 條全過才算 Stage 2，所以現在不買；放進觀察名單，這一條回來（例如站回 50 日均）再按一次判讀。</div>';
+      h+='<div class="firewall-note" style="border-color:#c8952a;color:#7a5a10;background:#fff8e6;">⏸ <b>現在不進，但不是壞股票。</b>8 條裡只差一條（'+s.failT+'），其餘長期條件都過。Minervini 原版要求 8 條全過才算 Stage 2，所以現在不買；放進觀察名單，這一條回來再按一次判讀。'+(s.failT&&s.failT.indexOf('150日均 > 200日均')>=0?'（這條是兩條長期均線的先後，差距常常很小、要等 150 日均慢慢爬到 200 日均上面。）':s.failT&&s.failT.indexOf('股價 > 50日均')>=0?'（等股價站回 50 日均。）':'')+'</div>';
     } else {
       h+='<div class="firewall-note" style="border-color:#8a7050;color:#8a7050;">這檔不夠格(或還在底部/走空)。把判斷外包給系統 = 這裡停手,去看名單上下一檔。</div>';
     }
@@ -602,7 +665,7 @@ function selectAnswer(key,val){
 }
 function goBack(){ if(state.step>0){ state.step--; render(); } }
 function resetAll(){
-  state={mode:null,sym:state.sym,step:0,answers:{},stage:state.stage,metrics:null,manual:state.manual};
+  state={mode:null,sym:state.sym,step:0,answers:{},stage:state.stage,metrics:null,manual:state.manual,asof:state.asof,fwd:state.fwd};
   renderStageGate();
 }
 
