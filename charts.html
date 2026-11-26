@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>板塊圖表總覽 v3.20</title>
+<title>板塊圖表總覽 v3.21</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{
@@ -105,7 +105,7 @@ canvas.big{width:100%;height:440px;display:block;margin-top:10px;border-radius:8
 
 <div class="topbar">
   <a class="back" href="radar.html">← 雷達</a>
-  <div class="logo">板塊<span>圖表</span> v3.20</div>
+  <div class="logo">板塊<span>圖表</span> v3.21</div>
   <button class="btn-ref" id="btnRef">🔄 更新</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -728,8 +728,8 @@ function renderWaveView(){
 
 function zList(vals){ var v=vals.filter(function(x){return x!=null&&isFinite(x);}), n=v.length; if(n<3) return vals.map(function(){return null;}); return vals.map(function(x){ if(x==null||!isFinite(x)) return null; var less=0,eq=0; v.forEach(function(y){ if(y<x) less++; else if(y===x) eq++; }); return (less+0.5*(eq-1))/(n-1)*100; }); }
 function zWord(z){ return z==null?'—':(z>=80?'很強':(z>=60?'偏強':(z>=40?'中間':(z>=20?'偏弱':'很弱')))); }
-function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
-var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>強度分是什麼：</b>0～100 的名次分。100＝今天最強的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div><div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>每個板塊有兩條：</b>上面粗條＝過去漲跌；下面細條＝位置分（越長＝越靠近最近一波的高點，越短＝已經吐回很多）。兩條都長，才是現在真的強；上面長、下面短，代表漲的是前面那段，現在在休息或回吐。</div>';
+function zTxt(z){ if(z==null) return ''; var c=z>=60?'#1f6f3a':(z<40?'#b3262e':'#667'); return '過去 1 年強度分 <b style="color:'+c+'">'+Math.round(z)+'</b>／100（<b style="color:'+c+'">'+zWord(z)+'</b>）'; }
+var Z_NOTE='<div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>過去 1 年強度分是什麼：</b>用「過去 1 年漲幅」排名的 0～100 分，<b>是過去的表現，不代表現在</b>。100＝過去 1 年漲最多的板塊，0＝最弱，50＝剛好在中間；例如 80 分代表比約 8 成的板塊強。它只比今天這幾個板塊之間的相對強弱，不是絕對漲跌（全部都在漲時，最弱的也可能是正的）。</div><div style="font-size:13px;color:#445;line-height:1.6;margin-top:6px"><b>每個板塊有兩條：</b>上面粗條＝過去漲跌；下面細條＝位置分（越長＝越靠近最近一波的高點，越短＝已經吐回很多）。兩條都長，才是現在真的強；上面長、下面短，代表漲的是前面那段，現在在休息或回吐。</div>';
 function posScore(give){ return Math.round((1-give)*100); }
 function posOf(st){ if(!st) return null; var sc=posScore(st.give), w=sc>=80?'站在高點附近':(sc>=50?'離高點有一段':(sc>=20?'吐回不少':'幾乎吐光')), c=sc>=70?'#1f6f3a':(sc>=40?'#c0600a':'#b3262e'); return {score:sc,label:w,col:c}; }
 function dRow(label,v,lo,hi,valTxt,right){
@@ -947,9 +947,24 @@ function renderCompare(){
   });
   var f=function(v){ return v==null?'—':fmtPct(v*100,0); };
   var H='<div style="font-weight:900;font-size:17px;margin-bottom:2px">各板塊大圖（板塊＝成分股等權平均）</div><div style="font-size:12.5px;color:#778;margin-bottom:8px">所有門檻（15%、5/10 日分群、3/7 成）都是我訂的參考範圍，未經驗證。</div>';
-  // ① 強弱排行
+  // ① 現況（v3.21：先看「現在在哪」，過去 1 年移到後面當背景）
+  var nowR=R.filter(function(r){return r.A.st;}).sort(function(a,b){return a.A.st.give-b.A.st.give;});
+  H+='<div class="sumbox"><div style="font-weight:900">① 現況：現在各板塊在哪個位置？（條越短＝離最近一波高點越近＝越強；只看現在，不看過去 1 年）</div>';
+  var nNear=nowR.filter(function(r){return r.A.st.give<0.3;}), nMid=nowR.filter(function(r){return r.A.st.give>=0.3&&r.A.st.give<0.7;}), nDeep=nowR.filter(function(r){return r.A.st.give>=0.7;});
+  var nm=function(a){ return a.map(function(r){ return r.s.name+'（最近 1 個月 '+f(r.r1)+'）'; }).join('、'); };
+  var nmShort=function(a){ return a.map(function(r){ return r.s.name; }).join('、'); };
+  H+='<div style="font-size:14.5px;line-height:1.7;margin:6px 0;padding:8px 10px;background:#fff8dc;border-radius:8px"><b>現在結論：</b>'
+    +(nNear.length?'位置還靠近高點（最近一波吐回不到 3 成）的有 <b>'+nm(nNear)+'</b>；':'<b>沒有任何板塊</b>還靠近最近一波的高點；')
+    +'吐回 3～7 成的有 '+(nMid.length?nmShort(nMid):'沒有')+'；吐回 7 成以上（前一波幾乎吐光）的有 '+(nDeep.length?nmShort(nDeep):'沒有')+'。'
+    +'<br><span style="color:#556">這是用「最近一波」的位置判斷，不是預測；靠近高點不等於會再漲，吐回很多也不等於不會反彈。若最近 1 個月還在跌，就算位置靠近高點，也只能說「守得比別人好」。</span></div>';
+  nowR.forEach(function(r){
+    var st=r.A.st; H+=barsRow(r.s.icon+' '+r.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>離高點分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日｜3 個月 '+f(r.r3)+'｜1 個月 '+f(r.r1)+'</span>');
+  });
+  R.filter(function(r){return !r.A.st;}).forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">兩年內沒有 15% 以上的波</span>'); });
+  H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。</div></div>';
+  // ② 過去 1 年（背景資料；v3.21 由 ① 移到這裡）
   var o1=R.slice().sort(function(a,b){return (b.r1y||-9)-(a.r1y||-9);}), mx1=Math.max.apply(null,o1.map(function(r){return Math.abs(r.r1y||0);}))||1;
-  H+='<div class="sumbox"><div style="font-weight:900">① 過去 1 年，誰漲得最多？（中間細線＝0，往右漲、往左跌）</div>';
+  H+='<div class="sumbox"><div style="font-weight:900">② 背景：過去 1 年誰漲得最多？（這是過去，不代表現在；中間細線＝0，往右漲、往左跌）</div>';
   var zs1=zList(o1.map(function(r){return r.r1y;})), vs1=o1.map(function(r){return (r.r1y||0)*100;}), lo1=Math.min(0,Math.min.apply(null,vs1)), hi1=Math.max(0,Math.max.apply(null,vs1));
   o1.forEach(function(r,i){ H+=dRow(r.s.icon+' '+r.s.name,vs1[i],lo1,hi1,'1 年 '+fmtPct(vs1[i],0),'過去 3 個月：'+f(r.r3)+'｜最近 1 個月：'+f(r.r1)+'（'+mWord(r.r1)+'）<br>'+zTxt(zs1[i]),plainRead(r.r3,r.r1,'過去 1 年'+(r.r1y>=0?'漲了 ':'跌了 ')+pctA(r.r1y||0),r.A.st,(r.r1y>=0.05||r.r3>=0.05))+((r.A.st&&r.A.st.tier==='bounce')?bounceHtml(r.s):'')); });
   H+=Z_NOTE;
@@ -957,7 +972,7 @@ function renderCompare(){
   H+='</div>';
   // ② 主升段占比
   var o2=R.filter(function(r){return r.A.waves.length>=2&&r.A.waves.length-1!==r.A.mainIdx||r.A.waves.length>=2;}).map(function(r){ var w=r.A.waves, m=w[r.A.mainIdx], later=w.filter(function(x,k){return k>r.A.mainIdx;}); var lg=later.length?Math.max.apply(null,later.map(function(x){return x.gain;})):null; return {r:r,m:m,lg:lg}; }).filter(function(x){return x.lg!=null;});
-  H+='<div class="sumbox"><div style="font-weight:900">② 主升段之後的波有多大（後續最大一波 ÷ 主升段；中線 50%、70%）</div>';
+  H+='<div class="sumbox"><div style="font-weight:900">③ 主升段之後的波有多大（後續最大一波 ÷ 主升段；中線 50%、70%）</div>';
   if(o2.length){
     o2.sort(function(a,b){return b.lg/b.m.gain-a.lg/a.m.gain;});
     var mk='<div style="position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed #555"></div><div style="position:absolute;left:70%;top:0;bottom:0;border-left:2px dashed #999"></div>';
@@ -968,7 +983,7 @@ function renderCompare(){
   H+='</div>';
   // ③ 時間軸
   var dts=null; R.forEach(function(r){ if(!dts||r.A.dates.length>dts.length) dts=r.A.dates; });
-  H+='<div class="sumbox"><div style="font-weight:900">③ 各板塊的波段時間軸（深綠＝主升段，藍＝其他波，斜線＝尚未確認結束）</div>';
+  H+='<div class="sumbox"><div style="font-weight:900">④ 各板塊的波段時間軸（深綠＝主升段，藍＝其他波，斜線＝尚未確認結束）</div>';
   if(dts){
     var N=dts.length, mo='', ticks='';
     dts.forEach(function(d,i){ var m=d.slice(0,7); if(m!==mo){ mo=m; if(parseInt(d.slice(5,7),10)%3===1) ticks+='<div style="position:absolute;left:'+(i/N*100)+'%;top:0;bottom:0;border-left:1px solid #dde;font-size:10.5px;color:#778;padding-left:2px;white-space:nowrap">'+(d.slice(2,4)+'/'+d.slice(5,7))+'</div>'; } });
@@ -983,13 +998,6 @@ function renderCompare(){
     H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>各板塊主升段的起點'+(spread<=15?'集中在同一時段（相差不到 3 週），像是大盤整體反彈而不是各自輪動。':'相差 '+spread+' 個交易日，有先有後。')+'</div>';
   }
   H+='</div>';
-  // ④ 位階條
-  H+='<div class="sumbox"><details><summary style="font-weight:900;cursor:pointer">④ 位置明細（離高點幾天；研究時再展開）</summary>';
-  R.filter(function(r){return r.A.st;}).sort(function(a,b){return a.A.st.give-b.A.st.give;}).forEach(function(r){
-    var st=r.A.st; H+=barsRow(r.s.icon+' '+r.s.name,Math.round(st.give*100),st.col,'<b style="color:'+st.col+'">'+st.label+'</b><br><b>離高點分 '+posScore(st.give)+'</b>／100（吐回 '+Math.round(st.give*100)+'%）<br><span style="color:#667">離高點 '+st.dayPk+' 日</span>');
-  });
-  R.filter(function(r){return !r.A.st;}).forEach(function(r){ H+=barsRow(r.s.icon+' '+r.s.name,0,'#bbb','<b style="color:#667">沒動靜</b><br><span style="color:#667">兩年內沒有 15% 以上的波</span>'); });
-  H+='<div style="font-size:14px;line-height:1.6;margin-top:6px"><b>白話：</b>吐回少、離高點近＝買盤還在或只是暫停；吐回多＝休息或轉弱。這是「最近一波」的位置，不代表之後會漲或會跌。</div></details></div>';
   H+='<details style="margin-top:6px"><summary style="font-weight:800;cursor:pointer">詳細比較表（每一棒漲多少）</summary>'+renderCompareTable()+'</details>';
   el('cmpBox').innerHTML=H;
 }
