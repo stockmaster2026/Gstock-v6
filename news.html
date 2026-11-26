@@ -342,7 +342,7 @@ table.sc-t th{background:#f3f6fb;font-size:11.5px;white-space:nowrap}
 </head>
 <body>
 <header>
-  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.12</span></div>
+  <div><span class="live"></span><span class="logo">MARKET INTEL</span><span style="font-size:10px;color:#8a94a6;margin-left:8px;letter-spacing:0;">v7.13</span></div>
   <a href="stocks.html" style="font-size:11px;color:#6e7681;text-decoration:none;">← 回主站</a>
 </header>
 <div class="tabs">
@@ -1888,8 +1888,10 @@ function ibRender(){
   var head='<div style="background:#eef7ff;border:2px solid #7fb3e6;border-radius:12px;padding:11px 14px">'
     +'<div style="font-size:15.5px;font-weight:800;color:#0b3d6e">⚡ 盤中爆量掃描（只在美股交易時間有用）</div>'
     +'<div style="font-size:12.5px;color:#26496b;margin-top:3px;line-height:1.65">把「今天到現在的累積成交量」，跟過去 20 個完整交易日<b>同一個時間點</b>的累積量比。照這個速度，收盤時大約就是平均的這個倍數。<br>美股盤中＝美西 6:30～13:00。<b>建議開盤 30 分鐘後（美西 7:00 以後）再看</b>，太早量比會亂跳。</div>'
-    +'<div style="margin-top:6px"><button class="fb" onclick="ibRun()"'+((IB_BUSY||SC_BUSY||WG_BUSY)?' disabled':'')+'>⚡ 掃描全部 '+SECTORS_UNIQ().length+' 檔（約 1～2 分鐘）</button>　爆量門檻：'+thr+' 倍（跟上面同一個設定）</div>'
-    +'<div class="wg-hint" id="ib-msg" style="margin-top:4px">'+(openNow?'':'現在不是美股盤中，按下去也不會掃描。收盤後請看下面的「今天全部板塊上漲＋爆量總表」。')+'</div>';
+    +'<div style="margin-top:6px">'+(openNow
+      ?'<button class="fb" onclick="ibRun()"'+((IB_BUSY||SC_BUSY||WG_BUSY)?' disabled':'')+'>⚡ 掃描全部 '+SECTORS_UNIQ().length+' 檔（約 1～2 分鐘）</button>'
+      :'<button class="fb" disabled style="background:#c9d1dc;color:#5b6675;cursor:not-allowed">⏸ 現在收盤，這個按鈕暫時不能用（美西 7:00 以後才能掃）</button>')+'　爆量門檻：'+thr+' 倍（跟上面同一個設定）</div>'
+    +'<div class="wg-hint" id="ib-msg" style="margin-top:4px">'+(openNow?'':'<div style="background:#fff3d6;border:1.5px solid #e0a800;border-radius:8px;padding:7px 10px;color:#6b4a00;font-size:13.5px;font-weight:700;line-height:1.6">🔒 現在不是美股盤中，所以這個按鈕不會掃描，畫面不會動是正常的。<br><span style="font-weight:500">收盤後請看下面的「今天全部板塊上漲＋爆量總表」；要用這個掃描，請在下一個美股交易日美西 7:00 以後再按。</span></div>')+'</div>';
   var body='';
   var R=IB_LAST;
   if(R){
@@ -1909,7 +1911,7 @@ function SECTORS_UNIQ(){
 async function ibRun(){
   if(IB_BUSY||SC_BUSY||WG_BUSY) return;
   var n=etNow(), msg=function(t){ var e=document.getElementById('ib-msg'); if(e) e.innerHTML=t; };
-  if(!mktOpenNow(n.date)){ msg('現在不是美股盤中，所以沒有掃描。收盤後請看下面的總表。'); return; }
+  if(!mktOpenNow(n.date)){ msg('<b style="color:#b36b00">🔒 現在不是美股盤中，所以沒有掃描（畫面不會動是正常的）。收盤後請看下面的總表。</b>'); return; }
   if(n.mins<585){ msg('開盤才 '+(n.mins-570)+' 分鐘，量比太不穩，請等到美東 9:45（美西 6:45）以後，最好 10:00 以後。'); return; }
   IB_BUSY=true; var list=SECTORS_UNIQ(), rows=[], bad=0, done=0; ibRender();
   for(var j=0;j<list.length;j+=6){
