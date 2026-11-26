@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>整合篩選 v0.6</title>
+<title>整合篩選 v0.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -27,6 +27,7 @@ table.t{border-collapse:collapse;width:100%;font-size:14px;}
 table.t th,table.t td{padding:6px 7px;border-bottom:1px solid #e3e6ee;text-align:left;vertical-align:top;}
 table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 .tw{overflow-x:auto;}
+body.asofMode .todayOnly{display:none;}
 .pos{color:#0d8a3f;font-weight:800;}.neg{color:#b3262e;font-weight:800;}
 .prog{font-size:14px;color:#667;padding:6px 0;}
 .card{border:2px solid #e6dba0;border-radius:10px;padding:9px 11px;margin:8px 0;background:#fff;}
@@ -36,25 +37,25 @@ details>summary{cursor:pointer;font-weight:800;font-size:14px;color:#445;margin:
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.6</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">整合<span>篩選</span> v0.7</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
-    <div id="verdict" class="verdict" style="background:#fff7d6">準備中…</div>
+    <div id="verdict" class="verdict todayOnly" style="background:#fff7d6">準備中…</div>
     <div class="prog" id="prog">準備中…</div>
     <div class="row"><button class="btn go" id="btnRun" disabled>重新篩選</button><button class="btn" id="btnFund" disabled>抓入選股的基本面（Finnhub）</button><button class="btn" id="btnSnap" disabled>存今天快照</button></div>
     <div class="sub">四層：①板塊不是逆風、也不在跌後反彈（回測 180 筆比大盤少 7.7%）→ ②K 線 Stage 2 且位置在買點附近 → ③量 → ④比大盤強。①②是門檻，③④是加分（回測 365 筆：門檻有一點幫助，加量能在弱市幫忙、強市沒差；全部沒有被證明）。基本面是第五層，只記錄、不當門檻。</div>
   </div>
-  <div class="box" id="asofBox"><div class="h">🕰 回到某一天：那天系統會推薦什麼？之後結果如何？（v0.6 新功能）</div>
-    <div class="row"><input type="date" id="asofDate" style="font-size:16px;padding:6px"><button class="btn go" id="btnAsof" disabled>看這一天</button><button class="btn" id="btnA30" disabled>30 個交易日前</button><button class="btn" id="btnA60" disabled>60 個交易日前</button><button class="btn" id="btnA90" disabled>90 個交易日前</button></div>
+  <div class="box" id="asofBox"><div class="h">🕰 回到某一天：那天系統會推薦什麼？之後結果如何？（v0.7 新功能）</div>
+    <div class="row"><input type="date" id="asofDate" style="font-size:16px;padding:6px"><button class="btn go" id="btnAsof" disabled>看這一天</button><button class="btn" id="btnA30" disabled>30 個交易日前</button><button class="btn" id="btnA60" disabled>60 個交易日前</button><button class="btn" id="btnA90" disabled>90 個交易日前</button><button class="btn go" id="btnToday" style="display:none;background:#0d6efd">⬅ 回到今天的篩選</button></div>
     <div class="sub">選好日期再按「看這一天」（選日期時不會自動跑）。系統只用那一天以前的資料重算，再看之後 20／60 個交易日的實際結果，跟大盤（SPY）比。</div>
     <div id="asof"></div></div>
-  <div class="box"><div class="h">漏斗：每一層剩幾檔</div><div id="funnel"></div></div>
-  <div class="box"><div class="h">入選</div><div id="picks"></div></div>
-  <div class="box"><div class="h">整合結論：今天的整體狀況</div><div id="concl"></div></div>
-  <div class="box"><div class="h">入選紀錄：每檔連續入選幾天、每天的收盤價</div><div id="hist"><div class="read">計算中…</div></div></div>
-  <div class="box"><details><summary>差一關的（只卡在一層，值得盯）</summary><div id="near"></div></details></div>
-  <div class="box"><details><summary>追蹤：過去快照的入選，之後表現如何</summary><div id="track"></div></details></div>
-  <div class="box"><div class="sub" id="lim"></div></div>
+  <div class="box todayOnly"><div class="h">漏斗：每一層剩幾檔</div><div id="funnel"></div></div>
+  <div class="box todayOnly"><div class="h">入選</div><div id="picks"></div></div>
+  <div class="box todayOnly"><div class="h">整合結論：今天的整體狀況</div><div id="concl"></div></div>
+  <div class="box todayOnly"><div class="h">入選紀錄：每檔連續入選幾天、每天的收盤價</div><div id="hist"><div class="read">計算中…</div></div></div>
+  <div class="box todayOnly"><details><summary>差一關的（只卡在一層，值得盯）</summary><div id="near"></div></details></div>
+  <div class="box todayOnly"><details><summary>追蹤：過去快照的入選，之後表現如何</summary><div id="track"></div></details></div>
+  <div class="box todayOnly"><div class="sub" id="lim"></div></div>
 </div>
 <script>
 
@@ -696,7 +697,7 @@ async function runFund(){
   b.textContent='重抓基本面'; b.disabled=false; render();
 }
 
-// ═════ v0.6：回到某一天 ═════
+// ═════ v0.7：回到某一天 ═════
 function idxOfDate(B,ds){ for(var q=B.d.length-1;q>=0;q--){ if(B.d[q]===ds) return q; if(B.d[q]<ds) return -1; } return -1; }
 function fwd(B,S,ds,k,h){ // 從那天收盤起算 h 個交易日（以大盤的交易日為準）
   var i=idxOfDate(B,ds); if(i<0||k+h>=S.d.length) return null;
@@ -712,12 +713,13 @@ function runAsOf(){
   if(!ds){ out.innerHTML='<div class="read">請先選一個日期。</div>'; return; }
   var k=kOfDate(ds);
   if(k<0){ out.innerHTML='<div class="read">這個日期比手上的資料還早。</div>'; return; }
+  document.body.classList.add('asofMode'); el('btnToday').style.display=''; window.scrollTo(0,0);
   var day=S.d[k];
   var tk=Object.keys(T2S).filter(function(t){return BARS[t];}), rows=[];
   tk.forEach(function(t){ try{ var r=judge(t,k,true); if(r) rows.push(r); }catch(e){} });
   if(rows.length<30){ out.innerHTML='<div class="read">那天（'+day+'）可算的股票只有 '+rows.length+' 檔：資料往前只抓 2 年，太早的日子沒辦法算（每檔要先有約 160 個交易日的歷史）。請選晚一點的日期。</div>'; return; }
   var a1=rows.filter(function(r){return r.L1;}), a2=a1.filter(function(r){return r.stage2;}), picks=rows.filter(function(r){return r.pass;}).sort(function(a,b){ return b.bonus-a.bonus; });
-  var h='<div style="font-weight:800;font-size:17px;margin:8px 0">'+day+(day!==ds?'（你選的 '+ds+' 沒開盤，用前一個交易日）':'')+'：可算 '+rows.length+' 檔 → 板塊不逆風 '+a1.length+' → Stage 2 '+a2.length+' → <span style="color:#0d6efd">入選 '+picks.length+' 檔</span></div>';
+  var h='<div style="background:#e8f0ff;border:2px solid #0d6efd;border-radius:8px;padding:8px 10px;font-weight:800;margin:8px 0">現在看的是「過去的一天」，不是今天。今天的篩選結果已先收起來，按上面藍色「回到今天的篩選」就會回去。</div><div style="font-weight:800;font-size:17px;margin:8px 0">'+day+(day!==ds?'（你選的 '+ds+' 沒開盤，用前一個交易日）':'')+'：可算 '+rows.length+' 檔 → 板塊不逆風 '+a1.length+' → Stage 2 '+a2.length+' → <span style="color:#0d6efd">入選 '+picks.length+' 檔</span></div>';
   var P=[], A=[];
   [20,60].forEach(function(H){
     var pf=picks.map(function(r){return fwd(BARS[r.t],S,r.d,k,H);}).filter(Boolean);
@@ -748,6 +750,7 @@ function runAsOf(){
 function asofInit(){
   var S=BARS['SPY'], inp=el('asofDate'); inp.min=S.d[170]||S.d[0]; inp.max=S.d[S.d.length-1];
   var go=function(back){ var k=S.d.length-1-back; if(k<0) k=0; inp.value=S.d[k]; runAsOf(); };
+  el('btnToday').onclick=function(){ document.body.classList.remove('asofMode'); el('btnToday').style.display='none'; el('asof').innerHTML=''; window.scrollTo(0,0); };
   el('btnAsof').onclick=runAsOf; el('btnA30').onclick=function(){go(30);}; el('btnA60').onclick=function(){go(60);}; el('btnA90').onclick=function(){go(90);};
   ['btnAsof','btnA30','btnA60','btnA90'].forEach(function(id){ el(id).disabled=false; });
   inp.value=S.d[S.d.length-61];
