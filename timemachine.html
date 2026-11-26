@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>板塊時光機 v1.70</title>
+<title>板塊時光機 v1.72</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 :root{--bg:#f5e8a0;--surface:#fffef2;--border:#e0cc70;--blue:#0066bb;--green:#0d8a3f;--orange:#dd6600;--red:#cc1133;--dim:#8a8a6a;--text:#1a1a2e;}
@@ -31,7 +31,7 @@ table.t th{background:#f3f6fb;font-size:12.5px;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.70</div><div style="width:70px"></div></div>
+<div class="topbar"><a class="back" href="charts.html">← 圖表</a><div class="logo">板塊<span>時光機</span> v1.72</div><div style="width:70px"></div></div>
 <div class="wrap">
   <div class="box">
     <div class="h">回到某一天，看當時各板塊在什麼位置</div>
@@ -1089,15 +1089,15 @@ function mountainSvg(items){
   [[0.1,'起步'],[0.28,'爬坡'],[0.5,'山頂'],[0.7,'下山'],[0.92,'谷底']].forEach(function(z){ svg+='<text x="'+xAt(z[0]).toFixed(1)+'" y="'+(base+17)+'" font-size="12.5" font-weight="800" fill="#6b5d1f" text-anchor="middle">'+z[1]+'</text>'; });
   svg+='<text x="'+xAt(0.7).toFixed(1)+'" y="'+(base+31)+'" font-size="10.5" fill="#8a7a33" text-anchor="middle">（吐回越多越靠右）</text>';
   svg+='<text x="'+PL+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#1f8a4a">← 往左＝轉強</text><text x="'+(PL+PW)+'" y="'+(base+49)+'" font-size="12" font-weight="800" fill="#c0392b" text-anchor="end">往右＝轉弱 →</text>';
-  svg+='<text x="'+(W/2)+'" y="'+(base+65)+'" font-size="10.5" fill="#667" text-anchor="middle">位置是依「階段」放的，不是股價高低；只有近 1 週變動明顯的才畫箭頭（綠＝往轉強、紅＝往轉弱，空心圈＝1 週前）</text>';
-  svg+='<text x="'+(W/2)+'" y="'+(base+81)+'" font-size="10.5" fill="#667" text-anchor="middle">名字後面的 ▲▼＝今天這個板塊實際漲跌（灰＝±0.3% 內），「5日」＝近 5 個交易日（灰＝±0.5% 內），「⚠回落」＝近幾天從高點掉得比它平常的波動大；盤中為盤中數字</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(base+65)+'" font-size="10.5" fill="#667" text-anchor="middle">位置是依「階段」放的，不是股價高低；圓點裡的數字＝上面名字前的編號；只有近 1 週變動明顯的才畫箭頭（綠＝往轉強、紅＝往轉弱，空心圈＝1 週前）</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(base+81)+'" font-size="10.5" fill="#667" text-anchor="middle">名字後面的 ▲▼＝今天這個板塊實際漲跌（綠＝漲、紅＝跌，灰＝±0.3% 內；跟名字本身的顏色［階段色］無關），「5日」＝近 5 個交易日（灰＝±0.5% 內），「⚠回落」＝近幾天從高點掉得比它平常的波動大；盤中為盤中數字</text>';
   var mvSet={}; items.filter(function(m){ return m.x5!=null&&Math.abs(m.x5-m.x)>=0.06; }).sort(function(a,b){ return Math.abs(b.x5-b.x)-Math.abs(a.x5-a.x); }).slice(0,6).forEach(function(m){ mvSet[m.name]=1; });
   var sorted=items.slice().sort(function(a,b){ return a.x-b.x; }), prev=-99, arrows='', lines='', dots='', labs='';
   sorted.forEach(function(m,r){
-    var cx=xAt(m.x), cy=yAt(m.x); if(cx<prev+9) cx=prev+9; prev=cx;
+    var cx=xAt(m.x), cy=yAt(m.x); if(cx<prev+13) cx=prev+13; prev=cx;
     if(m.x5!=null&&mvSet[m.name]){ var gx=xAt(m.x5), gy=yAt(m.x5); arrows+='<line x1="'+gx.toFixed(1)+'" y1="'+gy.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+cy.toFixed(1)+'" stroke="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" stroke-width="2.6" opacity=".85" stroke-linecap="round"/>'+(function(){ var dx=cx-gx, dy=cy-gy, L=Math.sqrt(dx*dx+dy*dy)||1, ux=dx/L, uy=dy/L, tx=cx-ux*9, ty=cy-uy*9, bx=tx-ux*12, by=ty-uy*12; return '<polygon points="'+tx.toFixed(1)+','+ty.toFixed(1)+' '+(bx-uy*6).toFixed(1)+','+(by+ux*6).toFixed(1)+' '+(bx+uy*6).toFixed(1)+','+(by-ux*6).toFixed(1)+'" fill="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" opacity=".95"/>'; })()+'<circle cx="'+gx.toFixed(1)+'" cy="'+gy.toFixed(1)+'" r="4" fill="#fff" stroke="'+(m.x<m.x5?'#1f8a4a':'#c0392b')+'" stroke-width="1.8"/>'; }
     var ry=top+r*RH;
-    lines+='<line x1="'+cx.toFixed(1)+'" y1="'+(ry+7)+'" x2="'+cx.toFixed(1)+'" y2="'+(cy-5).toFixed(1)+'" stroke="'+m.col+'" stroke-width="1" opacity=".4"/>';
+    lines+='<line x1="'+cx.toFixed(1)+'" y1="'+(ry+7)+'" x2="'+cx.toFixed(1)+'" y2="'+(cy-5).toFixed(1)+'" stroke="'+m.col+'" stroke-width="1" opacity=".22"/>';
     var tail='', tw=0;
     if(m.d1!=null){ var u1=m.d1>=0.003?'#1f8a4a':(m.d1<=-0.003?'#c0392b':'#888'), a1=m.d1>=0.003?'▲':(m.d1<=-0.003?'▼':'■');
       tail+='<tspan fill="'+u1+'" font-size="11"> '+a1+(m.d1>=0?'+':'')+(m.d1*100).toFixed(1)+'%</tspan>'; tw+=62; }
@@ -1105,8 +1105,8 @@ function mountainSvg(items){
       tail+='<tspan fill="'+u5+'" font-size="10"> 5日'+a5+'</tspan>'; tw+=38; }
     if(m.rd){ tail+='<tspan fill="#c0392b" font-size="10"> ⚠回落</tspan>'; tw+=40; }
     var lw=(m.name.length*12.5)+22+tw+(mvSet[m.name]?16:0), toRight=(cx+4+lw>W-4), lx=toRight?(cx-4):(cx+4);
-    labs+='<text x="'+lx.toFixed(1)+'" y="'+(ry+11)+'" font-size="11.5" font-weight="800" fill="'+m.col+'" text-anchor="'+(toRight?'end':'start')+'" style="paint-order:stroke;stroke:#faf4dc;stroke-width:3px;stroke-linejoin:round">'+(mvSet[m.name]?(m.x<m.x5?'⬅ ':'➡ '):'')+m.icon+' '+m.name+tail+'</text>';
-    dots+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="5.5" fill="'+m.col+'" stroke="#fff" stroke-width="1.5"/>';
+    labs+='<text x="'+lx.toFixed(1)+'" y="'+(ry+11)+'" font-size="11.5" font-weight="800" fill="'+m.col+'" text-anchor="'+(toRight?'end':'start')+'" style="paint-order:stroke;stroke:#faf4dc;stroke-width:3px;stroke-linejoin:round">'+(mvSet[m.name]?(m.x<m.x5?'⬅ ':'➡ '):'')+'<tspan font-weight="900">'+(r+1)+'.</tspan> '+m.icon+' '+m.name+tail+'</text>';
+    dots+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="6.5" fill="'+m.col+'" stroke="#fff" stroke-width="1.5"/><text x="'+cx.toFixed(1)+'" y="'+(cy+3).toFixed(1)+'" font-size="8.5" font-weight="900" fill="#fff" text-anchor="middle">'+(r+1)+'</text>';
   });
   return svg+arrows+lines+labs+dots+'</svg>';
 }
@@ -1234,8 +1234,11 @@ function drawCycle2(lists,ks,M,S,k){
   var idxAt=function(off){ var kk=k-off; if(kk<ks[0]) return null; var best=0; for(var j=0;j<n;j++){ if(ks[j]<=kk) best=j; } return best; };
   // ── ① 甜甜圈：四個時間點 ──
   var pts=[['6 個月前',126],['3 個月前',63],['1 個月前',21],['這一天',0]], dn='', cmp=[];
-  pts.forEach(function(pt){ var j=idxAt(pt[1]); if(j==null) return; var cl={}; M.forEach(function(r){ var c=clsOf(r[j]); cl[c]=(cl[c]||0)+1; }); cmp.push({n:pt[0],cl:cl,j:j});
-    dn+=donutSvg(cl,pt[0]+'<br><span style="font-weight:400;font-size:11px;color:#667">'+md(S.d[ks[j]])+'</span>','順風 '+(cl['順風']||0)+'・小心 '+(cl['小心']||0)+'<br>逆風 '+(cl['逆風']||0)+(cl['沒動靜']?'・沒動靜 '+cl['沒動靜']:'')); });
+  pts.forEach(function(pt){ var j=idxAt(pt[1]); if(j==null) return; var cl={}, nmz={}; M.forEach(function(r,si){ var c=clsOf(r[j]); cl[c]=(cl[c]||0)+1; (nmz[c]=nmz[c]||[]).push(lists[si].s.icon+lists[si].s.name); }); cmp.push({n:pt[0],cl:cl,j:j});
+    // v1.72：每個甜甜圈下面直接寫出是哪幾個板塊（順風一定列；小心／逆風收在「展開」裡）
+    var who=(nmz['順風']&&nmz['順風'].length?'<div style="font-size:12.5px;font-weight:800;color:#1f6f3a;margin-top:3px">順風：'+nmz['順風'].join('、')+'</div>':'<div style="font-size:12px;color:#667;margin-top:3px">沒有順風的板塊</div>')
+      +'<details style="font-size:11.5px;color:#556;margin-top:2px"><summary style="cursor:pointer">看小心／逆風是哪些</summary>'+['小心','逆風','沒動靜'].filter(function(c){return nmz[c];}).map(function(c){ return '<div style="text-align:left;margin-top:2px"><b>'+c+'：</b>'+nmz[c].join('、')+'</div>'; }).join('')+'</details>';
+    dn+=donutSvg(cl,pt[0]+'<br><span style="font-weight:400;font-size:11px;color:#667">'+md(S.d[ks[j]])+'</span>','順風 '+(cl['順風']||0)+'・小心 '+(cl['小心']||0)+'<br>逆風 '+(cl['逆風']||0)+(cl['沒動靜']?'・沒動靜 '+cl['沒動靜']:'')+who); });
   // ── 強勢階段（順風＋小心）的數量走勢 ──
   var strong=ks.map(function(_,j){ var c=0; M.forEach(function(r){ if(isGoCat(r[j])) c++; }); return c; });
   var pkJ=0; strong.forEach(function(v,j){ if(v>strong[pkJ]) pkJ=j; });
